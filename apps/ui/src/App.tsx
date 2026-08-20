@@ -15,14 +15,7 @@ function StatePill({ state }: { state: string }) {
   return <span className={`pill pill-${state.toLowerCase()}`}>{state.replaceAll("_", " ")}</span>;
 }
 
-const strategyTemplates = {
-  DIRECT: "direct-v1",
-  LOOP: "feedback-loop-v1",
-  GRAPH: "fixed-graph-v1",
-  HYBRID: "hybrid-rd-v1",
-} as const;
-
-type StrategyMode = keyof typeof strategyTemplates;
+type StrategyMode = "DIRECT" | "LOOP" | "GRAPH" | "HYBRID";
 
 function lines(value: FormDataEntryValue | null) {
   return String(value ?? "").split("\n").map((item) => item.trim()).filter(Boolean);
@@ -140,13 +133,18 @@ function PlanningReview({ planning, onUpdate }: {
   const decision = planning.current_decision;
   const unknownFeatures = profile.unknown_features ?? [];
   const observedFeatures = profile.observed_features ?? [];
+  const templatesQuery = useQuery({ queryKey: ["templates"], queryFn: api.templates });
   const [mode, setMode] = useState<StrategyMode>(decision.selected_mode as StrategyMode);
+  const [templateId, setTemplateId] = useState(decision.selected_template_id);
   const [reason, setReason] = useState("");
   const [feedback, setFeedback] = useState<string>();
   const [provider, setProvider] = useState("FAKE");
-  const directSupported = decision.selected_mode === "DIRECT" && decision.selected_template_id === "direct-v1";
-  const loopSupported = decision.selected_mode === "LOOP" && decision.selected_template_id === "feedback-loop-v1";
-  const executionSupported = directSupported || loopSupported;
+  const modeTemplates = (templatesQuery.data ?? []).filter(
+    (template) => template.mode === mode,
+  );
+  const selectedTemplate = modeTemplates.some((template) => template.template_id === templateId)
+    ? templateId
+    : modeTemplates[0]?.template_id ?? "";
 
   async function override(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -154,7 +152,7 @@ function PlanningReview({ planning, onUpdate }: {
     try {
       const result = await api.overrideStrategy(planning.task_id, {
         requested_mode: mode,
-        requested_template_id: strategyTemplates[mode],
+        requested_template_id: selectedTemplate,
         reason,
       });
       setFeedback(result.override.accepted ? "Override accepted and audited." : `Override denied: ${result.override.denial_reason}`);
@@ -198,13 +196,13 @@ function PlanningReview({ planning, onUpdate }: {
         <div className="planning-actions">
           <form className="override-form" onSubmit={override}>
             <label>Override mode<select value={mode} onChange={(event) => setMode(event.target.value as StrategyMode)}><option>DIRECT</option><option>LOOP</option><option>GRAPH</option><option>HYBRID</option></select></label>
+            <label>Template<select value={selectedTemplate} onChange={(event) => setTemplateId(event.target.value)}>{modeTemplates.map((template) => <option value={template.template_id} key={template.template_id}>{template.template_id}</option>)}</select></label>
             <label className="reason-field">Reason<input value={reason} onChange={(event) => setReason(event.target.value)} required placeholder="Required for the audit record" /></label>
-            <button className="secondary-button" type="submit">Request override</button>
+            <button className="secondary-button" type="submit" disabled={!selectedTemplate}>Request override</button>
           </form>
           <div className="run-control">
             <label>Runtime<select value={provider} onChange={(event) => setProvider(event.target.value)}><option>FAKE</option><option>CODEX</option><option>CLAUDE</option></select></label>
-            <button className="primary-button" type="button" disabled={!executionSupported} onClick={run}>Create run</button>
-            {!executionSupported ? <p>Execution is blocked until P3. GRAPH, HYBRID, and safe-unknown decisions require graph and checkpoint support.</p> : null}
+            <button className="primary-button" type="button" onClick={run}>Create run</button>
           </div>
         </div>
         {feedback ? <p className="form-status" role="status">{feedback}</p> : null}
@@ -280,7 +278,7 @@ export default function App() {
     <main>
       <nav>
         <div className="brand-mark">A</div>
-        <div><strong>Accretion</strong><span>Operator / P2</span></div>
+        <div><strong>Accretion</strong><span>Operator / P3</span></div>
         <div className="nav-status"><i />Control plane</div>
       </nav>
 

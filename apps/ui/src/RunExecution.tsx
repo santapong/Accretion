@@ -1,5 +1,5 @@
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Background,
   BaseEdge,
@@ -14,7 +14,9 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { api } from "./api";
+import { layoutProjection } from "./graphLayout";
 import type {
+  ApprovalRecord,
   GraphProjection,
   GraphProjectionNode,
   LoopExecution,
@@ -40,12 +42,6 @@ function isGraphProjection(value: unknown): value is GraphProjection {
     && (candidate.edges === undefined || Array.isArray(candidate.edges));
 }
 
-function nodePosition(node: GraphProjectionNode, index: number) {
-  const lowerLabel = node.label.toLowerCase();
-  const y = node.kind === "VERIFIER" || lowerLabel.includes("verify") ? 188 : 48;
-  return { x: index * 210, y };
-}
-
 function LoopBackEdge({
   id,
   sourceX,
@@ -55,8 +51,11 @@ function LoopBackEdge({
   markerEnd,
   style,
   label,
+  data,
 }: EdgeProps) {
-  const curveDepth = Math.max(92, Math.abs(sourceX - targetX) * 0.34);
+  const compact = Boolean((data as { compact?: boolean } | undefined)?.compact);
+  const minimumDepth = compact ? 46 : 92;
+  const curveDepth = Math.max(minimumDepth, Math.abs(sourceX - targetX) * 0.34);
   const controlY = Math.max(sourceY, targetY) + curveDepth;
   const edgePath = `M ${sourceX} ${sourceY} C ${sourceX + 72} ${controlY}, ${targetX - 72} ${controlY}, ${targetX} ${targetY}`;
   const labelX = (sourceX + targetX) / 2;
@@ -91,6 +90,9 @@ function ProjectionNodeLabel({ node }: { node: GraphProjectionNode }) {
         <span className="iteration-badge">Iteration {node.iteration} / {node.max_iterations}</span>
       ) : null}
       {node.verifier_state ? <StatusBadge state={node.verifier_state} /> : null}
+      {node.kind === "GATE" && node.status === "WAITING" ? (
+        <span className="gate-waiting-hint">Waiting for approval</span>
+      ) : null}
     </div>
   );
 }
@@ -98,28 +100,61 @@ function ProjectionNodeLabel({ node }: { node: GraphProjectionNode }) {
 function ProjectionCanvas({ projection }: { projection: GraphProjection }) {
   const projectionNodes = useMemo(() => projection.nodes ?? [], [projection.nodes]);
   const projectionEdges = useMemo(() => projection.edges ?? [], [projection.edges]);
-  const flowNodes = useMemo<Node[]>(() => projectionNodes.map((node, index) => ({
-    id: node.node_id,
-    position: nodePosition(node, index),
-    initialWidth: 168,
-    initialHeight: 112,
-    sourcePosition: Position.Right,
-    targetPosition: Position.Left,
-    className: `projection-node projection-node-${node.status.toLowerCase()}`,
-    data: { label: <ProjectionNodeLabel node={node} /> },
-  })), [projectionNodes]);
+  const layout = useMemo(() => layoutProjection(projection), [projection]);
+  const parentIds = useMemo(
+    () => new Set(projectionNodes.map((node) => node.parent_id).filter(Boolean)),
+    [projectionNodes],
+  );
+  const flowNodes = useMemo<Node[]>(() => {
+    // React Flow requires subflow parents to precede their children.
+    const ordered = [...projectionNodes].sort((left, right) =>
+      Number(Boolean(left.parent_id)) - Number(Boolean(right.parent_id)),
+    );
+    return ordered.map((node) => {
+      const geometry = layout[node.node_id] ?? { x: 0, y: 0, width: 168, height: 112 };
+      const isGroup = parentIds.has(node.node_id);
+      return {
+        id: node.node_id,
+        position: { x: geometry.x, y: geometry.y },
+        parentId: node.parent_id ?? undefined,
+        extent: node.parent_id ? ("parent" as const) : undefined,
+        initialWidth: geometry.width,
+        initialHeight: geometry.height,
+        style: isGroup ? { width: geometry.width, height: geometry.height } : undefined,
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left,
+        className: [
+          "projection-node",
+          `projection-node-${node.status.toLowerCase()}`,
+          `projection-node-kind-${node.kind.toLowerCase()}`,
+          isGroup ? "projection-node-group" : "",
+        ].filter(Boolean).join(" "),
+        data: { label: <ProjectionNodeLabel node={node} /> },
+      };
+    });
+  }, [projectionNodes, layout, parentIds]);
 
-  const flowEdges = useMemo<Edge[]>(() => projectionEdges.map((edge) => ({
-    id: edge.edge_id,
-    source: edge.source,
-    target: edge.target,
-    type: edge.kind === "LOOP_BACK" ? "loopBack" : "smoothstep",
-    label: edge.label ?? (edge.kind === "LOOP_BACK" ? "retry" : undefined),
-    animated: edge.active,
-    className: `projection-edge projection-edge-${edge.kind.toLowerCase().replaceAll("_", "-")}`,
-    markerEnd: { type: MarkerType.ArrowClosed, color: edge.active ? "#75db91" : "#657069" },
-    style: { stroke: edge.active ? "#75db91" : "#657069", strokeWidth: edge.active ? 2 : 1.25 },
-  })), [projectionEdges]);
+  const flowEdges = useMemo<Edge[]>(() => {
+    const parentByNode = new Map(
+      projectionNodes.map((node) => [node.node_id, node.parent_id ?? null]),
+    );
+    return projectionEdges.map((edge) => {
+      const sharedParent = parentByNode.get(edge.source) != null
+        && parentByNode.get(edge.source) === parentByNode.get(edge.target);
+      return {
+        id: edge.edge_id,
+        source: edge.source,
+        target: edge.target,
+        type: edge.kind === "LOOP_BACK" ? "loopBack" : "smoothstep",
+        label: edge.label ?? (edge.kind === "LOOP_BACK" ? "retry" : undefined),
+        animated: edge.active,
+        data: edge.kind === "LOOP_BACK" && sharedParent ? { compact: true } : undefined,
+        className: `projection-edge projection-edge-${edge.kind.toLowerCase().replaceAll("_", "-")}`,
+        markerEnd: { type: MarkerType.ArrowClosed, color: edge.active ? "#75db91" : "#657069" },
+        style: { stroke: edge.active ? "#75db91" : "#657069", strokeWidth: edge.active ? 2 : 1.25 },
+      };
+    });
+  }, [projectionNodes, projectionEdges]);
 
   const labels = new Map(projectionNodes.map((node) => [node.node_id, node.label]));
   const loopNode = projectionNodes.find((node) => node.iteration != null && node.max_iterations != null);
@@ -136,7 +171,7 @@ function ProjectionCanvas({ projection }: { projection: GraphProjection }) {
           <span>Graph v{projection.run_graph_version}</span>
         </div>
       </header>
-      <div className="projection-flow" aria-label="Feedback loop execution graph">
+      <div className="projection-flow" aria-label="Execution graph">
         <ReactFlow
           nodes={flowNodes}
           edges={flowEdges}
@@ -177,6 +212,64 @@ function ProjectionCanvas({ projection }: { projection: GraphProjection }) {
           </li>
         ))}
       </ul>
+    </section>
+  );
+}
+
+function PendingApprovals({ runId }: { runId: string }) {
+  const queryClient = useQueryClient();
+  const [feedback, setFeedback] = useState<string>();
+  const approvalsQuery = useQuery({
+    queryKey: ["run-approvals", runId],
+    queryFn: () => api.approvals(runId, "PENDING"),
+    retry: false,
+    refetchInterval: 2000,
+  });
+  const pending: ApprovalRecord[] = approvalsQuery.data ?? [];
+  if (!pending.length) return null;
+
+  async function decide(approvalId: string, decision: "APPROVE" | "DENY") {
+    setFeedback("Recording decision…");
+    try {
+      await api.decideApproval(approvalId, decision);
+      setFeedback(decision === "APPROVE" ? "Approved." : "Denied.");
+      await queryClient.invalidateQueries({ queryKey: ["run-approvals", runId] });
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Decision failed.");
+    }
+  }
+
+  return (
+    <section className="approval-panel" aria-label="Pending approvals">
+      <header>
+        <p className="eyebrow">Human gate</p>
+        <h3>Pending approvals</h3>
+      </header>
+      {pending.map((approval) => (
+        <article className="approval-request" key={approval.approval_id}>
+          <div>
+            <strong>{approval.summary || approval.native_request_id}</strong>
+            <small>{approval.method}</small>
+          </div>
+          <div className="approval-actions">
+            <button
+              className="primary-button"
+              type="button"
+              onClick={() => decide(approval.approval_id, "APPROVE")}
+            >
+              Approve
+            </button>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => decide(approval.approval_id, "DENY")}
+            >
+              Deny
+            </button>
+          </div>
+        </article>
+      ))}
+      {feedback ? <p className="form-status" role="status">{feedback}</p> : null}
     </section>
   );
 }
@@ -304,15 +397,16 @@ export function RunExecution({ run }: { run: Run | undefined }) {
   return (
     <section className="execution-panel" aria-label="Run orchestration">
       <header className="panel-header">
-        <div><p className="eyebrow">Execution control</p><h2>Loop &amp; verification</h2></div>
+        <div><p className="eyebrow">Execution control</p><h2>Execution &amp; verification</h2></div>
         <StatusBadge state={run.state} />
       </header>
       <div className="execution-content">
+        <PendingApprovals runId={run.run_id} />
         {loopQuery.data ? <BudgetSummary loop={loopQuery.data} /> : null}
         {projection ? <ProjectionCanvas projection={projection} /> : (
           <div className="projection-unavailable">
-            <strong>{graphQuery.isPending ? "Loading execution graph…" : "No loop graph for this run"}</strong>
-            <p>DIRECT runs keep their normalized trace below. LOOP runs expose the fixed feedback topology here.</p>
+            <strong>{graphQuery.isPending ? "Loading execution graph…" : "No graph projection is available for this run"}</strong>
+            <p>Runs created before graph persistence keep their normalized trace below.</p>
           </div>
         )}
         <VerificationPanel verifications={verifications} />

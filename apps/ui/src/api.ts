@@ -1,4 +1,7 @@
 import type {
+  ApprovalDecisionValue,
+  ApprovalRecord,
+  ExecutionTrace,
   Project,
   ProjectCreate,
   GraphProjection,
@@ -12,6 +15,7 @@ import type {
   TaskCreate,
   TaskPlanning,
   VerificationResult,
+  WorkflowTemplateSummary,
 } from "./types";
 
 const API_ROOT = import.meta.env.VITE_API_URL ?? "";
@@ -48,6 +52,14 @@ export const api = {
     postJson<Run>(`/api/v1/tasks/${taskId}/runs`, payload),
   loop: (runId: string) => getJson<LoopExecution>(`/api/v1/runs/${runId}/loop`),
   graph: (runId: string) => getJson<GraphProjection>(`/api/v1/runs/${runId}/graph`),
+  trace: (runId: string) => getJson<ExecutionTrace>(`/api/v1/runs/${runId}/trace`),
+  templates: () => getJson<WorkflowTemplateSummary[]>("/api/v1/templates"),
+  approvals: (runId: string, status?: string) =>
+    getJson<ApprovalRecord[]>(
+      `/api/v1/approvals?run_id=${runId}${status ? `&status=${status}` : ""}`,
+    ),
+  decideApproval: (approvalId: string, decision: ApprovalDecisionValue) =>
+    postJson<ApprovalRecord>(`/api/v1/approvals/${approvalId}/decision`, { decision }),
   verifications: (runId: string) =>
     getJson<VerificationResult[]>(`/api/v1/runs/${runId}/verifications`),
   verification: (verificationId: string) =>

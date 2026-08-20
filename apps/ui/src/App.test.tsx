@@ -41,10 +41,23 @@ function planning(mode: "DIRECT" | "LOOP" | "GRAPH" | "HYBRID", template: string
   };
 }
 
-function installPlanningApi(mode: "DIRECT" | "LOOP" | "GRAPH" | "HYBRID", template: string) {
+const templateSummaries = [
+  { template_id: "direct-v1", version: "1.0.0", mode: "DIRECT", status: "VALIDATED", checksum: "0".repeat(64) },
+  { template_id: "feedback-loop-v1", version: "1.0.0", mode: "LOOP", status: "VALIDATED", checksum: "1".repeat(64) },
+  { template_id: "fixed-graph-v1", version: "1.0.0", mode: "GRAPH", status: "VALIDATED", checksum: "2".repeat(64) },
+  { template_id: "hybrid-rd-v1", version: "1.0.0", mode: "HYBRID", status: "VALIDATED", checksum: "3".repeat(64) },
+  { template_id: "safe-unknown-v1", version: "1.0.0", mode: "HYBRID", status: "VALIDATED", checksum: "4".repeat(64) },
+];
+
+function installPlanningApi(
+  mode: "DIRECT" | "LOOP" | "GRAPH" | "HYBRID",
+  template: string,
+  options: { runStatus?: number; runBody?: unknown } = {},
+) {
   vi.mocked(fetch).mockImplementation(async (input, init) => {
     const url = String(input);
     if (url.endsWith("/api/v1/runtimes")) return response([]);
+    if (url.includes("/api/v1/templates")) return response(templateSummaries);
     if (url === "/api/v1/runs?limit=50") return response([]);
     if (url.endsWith("/api/v1/projects") && !init?.method) return response([{
       project_id: "prj_fixture", name: "Fixture", repository_path: "/tmp/fixture",
@@ -55,10 +68,15 @@ function installPlanningApi(mode: "DIRECT" | "LOOP" | "GRAPH" | "HYBRID", templa
       created_at: "2026-08-20T00:00:00Z",
     });
     if (url.endsWith("/planning")) return response(planning(mode, template));
-    if (url.endsWith("/runs") && init?.method === "POST") return response({
-      run_id: "run_fixture", task_id: "tsk_fixture", project_id: "prj_fixture", provider: "FAKE",
-      state: "PENDING", last_sequence: 0, revision: 0,
-    }, 202);
+    if (url.endsWith("/runs") && init?.method === "POST") {
+      if (options.runStatus && options.runStatus >= 400) {
+        return response(options.runBody ?? { message: "blocked" }, options.runStatus);
+      }
+      return response({
+        run_id: "run_fixture", task_id: "tsk_fixture", project_id: "prj_fixture", provider: "FAKE",
+        state: "PENDING", last_sequence: 0, revision: 0,
+      }, 202);
+    }
     return response({ message: "Not found" }, 404);
   });
 }
@@ -88,10 +106,10 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-test("renders the P2 runtime dashboard and empty run state", async () => {
+test("renders the P3 runtime dashboard and empty run state", async () => {
   renderApp();
   expect(screen.getByText("Runtime observatory")).toBeInTheDocument();
-  expect(screen.getByText("Operator / P2")).toBeInTheDocument();
+  expect(screen.getByText("Operator / P3")).toBeInTheDocument();
   expect(await screen.findByText("FAKE")).toBeInTheDocument();
   expect(screen.getByText("New task")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Create and profile task" })).toBeDisabled();
@@ -102,6 +120,8 @@ test("renders the P2 runtime dashboard and empty run state", async () => {
 test.each([
   ["DIRECT", "direct-v1"],
   ["LOOP", "feedback-loop-v1"],
+  ["GRAPH", "fixed-graph-v1"],
+  ["HYBRID", "hybrid-rd-v1"],
 ] as const)("enables run creation for %s / %s", async (mode, template) => {
   installPlanningApi(mode, template);
   renderApp();
@@ -128,16 +148,31 @@ test.each([
   ]);
 });
 
-test.each([
-  ["GRAPH", "fixed-graph-v1"],
-  ["HYBRID", "hybrid-rd-v1"],
-  ["DIRECT", "safe-unknown-v1"],
-] as const)("keeps unsupported %s / %s execution blocked until P3", async (mode, template) => {
-  installPlanningApi(mode, template);
+test("surfaces the server's fail-closed template rejection", async () => {
+  installPlanningApi("DIRECT", "direct-v1", {
+    runStatus: 409,
+    runBody: {
+      code: "TEMPLATE_NOT_VALIDATED",
+      message: "workflow template direct-v1 is RETIRED; only VALIDATED templates may execute",
+      correlation_id: "corr_fixture",
+      retryable: false,
+    },
+  });
   renderApp();
   await createPlannedTask();
 
-  expect(screen.getByText(`${mode} / ${template}`)).toBeInTheDocument();
-  expect(screen.getByText(/Execution is blocked until P3/)).toHaveTextContent("GRAPH, HYBRID, and safe-unknown");
-  expect(screen.getByRole("button", { name: "Create run" })).toBeDisabled();
+  const createRun = screen.getByRole("button", { name: "Create run" });
+  expect(createRun).toBeEnabled();
+  fireEvent.click(createRun);
+  expect(await screen.findByText(/only VALIDATED templates may execute/)).toBeInTheDocument();
+});
+
+test("override template options come from the validated template registry", async () => {
+  installPlanningApi("HYBRID", "hybrid-rd-v1");
+  renderApp();
+  await createPlannedTask();
+
+  await screen.findByRole("option", { name: "hybrid-rd-v1" });
+  expect(screen.getByRole("option", { name: "safe-unknown-v1" })).toBeInTheDocument();
+  expect(screen.queryByRole("option", { name: "fixed-graph-v1" })).not.toBeInTheDocument();
 });
