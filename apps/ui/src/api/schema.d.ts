@@ -11,7 +11,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** List Projects */
+        get: operations["list_projects_api_v1_projects_get"];
         put?: never;
         /** Create Project */
         post: operations["create_project_api_v1_projects_post"];
@@ -225,6 +226,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks/{task_id}/planning": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Task Planning */
+        get: operations["get_task_planning_api_v1_tasks__task_id__planning_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tasks/{task_id}/runs": {
         parameters: {
             query?: never;
@@ -236,6 +254,23 @@ export interface paths {
         put?: never;
         /** Start Run */
         post: operations["start_run_api_v1_tasks__task_id__runs_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/strategy-overrides": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Strategy Override */
+        post: operations["create_strategy_override_api_v1_tasks__task_id__strategy_overrides_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -284,6 +319,64 @@ export interface components {
          * @enum {string}
          */
         AuthMode: "SUBSCRIPTION" | "API" | "LOCAL";
+        /** ContextBundle */
+        ContextBundle: {
+            /** Artifact Refs */
+            artifact_refs?: string[];
+            /** Constraints */
+            constraints?: string[];
+            /** Context Bundle Id */
+            context_bundle_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Evidence Refs */
+            evidence_refs?: string[];
+            /** Experience Refs */
+            experience_refs?: string[];
+            /** Freshness */
+            freshness?: {
+                [key: string]: unknown;
+            };
+            /** Permissions */
+            permissions?: string[];
+            /**
+             * Phase
+             * @default TASK_EXECUTION
+             */
+            phase: string;
+            /** Previous Failure Refs */
+            previous_failure_refs?: string[];
+            /** Project Summary */
+            project_summary: string;
+            /** Provenance */
+            provenance?: string[];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Task Ref */
+            task_ref: string;
+            /**
+             * Token Budget
+             * @default 8000
+             */
+            token_budget: number;
+            /**
+             * Version
+             * @default context-bundle-v1
+             * @constant
+             */
+            version: "context-bundle-v1";
+            /** Workspace Map */
+            workspace_map?: {
+                [key: string]: unknown;
+            };
+        };
         /** ErrorSummary */
         ErrorSummary: {
             /** Code */
@@ -296,11 +389,42 @@ export interface components {
              */
             retryable: boolean;
         };
+        /**
+         * ExecutionMode
+         * @enum {string}
+         */
+        ExecutionMode: "DIRECT" | "LOOP" | "GRAPH" | "HYBRID";
+        /**
+         * ExpectedHorizon
+         * @enum {string}
+         */
+        ExpectedHorizon: "SHORT" | "MEDIUM" | "LONG";
+        /** FeatureEvidence */
+        FeatureEvidence: {
+            /**
+             * Available
+             * @default true
+             */
+            available: boolean;
+            /** Feature */
+            feature: string;
+            /** Rationale */
+            rationale: string;
+            /** Source */
+            source: string;
+            /** Value */
+            value?: boolean | number | string | string[] | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * OverridePolicyResult
+         * @enum {string}
+         */
+        OverridePolicyResult: "ACCEPTED" | "DENIED_TEMPLATE_MISMATCH" | "DENIED_SAFETY_POLICY";
         /** Project */
         Project: {
             /**
@@ -327,6 +451,54 @@ export interface components {
              * Format: path
              */
             repository_path: string;
+        };
+        /** PromptContract */
+        PromptContract: {
+            /** Completion Criteria */
+            completion_criteria?: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Examples */
+            examples?: {
+                [key: string]: unknown;
+            }[];
+            /** Hard Constraints */
+            hard_constraints?: string[];
+            /** Non Goals */
+            non_goals?: string[];
+            /** Objective */
+            objective: string;
+            /** Output Schema */
+            output_schema?: {
+                [key: string]: unknown;
+            };
+            /** Prompt Contract Id */
+            prompt_contract_id: string;
+            /** Role */
+            role: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Task Id */
+            task_id: string;
+            /** Tool Rules */
+            tool_rules?: string[];
+            /** Uncertainty Policy */
+            uncertainty_policy?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Version
+             * @default p1-task-execution-v1
+             * @constant
+             */
+            version: "p1-task-execution-v1";
         };
         /**
          * Provider
@@ -419,14 +591,118 @@ export interface components {
          * @enum {string}
          */
         RuntimeStatus: "READY" | "BUSY" | "RATE_LIMITED" | "AUTH_REQUIRED" | "UNAVAILABLE" | "DEGRADED";
-        /** Task */
-        Task: {
+        /** StrategyDecision */
+        StrategyDecision: {
+            /** Alternatives */
+            alternatives?: components["schemas"]["ExecutionMode"][];
             /**
              * Created At
              * Format: date-time
              */
             created_at?: string;
+            /** Decision Id */
+            decision_id: string;
+            /** Matched Rules */
+            matched_rules?: string[];
+            /** Operator Override Allowed */
+            operator_override_allowed: boolean;
+            /**
+             * Policy Version
+             * @default selector-v1
+             * @constant
+             */
+            policy_version: "selector-v1";
+            /** Rationale */
+            rationale: string;
+            /**
+             * Requires Approval
+             * @default false
+             */
+            requires_approval: boolean;
+            /**
+             * Requires Independent Verifier
+             * @default false
+             */
+            requires_independent_verifier: boolean;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            selected_mode: components["schemas"]["ExecutionMode"];
+            /** Selected Template Id */
+            selected_template_id: string;
+            /** Supersedes Decision Id */
+            supersedes_decision_id?: string | null;
+            /** Task Id */
+            task_id: string;
+            /** Task Profile Ref */
+            task_profile_ref: string;
+        };
+        /** StrategyOverride */
+        StrategyOverride: {
+            /** Accepted */
+            accepted: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Denial Reason */
+            denial_reason?: string | null;
+            /** Operator Identity */
+            operator_identity: string;
+            /** Original Decision Id */
+            original_decision_id: string;
+            /** Override Id */
+            override_id: string;
+            policy_result: components["schemas"]["OverridePolicyResult"];
+            /** Reason */
+            reason: string;
+            requested_mode: components["schemas"]["ExecutionMode"];
+            /** Requested Template Id */
+            requested_template_id: string;
+            /** Resulting Decision Id */
+            resulting_decision_id?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Task Id */
+            task_id: string;
+        };
+        /** StrategyOverrideCreate */
+        StrategyOverrideCreate: {
+            /** Reason */
+            reason: string;
+            requested_mode: components["schemas"]["ExecutionMode"];
+            /** Requested Template Id */
+            requested_template_id: string;
+        };
+        /** StrategyOverrideResult */
+        StrategyOverrideResult: {
+            current_decision: components["schemas"]["StrategyDecision"];
+            override: components["schemas"]["StrategyOverride"];
+        };
+        /** Task */
+        Task: {
+            /** Context Bundle Id */
+            context_bundle_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Current Profile Id */
+            current_profile_id?: string | null;
+            /** Current Strategy Decision Id */
+            current_strategy_decision_id?: string | null;
             envelope: components["schemas"]["TaskEnvelope"];
+            /** Prompt Contract Id */
+            prompt_contract_id?: string | null;
         };
         /** TaskBudgets */
         TaskBudgets: {
@@ -460,10 +736,20 @@ export interface components {
             constraints?: string[];
             /** Denied Capabilities */
             denied_capabilities?: string[];
+            /** Inputs */
+            inputs?: {
+                [key: string]: unknown;
+            }[];
             /** Objective */
             objective: string;
             /** Project Id */
             project_id: string;
+            /** Requested Skills */
+            requested_skills?: string[];
+            /** Required Outputs */
+            required_outputs?: {
+                [key: string]: unknown;
+            }[];
             /** @default LOW */
             risk_level: components["schemas"]["RiskLevel"];
             /** Success Criteria */
@@ -518,6 +804,71 @@ export interface components {
              */
             verifier_policy_ref: string;
         };
+        /** TaskPlanning */
+        TaskPlanning: {
+            context_bundle: components["schemas"]["ContextBundle"];
+            current_decision: components["schemas"]["StrategyDecision"];
+            current_profile: components["schemas"]["TaskProfile"];
+            /** Decision History */
+            decision_history?: components["schemas"]["StrategyDecision"][];
+            /** Override History */
+            override_history?: components["schemas"]["StrategyOverride"][];
+            /** Profile History */
+            profile_history?: components["schemas"]["TaskProfile"][];
+            prompt_contract: components["schemas"]["PromptContract"];
+            /** Task Id */
+            task_id: string;
+        };
+        /** TaskProfile */
+        TaskProfile: {
+            /** Complexity */
+            complexity?: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Dependency Complexity */
+            dependency_complexity?: number | null;
+            expected_horizon: components["schemas"]["ExpectedHorizon"];
+            /** Feedback Dependency */
+            feedback_dependency?: number | null;
+            /** Irreversible Actions */
+            irreversible_actions: boolean;
+            /** Observed Features */
+            observed_features?: components["schemas"]["FeatureEvidence"][];
+            /** Parallelism Potential */
+            parallelism_potential?: number | null;
+            /** Profile Confidence */
+            profile_confidence: number;
+            /** Profile Id */
+            profile_id: string;
+            /**
+             * Profiler Version
+             * @default deterministic-profiler-v1
+             * @constant
+             */
+            profiler_version: "deterministic-profiler-v1";
+            risk: components["schemas"]["RiskLevel"];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Semantic Rationale */
+            semantic_rationale: string;
+            /** Structure Certainty */
+            structure_certainty?: number | null;
+            /** Task Id */
+            task_id: string;
+            /** Uncertainty */
+            uncertainty?: number | null;
+            /** Unknown Features */
+            unknown_features?: string[];
+            /** Verifier Strength */
+            verifier_strength?: number | null;
+        };
         /**
          * TaskType
          * @enum {string}
@@ -550,6 +901,26 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_projects_api_v1_projects_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"][];
+                };
+            };
+        };
+    };
     create_project_api_v1_projects_post: {
         parameters: {
             query?: never;
@@ -948,6 +1319,37 @@ export interface operations {
             };
         };
     };
+    get_task_planning_api_v1_tasks__task_id__planning_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskPlanning"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     start_run_api_v1_tasks__task_id__runs_post: {
         parameters: {
             query?: never;
@@ -970,6 +1372,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_strategy_override_api_v1_tasks__task_id__strategy_overrides_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StrategyOverrideCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyOverrideResult"];
                 };
             };
             /** @description Validation Error */

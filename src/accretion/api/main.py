@@ -12,7 +12,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from accretion import __version__
-from accretion.api.schemas import ErrorEnvelope, ProjectCreate, RunCreate, TaskCreate
+from accretion.api.schemas import (
+    ErrorEnvelope,
+    ProjectCreate,
+    RunCreate,
+    StrategyOverrideCreate,
+    TaskCreate,
+)
 from accretion.concurrency import ConcurrencyLimiter
 from accretion.config import get_settings
 from accretion.contracts import (
@@ -23,13 +29,15 @@ from accretion.contracts import (
     Provider,
     Run,
     RuntimeHealth,
+    StrategyOverrideResult,
     Task,
+    TaskPlanning,
 )
 from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore
 from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime
-from accretion.services.run_manager import RunManager
+from accretion.services.run_manager import MilestoneDependencyError, RunManager
 from accretion.workspace import WorktreeManager
 
 
@@ -55,6 +63,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         ),
         live_providers_enabled=settings.enable_live_providers,
         side_effect_ledger=PostgresSideEffectLedger(sessions),
+        operator_identity=settings.operator_identity,
     )
     app.state.engine = engine
     app.state.manager = manager
@@ -99,6 +108,13 @@ async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse
     return _error(400, "INVALID_REQUEST", str(exc))
 
 
+@app.exception_handler(MilestoneDependencyError)
+async def milestone_dependency_handler(
+    request: Request, exc: MilestoneDependencyError
+) -> JSONResponse:
+    return _error(409, "MILESTONE_DEPENDENCY", str(exc))
+
+
 def _error(status: int, code: str, message: str, retryable: bool = False) -> JSONResponse:
     body = ErrorEnvelope(
         code=code,
@@ -117,6 +133,11 @@ async def healthz() -> dict[str, str]:
 @app.post("/api/v1/projects", response_model=Project, status_code=201)
 async def create_project(payload: ProjectCreate, request: Request) -> Project:
     return await manager(request).create_project(payload.name, payload.repository_path)
+
+
+@app.get("/api/v1/projects", response_model=list[Project])
+async def list_projects(request: Request) -> list[Project]:
+    return await manager(request).store.list_projects()
 
 
 @app.get("/api/v1/projects/{project_id}", response_model=Project)
@@ -142,6 +163,27 @@ async def get_task(task_id: str, request: Request) -> Task:
     if task is None:
         raise KeyError(task_id)
     return task
+
+
+@app.get("/api/v1/tasks/{task_id}/planning", response_model=TaskPlanning)
+async def get_task_planning(task_id: str, request: Request) -> TaskPlanning:
+    return await manager(request).get_task_planning(task_id)
+
+
+@app.post(
+    "/api/v1/tasks/{task_id}/strategy-overrides",
+    response_model=StrategyOverrideResult,
+    status_code=201,
+)
+async def create_strategy_override(
+    task_id: str, payload: StrategyOverrideCreate, request: Request
+) -> StrategyOverrideResult:
+    return await manager(request).override_strategy(
+        task_id=task_id,
+        requested_mode=payload.requested_mode,
+        requested_template_id=payload.requested_template_id,
+        reason=payload.reason,
+    )
 
 
 @app.post("/api/v1/tasks/{task_id}/runs", response_model=Run, status_code=202)

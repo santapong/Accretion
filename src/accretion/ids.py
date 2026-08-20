@@ -15,6 +15,11 @@ _PREFIXES = {
     "event": "evt",
     "checkpoint": "chk",
     "side_effect": "sfx",
+    "prompt": "pmt",
+    "context": "ctx",
+    "profile": "prf",
+    "decision": "dec",
+    "override": "ovr",
 }
 
 

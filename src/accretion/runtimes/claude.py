@@ -70,7 +70,11 @@ class ClaudeRuntime:
             active_runs=sum(process.returncode is None for process in self.processes.values()),
             observed_usage_pressure=pressure,
             last_error=(
-                ErrorSummary(code="CLAUDE_UNAVAILABLE", message=redact_text(error))
+                ErrorSummary(
+                    code=f"CLAUDE_{status.value}",
+                    message=redact_text(error),
+                    retryable=status is RuntimeStatus.RATE_LIMITED,
+                )
                 if error
                 else None
             ),

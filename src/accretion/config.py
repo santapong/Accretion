@@ -8,9 +8,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(
-        env_file=".env", env_prefix="ACCRETION_", extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_file=".env", env_prefix="ACCRETION_", extra="ignore")
 
     environment: str = "development"
     database_url: str = "postgresql+asyncpg://accretion:accretion@localhost:5432/accretion"
@@ -22,6 +20,7 @@ class Settings(BaseSettings):
     codex_command: str = "codex"
     claude_command: str = "claude"
     enable_live_providers: bool = False
+    operator_identity: str = "local-operator"
 
     @property
     def worktree_dir(self) -> Path:

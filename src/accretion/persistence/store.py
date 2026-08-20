@@ -11,20 +11,31 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from accretion.contracts import (
     AgentEvent,
     ArtifactRef,
+    ContextBundle,
     ErrorSummary,
     Project,
+    PromptContract,
     Provider,
     Run,
     RunState,
     SessionRef,
+    StrategyDecision,
+    StrategyOverride,
     Task,
     TaskEnvelope,
+    TaskPlanning,
+    TaskProfile,
     WorkspaceLease,
 )
 from accretion.persistence.models import (
     AgentEventRow,
+    ContextBundleRow,
     ProjectRow,
+    PromptContractRow,
     RunRow,
+    StrategyDecisionRow,
+    StrategyOverrideRow,
+    TaskProfileRow,
     TaskRow,
     WorkspaceLeaseRow,
 )
@@ -33,8 +44,29 @@ from accretion.persistence.models import (
 class StateStore(Protocol):
     async def create_project(self, project: Project) -> Project: ...
     async def get_project(self, project_id: str) -> Project | None: ...
+    async def list_projects(self) -> list[Project]: ...
     async def create_task(self, task: Task) -> Task: ...
+    async def create_task_with_planning(
+        self,
+        task: Task,
+        prompt: PromptContract,
+        context: ContextBundle,
+        profile: TaskProfile,
+        decision: StrategyDecision,
+    ) -> Task: ...
     async def get_task(self, task_id: str) -> Task | None: ...
+    async def save_task_planning(
+        self,
+        task_id: str,
+        prompt: PromptContract,
+        context: ContextBundle,
+        profile: TaskProfile,
+        decision: StrategyDecision,
+    ) -> TaskPlanning: ...
+    async def get_task_planning(self, task_id: str) -> TaskPlanning | None: ...
+    async def append_strategy_override(
+        self, override: StrategyOverride, decision: StrategyDecision | None
+    ) -> None: ...
     async def create_run(self, run: Run) -> Run: ...
     async def get_run(self, run_id: str) -> Run | None: ...
     async def list_runs(self, limit: int = 100) -> list[Run]: ...
@@ -67,6 +99,11 @@ class MemoryStore:
         self.sessions: dict[str, SessionRef] = {}
         self.artifacts: dict[str, list[ArtifactRef]] = {}
         self.run_events: dict[str, list[AgentEvent]] = {}
+        self.prompts: dict[str, PromptContract] = {}
+        self.contexts: dict[str, ContextBundle] = {}
+        self.profiles: dict[str, list[TaskProfile]] = {}
+        self.decisions: dict[str, list[StrategyDecision]] = {}
+        self.overrides: dict[str, list[StrategyOverride]] = {}
         self._lock = asyncio.Lock()
 
     async def create_project(self, project: Project) -> Project:
@@ -76,12 +113,112 @@ class MemoryStore:
     async def get_project(self, project_id: str) -> Project | None:
         return self.projects.get(project_id)
 
+    async def list_projects(self) -> list[Project]:
+        return sorted(self.projects.values(), key=lambda project: project.created_at)
+
     async def create_task(self, task: Task) -> Task:
         self.tasks[task.envelope.task_id] = task
         return task
 
+    async def create_task_with_planning(
+        self,
+        task: Task,
+        prompt: PromptContract,
+        context: ContextBundle,
+        profile: TaskProfile,
+        decision: StrategyDecision,
+    ) -> Task:
+        async with self._lock:
+            planned = task.model_copy(
+                update={
+                    "prompt_contract_id": prompt.prompt_contract_id,
+                    "context_bundle_id": context.context_bundle_id,
+                    "current_profile_id": profile.profile_id,
+                    "current_strategy_decision_id": decision.decision_id,
+                }
+            )
+            self.tasks[task.envelope.task_id] = planned
+            self.prompts[prompt.prompt_contract_id] = prompt
+            self.contexts[context.context_bundle_id] = context
+            self.profiles[task.envelope.task_id] = [profile]
+            self.decisions[task.envelope.task_id] = [decision]
+            self.overrides[task.envelope.task_id] = []
+            return planned
+
     async def get_task(self, task_id: str) -> Task | None:
         return self.tasks.get(task_id)
+
+    async def save_task_planning(
+        self,
+        task_id: str,
+        prompt: PromptContract,
+        context: ContextBundle,
+        profile: TaskProfile,
+        decision: StrategyDecision,
+    ) -> TaskPlanning:
+        async with self._lock:
+            task = self.tasks[task_id]
+            if task.current_strategy_decision_id is None:
+                self.tasks[task_id] = task.model_copy(
+                    update={
+                        "prompt_contract_id": prompt.prompt_contract_id,
+                        "context_bundle_id": context.context_bundle_id,
+                        "current_profile_id": profile.profile_id,
+                        "current_strategy_decision_id": decision.decision_id,
+                    }
+                )
+                self.prompts[prompt.prompt_contract_id] = prompt
+                self.contexts[context.context_bundle_id] = context
+                self.profiles[task_id] = [profile]
+                self.decisions[task_id] = [decision]
+                self.overrides[task_id] = []
+        planning = await self.get_task_planning(task_id)
+        if planning is None:
+            raise RuntimeError("planning records were not saved")
+        return planning
+
+    async def get_task_planning(self, task_id: str) -> TaskPlanning | None:
+        task = self.tasks.get(task_id)
+        if (
+            task is None
+            or task.prompt_contract_id is None
+            or task.context_bundle_id is None
+            or task.current_profile_id is None
+            or task.current_strategy_decision_id is None
+        ):
+            return None
+        profiles = self.profiles.get(task_id, [])
+        decisions = self.decisions.get(task_id, [])
+        current_profile = next(
+            profile for profile in profiles if profile.profile_id == task.current_profile_id
+        )
+        current_decision = next(
+            decision
+            for decision in decisions
+            if decision.decision_id == task.current_strategy_decision_id
+        )
+        return TaskPlanning(
+            task_id=task_id,
+            prompt_contract=self.prompts[task.prompt_contract_id],
+            context_bundle=self.contexts[task.context_bundle_id],
+            current_profile=current_profile,
+            current_decision=current_decision,
+            profile_history=profiles,
+            decision_history=decisions,
+            override_history=self.overrides.get(task_id, []),
+        )
+
+    async def append_strategy_override(
+        self, override: StrategyOverride, decision: StrategyDecision | None
+    ) -> None:
+        async with self._lock:
+            self.overrides.setdefault(override.task_id, []).append(override)
+            if decision is not None:
+                self.decisions.setdefault(override.task_id, []).append(decision)
+                task = self.tasks[override.task_id]
+                self.tasks[override.task_id] = task.model_copy(
+                    update={"current_strategy_decision_id": decision.decision_id}
+                )
 
     async def create_run(self, run: Run) -> Run:
         self.runs[run.run_id] = run
@@ -177,6 +314,19 @@ class PostgresStore:
             created_at=row.created_at,
         )
 
+    async def list_projects(self) -> list[Project]:
+        async with self.sessions() as session:
+            rows = (await session.scalars(select(ProjectRow).order_by(ProjectRow.created_at))).all()
+        return [
+            Project(
+                project_id=row.id,
+                name=row.name,
+                repository_path=row.repository_path,
+                created_at=row.created_at,
+            )
+            for row in rows
+        ]
+
     async def create_task(self, task: Task) -> Task:
         async with self.sessions.begin() as session:
             session.add(
@@ -184,17 +334,152 @@ class PostgresStore:
                     id=task.envelope.task_id,
                     project_id=task.envelope.project_id,
                     envelope=task.envelope.model_dump(mode="json"),
+                    prompt_contract_id=task.prompt_contract_id,
+                    context_bundle_id=task.context_bundle_id,
+                    current_profile_id=task.current_profile_id,
+                    current_strategy_decision_id=task.current_strategy_decision_id,
                     created_at=task.created_at,
                 )
             )
         return task
+
+    async def create_task_with_planning(
+        self,
+        task: Task,
+        prompt: PromptContract,
+        context: ContextBundle,
+        profile: TaskProfile,
+        decision: StrategyDecision,
+    ) -> Task:
+        planned = task.model_copy(
+            update={
+                "prompt_contract_id": prompt.prompt_contract_id,
+                "context_bundle_id": context.context_bundle_id,
+                "current_profile_id": profile.profile_id,
+                "current_strategy_decision_id": decision.decision_id,
+            }
+        )
+        async with self.sessions.begin() as session:
+            session.add(self._task_to_row(planned))
+            await session.flush()
+            await self._add_planning_rows(session, prompt, context, profile, decision)
+        return planned
 
     async def get_task(self, task_id: str) -> Task | None:
         async with self.sessions() as session:
             row = await session.get(TaskRow, task_id)
         if row is None:
             return None
-        return Task(envelope=TaskEnvelope.model_validate(row.envelope), created_at=row.created_at)
+        return self._row_to_task(row)
+
+    async def save_task_planning(
+        self,
+        task_id: str,
+        prompt: PromptContract,
+        context: ContextBundle,
+        profile: TaskProfile,
+        decision: StrategyDecision,
+    ) -> TaskPlanning:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(TaskRow).where(TaskRow.id == task_id).with_for_update()
+            )
+            if row is None:
+                raise KeyError(task_id)
+            if row.current_strategy_decision_id is None:
+                await self._add_planning_rows(session, prompt, context, profile, decision)
+                row.prompt_contract_id = prompt.prompt_contract_id
+                row.context_bundle_id = context.context_bundle_id
+                row.current_profile_id = profile.profile_id
+                row.current_strategy_decision_id = decision.decision_id
+        planning = await self.get_task_planning(task_id)
+        if planning is None:
+            raise RuntimeError("planning records were not saved")
+        return planning
+
+    async def get_task_planning(self, task_id: str) -> TaskPlanning | None:
+        async with self.sessions() as session:
+            task = await session.get(TaskRow, task_id)
+            if task is None:
+                raise KeyError(task_id)
+            if (
+                task.prompt_contract_id is None
+                or task.context_bundle_id is None
+                or task.current_profile_id is None
+                or task.current_strategy_decision_id is None
+            ):
+                return None
+            prompt = await session.get(PromptContractRow, task.prompt_contract_id)
+            context = await session.get(ContextBundleRow, task.context_bundle_id)
+            current_profile = await session.get(TaskProfileRow, task.current_profile_id)
+            current_decision = await session.get(
+                StrategyDecisionRow, task.current_strategy_decision_id
+            )
+            profile_rows = (
+                await session.scalars(
+                    select(TaskProfileRow)
+                    .where(TaskProfileRow.task_id == task_id)
+                    .order_by(TaskProfileRow.created_at, TaskProfileRow.id)
+                )
+            ).all()
+            decision_rows = (
+                await session.scalars(
+                    select(StrategyDecisionRow)
+                    .where(StrategyDecisionRow.task_id == task_id)
+                    .order_by(StrategyDecisionRow.created_at, StrategyDecisionRow.id)
+                )
+            ).all()
+            override_rows = (
+                await session.scalars(
+                    select(StrategyOverrideRow)
+                    .where(StrategyOverrideRow.task_id == task_id)
+                    .order_by(StrategyOverrideRow.created_at, StrategyOverrideRow.id)
+                )
+            ).all()
+        if prompt is None or context is None or current_profile is None or current_decision is None:
+            raise RuntimeError(f"task {task_id} has incomplete planning references")
+        return TaskPlanning(
+            task_id=task_id,
+            prompt_contract=PromptContract.model_validate(prompt.contract),
+            context_bundle=ContextBundle.model_validate(context.bundle),
+            current_profile=TaskProfile.model_validate(current_profile.profile),
+            current_decision=StrategyDecision.model_validate(current_decision.decision),
+            profile_history=[TaskProfile.model_validate(row.profile) for row in profile_rows],
+            decision_history=[
+                StrategyDecision.model_validate(row.decision) for row in decision_rows
+            ],
+            override_history=[
+                StrategyOverride.model_validate(row.override) for row in override_rows
+            ],
+        )
+
+    async def append_strategy_override(
+        self, override: StrategyOverride, decision: StrategyDecision | None
+    ) -> None:
+        async with self.sessions.begin() as session:
+            task = await session.scalar(
+                select(TaskRow).where(TaskRow.id == override.task_id).with_for_update()
+            )
+            if task is None:
+                raise KeyError(override.task_id)
+            if task.current_strategy_decision_id != override.original_decision_id:
+                raise ValueError("strategy decision changed before the override could be recorded")
+            if decision is not None:
+                session.add(self._decision_to_row(decision))
+                await session.flush()
+                task.current_strategy_decision_id = decision.decision_id
+            session.add(
+                StrategyOverrideRow(
+                    id=override.override_id,
+                    task_id=override.task_id,
+                    original_decision_id=override.original_decision_id,
+                    resulting_decision_id=override.resulting_decision_id,
+                    operator_identity=override.operator_identity,
+                    accepted=override.accepted,
+                    override=override.model_dump(mode="json"),
+                    created_at=override.created_at,
+                )
+            )
 
     async def create_run(self, run: Run) -> Run:
         async with self.sessions.begin() as session:
@@ -364,6 +649,78 @@ class PostgresStore:
                 )
             ).all()
         return [self._row_to_event(row) for row in rows]
+
+    @staticmethod
+    def _task_to_row(task: Task) -> TaskRow:
+        return TaskRow(
+            id=task.envelope.task_id,
+            project_id=task.envelope.project_id,
+            envelope=task.envelope.model_dump(mode="json"),
+            prompt_contract_id=task.prompt_contract_id,
+            context_bundle_id=task.context_bundle_id,
+            current_profile_id=task.current_profile_id,
+            current_strategy_decision_id=task.current_strategy_decision_id,
+            created_at=task.created_at,
+        )
+
+    @staticmethod
+    def _row_to_task(row: TaskRow) -> Task:
+        return Task(
+            envelope=TaskEnvelope.model_validate(row.envelope),
+            prompt_contract_id=row.prompt_contract_id,
+            context_bundle_id=row.context_bundle_id,
+            current_profile_id=row.current_profile_id,
+            current_strategy_decision_id=row.current_strategy_decision_id,
+            created_at=row.created_at,
+        )
+
+    @classmethod
+    async def _add_planning_rows(
+        cls,
+        session: AsyncSession,
+        prompt: PromptContract,
+        context: ContextBundle,
+        profile: TaskProfile,
+        decision: StrategyDecision,
+    ) -> None:
+        session.add_all(
+            [
+                PromptContractRow(
+                    id=prompt.prompt_contract_id,
+                    task_id=prompt.task_id,
+                    version=prompt.version,
+                    contract=prompt.model_dump(mode="json"),
+                    created_at=prompt.created_at,
+                ),
+                ContextBundleRow(
+                    id=context.context_bundle_id,
+                    task_id=context.task_ref,
+                    version=context.version,
+                    bundle=context.model_dump(mode="json"),
+                    created_at=context.created_at,
+                ),
+                TaskProfileRow(
+                    id=profile.profile_id,
+                    task_id=profile.task_id,
+                    profiler_version=profile.profiler_version,
+                    profile=profile.model_dump(mode="json"),
+                    created_at=profile.created_at,
+                ),
+            ]
+        )
+        await session.flush()
+        session.add(cls._decision_to_row(decision))
+
+    @staticmethod
+    def _decision_to_row(decision: StrategyDecision) -> StrategyDecisionRow:
+        return StrategyDecisionRow(
+            id=decision.decision_id,
+            task_id=decision.task_id,
+            task_profile_id=decision.task_profile_ref,
+            policy_version=decision.policy_version,
+            decision=decision.model_dump(mode="json"),
+            created_at=decision.created_at,
+        )
 
     @staticmethod
     def _run_to_row(run: Run) -> RunRow:

@@ -3,7 +3,7 @@ import subprocess
 from pathlib import Path
 
 from accretion.concurrency import ConcurrencyLimiter
-from accretion.contracts import Provider, Run, RunState
+from accretion.contracts import Provider, Run, RunState, TaskType
 from accretion.ids import new_id
 from accretion.persistence.side_effects import MemorySideEffectLedger, SideEffectStatus
 from accretion.persistence.store import MemoryStore
@@ -38,7 +38,7 @@ async def test_worktrees_are_isolated_and_successful_run_completes(tmp_path: Pat
     task = await manager.create_task(
         project_id=project.project_id,
         objective="complete deterministically",
-        task_patch={},
+        task_patch={"task_type": TaskType.REVIEW},
     )
     first = await manager.start_run(task.envelope.task_id, Provider.FAKE)
     second = await manager.start_run(task.envelope.task_id, Provider.FAKE)
