@@ -33,6 +33,17 @@ class SideEffectOperation(BaseModel):
 
 
 class SideEffectLedger(Protocol):
+    async def record_intent(
+        self,
+        *,
+        run_id: str,
+        idempotency_key: str,
+        capability_id: str,
+        payload: dict[str, Any],
+    ) -> tuple[SideEffectOperation, bool]: ...
+    async def finish(
+        self, idempotency_key: str, *, succeeded: bool, result: dict[str, Any]
+    ) -> SideEffectOperation: ...
     async def reconcile_uncertain(self) -> list[SideEffectOperation]: ...
 
 

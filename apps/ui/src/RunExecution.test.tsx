@@ -20,6 +20,8 @@ const loop: LoopExecution = {
   schema_version: "1.0",
   loop_execution_id: "loop_fixture",
   run_id: run.run_id,
+  node_key: "evaluate",
+  attempt: 1,
   spec: {
     schema_version: "1.0",
     loop_id: "loop_fixture",

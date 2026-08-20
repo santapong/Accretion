@@ -186,6 +186,50 @@ class GraphEdgeKind(StrEnum):
     APPROVAL = "APPROVAL"
 
 
+class TemplateStatus(StrEnum):
+    DRAFT = "DRAFT"
+    VALIDATED = "VALIDATED"
+    RETIRED = "RETIRED"
+
+
+class EdgeGuard(StrEnum):
+    ON_SUCCESS = "ON_SUCCESS"
+    ON_FAIL = "ON_FAIL"
+    ON_INCONCLUSIVE = "ON_INCONCLUSIVE"
+    ON_APPROVED = "ON_APPROVED"
+    ON_DENIED = "ON_DENIED"
+    ON_REPLAN_AVAILABLE = "ON_REPLAN_AVAILABLE"
+    ON_REPLAN_EXHAUSTED = "ON_REPLAN_EXHAUSTED"
+
+
+class TerminalOutcome(StrEnum):
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    REQUIRES_HUMAN = "REQUIRES_HUMAN"
+
+
+# StrEnum comparisons are alphabetical (CRITICAL < HIGH < LOW < MEDIUM); every
+# severity comparison must go through this explicit ordering instead.
+RISK_RANK: dict[RiskLevel, int] = {
+    RiskLevel.LOW: 0,
+    RiskLevel.MEDIUM: 1,
+    RiskLevel.HIGH: 2,
+    RiskLevel.CRITICAL: 3,
+}
+
+
+class CheckpointKind(StrEnum):
+    NODE_BOUNDARY = "NODE_BOUNDARY"
+    SIDE_EFFECT_BOUNDARY = "SIDE_EFFECT_BOUNDARY"
+
+
+class ApprovalStatus(StrEnum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    DENIED = "DENIED"
+    CANCELLED = "CANCELLED"
+
+
 class PromptContract(StrictModel):
     schema_version: Literal["1.0"] = "1.0"
     prompt_contract_id: str
@@ -504,6 +548,8 @@ class LoopExecution(StrictModel):
     schema_version: Literal["1.0"] = "1.0"
     loop_execution_id: str
     run_id: str
+    node_key: str = "evaluate"
+    attempt: int = Field(default=1, gt=0)
     spec: LoopSpec
     state: LoopState
     acceptance_policy_ref: str
@@ -575,6 +621,149 @@ class GraphProjection(StrictModel):
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
+class BudgetPolicy(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    version: Literal["budget-policy-v1"] = "budget-policy-v1"
+    max_wall_time_seconds: int = Field(default=1800, gt=0)
+    max_total_turns: int = Field(default=20, gt=0)
+    max_total_tool_calls: int = Field(default=100, gt=0)
+    max_runtime_calls: int = Field(default=12, gt=0)
+    max_node_retries: int = Field(default=1, ge=0)
+    max_replans: int = Field(default=0, ge=0)
+
+
+class GateSpec(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    gate_id: str = Field(pattern=r"^[a-z][a-z0-9-]*$", max_length=64)
+    node_key: str
+    summary: str
+    required_for_risk_gte: RiskLevel = RiskLevel.HIGH
+
+
+class NodeLoopPolicy(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    region_keys: list[str] = Field(min_length=1)
+    act_key: str
+    observe_key: str | None = None
+    verify_in_region: bool = True
+    max_iterations_source: Literal["TASK_BUDGET", "FIXED"] = "TASK_BUDGET"
+    fixed_max_iterations: int | None = Field(default=None, gt=0)
+    budget_fraction: float = Field(default=1.0, gt=0, le=1)
+
+
+class WorkflowNodeSpec(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    key: str = Field(pattern=r"^[a-z][a-z0-9-]*$", max_length=32)
+    kind: GraphNodeKind
+    label: str
+    parent_key: str | None = None
+    instruction: str | None = None
+    loop: NodeLoopPolicy | None = None
+
+
+class WorkflowEdgeSpec(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    key: str = Field(pattern=r"^[a-z][a-z0-9-]*$", max_length=64)
+    source: str
+    target: str
+    kind: GraphEdgeKind
+    label: str | None = None
+    guard: EdgeGuard | None = None
+
+
+class WorkflowTemplate(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    template_record_id: str
+    template_id: str = Field(pattern=r"^[a-z][a-z0-9-]*$", max_length=64)
+    version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
+    mode: ExecutionMode
+    input_schema: dict[str, Any] = Field(default_factory=dict)
+    nodes: list[WorkflowNodeSpec] = Field(min_length=1)
+    edges: list[WorkflowEdgeSpec] = Field(default_factory=list)
+    global_budget_policy: BudgetPolicy = Field(default_factory=BudgetPolicy)
+    required_verifiers: list[str] = Field(default_factory=list)
+    required_approval_gates: list[GateSpec] = Field(default_factory=list)
+    checksum: str
+    status: TemplateStatus = TemplateStatus.DRAFT
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class RunNode(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    node_id: str
+    key: str
+    kind: GraphNodeKind
+    label: str
+    parent_id: str | None = None
+    status: GraphNodeStatus = GraphNodeStatus.PENDING
+    iteration: int | None = Field(default=None, ge=0)
+    max_iterations: int | None = Field(default=None, gt=0)
+    loop_execution_id: str | None = None
+    approval_id: str | None = None
+    verifier_state: VerificationStatus | None = None
+    terminal_outcome: TerminalOutcome | None = None
+
+
+class RunEdge(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    edge_id: str
+    key: str
+    source: str
+    target: str
+    kind: GraphEdgeKind
+    label: str | None = None
+    guard: EdgeGuard | None = None
+    active: bool = False
+    traversal_count: int = Field(default=0, ge=0)
+
+
+class RunGraph(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    run_graph_id: str
+    run_id: str
+    task_id: str
+    template_record_id: str
+    template_id: str
+    template_version: str
+    template_checksum: str
+    nodes: list[RunNode] = Field(min_length=1)
+    edges: list[RunEdge] = Field(default_factory=list)
+    graph_revision: int = Field(default=1, ge=1)
+    instantiated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class CheckpointLoopCursor(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    loop_execution_id: str
+    iteration: int = Field(ge=0)
+    revision: int = Field(ge=0)
+    status: LoopExecutionStatus
+
+
+class Checkpoint(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    version: Literal["checkpoint-v1"] = "checkpoint-v1"
+    checkpoint_id: str
+    run_id: str
+    kind: CheckpointKind
+    sequence: int = Field(ge=0)
+    run_state: RunState
+    run_revision: int = Field(ge=0)
+    active_node_ids: list[str] = Field(default_factory=list)
+    node_statuses: dict[str, GraphNodeStatus] = Field(default_factory=dict)
+    loop_cursors: list[CheckpointLoopCursor] = Field(default_factory=list)
+    run_graph_id: str | None = None
+    graph_revision: int | None = Field(default=None, ge=1)
+    budget_remaining: LoopBudgetRemaining | None = None
+    workspace_lease_id: str | None = None
+    workspace_revision: str | None = None
+    workspace_diff_sha256: str | None = None
+    side_effect_operation_id: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+
+
 class SessionConfig(StrictModel):
     run_id: str
     workspace: Path
@@ -634,6 +823,20 @@ class ApprovalRequest(StrictModel):
 class ApprovalDecision(StrictModel):
     approval_id: str
     decision: ApprovalDecisionValue
+
+
+class ApprovalRecord(StrictModel):
+    approval_id: str
+    run_id: str
+    node_id: str | None = None
+    native_request_id: str
+    method: str
+    summary: str = ""
+    payload: dict[str, Any] = Field(default_factory=dict)
+    status: ApprovalStatus = ApprovalStatus.PENDING
+    decision: ApprovalDecisionValue | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    decided_at: datetime | None = None
 
 
 class ArtifactRef(StrictModel):

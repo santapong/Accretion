@@ -19,6 +19,11 @@ from accretion.contracts import (
     TaskType,
 )
 from accretion.ids import new_id
+from accretion.templates import (
+    ALLOWED_TEMPLATES_BY_MODE,
+    DEFAULT_TEMPLATE_BY_MODE,
+    SAFE_UNKNOWN_TEMPLATE,
+)
 
 PROFILER_VERSION = "deterministic-profiler-v1"
 SELECTOR_VERSION = "selector-v1"
@@ -26,13 +31,8 @@ PROMPT_VERSION = "p1-task-execution-v1"
 CONTEXT_VERSION = "context-bundle-v1"
 PROFILE_MIN_CONFIDENCE = 0.70
 
-TEMPLATES = {
-    ExecutionMode.DIRECT: "direct-v1",
-    ExecutionMode.LOOP: "feedback-loop-v1",
-    ExecutionMode.GRAPH: "fixed-graph-v1",
-    ExecutionMode.HYBRID: "hybrid-rd-v1",
-}
-SAFE_UNKNOWN_TEMPLATE = "safe-unknown-v1"
+# Single topology source: accretion.templates owns the registry.
+TEMPLATES = DEFAULT_TEMPLATE_BY_MODE
 REQUIRED_SELECTOR_FEATURES = (
     "complexity",
     "structure_certainty",
@@ -338,14 +338,17 @@ def evaluate_override(
     reason: str,
     operator_identity: str,
 ) -> tuple[StrategyOverride, StrategyDecision | None]:
-    expected_template = TEMPLATES[requested_mode]
+    allowed_templates = ALLOWED_TEMPLATES_BY_MODE[requested_mode]
     high_risk = profile.risk in {RiskLevel.HIGH, RiskLevel.CRITICAL}
     protected = high_risk or profile.irreversible_actions
     result = OverridePolicyResult.ACCEPTED
     denial: str | None = None
-    if requested_template_id != expected_template:
+    if requested_template_id not in allowed_templates:
         result = OverridePolicyResult.DENIED_TEMPLATE_MISMATCH
-        denial = f"{requested_mode.value} requires template {expected_template}."
+        denial = (
+            f"{requested_mode.value} permits templates "
+            f"{', '.join(sorted(allowed_templates))}."
+        )
     elif protected and (
         requested_mode is not ExecutionMode.GRAPH or requested_template_id != "fixed-graph-v1"
     ):

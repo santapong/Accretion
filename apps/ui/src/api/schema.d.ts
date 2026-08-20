@@ -685,6 +685,11 @@ export interface components {
             acceptance_policy?: components["schemas"]["AcceptancePolicy"] | null;
             /** Acceptance Policy Ref */
             acceptance_policy_ref: string;
+            /**
+             * Attempt
+             * @default 1
+             */
+            attempt: number;
             /** Completed At */
             completed_at?: string | null;
             /**
@@ -694,6 +699,11 @@ export interface components {
             created_at?: string;
             /** Loop Execution Id */
             loop_execution_id: string;
+            /**
+             * Node Key
+             * @default evaluate
+             */
+            node_key: string;
             /**
              * Revision
              * @default 0
