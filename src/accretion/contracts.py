@@ -612,7 +612,7 @@ class GraphProjectionEdge(StrictModel):
 
 class GraphProjection(StrictModel):
     schema_version: Literal["1.0"] = "1.0"
-    version: Literal["loop-projection-v1"] = "loop-projection-v1"
+    version: Literal["loop-projection-v1", "graph-projection-v1"] = "loop-projection-v1"
     run_id: str
     workflow_template_id: str
     run_graph_version: int = Field(default=1, gt=0)
@@ -837,6 +837,89 @@ class ApprovalRecord(StrictModel):
     decision: ApprovalDecisionValue | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     decided_at: datetime | None = None
+
+
+class NodeTraversal(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    node_id: str
+    entered_sequence: int
+    exited_sequence: int | None = None
+    entered_at: datetime
+    exited_at: datetime | None = None
+    status: GraphNodeStatus
+    iteration_number: int | None = None
+
+
+class LoopIterationTraceRef(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    iteration_id: str
+    number: int
+    started_sequence: int | None = None
+    completed_sequence: int | None = None
+    acceptance: VerificationStatus | None = None
+    status: str | None = None
+
+
+class RuntimeCallTraceRef(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    runtime_call_id: str
+    node_id: str | None = None
+    started_sequence: int | None = None
+    finished_sequence: int | None = None
+    outcome: Literal["COMPLETED", "FAILED", "CANCELLED", "UNKNOWN"] = "UNKNOWN"
+
+
+class ToolCallTraceRef(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    tool_call_id: str
+    capability_id: str | None = None
+    node_id: str | None = None
+    requested_sequence: int
+    finished_sequence: int | None = None
+    status: Literal["REQUESTED", "STARTED", "COMPLETED", "FAILED"] = "REQUESTED"
+
+
+class ApprovalTraceRef(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    approval_id: str
+    required_sequence: int
+    resolved_sequence: int | None = None
+    resolved: bool = False
+
+
+class VerificationTraceRef(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    verification_id: str
+    verifier_id: str | None = None
+    iteration_id: str | None = None
+    status: VerificationStatus | None = None
+    sequence: int
+
+
+class CheckpointTraceRef(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    checkpoint_id: str
+    kind: CheckpointKind
+    node_id: str | None = None
+    sequence: int
+
+
+class ExecutionTrace(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    version: Literal["execution-trace-v1"] = "execution-trace-v1"
+    run_id: str
+    run_graph_id: str | None = None
+    workflow_template_id: str
+    traversals: list[NodeTraversal] = Field(default_factory=list)
+    loop_iterations: list[LoopIterationTraceRef] = Field(default_factory=list)
+    runtime_calls: list[RuntimeCallTraceRef] = Field(default_factory=list)
+    tool_calls: list[ToolCallTraceRef] = Field(default_factory=list)
+    approvals: list[ApprovalTraceRef] = Field(default_factory=list)
+    verifications: list[VerificationTraceRef] = Field(default_factory=list)
+    checkpoints: list[CheckpointTraceRef] = Field(default_factory=list)
+    last_sequence: int = Field(ge=0)
+    terminal_state: RunState | None = None
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class ArtifactRef(StrictModel):

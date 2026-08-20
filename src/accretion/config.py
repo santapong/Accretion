@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     codex_command: str = "codex"
     claude_command: str = "claude"
     enable_live_providers: bool = False
+    auto_resume_on_reconcile: bool = True
     operator_identity: str = "local-operator"
 
     @property

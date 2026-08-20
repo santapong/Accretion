@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+    "/api/v1/approvals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Approvals */
+        get: operations["list_approvals_api_v1_approvals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/approvals/{approval_id}/decision": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Decide Approval */
+        post: operations["decide_approval_api_v1_approvals__approval_id__decision_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects": {
         parameters: {
             query?: never;
@@ -192,6 +226,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{run_id}/trace": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run Trace */
+        get: operations["get_run_trace_api_v1_runs__run_id__trace_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{run_id}/verifications": {
         parameters: {
             query?: never;
@@ -328,6 +379,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Templates */
+        get: operations["list_templates_api_v1_templates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/verifications/{verification_id}": {
         parameters: {
             query?: never;
@@ -415,6 +483,72 @@ export interface components {
              */
             version: "acceptance-policy-v1";
         };
+        /** ApprovalDecisionCreate */
+        ApprovalDecisionCreate: {
+            decision: components["schemas"]["ApprovalDecisionValue"];
+        };
+        /**
+         * ApprovalDecisionValue
+         * @enum {string}
+         */
+        ApprovalDecisionValue: "APPROVE" | "APPROVE_SESSION" | "DENY" | "CANCEL";
+        /** ApprovalRecord */
+        ApprovalRecord: {
+            /** Approval Id */
+            approval_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Decided At */
+            decided_at?: string | null;
+            decision?: components["schemas"]["ApprovalDecisionValue"] | null;
+            /** Method */
+            method: string;
+            /** Native Request Id */
+            native_request_id: string;
+            /** Node Id */
+            node_id?: string | null;
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+            /** Run Id */
+            run_id: string;
+            /** @default PENDING */
+            status: components["schemas"]["ApprovalStatus"];
+            /**
+             * Summary
+             * @default
+             */
+            summary: string;
+        };
+        /**
+         * ApprovalStatus
+         * @enum {string}
+         */
+        ApprovalStatus: "PENDING" | "APPROVED" | "DENIED" | "CANCELLED";
+        /** ApprovalTraceRef */
+        ApprovalTraceRef: {
+            /** Approval Id */
+            approval_id: string;
+            /** Required Sequence */
+            required_sequence: number;
+            /**
+             * Resolved
+             * @default false
+             */
+            resolved: boolean;
+            /** Resolved Sequence */
+            resolved_sequence?: number | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+        };
         /** ArtifactRef */
         ArtifactRef: {
             /** Artifact Id */
@@ -436,6 +570,27 @@ export interface components {
          * @enum {string}
          */
         AuthMode: "SUBSCRIPTION" | "API" | "LOCAL";
+        /**
+         * CheckpointKind
+         * @enum {string}
+         */
+        CheckpointKind: "NODE_BOUNDARY" | "SIDE_EFFECT_BOUNDARY";
+        /** CheckpointTraceRef */
+        CheckpointTraceRef: {
+            /** Checkpoint Id */
+            checkpoint_id: string;
+            kind: components["schemas"]["CheckpointKind"];
+            /** Node Id */
+            node_id?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Sequence */
+            sequence: number;
+        };
         /** ContextBundle */
         ContextBundle: {
             /** Artifact Refs */
@@ -511,6 +666,49 @@ export interface components {
          * @enum {string}
          */
         ExecutionMode: "DIRECT" | "LOOP" | "GRAPH" | "HYBRID";
+        /** ExecutionTrace */
+        ExecutionTrace: {
+            /** Approvals */
+            approvals?: components["schemas"]["ApprovalTraceRef"][];
+            /** Checkpoints */
+            checkpoints?: components["schemas"]["CheckpointTraceRef"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at?: string;
+            /** Last Sequence */
+            last_sequence: number;
+            /** Loop Iterations */
+            loop_iterations?: components["schemas"]["LoopIterationTraceRef"][];
+            /** Run Graph Id */
+            run_graph_id?: string | null;
+            /** Run Id */
+            run_id: string;
+            /** Runtime Calls */
+            runtime_calls?: components["schemas"]["RuntimeCallTraceRef"][];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            terminal_state?: components["schemas"]["RunState"] | null;
+            /** Tool Calls */
+            tool_calls?: components["schemas"]["ToolCallTraceRef"][];
+            /** Traversals */
+            traversals?: components["schemas"]["NodeTraversal"][];
+            /** Verifications */
+            verifications?: components["schemas"]["VerificationTraceRef"][];
+            /**
+             * Version
+             * @default execution-trace-v1
+             * @constant
+             */
+            version: "execution-trace-v1";
+            /** Workflow Template Id */
+            workflow_template_id: string;
+        };
         /**
          * ExpectedHorizon
          * @enum {string}
@@ -601,9 +799,9 @@ export interface components {
             /**
              * Version
              * @default loop-projection-v1
-             * @constant
+             * @enum {string}
              */
-            version: "loop-projection-v1";
+            version: "loop-projection-v1" | "graph-projection-v1";
             /** Workflow Template Id */
             workflow_template_id: string;
         };
@@ -733,6 +931,26 @@ export interface components {
          * @enum {string}
          */
         LoopExecutionStatus: "PENDING" | "RUNNING" | "PAUSED" | "SUCCEEDED" | "FAILED" | "CANCELLED" | "REQUIRES_HUMAN";
+        /** LoopIterationTraceRef */
+        LoopIterationTraceRef: {
+            acceptance?: components["schemas"]["VerificationStatus"] | null;
+            /** Completed Sequence */
+            completed_sequence?: number | null;
+            /** Iteration Id */
+            iteration_id: string;
+            /** Number */
+            number: number;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Started Sequence */
+            started_sequence?: number | null;
+            /** Status */
+            status?: string | null;
+        };
         /** LoopSpec */
         LoopSpec: {
             /**
@@ -847,6 +1065,31 @@ export interface components {
          * @enum {string}
          */
         LoopStopReason: "VERIFIED_SUCCESS" | "MAX_ITERATIONS" | "WALL_TIME_EXCEEDED" | "MAX_TOOL_CALLS" | "MAX_TURNS" | "NO_PROGRESS" | "REPEATED_FAILURE" | "POLICY_ESCALATION" | "VERIFIER_UNAVAILABLE" | "PROVIDER_FAILURE" | "OPERATOR_CANCELLED" | "INTERRUPTED";
+        /** NodeTraversal */
+        NodeTraversal: {
+            /**
+             * Entered At
+             * Format: date-time
+             */
+            entered_at: string;
+            /** Entered Sequence */
+            entered_sequence: number;
+            /** Exited At */
+            exited_at?: string | null;
+            /** Exited Sequence */
+            exited_sequence?: number | null;
+            /** Iteration Number */
+            iteration_number?: number | null;
+            /** Node Id */
+            node_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            status: components["schemas"]["GraphNodeStatus"];
+        };
         /**
          * OverridePolicyResult
          * @enum {string}
@@ -992,6 +1235,29 @@ export interface components {
          * @enum {string}
          */
         RunState: "PENDING" | "STARTING" | "RUNNING" | "PAUSED" | "RECONCILING" | "SUCCEEDED" | "FAILED" | "CANCELLED" | "REQUIRES_HUMAN";
+        /** RuntimeCallTraceRef */
+        RuntimeCallTraceRef: {
+            /** Finished Sequence */
+            finished_sequence?: number | null;
+            /** Node Id */
+            node_id?: string | null;
+            /**
+             * Outcome
+             * @default UNKNOWN
+             * @enum {string}
+             */
+            outcome: "COMPLETED" | "FAILED" | "CANCELLED" | "UNKNOWN";
+            /** Runtime Call Id */
+            runtime_call_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Started Sequence */
+            started_sequence?: number | null;
+        };
         /** RuntimeHealth */
         RuntimeHealth: {
             /**
@@ -1316,6 +1582,36 @@ export interface components {
          */
         TaskType: "RESEARCH" | "ANALYSIS" | "IMPLEMENT" | "REVIEW" | "EXPERIMENT" | "OTHER";
         /**
+         * TemplateStatus
+         * @enum {string}
+         */
+        TemplateStatus: "DRAFT" | "VALIDATED" | "RETIRED";
+        /** ToolCallTraceRef */
+        ToolCallTraceRef: {
+            /** Capability Id */
+            capability_id?: string | null;
+            /** Finished Sequence */
+            finished_sequence?: number | null;
+            /** Node Id */
+            node_id?: string | null;
+            /** Requested Sequence */
+            requested_sequence: number;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /**
+             * Status
+             * @default REQUESTED
+             * @enum {string}
+             */
+            status: "REQUESTED" | "STARTED" | "COMPLETED" | "FAILED";
+            /** Tool Call Id */
+            tool_call_id: string;
+        };
+        /**
          * UsagePressure
          * @enum {string}
          */
@@ -1378,6 +1674,38 @@ export interface components {
          * @enum {string}
          */
         VerificationStatus: "PASS" | "FAIL" | "INCONCLUSIVE";
+        /** VerificationTraceRef */
+        VerificationTraceRef: {
+            /** Iteration Id */
+            iteration_id?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Sequence */
+            sequence: number;
+            status?: components["schemas"]["VerificationStatus"] | null;
+            /** Verification Id */
+            verification_id: string;
+            /** Verifier Id */
+            verifier_id?: string | null;
+        };
+        /**
+         * WorkflowTemplateSummary
+         * @description Read-only template listing; nodes and edges never enter the API.
+         */
+        WorkflowTemplateSummary: {
+            /** Checksum */
+            checksum: string;
+            mode: components["schemas"]["ExecutionMode"];
+            status: components["schemas"]["TemplateStatus"];
+            /** Template Id */
+            template_id: string;
+            /** Version */
+            version: string;
+        };
     };
     responses: never;
     parameters: never;
@@ -1387,6 +1715,73 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_approvals_api_v1_approvals_get: {
+        parameters: {
+            query?: {
+                run_id?: string | null;
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalRecord"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    decide_approval_api_v1_approvals__approval_id__decision_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                approval_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ApprovalDecisionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ApprovalRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_projects_api_v1_projects_get: {
         parameters: {
             query?: never;
@@ -1752,6 +2147,37 @@ export interface operations {
             };
         };
     };
+    get_run_trace_api_v1_runs__run_id__trace_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionTrace"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_verifications_api_v1_runs__run_id__verifications_get: {
         parameters: {
             query?: never;
@@ -1986,6 +2412,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StrategyOverrideResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_templates_api_v1_templates_get: {
+        parameters: {
+            query?: {
+                status?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowTemplateSummary"][];
                 };
             };
             /** @description Validation Error */

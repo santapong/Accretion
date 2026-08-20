@@ -38,6 +38,42 @@ class WorktreeManager:
             branch_name=branch,
         )
 
+    async def reacquire(
+        self, *, lease: WorkspaceLease, repository: Path
+    ) -> WorkspaceLease:
+        """Rebuild a lost worktree for the same run at the recorded revision.
+
+        `acquire` fails closed when the run's branch or path survived a crash;
+        recreate-classified reconciliation deliberately clears both first.
+        """
+
+        repository = repository.resolve(strict=True)
+        await self._git(repository, "worktree", "prune")
+        path = (self.root / lease.run_id).resolve()
+        if path.exists():
+            raise WorkspaceError(
+                f"workspace path still exists for {lease.run_id}; refusing to recreate"
+            )
+        branch_probe = await asyncio.create_subprocess_exec(
+            "git",
+            "rev-parse",
+            "--verify",
+            "--quiet",
+            f"refs/heads/{lease.branch_name}",
+            cwd=repository,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        await branch_probe.communicate()
+        if branch_probe.returncode == 0:
+            await self._git(repository, "branch", "-D", lease.branch_name)
+        return await self.acquire(
+            project_id=lease.project_id,
+            run_id=lease.run_id,
+            repository=repository,
+            base_revision=lease.base_revision,
+        )
+
     async def inspect(self, lease: WorkspaceLease) -> str:
         if not lease.path.exists():
             return "MISSING"
