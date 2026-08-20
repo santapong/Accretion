@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 from enum import StrEnum
-from typing import Any
+from typing import Any, Protocol
 
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from accretion.ids import new_id
@@ -30,9 +32,14 @@ class SideEffectOperation(BaseModel):
     result_payload: dict[str, Any] | None = None
 
 
+class SideEffectLedger(Protocol):
+    async def reconcile_uncertain(self) -> list[SideEffectOperation]: ...
+
+
 class MemorySideEffectLedger:
     def __init__(self) -> None:
         self.operations: dict[str, SideEffectOperation] = {}
+        self._lock = asyncio.Lock()
 
     async def record_intent(
         self,
@@ -42,19 +49,20 @@ class MemorySideEffectLedger:
         capability_id: str,
         payload: dict[str, Any],
     ) -> tuple[SideEffectOperation, bool]:
-        existing = self.operations.get(idempotency_key)
-        if existing:
-            return existing, False
-        operation = SideEffectOperation(
-            operation_id=new_id("side_effect"),
-            run_id=run_id,
-            idempotency_key=idempotency_key,
-            capability_id=capability_id,
-            status=SideEffectStatus.INTENT_RECORDED,
-            intent_payload=payload,
-        )
-        self.operations[idempotency_key] = operation
-        return operation, True
+        async with self._lock:
+            existing = self.operations.get(idempotency_key)
+            if existing:
+                return existing, False
+            operation = SideEffectOperation(
+                operation_id=new_id("side_effect"),
+                run_id=run_id,
+                idempotency_key=idempotency_key,
+                capability_id=capability_id,
+                status=SideEffectStatus.INTENT_RECORDED,
+                intent_payload=payload,
+            )
+            self.operations[idempotency_key] = operation
+            return operation, True
 
     async def finish(
         self, idempotency_key: str, *, succeeded: bool, result: dict[str, Any]
@@ -91,29 +99,45 @@ class PostgresSideEffectLedger:
         capability_id: str,
         payload: dict[str, Any],
     ) -> tuple[SideEffectOperation, bool]:
+        operation_id = new_id("side_effect")
+        now = datetime.now(UTC)
         async with self.sessions.begin() as session:
+            inserted_id = await session.scalar(
+                insert(SideEffectOperationRow)
+                .values(
+                    id=operation_id,
+                    run_id=run_id,
+                    idempotency_key=idempotency_key,
+                    capability_id=capability_id,
+                    status=SideEffectStatus.INTENT_RECORDED.value,
+                    intent_payload=payload,
+                    result_payload=None,
+                    created_at=now,
+                    updated_at=now,
+                )
+                .on_conflict_do_nothing(index_elements=["idempotency_key"])
+                .returning(SideEffectOperationRow.id)
+            )
+            if inserted_id is not None:
+                return (
+                    SideEffectOperation(
+                        operation_id=operation_id,
+                        run_id=run_id,
+                        idempotency_key=idempotency_key,
+                        capability_id=capability_id,
+                        status=SideEffectStatus.INTENT_RECORDED,
+                        intent_payload=payload,
+                    ),
+                    True,
+                )
             existing = await session.scalar(
                 select(SideEffectOperationRow).where(
                     SideEffectOperationRow.idempotency_key == idempotency_key
                 )
             )
-            if existing:
-                return self._from_row(existing), False
-            now = datetime.now(UTC)
-            row = SideEffectOperationRow(
-                id=new_id("side_effect"),
-                run_id=run_id,
-                idempotency_key=idempotency_key,
-                capability_id=capability_id,
-                status=SideEffectStatus.INTENT_RECORDED.value,
-                intent_payload=payload,
-                result_payload=None,
-                created_at=now,
-                updated_at=now,
-            )
-            session.add(row)
-            await session.flush()
-            return self._from_row(row), True
+            if existing is None:  # defensive: the conflict row must be visible now
+                raise RuntimeError("idempotency conflict row was not readable")
+            return self._from_row(existing), False
 
     async def finish(
         self, idempotency_key: str, *, succeeded: bool, result: dict[str, Any]

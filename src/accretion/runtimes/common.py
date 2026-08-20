@@ -6,7 +6,7 @@ import shutil
 from collections.abc import Sequence
 from typing import Any
 
-from accretion.contracts import AgentEvent, EventType, Provider
+from accretion.contracts import AgentEvent, EventType, Provider, RuntimeStatus, UsagePressure
 from accretion.ids import new_id
 from accretion.redaction import redact
 
@@ -14,11 +14,14 @@ from accretion.redaction import redact
 async def command_result(command: Sequence[str], timeout_seconds: float = 5.0) -> tuple[int, str]:
     if not shutil.which(command[0]):
         return 127, "command not found"
-    process = await asyncio.create_subprocess_exec(
-        *command,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.STDOUT,
-    )
+    try:
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+    except OSError as exc:
+        return 127, str(exc)
     try:
         output, _ = await asyncio.wait_for(process.communicate(), timeout_seconds)
     except TimeoutError:
@@ -35,6 +38,36 @@ def parse_version(output: str) -> tuple[int, ...]:
 
 def in_range(version: tuple[int, ...], minimum: tuple[int, ...], maximum: tuple[int, ...]) -> bool:
     return minimum <= version < maximum
+
+
+def classify_runtime_health(
+    *,
+    version_code: int,
+    version_output: str,
+    auth_code: int,
+    auth_output: str,
+    minimum: tuple[int, ...],
+    maximum: tuple[int, ...],
+) -> tuple[RuntimeStatus, UsagePressure, str | None]:
+    """Classify availability, compatibility, auth, and quota without reading credentials."""
+
+    combined = f"{version_output}\n{auth_output}".lower()
+    rate_limited = any(
+        marker in combined
+        for marker in ("rate limit", "usage limit", "quota exhausted", "limit reached")
+    )
+    if version_code != 0:
+        return RuntimeStatus.UNAVAILABLE, UsagePressure.UNKNOWN, version_output
+    if rate_limited:
+        return RuntimeStatus.RATE_LIMITED, UsagePressure.EXHAUSTED, auth_output
+    if auth_code != 0:
+        return RuntimeStatus.AUTH_REQUIRED, UsagePressure.UNKNOWN, auth_output
+    status = (
+        RuntimeStatus.READY
+        if in_range(parse_version(version_output), minimum, maximum)
+        else RuntimeStatus.DEGRADED
+    )
+    return status, UsagePressure.UNKNOWN, None
 
 
 def make_event(

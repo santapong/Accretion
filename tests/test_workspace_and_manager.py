@@ -3,7 +3,9 @@ import subprocess
 from pathlib import Path
 
 from accretion.concurrency import ConcurrencyLimiter
-from accretion.contracts import Provider, RunState
+from accretion.contracts import Provider, Run, RunState
+from accretion.ids import new_id
+from accretion.persistence.side_effects import MemorySideEffectLedger, SideEffectStatus
 from accretion.persistence.store import MemoryStore
 from accretion.runtimes.fake import FakeRuntime
 from accretion.services.run_manager import RunManager
@@ -45,12 +47,54 @@ async def test_worktrees_are_isolated_and_successful_run_completes(tmp_path: Pat
     second_result = await store.get_run(second.run_id)
     assert first_result and first_result.state == RunState.SUCCEEDED
     assert second_result and second_result.state == RunState.SUCCEEDED
-    assert store.leases[first_result.workspace_lease_id].path != store.leases[
-        second_result.workspace_lease_id
-    ].path
+    assert (
+        store.leases[first_result.workspace_lease_id].path
+        != store.leases[second_result.workspace_lease_id].path
+    )
     assert [event.normalized_type.value for event in await store.list_events(first.run_id)] == [
         "RUN_CREATED",
         "RUN_STARTED",
         "RUN_PROGRESS",
         "RUN_COMPLETED",
     ]
+
+
+async def test_startup_reconciles_pending_runs_and_uncertain_side_effects(tmp_path: Path) -> None:
+    repository = tmp_path / "repository"
+    repository.mkdir()
+    initialize_repository(repository)
+    store = MemoryStore()
+    ledger = MemorySideEffectLedger()
+    manager = RunManager(
+        store=store,
+        worktrees=WorktreeManager(tmp_path / "worktrees", tmp_path / "artifacts"),
+        runtimes={Provider.FAKE: FakeRuntime()},
+        limiter=ConcurrencyLimiter(global_limit=1, provider_limit=1, project_limit=1),
+        live_providers_enabled=False,
+        side_effect_ledger=ledger,
+    )
+    project = await manager.create_project("fixture", repository)
+    task = await manager.create_task(
+        project_id=project.project_id, objective="interrupted", task_patch={}
+    )
+    run = await store.create_run(
+        Run(
+            run_id=new_id("run"),
+            task_id=task.envelope.task_id,
+            project_id=project.project_id,
+            provider=Provider.FAKE,
+            state=RunState.PENDING,
+        )
+    )
+    operation, _created = await ledger.record_intent(
+        run_id=run.run_id,
+        idempotency_key="publish:fixture",
+        capability_id="publish",
+        payload={},
+    )
+
+    await manager.reconcile()
+
+    reconciled = await store.get_run(run.run_id)
+    assert reconciled and reconciled.state is RunState.REQUIRES_HUMAN
+    assert ledger.operations[operation.idempotency_key].status is SideEffectStatus.UNKNOWN

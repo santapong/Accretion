@@ -25,7 +25,7 @@ from accretion.contracts import (
 )
 from accretion.ids import new_id
 from accretion.redaction import redact, redact_text
-from accretion.runtimes.common import command_result, in_range, make_event, parse_version
+from accretion.runtimes.common import classify_runtime_health, command_result, make_event
 
 
 class ClaudeRuntime:
@@ -41,25 +41,23 @@ class ClaudeRuntime:
 
     async def health(self) -> RuntimeHealth:
         version_code, version_output = await command_result([self.command, "--version"])
-        if version_code == 127:
-            return self._health(RuntimeStatus.UNAVAILABLE, version_output)
-        version = parse_version(version_output)
-        status = (
-            RuntimeStatus.READY
-            if in_range(version, (2, 1, 231), (2, 2, 0))
-            else RuntimeStatus.DEGRADED
-        )
         auth_code, auth_output = await command_result([self.command, "auth", "status"])
-        if auth_code != 0:
-            status = RuntimeStatus.AUTH_REQUIRED
-        return self._health(status, None, version_output, auth_output)
+        status, pressure, error = classify_runtime_health(
+            version_code=version_code,
+            version_output=version_output,
+            auth_code=auth_code,
+            auth_output=auth_output,
+            minimum=(2, 1, 231),
+            maximum=(2, 2, 0),
+        )
+        return self._health(status, error, version_output, pressure)
 
     def _health(
         self,
         status: RuntimeStatus,
         error: str | None,
         version: str = "unknown",
-        auth_output: str = "",
+        pressure: UsagePressure = UsagePressure.UNKNOWN,
     ) -> RuntimeHealth:
         return RuntimeHealth(
             runtime_id="runtime_claude",
@@ -70,9 +68,7 @@ class ClaudeRuntime:
             capabilities=["stream-json", "session-resume", "tool-policy", "interrupt"],
             active_sessions=len(self.sessions),
             active_runs=sum(process.returncode is None for process in self.processes.values()),
-            observed_usage_pressure=(
-                UsagePressure.EXHAUSTED if "limit" in auth_output.lower() else UsagePressure.UNKNOWN
-            ),
+            observed_usage_pressure=pressure,
             last_error=(
                 ErrorSummary(code="CLAUDE_UNAVAILABLE", message=redact_text(error))
                 if error
@@ -119,55 +115,117 @@ class ClaudeRuntime:
             command.extend(["--resume", session.native_session_id])
         elif session.native_session_id:
             command.extend(["--session-id", session.native_session_id])
-        process = await asyncio.create_subprocess_exec(
-            *command,
-            cwd=session.workspace,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        self.processes[run.run_id] = process
-        assert process.stdout
+        process: asyncio.subprocess.Process | None = None
         terminal_seen = False
-        while line := await process.stdout.readline():
-            try:
-                message = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            native_type = str(message.get("type", "unknown"))
-            normalized = self._normalize(message)
-            terminal_seen = terminal_seen or normalized in {
-                EventType.RUN_COMPLETED,
-                EventType.RUN_FAILED,
-                EventType.RUN_CANCELLED,
-            }
-            await self.queues[run.run_id].put(
-                make_event(
-                    run_id=run.run_id,
-                    session_id=session.session_id,
-                    provider=Provider.CLAUDE,
-                    native_type=native_type,
-                    normalized_type=normalized,
-                    payload={"provider_extension": redact(message)},
-                    adapter_version=self.adapter_version,
+        try:
+            async with asyncio.timeout(task.budgets.wall_time_seconds):
+                process = await asyncio.create_subprocess_exec(
+                    *command,
+                    cwd=session.workspace,
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
                 )
-            )
-        stderr = ""
-        if process.stderr:
-            stderr = redact_text((await process.stderr.read()).decode(errors="replace"))
-        return_code = await process.wait()
-        if return_code and not terminal_seen:
-            await self.queues[run.run_id].put(
-                make_event(
-                    run_id=run.run_id,
-                    session_id=session.session_id,
-                    provider=Provider.CLAUDE,
-                    native_type="process/exit",
-                    normalized_type=EventType.RUN_FAILED,
-                    payload={"return_code": return_code, "stderr": stderr[-2000:]},
-                    adapter_version=self.adapter_version,
+                self.processes[run.run_id] = process
+                assert process.stdout
+                while line := await process.stdout.readline():
+                    try:
+                        message = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    if not isinstance(message, dict):
+                        continue
+                    native_type = str(message.get("type", "unknown"))
+                    normalized = self._normalize(message)
+                    if terminal_seen and normalized in {
+                        EventType.RUN_COMPLETED,
+                        EventType.RUN_FAILED,
+                        EventType.RUN_CANCELLED,
+                    }:
+                        continue
+                    terminal_seen = terminal_seen or normalized in {
+                        EventType.RUN_COMPLETED,
+                        EventType.RUN_FAILED,
+                        EventType.RUN_CANCELLED,
+                    }
+                    await self.queues[run.run_id].put(
+                        make_event(
+                            run_id=run.run_id,
+                            session_id=session.session_id,
+                            provider=Provider.CLAUDE,
+                            native_type=native_type,
+                            normalized_type=normalized,
+                            payload={"provider_extension": redact(message)},
+                            adapter_version=self.adapter_version,
+                        )
+                    )
+                return_code = await process.wait()
+                stderr = ""
+                if process.stderr:
+                    stderr = redact_text((await process.stderr.read()).decode(errors="replace"))
+                if not terminal_seen:
+                    detail = f"Claude process exited with code {return_code}"
+                    if return_code == 0:
+                        detail = "Claude process reached EOF without a terminal result"
+                    await self._terminal_failure(run, session, detail, stderr, return_code)
+                    terminal_seen = True
+        except asyncio.CancelledError:
+            if process and process.returncode is None:
+                process.terminate()
+                await process.wait()
+            if not terminal_seen:
+                await self.queues[run.run_id].put(
+                    make_event(
+                        run_id=run.run_id,
+                        session_id=session.session_id,
+                        provider=Provider.CLAUDE,
+                        native_type="process/cancelled",
+                        normalized_type=EventType.RUN_CANCELLED,
+                        adapter_version=self.adapter_version,
+                    )
                 )
+            raise
+        except TimeoutError:
+            if process and process.returncode is None:
+                process.kill()
+                await process.wait()
+            if not terminal_seen:
+                await self._terminal_failure(
+                    run,
+                    session,
+                    f"Claude process timed out after {task.budgets.wall_time_seconds} seconds",
+                )
+        except Exception as exc:
+            if process and process.returncode is None:
+                process.kill()
+                await process.wait()
+            if not terminal_seen:
+                await self._terminal_failure(run, session, str(exc))
+        finally:
+            await self.queues[run.run_id].put(None)
+
+    async def _terminal_failure(
+        self,
+        run: RunRef,
+        session: SessionRef,
+        message: str,
+        stderr: str = "",
+        return_code: int | None = None,
+    ) -> None:
+        await self.queues[run.run_id].put(
+            make_event(
+                run_id=run.run_id,
+                session_id=session.session_id,
+                provider=Provider.CLAUDE,
+                native_type="process/exit",
+                normalized_type=EventType.RUN_FAILED,
+                payload={
+                    "error": redact_text(message),
+                    "return_code": return_code,
+                    "stderr": stderr[-2000:],
+                },
+                adapter_version=self.adapter_version,
             )
-        await self.queues[run.run_id].put(None)
+        )
 
     @staticmethod
     def _prompt(task: TaskEnvelope) -> str:
