@@ -9,9 +9,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from accretion.contracts import (
+    TERMINAL_RUN_STATES,
     AcceptancePolicy,
     AgentEvent,
+    ApprovalDecisionValue,
+    ApprovalRecord,
+    ApprovalStatus,
     ArtifactRef,
+    Checkpoint,
     ContextBundle,
     ErrorSummary,
     ExecutionMode,
@@ -24,6 +29,9 @@ from accretion.contracts import (
     PromptContract,
     Provider,
     Run,
+    RunEdge,
+    RunGraph,
+    RunNode,
     RunState,
     SessionRef,
     StrategyDecision,
@@ -32,17 +40,24 @@ from accretion.contracts import (
     TaskEnvelope,
     TaskPlanning,
     TaskProfile,
+    TemplateStatus,
     VerificationResult,
+    WorkflowTemplate,
     WorkspaceLease,
 )
 from accretion.persistence.models import (
     AcceptancePolicyRow,
     AgentEventRow,
+    ApprovalRow,
+    CheckpointRow,
     ContextBundleRow,
     LoopExecutionRow,
     LoopIterationRow,
     ProjectRow,
     PromptContractRow,
+    RunGraphEdgeRow,
+    RunGraphNodeRow,
+    RunGraphRow,
     RunRow,
     RuntimeSessionRow,
     StrategyDecisionRow,
@@ -50,6 +65,7 @@ from accretion.persistence.models import (
     TaskProfileRow,
     TaskRow,
     VerificationRow,
+    WorkflowTemplateRow,
     WorkspaceLeaseRow,
 )
 
@@ -58,6 +74,15 @@ _TERMINAL_LOOP_EXECUTION_STATUSES = {
     LoopExecutionStatus.FAILED,
     LoopExecutionStatus.CANCELLED,
     LoopExecutionStatus.REQUIRES_HUMAN,
+}
+
+_CHECKPOINT_IDENTITY_EXCLUDED = {"checkpoint_id", "created_at"}
+
+_APPROVAL_DECISION_STATUS = {
+    ApprovalDecisionValue.APPROVE: ApprovalStatus.APPROVED,
+    ApprovalDecisionValue.APPROVE_SESSION: ApprovalStatus.APPROVED,
+    ApprovalDecisionValue.DENY: ApprovalStatus.DENIED,
+    ApprovalDecisionValue.CANCEL: ApprovalStatus.CANCELLED,
 }
 
 
@@ -129,6 +154,7 @@ class StateStore(Protocol):
         expected_revision: int | None = None,
         verifications: Sequence[VerificationResult] = (),
         events: Sequence[AgentEvent] = (),
+        checkpoint: Checkpoint | None = None,
     ) -> LoopExecution: ...
     async def list_loop_iterations(self, loop_execution_id: str) -> list[LoopIteration]: ...
     async def save_verification(self, result: VerificationResult) -> None: ...
@@ -144,6 +170,40 @@ class StateStore(Protocol):
     async def list_artifacts(self, run_id: str) -> list[ArtifactRef]: ...
     async def append_event(self, event: AgentEvent) -> AgentEvent: ...
     async def list_events(self, run_id: str, after: int = 0) -> list[AgentEvent]: ...
+    async def upsert_workflow_template(self, template: WorkflowTemplate) -> WorkflowTemplate: ...
+    async def get_workflow_template(
+        self, template_id: str, version: str | None = None
+    ) -> WorkflowTemplate | None: ...
+    async def list_workflow_templates(
+        self, status: TemplateStatus | None = None
+    ) -> list[WorkflowTemplate]: ...
+    async def create_run_graph(self, graph: RunGraph) -> RunGraph: ...
+    async def get_run_graph(self, run_id: str) -> RunGraph | None: ...
+    async def update_run_graph(
+        self,
+        run_graph_id: str,
+        *,
+        nodes: Sequence[RunNode] = (),
+        edges: Sequence[RunEdge] = (),
+        expected_revision: int,
+    ) -> RunGraph: ...
+    async def append_checkpoint(
+        self, checkpoint: Checkpoint, events: Sequence[AgentEvent] = ()
+    ) -> Checkpoint: ...
+    async def get_latest_checkpoint(self, run_id: str) -> Checkpoint | None: ...
+    async def list_checkpoints(self, run_id: str) -> list[Checkpoint]: ...
+    async def save_approval(self, approval: ApprovalRecord) -> ApprovalRecord: ...
+    async def get_approval(self, approval_id: str) -> ApprovalRecord | None: ...
+    async def list_approvals(
+        self, run_id: str | None = None, status: ApprovalStatus | None = None
+    ) -> list[ApprovalRecord]: ...
+    async def decide_approval(
+        self, approval_id: str, decision: ApprovalDecisionValue
+    ) -> ApprovalRecord: ...
+    async def get_loop_execution_for_node(
+        self, run_id: str, node_key: str, attempt: int | None = None
+    ) -> LoopExecution | None: ...
+    async def list_loop_executions_for_run(self, run_id: str) -> list[LoopExecution]: ...
 
 
 class MemoryStore:
@@ -165,9 +225,15 @@ class MemoryStore:
         self.acceptance_policies: dict[str, AcceptancePolicy] = {}
         self.loop_executions: dict[str, LoopExecution] = {}
         self.loop_execution_by_run: dict[str, str] = {}
+        self.loop_execution_by_node: dict[tuple[str, str, int], str] = {}
         self.loop_iterations: dict[str, list[LoopIteration]] = {}
         self.verifications: dict[str, VerificationResult] = {}
         self.verification_ids_by_run: dict[str, list[str]] = {}
+        self.workflow_templates: dict[tuple[str, str], WorkflowTemplate] = {}
+        self.run_graphs: dict[str, RunGraph] = {}
+        self.checkpoints: dict[str, list[Checkpoint]] = {}
+        self.approvals: dict[str, ApprovalRecord] = {}
+        self.approval_by_request: dict[tuple[str, str], str] = {}
         self._lock = asyncio.Lock()
 
     async def create_project(self, project: Project) -> Project:
@@ -367,12 +433,17 @@ class MemoryStore:
                 raise KeyError(execution.run_id)
             if execution.loop_execution_id in self.loop_executions:
                 raise ValueError(f"loop execution {execution.loop_execution_id} already exists")
-            if execution.run_id in self.loop_execution_by_run:
-                raise ValueError(f"run {execution.run_id} already has a loop execution")
+            node_slot = (execution.run_id, execution.node_key, execution.attempt)
+            if node_slot in self.loop_execution_by_node:
+                raise ValueError(
+                    f"run {execution.run_id} already has loop attempt "
+                    f"{execution.attempt} for node {execution.node_key}"
+                )
             policy = self.acceptance_policies[execution.acceptance_policy_ref]
             stored = execution.model_copy(update={"acceptance_policy": policy})
             self.loop_executions[stored.loop_execution_id] = stored
             self.loop_execution_by_run[stored.run_id] = stored.loop_execution_id
+            self.loop_execution_by_node[node_slot] = stored.loop_execution_id
             self.loop_iterations[stored.loop_execution_id] = []
             run = self.runs[stored.run_id]
             self.runs[stored.run_id] = run.model_copy(
@@ -391,6 +462,31 @@ class MemoryStore:
     async def get_loop_execution_for_run(self, run_id: str) -> LoopExecution | None:
         loop_execution_id = self.loop_execution_by_run.get(run_id)
         return self.loop_executions.get(loop_execution_id) if loop_execution_id else None
+
+    async def get_loop_execution_for_node(
+        self, run_id: str, node_key: str, attempt: int | None = None
+    ) -> LoopExecution | None:
+        if attempt is not None:
+            loop_execution_id = self.loop_execution_by_node.get((run_id, node_key, attempt))
+            return self.loop_executions.get(loop_execution_id) if loop_execution_id else None
+        candidates = [
+            execution
+            for execution in self.loop_executions.values()
+            if execution.run_id == run_id and execution.node_key == node_key
+        ]
+        if not candidates:
+            return None
+        return max(candidates, key=lambda execution: execution.attempt)
+
+    async def list_loop_executions_for_run(self, run_id: str) -> list[LoopExecution]:
+        return sorted(
+            (
+                execution
+                for execution in self.loop_executions.values()
+                if execution.run_id == run_id
+            ),
+            key=lambda execution: (execution.created_at, execution.loop_execution_id),
+        )
 
     async def update_loop_execution(
         self,
@@ -421,6 +517,7 @@ class MemoryStore:
         expected_revision: int | None = None,
         verifications: Sequence[VerificationResult] = (),
         events: Sequence[AgentEvent] = (),
+        checkpoint: Checkpoint | None = None,
     ) -> LoopExecution:
         async with self._lock:
             current = self.loop_executions[loop_execution_id]
@@ -456,6 +553,12 @@ class MemoryStore:
             if events:
                 self.runs[iteration.run_id] = run.model_copy(
                     update={"last_sequence": run_events[-1].sequence}
+                )
+            if checkpoint is not None:
+                self._append_memory_checkpoint(
+                    checkpoint.model_copy(
+                        update={"sequence": self.runs[iteration.run_id].last_sequence}
+                    )
                 )
             return self._update_memory_loop_execution(
                 loop_execution_id,
@@ -600,6 +703,215 @@ class MemoryStore:
 
     async def list_events(self, run_id: str, after: int = 0) -> list[AgentEvent]:
         return [event for event in self.run_events.get(run_id, []) if event.sequence > after]
+
+    async def upsert_workflow_template(self, template: WorkflowTemplate) -> WorkflowTemplate:
+        async with self._lock:
+            key = (template.template_id, template.version)
+            existing = self.workflow_templates.get(key)
+            if existing is not None:
+                if existing.checksum != template.checksum:
+                    raise ValueError(
+                        f"workflow template {template.template_id} {template.version} "
+                        "content drifted from the stored checksum"
+                    )
+                return existing
+            self.workflow_templates[key] = template
+            return template
+
+    async def get_workflow_template(
+        self, template_id: str, version: str | None = None
+    ) -> WorkflowTemplate | None:
+        if version is not None:
+            return self.workflow_templates.get((template_id, version))
+        validated = [
+            template
+            for template in self.workflow_templates.values()
+            if template.template_id == template_id
+            and template.status is TemplateStatus.VALIDATED
+        ]
+        if len(validated) > 1:
+            raise ValueError(
+                f"template {template_id} has multiple VALIDATED versions; pass one explicitly"
+            )
+        return validated[0] if validated else None
+
+    async def list_workflow_templates(
+        self, status: TemplateStatus | None = None
+    ) -> list[WorkflowTemplate]:
+        templates = [
+            template
+            for template in self.workflow_templates.values()
+            if status is None or template.status is status
+        ]
+        return sorted(templates, key=lambda template: (template.template_id, template.version))
+
+    async def create_run_graph(self, graph: RunGraph) -> RunGraph:
+        async with self._lock:
+            if graph.run_id not in self.runs:
+                raise KeyError(graph.run_id)
+            if graph.run_id in self.run_graphs:
+                raise ValueError(f"run {graph.run_id} already has a run graph")
+            if not any(
+                template.template_record_id == graph.template_record_id
+                for template in self.workflow_templates.values()
+            ):
+                raise KeyError(graph.template_record_id)
+            self.run_graphs[graph.run_id] = graph
+            return graph
+
+    async def get_run_graph(self, run_id: str) -> RunGraph | None:
+        return self.run_graphs.get(run_id)
+
+    async def update_run_graph(
+        self,
+        run_graph_id: str,
+        *,
+        nodes: Sequence[RunNode] = (),
+        edges: Sequence[RunEdge] = (),
+        expected_revision: int,
+    ) -> RunGraph:
+        async with self._lock:
+            return self._update_memory_run_graph(
+                run_graph_id, nodes=nodes, edges=edges, expected_revision=expected_revision
+            )
+
+    def _update_memory_run_graph(
+        self,
+        run_graph_id: str,
+        *,
+        nodes: Sequence[RunNode],
+        edges: Sequence[RunEdge],
+        expected_revision: int,
+    ) -> RunGraph:
+        graph = next(
+            (item for item in self.run_graphs.values() if item.run_graph_id == run_graph_id),
+            None,
+        )
+        if graph is None:
+            raise KeyError(run_graph_id)
+        if graph.graph_revision != expected_revision:
+            raise ValueError("run graph revision conflict")
+        node_by_key = {node.key: node for node in graph.nodes}
+        for node in nodes:
+            current = node_by_key.get(node.key)
+            if current is None:
+                raise ValueError(f"run graph has no node {node.key}")
+            if node.node_id != current.node_id:
+                raise ValueError("run graph node ids are immutable")
+            node_by_key[node.key] = node
+        edge_by_key = {edge.key: edge for edge in graph.edges}
+        for edge in edges:
+            current_edge = edge_by_key.get(edge.key)
+            if current_edge is None:
+                raise ValueError(f"run graph has no edge {edge.key}")
+            if edge.edge_id != current_edge.edge_id:
+                raise ValueError("run graph edge ids are immutable")
+            edge_by_key[edge.key] = edge
+        updated = graph.model_copy(
+            update={
+                "nodes": [node_by_key[node.key] for node in graph.nodes],
+                "edges": [edge_by_key[edge.key] for edge in graph.edges],
+                "graph_revision": graph.graph_revision + 1,
+            }
+        )
+        self.run_graphs[graph.run_id] = updated
+        return updated
+
+    def _append_memory_checkpoint(self, checkpoint: Checkpoint) -> Checkpoint:
+        run = self.runs.get(checkpoint.run_id)
+        if run is None:
+            raise KeyError(checkpoint.run_id)
+        if run.state in TERMINAL_RUN_STATES:
+            raise ValueError("terminal run cannot accept new checkpoints")
+        stored_list = self.checkpoints.setdefault(checkpoint.run_id, [])
+        existing = next(
+            (item for item in stored_list if item.sequence == checkpoint.sequence), None
+        )
+        if existing is not None:
+            identity = checkpoint.model_dump(
+                mode="json", exclude=_CHECKPOINT_IDENTITY_EXCLUDED
+            )
+            if existing.model_dump(mode="json", exclude=_CHECKPOINT_IDENTITY_EXCLUDED) != identity:
+                raise ValueError(
+                    f"checkpoint at sequence {checkpoint.sequence} is immutable evidence"
+                )
+            return existing
+        stored_list.append(checkpoint)
+        return checkpoint
+
+    async def append_checkpoint(
+        self, checkpoint: Checkpoint, events: Sequence[AgentEvent] = ()
+    ) -> Checkpoint:
+        async with self._lock:
+            run = self.runs.get(checkpoint.run_id)
+            if run is None:
+                raise KeyError(checkpoint.run_id)
+            run_events = self.run_events.setdefault(checkpoint.run_id, [])
+            for event in events:
+                stored_event = event.model_copy(update={"sequence": len(run_events) + 1})
+                run_events.append(stored_event)
+            if events:
+                run = run.model_copy(update={"last_sequence": run_events[-1].sequence})
+                self.runs[checkpoint.run_id] = run
+            return self._append_memory_checkpoint(
+                checkpoint.model_copy(update={"sequence": run.last_sequence})
+            )
+
+    async def get_latest_checkpoint(self, run_id: str) -> Checkpoint | None:
+        stored = self.checkpoints.get(run_id, [])
+        if not stored:
+            return None
+        return max(stored, key=lambda checkpoint: checkpoint.sequence)
+
+    async def list_checkpoints(self, run_id: str) -> list[Checkpoint]:
+        return sorted(
+            self.checkpoints.get(run_id, []), key=lambda checkpoint: checkpoint.sequence
+        )
+
+    async def save_approval(self, approval: ApprovalRecord) -> ApprovalRecord:
+        async with self._lock:
+            if approval.run_id not in self.runs:
+                raise KeyError(approval.run_id)
+            request_key = (approval.run_id, approval.native_request_id)
+            existing_id = self.approval_by_request.get(request_key)
+            if existing_id is not None:
+                return self.approvals[existing_id]
+            self.approvals[approval.approval_id] = approval
+            self.approval_by_request[request_key] = approval.approval_id
+            return approval
+
+    async def get_approval(self, approval_id: str) -> ApprovalRecord | None:
+        return self.approvals.get(approval_id)
+
+    async def list_approvals(
+        self, run_id: str | None = None, status: ApprovalStatus | None = None
+    ) -> list[ApprovalRecord]:
+        records = [
+            approval
+            for approval in self.approvals.values()
+            if (run_id is None or approval.run_id == run_id)
+            and (status is None or approval.status is status)
+        ]
+        return sorted(records, key=lambda approval: (approval.created_at, approval.approval_id))
+
+    async def decide_approval(
+        self, approval_id: str, decision: ApprovalDecisionValue
+    ) -> ApprovalRecord:
+        async with self._lock:
+            current = self.approvals.get(approval_id)
+            if current is None:
+                raise KeyError(approval_id)
+            if current.status is not ApprovalStatus.PENDING:
+                raise ValueError(f"approval {approval_id} was already decided")
+            decided = current.model_copy(
+                update={
+                    "status": _APPROVAL_DECISION_STATUS[decision],
+                    "decision": decision,
+                    "decided_at": datetime.now(UTC),
+                }
+            )
+            self.approvals[approval_id] = decided
+            return decided
 
 
 class PostgresStore:
@@ -895,8 +1207,18 @@ class PostgresStore:
             )
             if run is None:
                 raise KeyError(execution.run_id)
-            if run.loop_execution_id is not None:
-                raise ValueError(f"run {execution.run_id} already has a loop execution")
+            existing = await session.scalar(
+                select(LoopExecutionRow).where(
+                    LoopExecutionRow.run_id == execution.run_id,
+                    LoopExecutionRow.node_key == execution.node_key,
+                    LoopExecutionRow.attempt == execution.attempt,
+                )
+            )
+            if existing is not None:
+                raise ValueError(
+                    f"run {execution.run_id} already has loop attempt "
+                    f"{execution.attempt} for node {execution.node_key}"
+                )
             policy = await session.get(AcceptancePolicyRow, execution.acceptance_policy_ref)
             if policy is None:
                 raise KeyError(execution.acceptance_policy_ref)
@@ -921,12 +1243,47 @@ class PostgresStore:
     async def get_loop_execution_for_run(self, run_id: str) -> LoopExecution | None:
         async with self.sessions() as session:
             row = await session.scalar(
-                select(LoopExecutionRow).where(LoopExecutionRow.run_id == run_id)
+                select(LoopExecutionRow)
+                .where(LoopExecutionRow.run_id == run_id)
+                .order_by(LoopExecutionRow.created_at.desc(), LoopExecutionRow.id.desc())
+                .limit(1)
             )
             if row is None:
                 return None
             policy = await session.get(AcceptancePolicyRow, row.acceptance_policy_id)
         return self._row_to_loop_execution(row, policy)
+
+    async def get_loop_execution_for_node(
+        self, run_id: str, node_key: str, attempt: int | None = None
+    ) -> LoopExecution | None:
+        query = select(LoopExecutionRow).where(
+            LoopExecutionRow.run_id == run_id, LoopExecutionRow.node_key == node_key
+        )
+        if attempt is not None:
+            query = query.where(LoopExecutionRow.attempt == attempt)
+        else:
+            query = query.order_by(LoopExecutionRow.attempt.desc()).limit(1)
+        async with self.sessions() as session:
+            row = await session.scalar(query)
+            if row is None:
+                return None
+            policy = await session.get(AcceptancePolicyRow, row.acceptance_policy_id)
+        return self._row_to_loop_execution(row, policy)
+
+    async def list_loop_executions_for_run(self, run_id: str) -> list[LoopExecution]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(LoopExecutionRow)
+                    .where(LoopExecutionRow.run_id == run_id)
+                    .order_by(LoopExecutionRow.created_at, LoopExecutionRow.id)
+                )
+            ).all()
+            executions = []
+            for row in rows:
+                policy = await session.get(AcceptancePolicyRow, row.acceptance_policy_id)
+                executions.append(self._row_to_loop_execution(row, policy))
+        return executions
 
     async def update_loop_execution(
         self,
@@ -968,6 +1325,7 @@ class PostgresStore:
         expected_revision: int | None = None,
         verifications: Sequence[VerificationResult] = (),
         events: Sequence[AgentEvent] = (),
+        checkpoint: Checkpoint | None = None,
     ) -> LoopExecution:
         async with self.sessions.begin() as session:
             run = await session.scalar(
@@ -1016,6 +1374,11 @@ class PostgresStore:
                 run.last_sequence += 1
                 stored_event = event.model_copy(update={"sequence": run.last_sequence})
                 session.add(self._event_to_row(stored_event))
+            if checkpoint is not None:
+                await self._insert_checkpoint_row(
+                    session,
+                    checkpoint.model_copy(update={"sequence": run.last_sequence}),
+                )
             self._update_loop_row(
                 row,
                 next_state,
@@ -1237,6 +1600,373 @@ class PostgresStore:
             ).all()
         return [self._row_to_event(row) for row in rows]
 
+    async def upsert_workflow_template(self, template: WorkflowTemplate) -> WorkflowTemplate:
+        async with self.sessions.begin() as session:
+            existing = await session.scalar(
+                select(WorkflowTemplateRow)
+                .where(
+                    WorkflowTemplateRow.template_id == template.template_id,
+                    WorkflowTemplateRow.version == template.version,
+                )
+                .with_for_update()
+            )
+            if existing is not None:
+                if existing.checksum != template.checksum:
+                    raise ValueError(
+                        f"workflow template {template.template_id} {template.version} "
+                        "content drifted from the stored checksum"
+                    )
+                return WorkflowTemplate.model_validate(existing.definition)
+            session.add(
+                WorkflowTemplateRow(
+                    id=template.template_record_id,
+                    template_id=template.template_id,
+                    version=template.version,
+                    mode=template.mode.value,
+                    status=template.status.value,
+                    checksum=template.checksum,
+                    definition=template.model_dump(mode="json"),
+                    created_at=template.created_at,
+                )
+            )
+        return template
+
+    async def get_workflow_template(
+        self, template_id: str, version: str | None = None
+    ) -> WorkflowTemplate | None:
+        query = select(WorkflowTemplateRow).where(
+            WorkflowTemplateRow.template_id == template_id
+        )
+        if version is not None:
+            query = query.where(WorkflowTemplateRow.version == version)
+        else:
+            query = query.where(
+                WorkflowTemplateRow.status == TemplateStatus.VALIDATED.value
+            )
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        if version is None and len(rows) > 1:
+            raise ValueError(
+                f"template {template_id} has multiple VALIDATED versions; pass one explicitly"
+            )
+        if not rows:
+            return None
+        return WorkflowTemplate.model_validate(rows[0].definition)
+
+    async def list_workflow_templates(
+        self, status: TemplateStatus | None = None
+    ) -> list[WorkflowTemplate]:
+        query = select(WorkflowTemplateRow).order_by(
+            WorkflowTemplateRow.template_id, WorkflowTemplateRow.version
+        )
+        if status is not None:
+            query = query.where(WorkflowTemplateRow.status == status.value)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [WorkflowTemplate.model_validate(row.definition) for row in rows]
+
+    async def create_run_graph(self, graph: RunGraph) -> RunGraph:
+        async with self.sessions.begin() as session:
+            run = await session.scalar(
+                select(RunRow).where(RunRow.id == graph.run_id).with_for_update()
+            )
+            if run is None:
+                raise KeyError(graph.run_id)
+            existing = await session.scalar(
+                select(RunGraphRow).where(RunGraphRow.run_id == graph.run_id)
+            )
+            if existing is not None:
+                raise ValueError(f"run {graph.run_id} already has a run graph")
+            template = await session.get(WorkflowTemplateRow, graph.template_record_id)
+            if template is None:
+                raise KeyError(graph.template_record_id)
+            session.add(
+                RunGraphRow(
+                    id=graph.run_graph_id,
+                    run_id=graph.run_id,
+                    task_id=graph.task_id,
+                    template_record_id=graph.template_record_id,
+                    template_id=graph.template_id,
+                    template_version=graph.template_version,
+                    template_checksum=graph.template_checksum,
+                    graph_revision=graph.graph_revision,
+                    instantiated_at=graph.instantiated_at,
+                )
+            )
+            await session.flush()
+            for position, node in enumerate(graph.nodes):
+                session.add(
+                    RunGraphNodeRow(
+                        id=node.node_id,
+                        run_graph_id=graph.run_graph_id,
+                        run_id=graph.run_id,
+                        key=node.key,
+                        kind=node.kind.value,
+                        status=node.status.value,
+                        position=position,
+                        node=node.model_dump(mode="json"),
+                    )
+                )
+            for position, edge in enumerate(graph.edges):
+                session.add(
+                    RunGraphEdgeRow(
+                        id=edge.edge_id,
+                        run_graph_id=graph.run_graph_id,
+                        key=edge.key,
+                        source=edge.source,
+                        target=edge.target,
+                        kind=edge.kind.value,
+                        traversal_count=edge.traversal_count,
+                        position=position,
+                        edge=edge.model_dump(mode="json"),
+                    )
+                )
+        return graph
+
+    async def get_run_graph(self, run_id: str) -> RunGraph | None:
+        async with self.sessions() as session:
+            row = await session.scalar(select(RunGraphRow).where(RunGraphRow.run_id == run_id))
+            if row is None:
+                return None
+            graph = await self._assemble_run_graph(session, row)
+        return graph
+
+    async def update_run_graph(
+        self,
+        run_graph_id: str,
+        *,
+        nodes: Sequence[RunNode] = (),
+        edges: Sequence[RunEdge] = (),
+        expected_revision: int,
+    ) -> RunGraph:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(RunGraphRow).where(RunGraphRow.id == run_graph_id).with_for_update()
+            )
+            if row is None:
+                raise KeyError(run_graph_id)
+            if row.graph_revision != expected_revision:
+                raise ValueError("run graph revision conflict")
+            for node in nodes:
+                node_row = await session.scalar(
+                    select(RunGraphNodeRow)
+                    .where(
+                        RunGraphNodeRow.run_graph_id == run_graph_id,
+                        RunGraphNodeRow.key == node.key,
+                    )
+                    .with_for_update()
+                )
+                if node_row is None:
+                    raise ValueError(f"run graph has no node {node.key}")
+                if node.node_id != node_row.id:
+                    raise ValueError("run graph node ids are immutable")
+                node_row.status = node.status.value
+                node_row.node = node.model_dump(mode="json")
+            for edge in edges:
+                edge_row = await session.scalar(
+                    select(RunGraphEdgeRow)
+                    .where(
+                        RunGraphEdgeRow.run_graph_id == run_graph_id,
+                        RunGraphEdgeRow.key == edge.key,
+                    )
+                    .with_for_update()
+                )
+                if edge_row is None:
+                    raise ValueError(f"run graph has no edge {edge.key}")
+                if edge.edge_id != edge_row.id:
+                    raise ValueError("run graph edge ids are immutable")
+                edge_row.traversal_count = edge.traversal_count
+                edge_row.edge = edge.model_dump(mode="json")
+            row.graph_revision += 1
+            await session.flush()
+            graph = await self._assemble_run_graph(session, row)
+        return graph
+
+    async def append_checkpoint(
+        self, checkpoint: Checkpoint, events: Sequence[AgentEvent] = ()
+    ) -> Checkpoint:
+        async with self.sessions.begin() as session:
+            run = await session.scalar(
+                select(RunRow).where(RunRow.id == checkpoint.run_id).with_for_update()
+            )
+            if run is None:
+                raise KeyError(checkpoint.run_id)
+            for event in events:
+                run.last_sequence += 1
+                stored_event = event.model_copy(update={"sequence": run.last_sequence})
+                session.add(self._event_to_row(stored_event))
+            stored = await self._insert_checkpoint_row(
+                session, checkpoint.model_copy(update={"sequence": run.last_sequence})
+            )
+        return stored
+
+    async def _insert_checkpoint_row(
+        self, session: AsyncSession, checkpoint: Checkpoint
+    ) -> Checkpoint:
+        run = await session.get(RunRow, checkpoint.run_id)
+        if run is not None and RunState(run.state) in TERMINAL_RUN_STATES:
+            raise ValueError("terminal run cannot accept new checkpoints")
+        existing = await session.scalar(
+            select(CheckpointRow).where(
+                CheckpointRow.run_id == checkpoint.run_id,
+                CheckpointRow.sequence == checkpoint.sequence,
+            )
+        )
+        if existing is not None:
+            stored = Checkpoint.model_validate(existing.state)
+            identity = checkpoint.model_dump(mode="json", exclude=_CHECKPOINT_IDENTITY_EXCLUDED)
+            if stored.model_dump(mode="json", exclude=_CHECKPOINT_IDENTITY_EXCLUDED) != identity:
+                raise ValueError(
+                    f"checkpoint at sequence {checkpoint.sequence} is immutable evidence"
+                )
+            return stored
+        session.add(
+            CheckpointRow(
+                id=checkpoint.checkpoint_id,
+                run_id=checkpoint.run_id,
+                sequence=checkpoint.sequence,
+                state=checkpoint.model_dump(mode="json"),
+                created_at=checkpoint.created_at,
+            )
+        )
+        return checkpoint
+
+    async def get_latest_checkpoint(self, run_id: str) -> Checkpoint | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(CheckpointRow)
+                .where(CheckpointRow.run_id == run_id)
+                .order_by(CheckpointRow.sequence.desc())
+                .limit(1)
+            )
+        return Checkpoint.model_validate(row.state) if row else None
+
+    async def list_checkpoints(self, run_id: str) -> list[Checkpoint]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(CheckpointRow)
+                    .where(CheckpointRow.run_id == run_id)
+                    .order_by(CheckpointRow.sequence)
+                )
+            ).all()
+        return [Checkpoint.model_validate(row.state) for row in rows]
+
+    async def save_approval(self, approval: ApprovalRecord) -> ApprovalRecord:
+        async with self.sessions.begin() as session:
+            run = await session.get(RunRow, approval.run_id)
+            if run is None:
+                raise KeyError(approval.run_id)
+            existing = await session.scalar(
+                select(ApprovalRow).where(
+                    ApprovalRow.run_id == approval.run_id,
+                    ApprovalRow.native_request_id == approval.native_request_id,
+                )
+            )
+            if existing is not None:
+                return self._row_to_approval(existing)
+            session.add(self._approval_to_row(approval))
+        return approval
+
+    async def get_approval(self, approval_id: str) -> ApprovalRecord | None:
+        async with self.sessions() as session:
+            row = await session.get(ApprovalRow, approval_id)
+        return self._row_to_approval(row) if row else None
+
+    async def list_approvals(
+        self, run_id: str | None = None, status: ApprovalStatus | None = None
+    ) -> list[ApprovalRecord]:
+        query = select(ApprovalRow).order_by(ApprovalRow.created_at, ApprovalRow.id)
+        if run_id is not None:
+            query = query.where(ApprovalRow.run_id == run_id)
+        if status is not None:
+            query = query.where(ApprovalRow.status == status.value)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [self._row_to_approval(row) for row in rows]
+
+    async def decide_approval(
+        self, approval_id: str, decision: ApprovalDecisionValue
+    ) -> ApprovalRecord:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(ApprovalRow).where(ApprovalRow.id == approval_id).with_for_update()
+            )
+            if row is None:
+                raise KeyError(approval_id)
+            if ApprovalStatus(row.status) is not ApprovalStatus.PENDING:
+                raise ValueError(f"approval {approval_id} was already decided")
+            row.status = _APPROVAL_DECISION_STATUS[decision].value
+            row.decision = decision.value
+            row.decided_at = datetime.now(UTC)
+            await session.flush()
+            decided = self._row_to_approval(row)
+        return decided
+
+    @staticmethod
+    async def _assemble_run_graph(session: AsyncSession, row: RunGraphRow) -> RunGraph:
+        node_rows = (
+            await session.scalars(
+                select(RunGraphNodeRow)
+                .where(RunGraphNodeRow.run_graph_id == row.id)
+                .order_by(RunGraphNodeRow.position)
+            )
+        ).all()
+        edge_rows = (
+            await session.scalars(
+                select(RunGraphEdgeRow)
+                .where(RunGraphEdgeRow.run_graph_id == row.id)
+                .order_by(RunGraphEdgeRow.position)
+            )
+        ).all()
+        return RunGraph(
+            run_graph_id=row.id,
+            run_id=row.run_id,
+            task_id=row.task_id,
+            template_record_id=row.template_record_id,
+            template_id=row.template_id,
+            template_version=row.template_version,
+            template_checksum=row.template_checksum,
+            nodes=[RunNode.model_validate(item.node) for item in node_rows],
+            edges=[RunEdge.model_validate(item.edge) for item in edge_rows],
+            graph_revision=row.graph_revision,
+            instantiated_at=row.instantiated_at,
+        )
+
+    @staticmethod
+    def _approval_to_row(approval: ApprovalRecord) -> ApprovalRow:
+        # The contract field "payload" maps onto the historical column
+        # "request_payload"; callers redact payloads before persistence.
+        return ApprovalRow(
+            id=approval.approval_id,
+            run_id=approval.run_id,
+            node_id=approval.node_id,
+            native_request_id=approval.native_request_id,
+            method=approval.method,
+            summary=approval.summary,
+            status=approval.status.value,
+            request_payload=approval.payload,
+            decision=approval.decision.value if approval.decision else None,
+            created_at=approval.created_at,
+            decided_at=approval.decided_at,
+        )
+
+    @staticmethod
+    def _row_to_approval(row: ApprovalRow) -> ApprovalRecord:
+        return ApprovalRecord(
+            approval_id=row.id,
+            run_id=row.run_id,
+            node_id=row.node_id,
+            native_request_id=row.native_request_id,
+            method=row.method,
+            summary=row.summary,
+            payload=row.request_payload,
+            status=ApprovalStatus(row.status),
+            decision=ApprovalDecisionValue(row.decision) if row.decision else None,
+            created_at=row.created_at,
+            decided_at=row.decided_at,
+        )
+
     @staticmethod
     def _task_to_row(task: Task) -> TaskRow:
         return TaskRow(
@@ -1358,6 +2088,8 @@ class PostgresStore:
         return LoopExecutionRow(
             id=execution.loop_execution_id,
             run_id=execution.run_id,
+            node_key=execution.node_key,
+            attempt=execution.attempt,
             acceptance_policy_id=execution.acceptance_policy_ref,
             spec=execution.spec.model_dump(mode="json"),
             state=execution.state.model_dump(mode="json"),
@@ -1377,6 +2109,8 @@ class PostgresStore:
         return LoopExecution(
             loop_execution_id=row.id,
             run_id=row.run_id,
+            node_key=row.node_key,
+            attempt=row.attempt,
             spec=row.spec,
             state=row.state,
             acceptance_policy_ref=row.acceptance_policy_id,

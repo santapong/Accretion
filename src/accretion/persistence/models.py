@@ -126,6 +126,7 @@ class RunRow(Base):
     workflow_template_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
     acceptance_policy_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     loop_execution_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    budget_spent: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     error: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
@@ -146,9 +147,9 @@ class LoopExecutionRow(Base):
     __tablename__ = "loop_executions"
 
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
-    run_id: Mapped[str] = mapped_column(
-        ForeignKey("runs.id", ondelete="CASCADE"), unique=True
-    )
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    node_key: Mapped[str] = mapped_column(String(64), default="evaluate")
+    attempt: Mapped[int] = mapped_column(Integer, default=1)
     acceptance_policy_id: Mapped[str] = mapped_column(
         ForeignKey("acceptance_policies.id", ondelete="RESTRICT")
     )
@@ -161,7 +162,12 @@ class LoopExecutionRow(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    __table_args__ = (Index("ix_loop_executions_status", "status"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id", "node_key", "attempt", name="uq_loop_executions_run_node_attempt"
+        ),
+        Index("ix_loop_executions_status", "status"),
+    )
 
 
 class LoopIterationRow(Base):
@@ -247,7 +253,7 @@ class AgentEventRow(Base):
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     correlation_id: Mapped[str] = mapped_column(String(128))
     causation_id: Mapped[str | None] = mapped_column(String(128), nullable=True)
-    node_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    node_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     adapter_version: Mapped[str] = mapped_column(String(64))
 
@@ -266,6 +272,11 @@ class CheckpointRow(Base):
     state: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
+    __table_args__ = (
+        UniqueConstraint("run_id", "sequence", name="uq_checkpoints_run_sequence"),
+        Index("ix_checkpoints_run_sequence", "run_id", "sequence"),
+    )
+
 
 class ArtifactRow(Base):
     __tablename__ = "artifacts"
@@ -283,13 +294,19 @@ class ApprovalRow(Base):
 
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
     run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    node_id: Mapped[str | None] = mapped_column(String(96), nullable=True)
     native_request_id: Mapped[str] = mapped_column(Text)
     method: Mapped[str] = mapped_column(Text)
+    summary: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(String(32), default="PENDING")
     request_payload: Mapped[dict[str, Any]] = mapped_column(JSON)
     decision: Mapped[str | None] = mapped_column(String(32), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("run_id", "native_request_id", name="uq_approvals_run_native"),
+    )
 
 
 class SideEffectOperationRow(Base):
@@ -304,3 +321,73 @@ class SideEffectOperationRow(Base):
     result_payload: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class WorkflowTemplateRow(Base):
+    __tablename__ = "workflow_templates"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    template_id: Mapped[str] = mapped_column(String(64))
+    version: Mapped[str] = mapped_column(String(32))
+    mode: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(16))
+    checksum: Mapped[str] = mapped_column(String(64))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("template_id", "version", name="uq_workflow_templates_id_version"),
+        Index("ix_workflow_templates_id_status", "template_id", "status"),
+    )
+
+
+class RunGraphRow(Base):
+    __tablename__ = "run_graphs"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"), unique=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+    template_record_id: Mapped[str] = mapped_column(
+        ForeignKey("workflow_templates.id", ondelete="RESTRICT")
+    )
+    template_id: Mapped[str] = mapped_column(String(64))
+    template_version: Mapped[str] = mapped_column(String(32))
+    template_checksum: Mapped[str] = mapped_column(String(64))
+    graph_revision: Mapped[int] = mapped_column(Integer, default=1)
+    instantiated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class RunGraphNodeRow(Base):
+    __tablename__ = "run_graph_nodes"
+
+    id: Mapped[str] = mapped_column(String(80), primary_key=True)
+    run_graph_id: Mapped[str] = mapped_column(ForeignKey("run_graphs.id", ondelete="CASCADE"))
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    key: Mapped[str] = mapped_column(String(32))
+    kind: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(32))
+    position: Mapped[int] = mapped_column(Integer)
+    node: Mapped[dict[str, Any]] = mapped_column(JSON)
+
+    __table_args__ = (
+        UniqueConstraint("run_graph_id", "key", name="uq_run_graph_nodes_graph_key"),
+        Index("ix_run_graph_nodes_run", "run_id"),
+    )
+
+
+class RunGraphEdgeRow(Base):
+    __tablename__ = "run_graph_edges"
+
+    id: Mapped[str] = mapped_column(String(96), primary_key=True)
+    run_graph_id: Mapped[str] = mapped_column(ForeignKey("run_graphs.id", ondelete="CASCADE"))
+    key: Mapped[str] = mapped_column(String(64))
+    source: Mapped[str] = mapped_column(String(80))
+    target: Mapped[str] = mapped_column(String(80))
+    kind: Mapped[str] = mapped_column(String(32))
+    traversal_count: Mapped[int] = mapped_column(Integer, default=0)
+    position: Mapped[int] = mapped_column(Integer)
+    edge: Mapped[dict[str, Any]] = mapped_column(JSON)
+
+    __table_args__ = (
+        UniqueConstraint("run_graph_id", "key", name="uq_run_graph_edges_graph_key"),
+    )

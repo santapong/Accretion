@@ -22,6 +22,8 @@ _PREFIXES = {
     "override": "ovr",
     "loop": "lop",
     "loop_execution": "lpx",
+    "workflow_template": "wft",
+    "run_graph": "rgr",
     "iteration": "itr",
     "verification": "ver",
     "acceptance_policy": "acp",
