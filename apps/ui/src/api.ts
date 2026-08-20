@@ -1,6 +1,8 @@
 import type {
   Project,
   ProjectCreate,
+  GraphProjection,
+  LoopExecution,
   Run,
   RunCreate,
   RuntimeHealth,
@@ -9,6 +11,7 @@ import type {
   Task,
   TaskCreate,
   TaskPlanning,
+  VerificationResult,
 } from "./types";
 
 const API_ROOT = import.meta.env.VITE_API_URL ?? "";
@@ -43,5 +46,11 @@ export const api = {
     postJson<StrategyOverrideResult>(`/api/v1/tasks/${taskId}/strategy-overrides`, payload),
   startRun: (taskId: string, payload: RunCreate) =>
     postJson<Run>(`/api/v1/tasks/${taskId}/runs`, payload),
+  loop: (runId: string) => getJson<LoopExecution>(`/api/v1/runs/${runId}/loop`),
+  graph: (runId: string) => getJson<GraphProjection>(`/api/v1/runs/${runId}/graph`),
+  verifications: (runId: string) =>
+    getJson<VerificationResult[]>(`/api/v1/runs/${runId}/verifications`),
+  verification: (verificationId: string) =>
+    getJson<VerificationResult>(`/api/v1/verifications/${verificationId}`),
   eventUrl: (runId: string) => `${API_ROOT}/api/v1/runs/${runId}/events`,
 };

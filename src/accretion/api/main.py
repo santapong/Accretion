@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from typing import cast
 from uuid import uuid4
 
-from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi import FastAPI, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
@@ -25,6 +25,10 @@ from accretion.contracts import (
     TERMINAL_RUN_STATES,
     AgentRuntime,
     ArtifactRef,
+    EventType,
+    ExecutionMode,
+    GraphProjection,
+    LoopExecution,
     Project,
     Provider,
     Run,
@@ -32,13 +36,30 @@ from accretion.contracts import (
     StrategyOverrideResult,
     Task,
     TaskPlanning,
+    VerificationResult,
 )
 from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore
 from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime
 from accretion.services.run_manager import MilestoneDependencyError, RunManager
+from accretion.verifiers.registry import VerifierUnavailableError
 from accretion.workspace import WorktreeManager
+
+SSE_TERMINAL_EVENTS = {
+    EventType.RUN_COMPLETED,
+    EventType.RUN_FAILED,
+    EventType.RUN_CANCELLED,
+}
+
+
+class ExecutionModeMismatchError(RuntimeError):
+    def __init__(self, run: Run) -> None:
+        mode = run.execution_mode.value if run.execution_mode is not None else "UNKNOWN"
+        template = run.workflow_template_id or "unknown-template"
+        super().__init__(
+            f"Run {run.run_id} uses {mode}/{template}; this endpoint requires LOOP/feedback-loop-v1"
+        )
 
 
 @asynccontextmanager
@@ -113,6 +134,20 @@ async def milestone_dependency_handler(
     request: Request, exc: MilestoneDependencyError
 ) -> JSONResponse:
     return _error(409, "MILESTONE_DEPENDENCY", str(exc))
+
+
+@app.exception_handler(VerifierUnavailableError)
+async def verifier_unavailable_handler(
+    request: Request, exc: VerifierUnavailableError
+) -> JSONResponse:
+    return _error(409, "VERIFIER_UNAVAILABLE", str(exc))
+
+
+@app.exception_handler(ExecutionModeMismatchError)
+async def execution_mode_mismatch_handler(
+    request: Request, exc: ExecutionModeMismatchError
+) -> JSONResponse:
+    return _error(409, "EXECUTION_MODE_MISMATCH", str(exc))
 
 
 def _error(status: int, code: str, message: str, retryable: bool = False) -> JSONResponse:
@@ -211,6 +246,39 @@ async def list_artifacts(run_id: str, request: Request) -> list[ArtifactRef]:
     return await manager(request).store.list_artifacts(run_id)
 
 
+@app.get("/api/v1/runs/{run_id}/loop", response_model=LoopExecution)
+async def get_loop_execution(run_id: str, request: Request) -> LoopExecution:
+    await _require_loop_run(run_id, request)
+    return await manager(request).get_loop(run_id)
+
+
+@app.get("/api/v1/runs/{run_id}/graph", response_model=GraphProjection)
+async def get_run_graph(run_id: str, request: Request) -> GraphProjection:
+    await _require_loop_run(run_id, request)
+    return await manager(request).get_graph(run_id)
+
+
+@app.get(
+    "/api/v1/runs/{run_id}/verifications",
+    response_model=list[VerificationResult],
+)
+async def list_verifications(run_id: str, request: Request) -> list[VerificationResult]:
+    if await manager(request).store.get_run(run_id) is None:
+        raise KeyError(run_id)
+    return await manager(request).store.list_verifications(run_id)
+
+
+@app.get(
+    "/api/v1/verifications/{verification_id}",
+    response_model=VerificationResult,
+)
+async def get_verification(verification_id: str, request: Request) -> VerificationResult:
+    result = await manager(request).store.get_verification(verification_id)
+    if result is None:
+        raise KeyError(verification_id)
+    return result
+
+
 @app.post("/api/v1/runs/{run_id}/pause", response_model=Run)
 async def pause_run(run_id: str, request: Request) -> Run:
     return await manager(request).pause(run_id)
@@ -253,22 +321,45 @@ async def run_events(
     try:
         after = int(last_event_id or 0)
     except ValueError as exc:
-        raise HTTPException(status_code=400, detail="Last-Event-ID must be an integer") from exc
+        raise ValueError("Last-Event-ID must be an integer") from exc
 
     async def stream() -> AsyncIterator[str]:
         cursor = after
+        terminal_event_seen = any(
+            event.sequence <= cursor and event.normalized_type in SSE_TERMINAL_EVENTS
+            for event in await manager(request).store.list_events(run_id)
+        )
         while not await request.is_disconnected():
             events = await manager(request).store.list_events(run_id, cursor)
             for event in events:
                 cursor = event.sequence
+                terminal_event_seen = (
+                    terminal_event_seen or event.normalized_type in SSE_TERMINAL_EVENTS
+                )
                 data = json.dumps(event.model_dump(mode="json"), separators=(",", ":"))
                 yield f"id: {cursor}\nevent: agent_event\ndata: {data}\n\n"
             current = await manager(request).store.get_run(run_id)
             if current is None or (
-                current.state in TERMINAL_RUN_STATES and cursor >= current.last_sequence
+                current.state in TERMINAL_RUN_STATES
+                and cursor >= current.last_sequence
+                and terminal_event_seen
             ):
                 break
+            if current.state in TERMINAL_RUN_STATES:
+                # Defensively tolerate a store or recovery path that exposes terminal state
+                # just before its durable terminal event becomes visible.
+                await asyncio.sleep(0.01)
+                continue
             yield ": keepalive\n\n"
             await manager(request).wait_for_events(run_id, cursor)
 
     return StreamingResponse(stream(), media_type="text/event-stream")
+
+
+async def _require_loop_run(run_id: str, request: Request) -> Run:
+    run = await manager(request).store.get_run(run_id)
+    if run is None:
+        raise KeyError(run_id)
+    if run.execution_mode is not ExecutionMode.LOOP:
+        raise ExecutionModeMismatchError(run)
+    return run

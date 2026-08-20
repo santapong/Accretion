@@ -4,11 +4,63 @@ import asyncio
 import re
 import shutil
 from collections.abc import Sequence
+from datetime import UTC, datetime
 from typing import Any
 
-from accretion.contracts import AgentEvent, EventType, Provider, RuntimeStatus, UsagePressure
+from accretion.contracts import (
+    AgentEvent,
+    EventType,
+    Provider,
+    RuntimeExecutionRequest,
+    RuntimeStatus,
+    TaskEnvelope,
+    UsagePressure,
+)
 from accretion.ids import new_id
 from accretion.redaction import redact
+
+RuntimeSubmission = TaskEnvelope | RuntimeExecutionRequest
+
+
+def submission_task(submission: RuntimeSubmission) -> TaskEnvelope:
+    """Return the task carried by either the legacy or P2 runtime request."""
+
+    if isinstance(submission, RuntimeExecutionRequest):
+        return submission.task
+    return submission
+
+
+def submission_call_id(submission: RuntimeSubmission) -> str:
+    """Give every adapter invocation its own stable event-stream identity."""
+
+    if isinstance(submission, RuntimeExecutionRequest):
+        return submission.runtime_call_id
+    return new_id("runtime_call")
+
+
+def submission_timeout_seconds(submission: RuntimeSubmission) -> float:
+    """Respect the P2 run deadline instead of resetting wall time per iteration."""
+
+    task_timeout = float(submission_task(submission).budgets.wall_time_seconds)
+    if not isinstance(submission, RuntimeExecutionRequest) or submission.deadline is None:
+        return task_timeout
+    deadline = submission.deadline
+    if deadline.tzinfo is None:
+        deadline = deadline.replace(tzinfo=UTC)
+    remaining = (deadline - datetime.now(UTC)).total_seconds()
+    return max(0.0, min(task_timeout, remaining))
+
+
+def submission_metadata(submission: RuntimeSubmission) -> dict[str, Any]:
+    """Return structured, provider-neutral iteration context for prompts and events."""
+
+    if not isinstance(submission, RuntimeExecutionRequest):
+        return {}
+    return {
+        "runtime_call_id": submission.runtime_call_id,
+        "iteration_number": submission.iteration_number,
+        "directive": submission.directive.model_dump(mode="json"),
+    }
 
 
 async def command_result(command: Sequence[str], timeout_seconds: float = 5.0) -> tuple[int, str]:

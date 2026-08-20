@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="780" viewBox="0 0 1600 780" role="img" aria-labelledby="title description">
   <title id="title">Accretion system architecture</title>
-  <desc id="description">An operator uses the React interface, which sends tasks to the FastAPI control plane for deterministic planning and managed execution. Runtime adapters connect to Codex, Claude, or a deterministic fake runtime. PostgreSQL preserves state and events, while disposable Git worktrees isolate changes. Resumable server-sent events return a live trace to the interface.</desc>
+  <desc id="description">An operator uses the React interface, which sends tasks to the FastAPI control plane for deterministic planning, bounded feedback execution, and independent verification. Runtime adapters connect to Codex, Claude, or a deterministic fake runtime. PostgreSQL preserves state and events, while disposable Git worktrees isolate changes. Resumable server-sent events return a live trace to the interface.</desc>
 
   <defs>
     <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
@@ -54,7 +54,7 @@
 
   <text x="64" y="67" class="eyebrow">SYSTEM ARCHITECTURE</text>
   <text x="64" y="116" class="heading">From task intent to an observable run</text>
-  <text x="64" y="151" class="subtitle">One durable control plane normalizes planning, execution, isolation, and live telemetry.</text>
+  <text x="64" y="151" class="subtitle">One durable control plane normalizes planning, bounded execution, verification, isolation, and live telemetry.</text>
 
   <!-- Primary flow -->
   <line x1="345" y1="330" x2="405" y2="330" stroke="#75db91" stroke-width="4" marker-end="url(#arrowGreen)"/>
@@ -95,11 +95,11 @@
     <text x="480" y="416" class="card-copy">Profiler + selector</text>
 
     <rect x="706" y="269" width="247" height="188" rx="18" fill="#0b1810" stroke="#326b46"/>
-    <text x="732" y="304" class="small-title">Execute safely</text>
+    <text x="732" y="304" class="small-title">Execute + verify</text>
     <circle cx="735" cy="336" r="4" fill="#75db91"/>
-    <text x="749" y="342" class="card-copy">Run manager</text>
+    <text x="749" y="342" class="card-copy">Bounded feedback loops</text>
     <circle cx="735" cy="373" r="4" fill="#75db91"/>
-    <text x="749" y="379" class="card-copy">Capability gates</text>
+    <text x="749" y="379" class="card-copy">Independent verifiers</text>
     <circle cx="735" cy="410" r="4" fill="#75db91"/>
     <text x="749" y="416" class="card-copy">Event normalization</text>
   </g>
@@ -156,5 +156,5 @@
   <rect x="287" y="701" width="190" height="29" rx="14.5" fill="#12251a" stroke="#2d6d44"/>
   <text x="382" y="721" class="flow-label">LIVE TRACE</text>
 
-  <text x="800" y="758" class="small-copy" text-anchor="middle">Deterministic planning  •  Isolated execution  •  Durable evidence  •  Observable outcomes</text>
+  <text x="800" y="758" class="small-copy" text-anchor="middle">Deterministic planning  •  Bounded feedback  •  Independent verification  •  Durable evidence</text>
 </svg>

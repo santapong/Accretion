@@ -121,11 +121,91 @@ class RunRow(Base):
     revision: Mapped[int] = mapped_column(Integer, default=0)
     session_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     workspace_lease_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    strategy_decision_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    execution_mode: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    workflow_template_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    acceptance_policy_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    loop_execution_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     error: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (Index("ix_runs_state", "state"),)
+
+
+class AcceptancePolicyRow(Base):
+    __tablename__ = "acceptance_policies"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    version: Mapped[str] = mapped_column(String(64))
+    policy: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class LoopExecutionRow(Base):
+    __tablename__ = "loop_executions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("runs.id", ondelete="CASCADE"), unique=True
+    )
+    acceptance_policy_id: Mapped[str] = mapped_column(
+        ForeignKey("acceptance_policies.id", ondelete="RESTRICT")
+    )
+    spec: Mapped[dict[str, Any]] = mapped_column(JSON)
+    state: Mapped[dict[str, Any]] = mapped_column(JSON)
+    status: Mapped[str] = mapped_column(String(32))
+    stop_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    revision: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (Index("ix_loop_executions_status", "status"),)
+
+
+class LoopIterationRow(Base):
+    __tablename__ = "loop_iterations"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    loop_execution_id: Mapped[str] = mapped_column(
+        ForeignKey("loop_executions.id", ondelete="CASCADE")
+    )
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    number: Mapped[int] = mapped_column(Integer)
+    iteration: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "loop_execution_id", "number", name="uq_loop_iterations_execution_number"
+        ),
+        Index("ix_loop_iterations_execution_number", "loop_execution_id", "number"),
+    )
+
+
+class VerificationRow(Base):
+    __tablename__ = "verifications"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    loop_execution_id: Mapped[str | None] = mapped_column(
+        ForeignKey("loop_executions.id", ondelete="CASCADE"), nullable=True
+    )
+    iteration_id: Mapped[str | None] = mapped_column(
+        ForeignKey("loop_iterations.id", ondelete="CASCADE"), nullable=True
+    )
+    verifier_id: Mapped[str] = mapped_column(String(255))
+    verifier_version: Mapped[str] = mapped_column(String(64))
+    target_ref: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(32))
+    result: Mapped[dict[str, Any]] = mapped_column(JSON)
+    executed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_verifications_run_executed", "run_id", "executed_at"),
+        Index("ix_verifications_iteration", "iteration_id"),
+    )
 
 
 class RuntimeSessionRow(Base):

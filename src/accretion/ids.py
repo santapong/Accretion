@@ -20,6 +20,12 @@ _PREFIXES = {
     "profile": "prf",
     "decision": "dec",
     "override": "ovr",
+    "loop": "lop",
+    "loop_execution": "lpx",
+    "iteration": "itr",
+    "verification": "ver",
+    "acceptance_policy": "acp",
+    "runtime_call": "rtc",
 }
 
 

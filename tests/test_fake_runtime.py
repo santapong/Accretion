@@ -17,8 +17,8 @@ async def test_fake_runtime_emits_normalized_lifecycle(tmp_path: Path) -> None:
     run = await runtime.submit(session, task)
     events = [event async for event in runtime.events(run)]
     assert [event.normalized_type for event in events] == [
-        EventType.RUN_STARTED,
+        EventType.RUNTIME_CALL_STARTED,
         EventType.RUN_PROGRESS,
-        EventType.RUN_COMPLETED,
+        EventType.RUNTIME_CALL_COMPLETED,
     ]
     assert all(event.run_id == run_id for event in events)

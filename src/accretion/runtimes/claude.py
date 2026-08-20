@@ -4,6 +4,7 @@ import asyncio
 import json
 import uuid
 from collections.abc import AsyncIterator
+from typing import Any
 
 from accretion.contracts import (
     AgentEvent,
@@ -15,29 +16,49 @@ from accretion.contracts import (
     EventType,
     Provider,
     RunRef,
+    RuntimeExecutionRequest,
     RuntimeHealth,
     RuntimeStatus,
     SessionConfig,
     SessionRef,
-    TaskEnvelope,
     UsagePressure,
     UsageSnapshot,
 )
 from accretion.ids import new_id
 from accretion.redaction import redact, redact_text
-from accretion.runtimes.common import classify_runtime_health, command_result, make_event
+from accretion.runtimes.common import (
+    RuntimeSubmission,
+    classify_runtime_health,
+    command_result,
+    make_event,
+    submission_call_id,
+    submission_metadata,
+    submission_task,
+    submission_timeout_seconds,
+)
+
+_CALL_TERMINALS = {
+    EventType.RUNTIME_CALL_COMPLETED,
+    EventType.RUNTIME_CALL_FAILED,
+    EventType.RUNTIME_CALL_CANCELLED,
+}
 
 
 class ClaudeRuntime:
-    adapter_version = "claude-stream-json-p0-v1"
+    adapter_version = "claude-stream-json-p2-v1"
 
     def __init__(self, command: str = "claude") -> None:
         self.command = command
         self.sessions: dict[str, SessionRef] = {}
+        self.run_refs: dict[str, RunRef] = {}
         self.queues: dict[str, asyncio.Queue[AgentEvent | None]] = {}
         self.processes: dict[str, asyncio.subprocess.Process] = {}
         self.tasks: dict[str, asyncio.Task[None]] = {}
-        self.resuming_sessions: set[str] = set()
+        self.call_sessions: dict[str, str] = {}
+        self.session_active_calls: dict[str, str] = {}
+        self.started_sessions: set[str] = set()
+        self.interrupted_calls: set[str] = set()
+        self.terminal_calls: set[str] = set()
 
     async def health(self) -> RuntimeHealth:
         version_code, version_output = await command_result([self.command, "--version"])
@@ -65,9 +86,15 @@ class ClaudeRuntime:
             status=status,
             auth_mode=AuthMode.SUBSCRIPTION,
             runtime_version=version,
-            capabilities=["stream-json", "session-resume", "tool-policy", "interrupt"],
+            capabilities=[
+                "stream-json",
+                "session-resume",
+                "repeatable-calls",
+                "tool-policy",
+                "interrupt",
+            ],
             active_sessions=len(self.sessions),
-            active_runs=sum(process.returncode is None for process in self.processes.values()),
+            active_runs=sum(not task.done() for task in self.tasks.values()),
             observed_usage_pressure=pressure,
             last_error=(
                 ErrorSummary(
@@ -89,48 +116,75 @@ class ClaudeRuntime:
             workspace=config.workspace,
         )
         if config.resume_native_session_id:
-            self.resuming_sessions.add(session.session_id)
+            self.started_sessions.add(session.session_id)
         self.sessions[session.session_id] = session
         return session
 
-    async def submit(self, session: SessionRef, task: TaskEnvelope) -> RunRef:
-        run_id = session.run_id
+    async def submit(self, session: SessionRef, request: RuntimeSubmission) -> RunRef:
+        session = self._canonical_session(session)
+        if isinstance(request, RuntimeExecutionRequest) and request.run_id != session.run_id:
+            raise ValueError("runtime request run_id does not match the session")
+        active_call = self.session_active_calls.get(session.session_id)
+        if active_call and active_call not in self.terminal_calls:
+            raise RuntimeError("the Claude session already has an active provider call")
+
+        call_id = submission_call_id(request)
+        if call_id in self.queues:
+            raise ValueError(f"runtime call already exists: {call_id}")
         run = RunRef(
-            run_id=run_id,
+            run_id=session.run_id,
             session_id=session.session_id,
             native_run_id=session.native_session_id,
+            runtime_call_id=call_id,
         )
-        self.queues[run_id] = asyncio.Queue()
-        self.tasks[run_id] = asyncio.create_task(self._execute(run, session, task))
+        self.run_refs[call_id] = run
+        self.queues[call_id] = asyncio.Queue()
+        self.call_sessions[call_id] = session.session_id
+        self.session_active_calls[session.session_id] = call_id
+        self.tasks[call_id] = asyncio.create_task(self._execute(call_id, run, session, request))
         return run
 
-    async def _execute(self, run: RunRef, session: SessionRef, task: TaskEnvelope) -> None:
+    async def _execute(
+        self,
+        call_id: str,
+        run: RunRef,
+        session: SessionRef,
+        request: RuntimeSubmission,
+    ) -> None:
         command = [
             self.command,
             "-p",
-            self._prompt(task),
+            self._prompt(request),
             "--output-format",
             "stream-json",
             "--verbose",
             "--permission-mode",
             "dontAsk",
         ]
-        if session.session_id in self.resuming_sessions and session.native_session_id:
+        if session.session_id in self.started_sessions and session.native_session_id:
             command.extend(["--resume", session.native_session_id])
         elif session.native_session_id:
             command.extend(["--session-id", session.native_session_id])
+
         process: asyncio.subprocess.Process | None = None
-        terminal_seen = False
+        stderr_task: asyncio.Task[bytes] | None = None
+        terminal_message: tuple[str, EventType, dict[str, Any]] | None = None
+        timeout_seconds = submission_timeout_seconds(request)
+        metadata = submission_metadata(request)
         try:
-            async with asyncio.timeout(task.budgets.wall_time_seconds):
+            async with asyncio.timeout(timeout_seconds):
                 process = await asyncio.create_subprocess_exec(
                     *command,
                     cwd=session.workspace,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                 )
-                self.processes[run.run_id] = process
-                assert process.stdout
+                self.processes[call_id] = process
+                self.started_sessions.add(session.session_id)
+                if process.stderr:
+                    stderr_task = asyncio.create_task(process.stderr.read())
+                if not process.stdout:
+                    raise RuntimeError("Claude process did not expose stdout")
                 while line := await process.stdout.readline():
                     try:
                         message = json.loads(line)
@@ -140,133 +194,257 @@ class ClaudeRuntime:
                         continue
                     native_type = str(message.get("type", "unknown"))
                     normalized = self._normalize(message)
-                    if terminal_seen and normalized in {
-                        EventType.RUN_COMPLETED,
-                        EventType.RUN_FAILED,
-                        EventType.RUN_CANCELLED,
-                    }:
-                        continue
-                    terminal_seen = terminal_seen or normalized in {
-                        EventType.RUN_COMPLETED,
-                        EventType.RUN_FAILED,
-                        EventType.RUN_CANCELLED,
+                    payload = {
+                        "runtime_call_id": call_id,
+                        "provider_extension": redact(message),
+                        **metadata,
                     }
-                    await self.queues[run.run_id].put(
-                        make_event(
-                            run_id=run.run_id,
-                            session_id=session.session_id,
-                            provider=Provider.CLAUDE,
+                    if normalized in _CALL_TERMINALS:
+                        if terminal_message is None:
+                            terminal_message = (native_type, normalized, payload)
+                        continue
+                    if terminal_message is None:
+                        await self._put_event(
+                            call_id,
+                            run,
                             native_type=native_type,
                             normalized_type=normalized,
-                            payload={"provider_extension": redact(message)},
-                            adapter_version=self.adapter_version,
+                            payload=payload,
                         )
-                    )
+
                 return_code = await process.wait()
-                stderr = ""
-                if process.stderr:
-                    stderr = redact_text((await process.stderr.read()).decode(errors="replace"))
-                if not terminal_seen:
+                stderr = await self._stderr(stderr_task)
+                if terminal_message is not None:
+                    native_type, normalized, payload = terminal_message
+                    await self._finish_call(
+                        call_id,
+                        run,
+                        native_type=native_type,
+                        normalized_type=normalized,
+                        payload=payload,
+                    )
+                elif call_id in self.interrupted_calls:
+                    await self._finish_call(
+                        call_id,
+                        run,
+                        native_type="process/cancelled",
+                        normalized_type=EventType.RUNTIME_CALL_CANCELLED,
+                        payload={"runtime_call_id": call_id, **metadata},
+                    )
+                else:
                     detail = f"Claude process exited with code {return_code}"
                     if return_code == 0:
                         detail = "Claude process reached EOF without a terminal result"
-                    await self._terminal_failure(run, session, detail, stderr, return_code)
-                    terminal_seen = True
-        except asyncio.CancelledError:
-            if process and process.returncode is None:
-                process.terminate()
-                await process.wait()
-            if not terminal_seen:
-                await self.queues[run.run_id].put(
-                    make_event(
-                        run_id=run.run_id,
-                        session_id=session.session_id,
-                        provider=Provider.CLAUDE,
-                        native_type="process/cancelled",
-                        normalized_type=EventType.RUN_CANCELLED,
-                        adapter_version=self.adapter_version,
+                    await self._terminal_failure(
+                        call_id,
+                        run,
+                        detail,
+                        stderr,
+                        return_code,
+                        metadata,
                     )
+        except asyncio.CancelledError:
+            await self._stop_process(process, kill=False)
+            if terminal_message is not None:
+                await self._finish_terminal_message(call_id, run, terminal_message)
+            else:
+                await self._finish_call(
+                    call_id,
+                    run,
+                    native_type="process/cancelled",
+                    normalized_type=EventType.RUNTIME_CALL_CANCELLED,
+                    payload={"runtime_call_id": call_id, **metadata},
                 )
             raise
         except TimeoutError:
-            if process and process.returncode is None:
-                process.kill()
-                await process.wait()
-            if not terminal_seen:
+            await self._stop_process(process, kill=True)
+            if terminal_message is not None:
+                await self._finish_terminal_message(call_id, run, terminal_message)
+            else:
                 await self._terminal_failure(
+                    call_id,
                     run,
-                    session,
-                    f"Claude process timed out after {task.budgets.wall_time_seconds} seconds",
+                    f"Claude process timed out after {timeout_seconds:.3f} seconds",
+                    metadata=metadata,
                 )
         except Exception as exc:
-            if process and process.returncode is None:
-                process.kill()
-                await process.wait()
-            if not terminal_seen:
-                await self._terminal_failure(run, session, str(exc))
+            await self._stop_process(process, kill=True)
+            if terminal_message is not None:
+                await self._finish_terminal_message(call_id, run, terminal_message)
+            else:
+                await self._terminal_failure(call_id, run, str(exc), metadata=metadata)
         finally:
-            await self.queues[run.run_id].put(None)
+            if stderr_task and not stderr_task.done():
+                stderr_task.cancel()
+            self.processes.pop(call_id, None)
+            self.interrupted_calls.discard(call_id)
+            if self.session_active_calls.get(session.session_id) == call_id:
+                self.session_active_calls.pop(session.session_id, None)
+            if call_id not in self.terminal_calls:
+                await self._terminal_failure(
+                    call_id,
+                    run,
+                    "Claude provider call ended without a terminal event",
+                    metadata=metadata,
+                )
+
+    async def _finish_terminal_message(
+        self,
+        call_id: str,
+        run: RunRef,
+        terminal_message: tuple[str, EventType, dict[str, Any]],
+    ) -> None:
+        native_type, normalized, payload = terminal_message
+        await self._finish_call(
+            call_id,
+            run,
+            native_type=native_type,
+            normalized_type=normalized,
+            payload=payload,
+        )
 
     async def _terminal_failure(
         self,
+        call_id: str,
         run: RunRef,
-        session: SessionRef,
         message: str,
         stderr: str = "",
         return_code: int | None = None,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
-        await self.queues[run.run_id].put(
+        await self._finish_call(
+            call_id,
+            run,
+            native_type="process/exit",
+            normalized_type=EventType.RUNTIME_CALL_FAILED,
+            payload={
+                "runtime_call_id": call_id,
+                "error": redact_text(message),
+                "return_code": return_code,
+                "stderr": stderr[-2000:],
+                **(metadata or {}),
+            },
+        )
+
+    async def _put_event(
+        self,
+        call_id: str,
+        run: RunRef,
+        *,
+        native_type: str,
+        normalized_type: EventType,
+        payload: dict[str, Any],
+    ) -> None:
+        await self.queues[call_id].put(
             make_event(
                 run_id=run.run_id,
-                session_id=session.session_id,
+                session_id=run.session_id,
                 provider=Provider.CLAUDE,
-                native_type="process/exit",
-                normalized_type=EventType.RUN_FAILED,
-                payload={
-                    "error": redact_text(message),
-                    "return_code": return_code,
-                    "stderr": stderr[-2000:],
-                },
+                native_type=native_type,
+                normalized_type=normalized_type,
+                payload=payload,
                 adapter_version=self.adapter_version,
+                correlation_id=call_id,
             )
         )
 
-    @staticmethod
-    def _prompt(task: TaskEnvelope) -> str:
-        return json.dumps(
-            {
-                "objective": task.objective,
-                "constraints": task.constraints,
-                "success_criteria": task.success_criteria,
-                "risk_level": task.risk_level.value,
-            },
-            ensure_ascii=False,
+    async def _finish_call(
+        self,
+        call_id: str,
+        run: RunRef,
+        *,
+        native_type: str,
+        normalized_type: EventType,
+        payload: dict[str, Any],
+    ) -> None:
+        if call_id in self.terminal_calls:
+            return
+        self.terminal_calls.add(call_id)
+        run_session = self.call_sessions.get(call_id)
+        if run_session and self.session_active_calls.get(run_session) == call_id:
+            self.session_active_calls.pop(run_session, None)
+        await self._put_event(
+            call_id,
+            run,
+            native_type=native_type,
+            normalized_type=normalized_type,
+            payload=payload,
         )
+        await self.queues[call_id].put(None)
+
+    @staticmethod
+    async def _stop_process(process: asyncio.subprocess.Process | None, *, kill: bool) -> None:
+        if process and process.returncode is None:
+            if kill:
+                process.kill()
+            else:
+                process.terminate()
+            try:
+                await asyncio.wait_for(process.wait(), 3)
+            except TimeoutError:
+                process.kill()
+                await process.wait()
+
+    @staticmethod
+    async def _stderr(stderr_task: asyncio.Task[bytes] | None) -> str:
+        if stderr_task is None:
+            return ""
+        return redact_text((await stderr_task).decode(errors="replace"))
+
+    @staticmethod
+    def _prompt(request: RuntimeSubmission) -> str:
+        task = submission_task(request)
+        prompt: dict[str, Any] = {
+            "objective": task.objective,
+            "constraints": task.constraints,
+            "success_criteria": task.success_criteria,
+            "risk_level": task.risk_level.value,
+        }
+        prompt.update(submission_metadata(request))
+        return json.dumps(prompt, ensure_ascii=False)
 
     @staticmethod
     def _normalize(message: dict[str, object]) -> EventType:
         kind = str(message.get("type", ""))
         subtype = str(message.get("subtype", ""))
         if kind == "system" and subtype == "init":
-            return EventType.RUN_STARTED
+            return EventType.RUNTIME_CALL_STARTED
         if kind == "result":
-            return EventType.RUN_FAILED if message.get("is_error") else EventType.RUN_COMPLETED
+            return (
+                EventType.RUNTIME_CALL_FAILED
+                if message.get("is_error")
+                else EventType.RUNTIME_CALL_COMPLETED
+            )
         if kind == "tool_use":
             return EventType.TOOL_REQUESTED
         return EventType.RUN_PROGRESS
 
     async def events(self, run: RunRef) -> AsyncIterator[AgentEvent]:
-        queue = self.queues[run.run_id]
+        queue = self.queues[self._call_id(run)]
         while (event := await queue.get()) is not None:
             yield event
 
     async def approve(self, request: ApprovalRequest, decision: ApprovalDecision) -> None:
-        raise NotImplementedError("Claude P0 uses a precomputed non-interactive tool policy")
+        raise NotImplementedError("Claude uses a precomputed non-interactive tool policy")
 
     async def interrupt(self, run: RunRef) -> None:
-        process = self.processes.get(run.run_id)
+        call_id = self._call_id(run)
+        if call_id in self.terminal_calls:
+            return
+        self.interrupted_calls.add(call_id)
+        process = self.processes.get(call_id)
         if process and process.returncode is None:
             process.terminate()
+        task = self.tasks.get(call_id)
+        if task and not task.done():
+            task.cancel()
+        await self._finish_call(
+            call_id,
+            self.run_refs[call_id],
+            native_type="process/cancelled",
+            normalized_type=EventType.RUNTIME_CALL_CANCELLED,
+            payload={"runtime_call_id": call_id},
+        )
 
     async def resume(self, run: RunRef) -> None:
         if not run.native_run_id:
@@ -280,3 +458,19 @@ class ClaudeRuntime:
 
     async def terminate(self, run: RunRef) -> None:
         await self.interrupt(run)
+
+    def _canonical_session(self, session: SessionRef) -> SessionRef:
+        current = self.sessions.get(session.session_id)
+        if current is None:
+            self.sessions[session.session_id] = session
+            if session.native_session_id:
+                self.started_sessions.add(session.session_id)
+            return session
+        native_session_id = session.native_session_id or current.native_session_id
+        canonical = session.model_copy(update={"native_session_id": native_session_id})
+        self.sessions[session.session_id] = canonical
+        return canonical
+
+    @staticmethod
+    def _call_id(run: RunRef) -> str:
+        return run.runtime_call_id or run.run_id
