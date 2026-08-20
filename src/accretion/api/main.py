@@ -13,20 +13,25 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 from accretion import __version__
 from accretion.api.schemas import (
+    ApprovalDecisionCreate,
     ErrorEnvelope,
     ProjectCreate,
     RunCreate,
     StrategyOverrideCreate,
     TaskCreate,
+    WorkflowTemplateSummary,
 )
 from accretion.concurrency import ConcurrencyLimiter
 from accretion.config import get_settings
 from accretion.contracts import (
     TERMINAL_RUN_STATES,
     AgentRuntime,
+    ApprovalRecord,
+    ApprovalStatus,
     ArtifactRef,
     EventType,
     ExecutionMode,
+    ExecutionTrace,
     GraphProjection,
     LoopExecution,
     Project,
@@ -36,13 +41,19 @@ from accretion.contracts import (
     StrategyOverrideResult,
     Task,
     TaskPlanning,
+    TemplateStatus,
     VerificationResult,
 )
 from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore
 from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime
-from accretion.services.run_manager import MilestoneDependencyError, RunManager
+from accretion.services.run_manager import (
+    ProjectionUnavailableError,
+    RunManager,
+    WorkflowTemplateError,
+)
+from accretion.templates import seed_templates
 from accretion.verifiers.registry import VerifierUnavailableError
 from accretion.workspace import WorktreeManager
 
@@ -85,9 +96,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         live_providers_enabled=settings.enable_live_providers,
         side_effect_ledger=PostgresSideEffectLedger(sessions),
         operator_identity=settings.operator_identity,
+        auto_resume_on_reconcile=settings.auto_resume_on_reconcile,
     )
     app.state.engine = engine
     app.state.manager = manager
+    await seed_templates(store)
     await manager.reconcile()
     yield
     for task in manager.background.values():
@@ -129,11 +142,18 @@ async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse
     return _error(400, "INVALID_REQUEST", str(exc))
 
 
-@app.exception_handler(MilestoneDependencyError)
-async def milestone_dependency_handler(
-    request: Request, exc: MilestoneDependencyError
+@app.exception_handler(WorkflowTemplateError)
+async def workflow_template_handler(
+    request: Request, exc: WorkflowTemplateError
 ) -> JSONResponse:
-    return _error(409, "MILESTONE_DEPENDENCY", str(exc))
+    return _error(409, exc.code, str(exc))
+
+
+@app.exception_handler(ProjectionUnavailableError)
+async def projection_unavailable_handler(
+    request: Request, exc: ProjectionUnavailableError
+) -> JSONResponse:
+    return _error(409, "PROJECTION_UNAVAILABLE", str(exc))
 
 
 @app.exception_handler(VerifierUnavailableError)
@@ -254,8 +274,57 @@ async def get_loop_execution(run_id: str, request: Request) -> LoopExecution:
 
 @app.get("/api/v1/runs/{run_id}/graph", response_model=GraphProjection)
 async def get_run_graph(run_id: str, request: Request) -> GraphProjection:
-    await _require_loop_run(run_id, request)
     return await manager(request).get_graph(run_id)
+
+
+@app.get("/api/v1/runs/{run_id}/trace", response_model=ExecutionTrace)
+async def get_run_trace(run_id: str, request: Request) -> ExecutionTrace:
+    return await manager(request).get_trace(run_id)
+
+
+@app.get("/api/v1/templates", response_model=list[WorkflowTemplateSummary])
+async def list_templates(
+    request: Request, status: str | None = None
+) -> list[WorkflowTemplateSummary]:
+    parsed: TemplateStatus | None
+    if status is None:
+        parsed = TemplateStatus.VALIDATED
+    else:
+        try:
+            parsed = TemplateStatus(status)
+        except ValueError as exc:
+            raise ValueError(f"unknown template status {status!r}") from exc
+    templates = await manager(request).store.list_workflow_templates(parsed)
+    return [
+        WorkflowTemplateSummary(
+            template_id=template.template_id,
+            version=template.version,
+            mode=template.mode,
+            status=template.status,
+            checksum=template.checksum,
+        )
+        for template in templates
+    ]
+
+
+@app.get("/api/v1/approvals", response_model=list[ApprovalRecord])
+async def list_approvals(
+    request: Request, run_id: str | None = None, status: str | None = None
+) -> list[ApprovalRecord]:
+    parsed: ApprovalStatus | None = None
+    if status is not None:
+        try:
+            parsed = ApprovalStatus(status)
+        except ValueError as exc:
+            raise ValueError(f"unknown approval status {status!r}") from exc
+    return await manager(request).store.list_approvals(run_id, parsed)
+
+
+@app.post("/api/v1/approvals/{approval_id}/decision", response_model=ApprovalRecord)
+async def decide_approval(
+    approval_id: str, payload: ApprovalDecisionCreate, request: Request
+) -> ApprovalRecord:
+    return await manager(request).resolve_approval(approval_id, payload.decision)
 
 
 @app.get(

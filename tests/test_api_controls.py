@@ -155,13 +155,17 @@ async def test_non_loop_projection_endpoints_return_consistent_conflict(
     app.state.manager = run_manager
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as client:
-        for suffix in ("loop", "graph"):
-            response = await client.get(f"/api/v1/runs/{run.run_id}/{suffix}")
-            assert response.status_code == 409
-            body = response.json()
-            assert body["code"] == "EXECUTION_MODE_MISMATCH"
-            assert "DIRECT/direct-v1" in body["message"]
-            assert "LOOP/feedback-loop-v1" in body["message"]
+        loop_response = await client.get(f"/api/v1/runs/{run.run_id}/loop")
+        assert loop_response.status_code == 409
+        loop_body = loop_response.json()
+        assert loop_body["code"] == "EXECUTION_MODE_MISMATCH"
+        assert "DIRECT/direct-v1" in loop_body["message"]
+        assert "LOOP/feedback-loop-v1" in loop_body["message"]
+
+        # A pre-P3 DIRECT fixture has no persisted run graph to project.
+        graph_response = await client.get(f"/api/v1/runs/{run.run_id}/graph")
+        assert graph_response.status_code == 409
+        assert graph_response.json()["code"] == "PROJECTION_UNAVAILABLE"
 
         missing = await client.get(f"/api/v1/runs/{new_id('run')}/loop")
         assert missing.status_code == 404
@@ -260,3 +264,86 @@ async def test_direct_pause_during_session_creation_resumes_once_to_verified_suc
     )
     assert len(runtime.session_configs) == 2
     assert runtime.session_configs[1].resume_native_session_id is not None
+
+
+async def test_templates_trace_and_approvals_endpoints(tmp_path: Path) -> None:
+    from accretion.contracts import ApprovalRecord, RiskLevel
+    from accretion.ids import new_id as make_id
+    from accretion.templates import seed_templates
+
+    store = MemoryStore()
+    await seed_templates(store)
+    run_manager = build_manager(tmp_path, store=store)
+    project = await run_manager.create_project("fixture", tmp_path)
+    task = await run_manager.create_task(
+        project_id=project.project_id,
+        objective="Review one bounded result.",
+        task_patch={"task_type": TaskType.REVIEW},
+    )
+    run = await store.create_run(
+        Run(
+            run_id=make_id("run"),
+            task_id=task.envelope.task_id,
+            project_id=project.project_id,
+            provider=Provider.FAKE,
+            state=RunState.RUNNING,
+            execution_mode=ExecutionMode.DIRECT,
+            workflow_template_id="direct-v1",
+        )
+    )
+    approval = await store.save_approval(
+        ApprovalRecord(
+            approval_id=make_id("approval"),
+            run_id=run.run_id,
+            native_request_id="gate:approve-plan",
+            method="accretion/gate",
+            summary="Approve the plan.",
+        )
+    )
+
+    app.state.manager = run_manager
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        templates = await client.get("/api/v1/templates")
+        assert templates.status_code == 200
+        listed = templates.json()
+        assert {item["template_id"] for item in listed} == {
+            "direct-v1",
+            "feedback-loop-v1",
+            "fixed-graph-v1",
+            "hybrid-rd-v1",
+            "safe-unknown-v1",
+        }
+        assert all(item["status"] == "VALIDATED" for item in listed)
+        assert all("nodes" not in item and "edges" not in item for item in listed)
+
+        bad_filter = await client.get("/api/v1/templates", params={"status": "BOGUS"})
+        assert bad_filter.status_code == 400
+        assert bad_filter.json()["code"] == "INVALID_REQUEST"
+
+        trace = await client.get(f"/api/v1/runs/{run.run_id}/trace")
+        assert trace.status_code == 200
+        assert trace.json()["run_id"] == run.run_id
+
+        missing_trace = await client.get(f"/api/v1/runs/{make_id('run')}/trace")
+        assert missing_trace.status_code == 404
+
+        pending = await client.get("/api/v1/approvals", params={"status": "PENDING"})
+        assert pending.status_code == 200
+        assert [item["approval_id"] for item in pending.json()] == [approval.approval_id]
+
+        decision = await client.post(
+            f"/api/v1/approvals/{approval.approval_id}/decision",
+            json={"decision": "APPROVE"},
+        )
+        assert decision.status_code == 200
+        assert decision.json()["status"] == "APPROVED"
+
+        second = await client.post(
+            f"/api/v1/approvals/{approval.approval_id}/decision",
+            json={"decision": "DENY"},
+        )
+        assert second.status_code == 400
+        assert "already decided" in second.json()["message"]
+
+        assert RiskLevel.LOW.value == "LOW"
