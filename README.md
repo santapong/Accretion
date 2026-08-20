@@ -67,6 +67,22 @@ operator can answer five questions before and during every run:
 
 <p align="center"><sub>Click the diagram to open the full-size version.</sub></p>
 
+### P2 feedback-loop lifecycle
+
+The executable P2 path is intentionally small and inspectable: one provider
+session produces a candidate, independent verifiers inspect an immutable
+snapshot, and only policy-approved evidence can finish the run. A failed
+candidate returns structured findings to the same session; budget exhaustion or
+uncertainty escalates to the operator.
+
+<div align="center">
+  <a href="docs/assets/accretion-feedback-loop.svg">
+    <img src="docs/assets/accretion-feedback-loop.svg" alt="P2 feedback loop lifecycle: a task decision enters one runtime session, produces an immutable candidate snapshot, passes through independent verifiers, and either completes, returns structured repair findings for another bounded iteration, or escalates to a human when evidence is inconclusive or budgets are exhausted" width="100%" />
+  </a>
+</div>
+
+<p align="center"><sub>Click the lifecycle diagram to open the full-size version.</sub></p>
+
 The profiler reads typed task metadata and deterministic repository evidence. It
 does **not** parse objective keywords or invoke an LLM. The selector persists one
 of the following static decisions:
