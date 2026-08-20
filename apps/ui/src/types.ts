@@ -26,6 +26,10 @@ export type LoopState = components["schemas"]["LoopState"];
 export type LoopExecution = components["schemas"]["LoopExecution"];
 export type Finding = components["schemas"]["Finding"];
 export type VerificationResult = components["schemas"]["VerificationResult"];
+export type WorkflowTemplateSummary = components["schemas"]["WorkflowTemplateSummary"];
+export type ExecutionTrace = components["schemas"]["ExecutionTrace"];
+export type ApprovalRecord = components["schemas"]["ApprovalRecord"];
+export type ApprovalDecisionValue = components["schemas"]["ApprovalDecisionValue"];
 
 export interface AgentEvent {
   event_id: string;

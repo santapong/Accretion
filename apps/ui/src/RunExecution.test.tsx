@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { RunExecution } from "./RunExecution";
@@ -118,6 +118,7 @@ beforeEach(() => {
     if (url.endsWith("/loop")) return response(loop);
     if (url.endsWith("/graph")) return response(graph);
     if (url.endsWith("/verifications")) return response(verifications);
+    if (url.includes("/api/v1/approvals")) return response([]);
     return response({});
   }));
 });
@@ -166,4 +167,97 @@ test("shows verifier outcome, findings, paths, and evidence references", async (
   expect(within(panel).getByText("One acceptance test failed.")).toBeInTheDocument();
   expect(within(panel).getByText("tests/test_feature.py:42")).toBeInTheDocument();
   expect(within(panel).getByText("evidence://pytest-output")).toBeInTheDocument();
+});
+
+const hybridRun: Run = {
+  run_id: "run_hybrid_fixture",
+  task_id: "tsk_hybrid",
+  project_id: "prj_fixture",
+  provider: "FAKE",
+  state: "RUNNING",
+  last_sequence: 40,
+  revision: 6,
+};
+
+const hybridGraph: GraphProjection = {
+  schema_version: "1.0",
+  version: "graph-projection-v1",
+  run_id: hybridRun.run_id,
+  workflow_template_id: "hybrid-rd-v1",
+  run_graph_version: 1,
+  generated_at: "2026-08-21T00:00:00Z",
+  nodes: [
+    { ...schemaVersion, node_id: "n:research", kind: "AGENT", label: "Research", status: "SUCCEEDED", provider: "FAKE", artifact_count: 0, risk: "LOW" },
+    { ...schemaVersion, node_id: "n:experiment", kind: "LOOP", label: "Experiment loop", status: "RUNNING", provider: null, iteration: 3, max_iterations: 5, artifact_count: 2, risk: "LOW" },
+    { ...schemaVersion, node_id: "n:experiment-act", parent_id: "n:experiment", kind: "AGENT", label: "Run experiment", status: "RUNNING", provider: "FAKE", artifact_count: 0, risk: "LOW" },
+    { ...schemaVersion, node_id: "n:experiment-observe", parent_id: "n:experiment", kind: "TOOL", label: "Observe results", status: "SUCCEEDED", provider: null, artifact_count: 2, risk: "LOW" },
+    { ...schemaVersion, node_id: "n:gate", kind: "GATE", label: "Outcome approval", status: "WAITING", provider: null, artifact_count: 0, risk: "HIGH" },
+    { ...schemaVersion, node_id: "n:complete", kind: "TERMINAL", label: "Complete or escalate", status: "PENDING", provider: null, artifact_count: 0, risk: "LOW" },
+  ],
+  edges: [
+    { ...schemaVersion, edge_id: "e:research-experiment", source: "n:research", target: "n:experiment", kind: "NORMAL", active: true, traversal_count: 1 },
+    { ...schemaVersion, edge_id: "e:experiment-act-observe", source: "n:experiment-act", target: "n:experiment-observe", kind: "NORMAL", active: true, traversal_count: 7 },
+    { ...schemaVersion, edge_id: "e:experiment-observe-act", source: "n:experiment-observe", target: "n:experiment-act", kind: "LOOP_BACK", label: "iterate", active: true, traversal_count: 7 },
+    { ...schemaVersion, edge_id: "e:experiment-gate", source: "n:experiment", target: "n:gate", kind: "APPROVAL", label: "verified", active: true, traversal_count: 0 },
+    { ...schemaVersion, edge_id: "e:gate-complete", source: "n:gate", target: "n:complete", kind: "CONDITION", label: "approved", active: false, traversal_count: 0 },
+  ],
+};
+
+const pendingApproval = {
+  approval_id: "apr_fixture",
+  run_id: hybridRun.run_id,
+  node_id: "n:gate",
+  native_request_id: "gate:approve-outcome",
+  method: "accretion/gate",
+  summary: "Approve the verified outcome before completion.",
+  payload: {},
+  status: "PENDING",
+  decision: null,
+  created_at: "2026-08-21T00:00:00Z",
+  decided_at: null,
+};
+
+test("renders hybrid subflows without expanding iterations and offers the gate decision", async () => {
+  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.endsWith("/graph")) return response(hybridGraph);
+    if (url.endsWith("/verifications")) return response([]);
+    if (url.includes("/decision") && init?.method === "POST") {
+      return response({ ...pendingApproval, status: "APPROVED", decision: "APPROVE" });
+    }
+    if (url.includes("/api/v1/approvals")) return response([pendingApproval]);
+    if (url.endsWith("/loop")) return { ok: false, status: 409, json: async () => ({ message: "mismatch" }) } as Response;
+    return response({});
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const { container } = render(
+    <QueryClientProvider client={client}><RunExecution run={hybridRun} /></QueryClientProvider>,
+  );
+
+  expect(await screen.findByRole("heading", { name: "hybrid-rd-v1" })).toBeInTheDocument();
+
+  // Node count equals the projection payload even with seven traversals.
+  const nodeStates = screen.getByRole("list", { name: "Projection node states" });
+  expect(within(nodeStates).getAllByRole("listitem")).toHaveLength(hybridGraph.nodes!.length);
+  expect(screen.getAllByText("Iteration 3 / 5").length).toBeGreaterThan(0);
+
+  // Subflow children render inside the parent group container.
+  const group = container.querySelector(".projection-node-group");
+  expect(group).not.toBeNull();
+  const childNode = container.querySelector('[data-id="n:experiment-act"]');
+  expect(childNode?.parentElement?.closest('[data-id="n:experiment"]') ?? group).not.toBeNull();
+
+  // The waiting gate surfaces its hint and the approval decision controls.
+  expect(screen.getAllByText("Waiting for approval").length).toBeGreaterThan(0);
+  const approvalPanel = await screen.findByRole("region", { name: "Pending approvals" });
+  expect(within(approvalPanel).getByText("Approve the verified outcome before completion.")).toBeInTheDocument();
+  fireEvent.click(within(approvalPanel).getByRole("button", { name: "Approve" }));
+  await screen.findByText("Approved.");
+  expect(vi.mocked(fetch)).toHaveBeenCalledWith(
+    "/api/v1/approvals/apr_fixture/decision",
+    expect.objectContaining({ method: "POST", body: JSON.stringify({ decision: "APPROVE" }) }),
+  );
+
+  const routes = screen.getByRole("list", { name: "Projection routes" });
+  expect(within(routes).getAllByText("7 traversals").length).toBeGreaterThan(0);
 });

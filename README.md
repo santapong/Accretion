@@ -22,9 +22,10 @@ isolated workspaces, and a durable normalized execution trace.
 
 > [!IMPORTANT]
 > Accretion is pre-release, local-first software. P0 runtime feasibility, P1
-> deterministic planning, and P2 verifier-gated feedback loops are implemented.
-> `DIRECT/direct-v1` and `LOOP/feedback-loop-v1` can execute. `GRAPH`, `HYBRID`,
-> and the safe-unknown fallback remain intentionally blocked until P3.
+> deterministic planning, P2 verifier-gated feedback loops, and P3 static graph
+> execution are implemented. All five validated templates can execute:
+> `direct-v1`, `feedback-loop-v1`, `fixed-graph-v1` (with human approval gates),
+> `hybrid-rd-v1`, and the bounded `safe-unknown-v1` fallback.
 
 ## Why Accretion
 
@@ -91,9 +92,9 @@ of the following static decisions:
 |---|---|---|
 | `DIRECT` | `direct-v1` | Executes one provider call, then applies the configured acceptance policy |
 | `LOOP` | `feedback-loop-v1` | Executes bounded observe/verify/repair iterations in one provider session |
-| `GRAPH` | `fixed-graph-v1` | Decision is persisted; execution is blocked until P3 |
-| `HYBRID` | `hybrid-rd-v1` | Decision is persisted; execution is blocked until P3 |
-| Safe fallback | `safe-unknown-v1` | Used for low confidence or required unknowns; execution is blocked until P3 |
+| `GRAPH` | `fixed-graph-v1` | Executes a checkpointed static graph with plan and outcome approval gates |
+| `HYBRID` | `hybrid-rd-v1` | Executes the macro research graph with bounded local experiment/develop loops |
+| Safe fallback | `safe-unknown-v1` | Runs one bounded loop, verifies, and performs at most one replan before escalating |
 
 ### How a feedback loop succeeds
 
@@ -117,7 +118,8 @@ ceilings.
 | P0 — Runtime feasibility | Complete | Runtime adapters, isolation, normalized events, health, recovery, and idempotency |
 | P1 — Deterministic planning | Complete | Prompt/context contracts, profiling, selection, persistence, API, and New Task UI |
 | P2 — Feedback loops | Complete | Bounded repeat execution, independent verification, recovery, controls, and loop visualization |
-| P3 — Static graphs | Planned | GRAPH/HYBRID engines, checkpoints, replay, and general workflow visualization |
+| P3 — Static graphs | Complete | Template registry, GRAPH/HYBRID engines, approval gates, checkpoints, replay, and graph visualization |
+| P4 — Release gate | Planned | Capability registry, MCP gateway, policy/approvals surface, complete operator UI, and ACR-ARCH |
 
 See the [v0.1 system design](docs/sdd/Accretion_SDD_v0.1.md) and the
 [multi-release SDD index](docs/sdd/Accretion_SDD_INDEX_v0.3.md) for the full

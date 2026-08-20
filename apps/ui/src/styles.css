@@ -67,3 +67,58 @@ h1 em { color:#89d9a0; font-style:normal; }
 @media(max-width:1100px){.task-form{grid-template-columns:repeat(2,1fr)}.score-grid{grid-template-columns:repeat(4,1fr)}.planning-actions{grid-template-columns:1fr}.loop-metrics{grid-template-columns:repeat(3,1fr)}.loop-metrics>div{border-bottom:1px solid #29322c}.loop-metrics>div:nth-child(3n){border-right:0}}
 @media(max-width:900px){.runtime-grid{grid-template-columns:1fr}.workspace-grid{grid-template-columns:1fr}.hero{align-items:start}.stat{display:none}.shell{padding-top:38px}.project-form{grid-template-columns:1fr}.decision-grid{grid-template-columns:1fr}.decision-grid>div{border-right:0;border-bottom:1px solid #2d3931}}
 @media(max-width:620px){.task-form{grid-template-columns:1fr}.task-form .field-wide{grid-column:span 1}.score-grid{grid-template-columns:repeat(2,1fr)}.override-form,.run-control{align-items:stretch;flex-direction:column}.evidence-list{grid-template-columns:1fr}.execution-content{padding:8px}.projection-heading,.loop-summary>header,.verification-panel>header{align-items:flex-start}.projection-meta{align-items:flex-end;flex-direction:column}.projection-flow{height:300px}.loop-metrics{grid-template-columns:repeat(2,1fr)}.loop-metrics>div:nth-child(3n){border-right:1px solid #29322c}.loop-metrics>div:nth-child(2n){border-right:0}.loop-details,.verification-columns{grid-template-columns:1fr}.loop-details>div,.loop-details>div:nth-child(2n),.loop-details>div:nth-last-child(-n+2){border-right:0;border-bottom:1px solid #29322c}.loop-details>div:last-child{border-bottom:0}.verification-body>dl{grid-template-columns:1fr}.verification-body>dl>div{border-right:0;border-bottom:1px solid #29322c}.verification-body>dl>div:last-child{border-bottom:0}}
+
+/* P3: graph node kinds, subflow groups, and approval gates */
+.projection-node-kind-gate {
+  border-color: #d8a648;
+}
+
+.projection-node-kind-terminal {
+  border-width: 2px;
+}
+
+.projection-node-group {
+  background: rgba(58, 73, 63, 0.24);
+  border: 1px dashed #4d5f53;
+  border-radius: 12px;
+}
+
+.projection-node-group .projection-node-content {
+  align-items: flex-start;
+  text-align: left;
+}
+
+.gate-waiting-hint {
+  color: #d8a648;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.approval-panel {
+  border: 1px solid #d8a648;
+  border-radius: 12px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.approval-panel header h3 {
+  margin: 0;
+}
+
+.approval-request {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.approval-request small {
+  display: block;
+  color: #8b978f;
+}
+
+.approval-actions {
+  display: flex;
+  gap: 8px;
+}
