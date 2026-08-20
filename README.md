@@ -53,24 +53,13 @@ operator can answer four questions before and during every run:
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    OP[Operator] --> UI[React operator UI]
-    UI --> API[FastAPI control plane]
+<div align="center">
+  <a href="docs/assets/accretion-architecture.svg">
+    <img src="docs/assets/accretion-architecture.svg" alt="Accretion architecture: the React operator interface sends tasks to the FastAPI control plane for deterministic planning and safe execution through Codex, Claude, or the fake runtime; PostgreSQL, resumable SSE, and disposable Git worktrees provide the durable foundation" width="100%" />
+  </a>
+</div>
 
-    API --> PLAN[Deterministic profiler<br/>and strategy selector]
-    API --> RUN[Run manager]
-    PLAN --> DB[(PostgreSQL)]
-    RUN --> DB
-    DB --> SSE[Resumable SSE trace]
-    SSE --> UI
-
-    RUN --> WT[Disposable Git worktrees]
-    RUN --> RT{Runtime adapters}
-    RT --> CODEX[Codex App Server]
-    RT --> CLAUDE[Claude Code]
-    RT --> FAKE[Deterministic fake]
-```
+<p align="center"><sub>Click the diagram to open the full-size version.</sub></p>
 
 The profiler reads typed task metadata and deterministic repository evidence. It
 does **not** parse objective keywords or invoke an LLM. The selector persists one
