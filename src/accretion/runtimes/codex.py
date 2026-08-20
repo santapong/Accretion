@@ -26,7 +26,7 @@ from accretion.contracts import (
 )
 from accretion.ids import new_id
 from accretion.redaction import redact, redact_text
-from accretion.runtimes.common import command_result, in_range, make_event, parse_version
+from accretion.runtimes.common import classify_runtime_health, command_result, make_event
 
 
 class CodexProtocolError(RuntimeError):
@@ -52,34 +52,28 @@ class CodexRuntime:
         self.approval_routes: dict[str, tuple[int | str, str]] = {}
         self.stderr_tail: list[str] = []
         self.write_lock = asyncio.Lock()
+        self.terminal_runs: set[str] = set()
 
     async def health(self) -> RuntimeHealth:
         version_code, version_output = await command_result([self.command, "--version"])
-        if version_code == 127:
-            return self._health(RuntimeStatus.UNAVAILABLE, version_output)
-        version = parse_version(version_output)
-        status = (
-            RuntimeStatus.READY
-            if in_range(version, (0, 148, 0), (0, 149, 0))
-            else RuntimeStatus.DEGRADED
-        )
         auth_code, auth_output = await command_result([self.command, "login", "status"])
-        if auth_code != 0:
-            status = RuntimeStatus.AUTH_REQUIRED
-        return self._health(status, None, version_output, auth_output)
+        status, pressure, error = classify_runtime_health(
+            version_code=version_code,
+            version_output=version_output,
+            auth_code=auth_code,
+            auth_output=auth_output,
+            minimum=(0, 148, 0),
+            maximum=(0, 149, 0),
+        )
+        return self._health(status, error, version_output, pressure)
 
     def _health(
         self,
         status: RuntimeStatus,
         error: str | None,
         version: str = "unknown",
-        auth_output: str = "",
+        pressure: UsagePressure = UsagePressure.UNKNOWN,
     ) -> RuntimeHealth:
-        pressure = (
-            UsagePressure.EXHAUSTED
-            if "limit" in auth_output.lower()
-            else UsagePressure.UNKNOWN
-        )
         return RuntimeHealth(
             runtime_id="runtime_codex",
             provider=Provider.CODEX,
@@ -133,16 +127,21 @@ class CodexRuntime:
         queue: asyncio.Queue[AgentEvent | None] = asyncio.Queue()
         run = RunRef(run_id=run_id, session_id=session.session_id, native_run_id=thread_id)
         self.queues[run_id] = queue
+        self.terminal_runs.discard(run_id)
         self.run_refs[run_id] = run
         self.thread_to_run[thread_id] = run_id
-        turn = await self._request(
-            "turn/start",
-            {
-                "threadId": thread_id,
-                "input": [{"type": "text", "text": self._prompt(task)}],
-                "cwd": str(session.workspace),
-            },
-        )
+        try:
+            turn = await self._request(
+                "turn/start",
+                {
+                    "threadId": thread_id,
+                    "input": [{"type": "text", "text": self._prompt(task)}],
+                    "cwd": str(session.workspace),
+                },
+            )
+        except Exception as exc:
+            await self._fail_run(run_id, f"turn/start failed: {exc}")
+            raise
         turn_id = str(turn.get("turn", {}).get("id", ""))
         if turn_id:
             self.turn_to_run[turn_id] = run_id
@@ -266,33 +265,43 @@ class CodexRuntime:
 
     async def _reader(self) -> None:
         assert self.process and self.process.stdout
-        while line := await self.process.stdout.readline():
-            try:
-                message = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            if "id" in message and ("result" in message or "error" in message):
-                request_id = message["id"]
-                future = self.pending.pop(request_id, None)
-                if future:
-                    if "error" in message:
-                        future.set_exception(
-                            CodexProtocolError(
-                                redact_text(str(message["error"].get("message", "error")))
+        error: Exception = CodexProtocolError("Codex App Server exited unexpectedly")
+        try:
+            while line := await self.process.stdout.readline():
+                try:
+                    message = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(message, dict):
+                    continue
+                if "id" in message and ("result" in message or "error" in message):
+                    request_id = message["id"]
+                    future = self.pending.pop(request_id, None)
+                    if future:
+                        if "error" in message:
+                            future.set_exception(
+                                CodexProtocolError(
+                                    redact_text(str(message["error"].get("message", "error")))
+                                )
                             )
-                        )
-                    else:
-                        future.set_result(message.get("result", {}))
-                continue
-            if "id" in message and "method" in message:
-                await self._handle_server_request(message)
-            elif "method" in message:
-                await self._handle_notification(message)
-        error = CodexProtocolError("Codex App Server exited")
-        for future in self.pending.values():
-            if not future.done():
-                future.set_exception(error)
-        self.pending.clear()
+                        else:
+                            future.set_result(message.get("result", {}))
+                    continue
+                if "id" in message and "method" in message:
+                    await self._handle_server_request(message)
+                elif "method" in message:
+                    await self._handle_notification(message)
+        except asyncio.CancelledError:
+            error = CodexProtocolError("Codex App Server reader was cancelled")
+            raise
+        except Exception as exc:
+            error = CodexProtocolError(f"Codex App Server protocol failure: {exc}")
+        finally:
+            for future in self.pending.values():
+                if not future.done():
+                    future.set_exception(error)
+            self.pending.clear()
+            await self._fail_active_runs(str(error))
 
     async def _stderr_reader(self) -> None:
         assert self.process and self.process.stderr
@@ -333,19 +342,49 @@ class CodexRuntime:
         if not run_id or run_id not in self.queues:
             return
         normalized = self._normalize(method, params)
-        await self.queues[run_id].put(
-            make_event(
-                run_id=run_id,
-                session_id=self.run_refs[run_id].session_id,
-                provider=Provider.CODEX,
-                native_type=method,
-                normalized_type=normalized,
-                payload={"provider_extension": params},
-                adapter_version=self.adapter_version,
-            )
+        event = make_event(
+            run_id=run_id,
+            session_id=self.run_refs[run_id].session_id,
+            provider=Provider.CODEX,
+            native_type=method,
+            normalized_type=normalized,
+            payload={"provider_extension": params},
+            adapter_version=self.adapter_version,
         )
         if normalized in {EventType.RUN_COMPLETED, EventType.RUN_FAILED, EventType.RUN_CANCELLED}:
-            await self.queues[run_id].put(None)
+            await self._finish_run(run_id, event)
+        else:
+            await self.queues[run_id].put(event)
+
+    async def _finish_run(self, run_id: str, event: AgentEvent) -> None:
+        if run_id in self.terminal_runs:
+            return
+        self.terminal_runs.add(run_id)
+        queue = self.queues.get(run_id)
+        if queue is not None:
+            await queue.put(event)
+            await queue.put(None)
+
+    async def _fail_run(self, run_id: str, message: str) -> None:
+        run = self.run_refs.get(run_id)
+        if run is None or run_id in self.terminal_runs:
+            return
+        await self._finish_run(
+            run_id,
+            make_event(
+                run_id=run_id,
+                session_id=run.session_id,
+                provider=Provider.CODEX,
+                native_type="process/exit",
+                normalized_type=EventType.RUN_FAILED,
+                payload={"error": redact_text(message), "stderr": self.stderr_tail[-10:]},
+                adapter_version=self.adapter_version,
+            ),
+        )
+
+    async def _fail_active_runs(self, message: str) -> None:
+        for run_id in list(self.queues):
+            await self._fail_run(run_id, message)
 
     def _resolve_run(self, params: dict[str, Any]) -> str | None:
         thread_id = params.get("threadId") or params.get("thread", {}).get("id")

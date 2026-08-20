@@ -20,6 +20,7 @@ from accretion.contracts import (
     TaskEnvelope,
 )
 from accretion.ids import new_id
+from accretion.persistence.side_effects import SideEffectLedger
 from accretion.persistence.store import StateStore
 from accretion.runtimes.common import make_event
 from accretion.workspace import WorktreeManager
@@ -34,12 +35,14 @@ class RunManager:
         runtimes: dict[Provider, AgentRuntime],
         limiter: ConcurrencyLimiter,
         live_providers_enabled: bool,
+        side_effect_ledger: SideEffectLedger | None = None,
     ) -> None:
         self.store = store
         self.worktrees = worktrees
         self.runtimes = runtimes
         self.limiter = limiter
         self.live_providers_enabled = live_providers_enabled
+        self.side_effect_ledger = side_effect_ledger
         self.background: dict[str, asyncio.Task[None]] = {}
         self.active_refs: dict[str, RunRef] = {}
         self.event_conditions: dict[str, asyncio.Condition] = {}
@@ -105,6 +108,7 @@ class RunManager:
         runtime = self.runtimes[run.provider]
         lease = None
         session_id = "ses_pending"
+        terminal_state: RunState | None = None
         try:
             async with self.limiter.slot(run.provider, run.project_id):
                 await self.store.update_run(run.run_id, RunState.STARTING)
@@ -130,7 +134,6 @@ class RunManager:
                 )
                 native_run = await runtime.submit(session, task.envelope)
                 self.active_refs[run.run_id] = native_run
-                terminal_state: RunState | None = None
                 async for event in runtime.events(native_run):
                     stored = await self._append(event)
                     if stored.normalized_type == EventType.APPROVAL_REQUIRED:
@@ -154,17 +157,18 @@ class RunManager:
         except Exception as exc:
             error = ErrorSummary(code="RUN_EXECUTION_FAILED", message=str(exc)[:2000])
             await self.store.update_run(run.run_id, RunState.FAILED, error=error)
-            await self._append(
-                make_event(
-                    run_id=run.run_id,
-                    session_id=session_id,
-                    provider=Provider.DETERMINISTIC,
-                    native_type="accretion/run-error",
-                    normalized_type=EventType.RUN_FAILED,
-                    payload={"error": error.model_dump(mode="json")},
-                    adapter_version="control-plane-p0-v1",
+            if terminal_state is None:
+                await self._append(
+                    make_event(
+                        run_id=run.run_id,
+                        session_id=session_id,
+                        provider=Provider.DETERMINISTIC,
+                        native_type="accretion/run-error",
+                        normalized_type=EventType.RUN_FAILED,
+                        payload={"error": error.model_dump(mode="json")},
+                        adapter_version="control-plane-p0-v1",
+                    )
                 )
-            )
         finally:
             self.active_refs.pop(run.run_id, None)
 
@@ -175,9 +179,7 @@ class RunManager:
             condition.notify_all()
         return stored
 
-    async def wait_for_events(
-        self, run_id: str, after: int, timeout_seconds: float = 15.0
-    ) -> None:
+    async def wait_for_events(self, run_id: str, after: int, timeout_seconds: float = 15.0) -> None:
         condition = self.event_conditions.setdefault(run_id, asyncio.Condition())
         run = await self.store.get_run(run_id)
         if run is None or run.last_sequence > after or run.state in TERMINAL_RUN_STATES:
@@ -214,8 +216,10 @@ class RunManager:
         return await self.store.update_run(run_id, RunState.CANCELLED)
 
     async def reconcile(self) -> None:
+        if self.side_effect_ledger is not None:
+            await self.side_effect_ledger.reconcile_uncertain()
         for run in await self.store.list_runs(limit=10_000):
-            if run.state in TERMINAL_RUN_STATES or run.state == RunState.PENDING:
+            if run.state in TERMINAL_RUN_STATES:
                 continue
             await self.store.update_run(run.run_id, RunState.RECONCILING)
             if not run.workspace_lease_id:

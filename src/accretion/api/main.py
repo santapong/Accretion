@@ -26,6 +26,7 @@ from accretion.contracts import (
     Task,
 )
 from accretion.persistence.database import create_engine, create_session_factory
+from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore
 from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime
 from accretion.services.run_manager import RunManager
@@ -36,7 +37,8 @@ from accretion.workspace import WorktreeManager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     settings = get_settings()
     engine = create_engine(settings.database_url)
-    store = PostgresStore(create_session_factory(engine))
+    sessions = create_session_factory(engine)
+    store = PostgresStore(sessions)
     runtimes: dict[Provider, AgentRuntime] = {
         Provider.FAKE: FakeRuntime(),
         Provider.CODEX: CodexRuntime(settings.codex_command),
@@ -52,6 +54,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             project_limit=settings.project_max_runs,
         ),
         live_providers_enabled=settings.enable_live_providers,
+        side_effect_ledger=PostgresSideEffectLedger(sessions),
     )
     app.state.engine = engine
     app.state.manager = manager
