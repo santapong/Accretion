@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Literal, Protocol
+from typing import Annotated, Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -56,7 +56,12 @@ class RunState(StrEnum):
     REQUIRES_HUMAN = "REQUIRES_HUMAN"
 
 
-TERMINAL_RUN_STATES = {RunState.SUCCEEDED, RunState.FAILED, RunState.CANCELLED}
+TERMINAL_RUN_STATES = {
+    RunState.SUCCEEDED,
+    RunState.FAILED,
+    RunState.CANCELLED,
+    RunState.REQUIRES_HUMAN,
+}
 
 
 class TaskType(StrEnum):
@@ -92,6 +97,93 @@ class OverridePolicyResult(StrEnum):
     ACCEPTED = "ACCEPTED"
     DENIED_TEMPLATE_MISMATCH = "DENIED_TEMPLATE_MISMATCH"
     DENIED_SAFETY_POLICY = "DENIED_SAFETY_POLICY"
+
+
+class LoopExecutionStatus(StrEnum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    PAUSED = "PAUSED"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+    REQUIRES_HUMAN = "REQUIRES_HUMAN"
+
+
+class LoopIterationStatus(StrEnum):
+    COMPLETED = "COMPLETED"
+    INTERRUPTED = "INTERRUPTED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class LoopStopReason(StrEnum):
+    VERIFIED_SUCCESS = "VERIFIED_SUCCESS"
+    MAX_ITERATIONS = "MAX_ITERATIONS"
+    WALL_TIME_EXCEEDED = "WALL_TIME_EXCEEDED"
+    MAX_TOOL_CALLS = "MAX_TOOL_CALLS"
+    MAX_TURNS = "MAX_TURNS"
+    NO_PROGRESS = "NO_PROGRESS"
+    REPEATED_FAILURE = "REPEATED_FAILURE"
+    POLICY_ESCALATION = "POLICY_ESCALATION"
+    VERIFIER_UNAVAILABLE = "VERIFIER_UNAVAILABLE"
+    PROVIDER_FAILURE = "PROVIDER_FAILURE"
+    OPERATOR_CANCELLED = "OPERATOR_CANCELLED"
+    INTERRUPTED = "INTERRUPTED"
+
+
+class VerificationStatus(StrEnum):
+    PASS = "PASS"
+    FAIL = "FAIL"
+    INCONCLUSIVE = "INCONCLUSIVE"
+
+
+class FindingSeverity(StrEnum):
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+
+
+class VerificationTargetKind(StrEnum):
+    OUTPUT_CONTRACT = "OUTPUT_CONTRACT"
+    GIT_DIFF = "GIT_DIFF"
+    COMMAND_SUITE = "COMMAND_SUITE"
+    TRAJECTORY_POLICY = "TRAJECTORY_POLICY"
+
+
+class IterationDirectiveKind(StrEnum):
+    INITIAL = "INITIAL"
+    REPAIR = "REPAIR"
+
+
+class GraphNodeKind(StrEnum):
+    TASK = "TASK"
+    AGENT = "AGENT"
+    TOOL = "TOOL"
+    VERIFIER = "VERIFIER"
+    GATE = "GATE"
+    LOOP = "LOOP"
+    JOIN = "JOIN"
+    TERMINAL = "TERMINAL"
+
+
+class GraphNodeStatus(StrEnum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    WAITING = "WAITING"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class GraphEdgeKind(StrEnum):
+    NORMAL = "NORMAL"
+    CONDITION = "CONDITION"
+    LOOP_BACK = "LOOP_BACK"
+    RETRY = "RETRY"
+    ERROR = "ERROR"
+    FANOUT = "FANOUT"
+    MERGE = "MERGE"
+    APPROVAL = "APPROVAL"
 
 
 class PromptContract(StrictModel):
@@ -211,6 +303,14 @@ class EventType(StrEnum):
     APPROVAL_RESOLVED = "APPROVAL_RESOLVED"
     ARTIFACT_CREATED = "ARTIFACT_CREATED"
     CHECKPOINT_SAVED = "CHECKPOINT_SAVED"
+    RUNTIME_CALL_STARTED = "RUNTIME_CALL_STARTED"
+    RUNTIME_CALL_COMPLETED = "RUNTIME_CALL_COMPLETED"
+    RUNTIME_CALL_FAILED = "RUNTIME_CALL_FAILED"
+    RUNTIME_CALL_CANCELLED = "RUNTIME_CALL_CANCELLED"
+    LOOP_ITERATION_STARTED = "LOOP_ITERATION_STARTED"
+    LOOP_ITERATION_COMPLETED = "LOOP_ITERATION_COMPLETED"
+    VERIFICATION_STARTED = "VERIFICATION_STARTED"
+    VERIFICATION_RESULT = "VERIFICATION_RESULT"
     RUN_PAUSED = "RUN_PAUSED"
     RUN_RESUMED = "RUN_RESUMED"
     RUN_COMPLETED = "RUN_COMPLETED"
@@ -241,6 +341,7 @@ class RuntimeHealth(StrictModel):
 class TaskBudgets(StrictModel):
     wall_time_seconds: int = Field(default=1800, gt=0)
     max_turns: int = Field(default=20, gt=0)
+    max_tool_calls: int = Field(default=100, gt=0)
     max_loop_iterations: int = Field(default=1, gt=0)
     max_parallel_runs: int = Field(default=1, gt=0)
 
@@ -264,6 +365,216 @@ class TaskEnvelope(StrictModel):
     required_outputs: list[dict[str, Any]] = Field(default_factory=list)
 
 
+class LoopBudgetRemaining(StrictModel):
+    wall_time_seconds: int = Field(ge=0)
+    tool_calls: int = Field(ge=0)
+    turns: int = Field(ge=0)
+    iterations: int = Field(ge=0)
+
+
+class LoopSpec(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    version: Literal["loop-engine-v1"] = "loop-engine-v1"
+    loop_id: str
+    max_iterations: int = Field(default=3, gt=0)
+    max_wall_time_seconds: int = Field(default=1800, gt=0)
+    max_tool_calls: int = Field(default=100, gt=0)
+    max_turns: int = Field(default=20, gt=0)
+    no_progress_window: int = Field(default=2, gt=0)
+    repeated_failure_threshold: int = Field(default=2, gt=0)
+    provider_failure_threshold: int = Field(default=2, gt=0)
+    success_condition: Literal["ACCEPTANCE_POLICY_PASS"] = "ACCEPTANCE_POLICY_PASS"
+    no_progress_condition: Literal["UNCHANGED_EVIDENCE_FINGERPRINT"] = (
+        "UNCHANGED_EVIDENCE_FINGERPRINT"
+    )
+    escalation_target: str = "HUMAN"
+    verifier_refs: list[str] = Field(default_factory=list)
+
+
+class LoopState(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    iteration: int = Field(default=0, ge=0)
+    latest_observation_ref: str | None = None
+    accumulated_evidence_refs: list[str] = Field(default_factory=list)
+    progress_score: float | None = Field(default=None, ge=0, le=1)
+    repeated_failure_signature: str | None = None
+    consecutive_no_progress: int = Field(default=0, ge=0)
+    repeated_failure_count: int = Field(default=0, ge=0)
+    provider_failure_count: int = Field(default=0, ge=0)
+    budget_remaining: LoopBudgetRemaining
+
+
+class Finding(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    code: str
+    severity: FindingSeverity
+    message: str
+    path: str | None = None
+    line: int | None = Field(default=None, gt=0)
+    evidence_ref: str | None = None
+    fingerprint: str | None = None
+
+
+class VerificationTarget(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    target_ref: str
+    kind: VerificationTargetKind
+    run_id: str
+    iteration_id: str | None = None
+    artifact_refs: list[str] = Field(default_factory=list)
+    required_outputs: list[dict[str, Any]] = Field(default_factory=list)
+    expected_changed_paths: list[str] = Field(default_factory=list)
+    require_git_changes: bool = True
+    expected_diff_sha256: str | None = None
+    command_suite_refs: list[str] = Field(default_factory=list)
+
+
+class VerificationContext(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    task_id: str
+    project_id: str
+    workspace: Path
+    allowed_capabilities: list[str] = Field(default_factory=list)
+    denied_capabilities: list[str] = Field(default_factory=list)
+    observed_capabilities: list[str] = Field(default_factory=list)
+    unresolved_approval_ids: list[str] = Field(default_factory=list)
+    trajectory_events: list[dict[str, Any]] = Field(default_factory=list)
+    timeout_seconds: float = Field(default=300, gt=0, le=3600)
+    max_output_bytes: int = Field(default=1_000_000, gt=0, le=10_000_000)
+
+
+class VerificationResult(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    verification_id: str
+    run_id: str
+    iteration_id: str | None = None
+    verifier_id: str
+    verifier_version: str
+    target_ref: str
+    status: VerificationStatus
+    score: float | None = Field(default=None, ge=0, le=1)
+    findings: list[Finding] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
+    false_accept_risk_estimate: float | None = Field(default=None, ge=0, le=1)
+    executed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    duration_ms: int = Field(default=0, ge=0)
+
+
+class AcceptancePolicy(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    policy_id: str
+    version: Literal["acceptance-policy-v1"] = "acceptance-policy-v1"
+    required_verifiers: list[str] = Field(default_factory=list)
+    all_required_must_pass: bool = True
+    score_thresholds: dict[str, Annotated[float, Field(ge=0, le=1)]] = Field(
+        default_factory=dict
+    )
+    allow_inconclusive: bool = False
+    require_independent_reviewer: bool = False
+    independent_reviewer_ref: str | None = None
+    require_human_if_risk_gte: RiskLevel | None = RiskLevel.HIGH
+    outcome_check: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class LoopIteration(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    iteration_id: str
+    loop_execution_id: str
+    run_id: str
+    number: int = Field(gt=0)
+    status: LoopIterationStatus
+    runtime_call_ref: str | None = None
+    observation_ref: str | None = None
+    diff_artifact_ref: str | None = None
+    artifact_refs: list[str] = Field(default_factory=list)
+    verification_refs: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
+    diff_sha256: str | None = None
+    output_fingerprint: str | None = None
+    finding_signature: str | None = None
+    tool_calls: int = Field(default=0, ge=0)
+    turns: int = Field(default=0, ge=0)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    error: ErrorSummary | None = None
+
+
+class LoopExecution(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    loop_execution_id: str
+    run_id: str
+    spec: LoopSpec
+    state: LoopState
+    acceptance_policy_ref: str
+    acceptance_policy: AcceptancePolicy | None = None
+    status: LoopExecutionStatus = LoopExecutionStatus.PENDING
+    stop_reason: LoopStopReason | None = None
+    revision: int = Field(default=0, ge=0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
+
+
+class IterationDirective(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    kind: IterationDirectiveKind
+    objective: str = Field(min_length=1, max_length=20_000)
+    findings: list[Finding] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
+    previous_iteration_id: str | None = None
+
+
+class RuntimeExecutionRequest(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    version: Literal["p2-runtime-request-v1"] = "p2-runtime-request-v1"
+    runtime_call_id: str
+    run_id: str
+    task: TaskEnvelope
+    iteration_number: int = Field(default=1, gt=0)
+    directive: IterationDirective
+    deadline: datetime | None = None
+    max_turns: int = Field(default=20, gt=0)
+    max_tool_calls: int = Field(default=100, gt=0)
+
+
+class GraphProjectionNode(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    node_id: str
+    parent_id: str | None = None
+    kind: GraphNodeKind
+    label: str
+    status: GraphNodeStatus
+    provider: Provider | None = None
+    iteration: int | None = Field(default=None, ge=0)
+    max_iterations: int | None = Field(default=None, gt=0)
+    artifact_count: int = Field(default=0, ge=0)
+    verifier_state: VerificationStatus | None = None
+    risk: RiskLevel
+
+
+class GraphProjectionEdge(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    edge_id: str
+    source: str
+    target: str
+    kind: GraphEdgeKind
+    label: str | None = None
+    active: bool = False
+    traversal_count: int = Field(default=0, ge=0)
+
+
+class GraphProjection(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    version: Literal["loop-projection-v1"] = "loop-projection-v1"
+    run_id: str
+    workflow_template_id: str
+    run_graph_version: int = Field(default=1, gt=0)
+    nodes: list[GraphProjectionNode] = Field(default_factory=list)
+    edges: list[GraphProjectionEdge] = Field(default_factory=list)
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 class SessionConfig(StrictModel):
     run_id: str
     workspace: Path
@@ -285,6 +596,7 @@ class RunRef(StrictModel):
     run_id: str
     session_id: str
     native_run_id: str | None = None
+    runtime_call_id: str | None = None
 
 
 class AgentEvent(StrictModel):
@@ -395,6 +707,11 @@ class Run(StrictModel):
     revision: int = 0
     session_id: str | None = None
     workspace_lease_id: str | None = None
+    strategy_decision_id: str | None = None
+    execution_mode: ExecutionMode | None = None
+    workflow_template_id: str | None = None
+    acceptance_policy_id: str | None = None
+    loop_execution_id: str | None = None
     error: ErrorSummary | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
@@ -403,7 +720,9 @@ class Run(StrictModel):
 class AgentRuntime(Protocol):
     async def health(self) -> RuntimeHealth: ...
     async def create_session(self, config: SessionConfig) -> SessionRef: ...
-    async def submit(self, session: SessionRef, task: TaskEnvelope) -> RunRef: ...
+    async def submit(
+        self, session: SessionRef, request: TaskEnvelope | RuntimeExecutionRequest
+    ) -> RunRef: ...
     def events(self, run: RunRef) -> AsyncIterator[AgentEvent]: ...
     async def approve(self, request: ApprovalRequest, decision: ApprovalDecision) -> None: ...
     async def interrupt(self, run: RunRef) -> None: ...

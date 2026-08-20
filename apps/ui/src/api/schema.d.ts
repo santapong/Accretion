@@ -124,6 +124,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{run_id}/graph": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run Graph */
+        get: operations["get_run_graph_api_v1_runs__run_id__graph_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{run_id}/loop": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Loop Execution */
+        get: operations["get_loop_execution_api_v1_runs__run_id__loop_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{run_id}/pause": {
         parameters: {
             query?: never;
@@ -152,6 +186,23 @@ export interface paths {
         put?: never;
         /** Resume Run */
         post: operations["resume_run_api_v1_runs__run_id__resume_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{run_id}/verifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Verifications */
+        get: operations["list_verifications_api_v1_runs__run_id__verifications_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -277,6 +328,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/verifications/{verification_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Verification */
+        get: operations["get_verification_api_v1_verifications__verification_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -298,6 +366,55 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AcceptancePolicy */
+        AcceptancePolicy: {
+            /**
+             * All Required Must Pass
+             * @default true
+             */
+            all_required_must_pass: boolean;
+            /**
+             * Allow Inconclusive
+             * @default false
+             */
+            allow_inconclusive: boolean;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Independent Reviewer Ref */
+            independent_reviewer_ref?: string | null;
+            /** Outcome Check */
+            outcome_check?: string | null;
+            /** Policy Id */
+            policy_id: string;
+            /** @default HIGH */
+            require_human_if_risk_gte: components["schemas"]["RiskLevel"] | null;
+            /**
+             * Require Independent Reviewer
+             * @default false
+             */
+            require_independent_reviewer: boolean;
+            /** Required Verifiers */
+            required_verifiers?: string[];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Score Thresholds */
+            score_thresholds?: {
+                [key: string]: number;
+            };
+            /**
+             * Version
+             * @default acceptance-policy-v1
+             * @constant
+             */
+            version: "acceptance-policy-v1";
+        };
         /** ArtifactRef */
         ArtifactRef: {
             /** Artifact Id */
@@ -415,11 +532,311 @@ export interface components {
             /** Value */
             value?: boolean | number | string | string[] | null;
         };
+        /** Finding */
+        Finding: {
+            /** Code */
+            code: string;
+            /** Evidence Ref */
+            evidence_ref?: string | null;
+            /** Fingerprint */
+            fingerprint?: string | null;
+            /** Line */
+            line?: number | null;
+            /** Message */
+            message: string;
+            /** Path */
+            path?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            severity: components["schemas"]["FindingSeverity"];
+        };
+        /**
+         * FindingSeverity
+         * @enum {string}
+         */
+        FindingSeverity: "INFO" | "WARNING" | "ERROR";
+        /**
+         * GraphEdgeKind
+         * @enum {string}
+         */
+        GraphEdgeKind: "NORMAL" | "CONDITION" | "LOOP_BACK" | "RETRY" | "ERROR" | "FANOUT" | "MERGE" | "APPROVAL";
+        /**
+         * GraphNodeKind
+         * @enum {string}
+         */
+        GraphNodeKind: "TASK" | "AGENT" | "TOOL" | "VERIFIER" | "GATE" | "LOOP" | "JOIN" | "TERMINAL";
+        /**
+         * GraphNodeStatus
+         * @enum {string}
+         */
+        GraphNodeStatus: "PENDING" | "RUNNING" | "WAITING" | "SUCCEEDED" | "FAILED" | "CANCELLED";
+        /** GraphProjection */
+        GraphProjection: {
+            /** Edges */
+            edges?: components["schemas"]["GraphProjectionEdge"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at?: string;
+            /** Nodes */
+            nodes?: components["schemas"]["GraphProjectionNode"][];
+            /**
+             * Run Graph Version
+             * @default 1
+             */
+            run_graph_version: number;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /**
+             * Version
+             * @default loop-projection-v1
+             * @constant
+             */
+            version: "loop-projection-v1";
+            /** Workflow Template Id */
+            workflow_template_id: string;
+        };
+        /** GraphProjectionEdge */
+        GraphProjectionEdge: {
+            /**
+             * Active
+             * @default false
+             */
+            active: boolean;
+            /** Edge Id */
+            edge_id: string;
+            kind: components["schemas"]["GraphEdgeKind"];
+            /** Label */
+            label?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Source */
+            source: string;
+            /** Target */
+            target: string;
+            /**
+             * Traversal Count
+             * @default 0
+             */
+            traversal_count: number;
+        };
+        /** GraphProjectionNode */
+        GraphProjectionNode: {
+            /**
+             * Artifact Count
+             * @default 0
+             */
+            artifact_count: number;
+            /** Iteration */
+            iteration?: number | null;
+            kind: components["schemas"]["GraphNodeKind"];
+            /** Label */
+            label: string;
+            /** Max Iterations */
+            max_iterations?: number | null;
+            /** Node Id */
+            node_id: string;
+            /** Parent Id */
+            parent_id?: string | null;
+            provider?: components["schemas"]["Provider"] | null;
+            risk: components["schemas"]["RiskLevel"];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            status: components["schemas"]["GraphNodeStatus"];
+            verifier_state?: components["schemas"]["VerificationStatus"] | null;
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /** LoopBudgetRemaining */
+        LoopBudgetRemaining: {
+            /** Iterations */
+            iterations: number;
+            /** Tool Calls */
+            tool_calls: number;
+            /** Turns */
+            turns: number;
+            /** Wall Time Seconds */
+            wall_time_seconds: number;
+        };
+        /** LoopExecution */
+        LoopExecution: {
+            acceptance_policy?: components["schemas"]["AcceptancePolicy"] | null;
+            /** Acceptance Policy Ref */
+            acceptance_policy_ref: string;
+            /** Completed At */
+            completed_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Loop Execution Id */
+            loop_execution_id: string;
+            /**
+             * Revision
+             * @default 0
+             */
+            revision: number;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            spec: components["schemas"]["LoopSpec"];
+            state: components["schemas"]["LoopState"];
+            /** @default PENDING */
+            status: components["schemas"]["LoopExecutionStatus"];
+            stop_reason?: components["schemas"]["LoopStopReason"] | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at?: string;
+        };
+        /**
+         * LoopExecutionStatus
+         * @enum {string}
+         */
+        LoopExecutionStatus: "PENDING" | "RUNNING" | "PAUSED" | "SUCCEEDED" | "FAILED" | "CANCELLED" | "REQUIRES_HUMAN";
+        /** LoopSpec */
+        LoopSpec: {
+            /**
+             * Escalation Target
+             * @default HUMAN
+             */
+            escalation_target: string;
+            /** Loop Id */
+            loop_id: string;
+            /**
+             * Max Iterations
+             * @default 3
+             */
+            max_iterations: number;
+            /**
+             * Max Tool Calls
+             * @default 100
+             */
+            max_tool_calls: number;
+            /**
+             * Max Turns
+             * @default 20
+             */
+            max_turns: number;
+            /**
+             * Max Wall Time Seconds
+             * @default 1800
+             */
+            max_wall_time_seconds: number;
+            /**
+             * No Progress Condition
+             * @default UNCHANGED_EVIDENCE_FINGERPRINT
+             * @constant
+             */
+            no_progress_condition: "UNCHANGED_EVIDENCE_FINGERPRINT";
+            /**
+             * No Progress Window
+             * @default 2
+             */
+            no_progress_window: number;
+            /**
+             * Provider Failure Threshold
+             * @default 2
+             */
+            provider_failure_threshold: number;
+            /**
+             * Repeated Failure Threshold
+             * @default 2
+             */
+            repeated_failure_threshold: number;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /**
+             * Success Condition
+             * @default ACCEPTANCE_POLICY_PASS
+             * @constant
+             */
+            success_condition: "ACCEPTANCE_POLICY_PASS";
+            /** Verifier Refs */
+            verifier_refs?: string[];
+            /**
+             * Version
+             * @default loop-engine-v1
+             * @constant
+             */
+            version: "loop-engine-v1";
+        };
+        /** LoopState */
+        LoopState: {
+            /** Accumulated Evidence Refs */
+            accumulated_evidence_refs?: string[];
+            budget_remaining: components["schemas"]["LoopBudgetRemaining"];
+            /**
+             * Consecutive No Progress
+             * @default 0
+             */
+            consecutive_no_progress: number;
+            /**
+             * Iteration
+             * @default 0
+             */
+            iteration: number;
+            /** Latest Observation Ref */
+            latest_observation_ref?: string | null;
+            /** Progress Score */
+            progress_score?: number | null;
+            /**
+             * Provider Failure Count
+             * @default 0
+             */
+            provider_failure_count: number;
+            /**
+             * Repeated Failure Count
+             * @default 0
+             */
+            repeated_failure_count: number;
+            /** Repeated Failure Signature */
+            repeated_failure_signature?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+        };
+        /**
+         * LoopStopReason
+         * @enum {string}
+         */
+        LoopStopReason: "VERIFIED_SUCCESS" | "MAX_ITERATIONS" | "WALL_TIME_EXCEEDED" | "MAX_TOOL_CALLS" | "MAX_TURNS" | "NO_PROGRESS" | "REPEATED_FAILURE" | "POLICY_ESCALATION" | "VERIFIER_UNAVAILABLE" | "PROVIDER_FAILURE" | "OPERATOR_CANCELLED" | "INTERRUPTED";
         /**
          * OverridePolicyResult
          * @enum {string}
@@ -512,17 +929,22 @@ export interface components {
         RiskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
         /** Run */
         Run: {
+            /** Acceptance Policy Id */
+            acceptance_policy_id?: string | null;
             /**
              * Created At
              * Format: date-time
              */
             created_at?: string;
             error?: components["schemas"]["ErrorSummary"] | null;
+            execution_mode?: components["schemas"]["ExecutionMode"] | null;
             /**
              * Last Sequence
              * @default 0
              */
             last_sequence: number;
+            /** Loop Execution Id */
+            loop_execution_id?: string | null;
             /** Project Id */
             project_id: string;
             provider: components["schemas"]["Provider"];
@@ -536,6 +958,8 @@ export interface components {
             /** Session Id */
             session_id?: string | null;
             state: components["schemas"]["RunState"];
+            /** Strategy Decision Id */
+            strategy_decision_id?: string | null;
             /** Task Id */
             task_id: string;
             /**
@@ -543,6 +967,8 @@ export interface components {
              * Format: date-time
              */
             updated_at?: string;
+            /** Workflow Template Id */
+            workflow_template_id?: string | null;
             /** Workspace Lease Id */
             workspace_lease_id?: string | null;
         };
@@ -716,6 +1142,11 @@ export interface components {
              * @default 1
              */
             max_parallel_runs: number;
+            /**
+             * Max Tool Calls
+             * @default 100
+             */
+            max_tool_calls: number;
             /**
              * Max Turns
              * @default 20
@@ -892,6 +1323,51 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** VerificationResult */
+        VerificationResult: {
+            /**
+             * Duration Ms
+             * @default 0
+             */
+            duration_ms: number;
+            /** Evidence Refs */
+            evidence_refs?: string[];
+            /**
+             * Executed At
+             * Format: date-time
+             */
+            executed_at?: string;
+            /** False Accept Risk Estimate */
+            false_accept_risk_estimate?: number | null;
+            /** Findings */
+            findings?: components["schemas"]["Finding"][];
+            /** Iteration Id */
+            iteration_id?: string | null;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Score */
+            score?: number | null;
+            status: components["schemas"]["VerificationStatus"];
+            /** Target Ref */
+            target_ref: string;
+            /** Verification Id */
+            verification_id: string;
+            /** Verifier Id */
+            verifier_id: string;
+            /** Verifier Version */
+            verifier_version: string;
+        };
+        /**
+         * VerificationStatus
+         * @enum {string}
+         */
+        VerificationStatus: "PASS" | "FAIL" | "INCONCLUSIVE";
     };
     responses: never;
     parameters: never;
@@ -1142,6 +1618,68 @@ export interface operations {
             };
         };
     };
+    get_run_graph_api_v1_runs__run_id__graph_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GraphProjection"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_loop_execution_api_v1_runs__run_id__loop_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoopExecution"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     pause_run_api_v1_runs__run_id__pause_post: {
         parameters: {
             query?: never;
@@ -1191,6 +1729,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_verifications_api_v1_runs__run_id__verifications_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationResult"][];
                 };
             };
             /** @description Validation Error */
@@ -1407,6 +1976,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StrategyOverrideResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_verification_api_v1_verifications__verification_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                verification_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VerificationResult"];
                 };
             };
             /** @description Validation Error */

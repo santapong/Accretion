@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from collections.abc import AsyncIterator
 from typing import Any
@@ -16,17 +17,31 @@ from accretion.contracts import (
     EventType,
     Provider,
     RunRef,
+    RuntimeExecutionRequest,
     RuntimeHealth,
     RuntimeStatus,
     SessionConfig,
     SessionRef,
-    TaskEnvelope,
     UsagePressure,
     UsageSnapshot,
 )
 from accretion.ids import new_id
 from accretion.redaction import redact, redact_text
-from accretion.runtimes.common import classify_runtime_health, command_result, make_event
+from accretion.runtimes.common import (
+    RuntimeSubmission,
+    classify_runtime_health,
+    command_result,
+    make_event,
+    submission_call_id,
+    submission_metadata,
+    submission_task,
+)
+
+_CALL_TERMINALS = {
+    EventType.RUNTIME_CALL_COMPLETED,
+    EventType.RUNTIME_CALL_FAILED,
+    EventType.RUNTIME_CALL_CANCELLED,
+}
 
 
 class CodexProtocolError(RuntimeError):
@@ -34,25 +49,30 @@ class CodexProtocolError(RuntimeError):
 
 
 class CodexRuntime:
-    """Stable Codex App Server client over newline-delimited JSON stdio."""
+    """Stable Codex App Server client with repeatable turns per logical session."""
 
-    adapter_version = "codex-app-server-p0-v1"
+    adapter_version = "codex-app-server-p2-v1"
 
     def __init__(self, command: str = "codex") -> None:
         self.command = command
         self.process: asyncio.subprocess.Process | None = None
         self.reader_task: asyncio.Task[None] | None = None
+        self.stderr_task: asyncio.Task[None] | None = None
         self.request_id = 0
         self.pending: dict[int, asyncio.Future[dict[str, Any]]] = {}
         self.sessions: dict[str, SessionRef] = {}
         self.run_refs: dict[str, RunRef] = {}
         self.queues: dict[str, asyncio.Queue[AgentEvent | None]] = {}
-        self.thread_to_run: dict[str, str] = {}
-        self.turn_to_run: dict[str, str] = {}
+        self.thread_to_call: dict[str, str] = {}
+        self.turn_to_call: dict[str, str] = {}
+        self.call_turns: dict[str, str] = {}
+        self.session_active_calls: dict[str, str] = {}
         self.approval_routes: dict[str, tuple[int | str, str]] = {}
+        self.loaded_threads: set[str] = set()
         self.stderr_tail: list[str] = []
         self.write_lock = asyncio.Lock()
-        self.terminal_runs: set[str] = set()
+        self.server_lock = asyncio.Lock()
+        self.terminal_calls: set[str] = set()
 
     async def health(self) -> RuntimeHealth:
         version_code, version_output = await command_result([self.command, "--version"])
@@ -80,9 +100,16 @@ class CodexRuntime:
             status=status,
             auth_mode=AuthMode.SUBSCRIPTION,
             runtime_version=version,
-            capabilities=["app-server", "threads", "approvals", "interrupt", "resume"],
+            capabilities=[
+                "app-server",
+                "threads",
+                "repeatable-calls",
+                "approvals",
+                "interrupt",
+                "resume",
+            ],
             active_sessions=len(self.sessions),
-            active_runs=len(self.run_refs),
+            active_runs=sum(call_id not in self.terminal_calls for call_id in self.run_refs),
             observed_usage_pressure=pressure,
             last_error=(
                 ErrorSummary(
@@ -96,7 +123,8 @@ class CodexRuntime:
         )
 
     async def create_session(self, config: SessionConfig) -> SessionRef:
-        await self._ensure_server()
+        # App Server startup is deliberately lazy so submit can expose startup
+        # failures through the provider call's terminal event stream.
         session = SessionRef(
             session_id=new_id("session"),
             run_id=config.run_id,
@@ -107,66 +135,98 @@ class CodexRuntime:
         self.sessions[session.session_id] = session
         return session
 
-    async def submit(self, session: SessionRef, task: TaskEnvelope) -> RunRef:
-        await self._ensure_server()
-        if session.native_session_id:
-            response = await self._request(
-                "thread/resume",
-                {"threadId": session.native_session_id, "cwd": str(session.workspace)},
-            )
-        else:
-            response = await self._request(
-                "thread/start",
-                {
-                    "cwd": str(session.workspace),
-                    "approvalPolicy": "on-request",
-                    "sandbox": "workspace-write",
-                },
-            )
-        thread = response.get("thread", {})
-        thread_id = str(thread.get("id", ""))
-        if not thread_id:
-            raise CodexProtocolError("thread/start response did not include thread.id")
-        run_id = session.run_id
-        queue: asyncio.Queue[AgentEvent | None] = asyncio.Queue()
-        run = RunRef(run_id=run_id, session_id=session.session_id, native_run_id=thread_id)
-        self.queues[run_id] = queue
-        self.terminal_runs.discard(run_id)
-        self.run_refs[run_id] = run
-        self.thread_to_run[thread_id] = run_id
+    async def submit(self, session: SessionRef, request: RuntimeSubmission) -> RunRef:
+        session = self._canonical_session(session)
+        if isinstance(request, RuntimeExecutionRequest) and request.run_id != session.run_id:
+            raise ValueError("runtime request run_id does not match the session")
+        active_call = self.session_active_calls.get(session.session_id)
+        if active_call and active_call not in self.terminal_calls:
+            raise RuntimeError("the Codex session already has an active provider call")
+
+        call_id = submission_call_id(request)
+        if call_id in self.queues:
+            raise ValueError(f"runtime call already exists: {call_id}")
+        run = RunRef(
+            run_id=session.run_id,
+            session_id=session.session_id,
+            native_run_id=session.native_session_id,
+            runtime_call_id=call_id,
+        )
+        self.queues[call_id] = asyncio.Queue()
+        self.run_refs[call_id] = run
+        self.session_active_calls[session.session_id] = call_id
+
         try:
+            await self._ensure_server()
+            if call_id in self.terminal_calls:
+                return self.run_refs[call_id]
+            thread_id = await self._thread_for_session(session)
+            run = run.model_copy(update={"native_run_id": thread_id})
+            self.run_refs[call_id] = run
+            self.thread_to_call[thread_id] = call_id
+            session = session.model_copy(update={"native_session_id": thread_id})
+            self.sessions[session.session_id] = session
             turn = await self._request(
                 "turn/start",
                 {
                     "threadId": thread_id,
-                    "input": [{"type": "text", "text": self._prompt(task)}],
+                    "input": [{"type": "text", "text": self._prompt(request)}],
                     "cwd": str(session.workspace),
                 },
             )
+            turn_id = str(turn.get("turn", {}).get("id", ""))
+            if not turn_id:
+                raise CodexProtocolError("turn/start response did not include turn.id")
+            self.turn_to_call[turn_id] = call_id
+            self.call_turns[call_id] = turn_id
         except Exception as exc:
-            await self._fail_run(run_id, f"turn/start failed: {exc}")
-            raise
-        turn_id = str(turn.get("turn", {}).get("id", ""))
-        if turn_id:
-            self.turn_to_run[turn_id] = run_id
-        self.sessions[session.session_id] = session.model_copy(
-            update={"native_session_id": thread_id}
+            await self._fail_call(call_id, f"provider call startup failed: {exc}")
+        return self.run_refs[call_id]
+
+    async def _thread_for_session(self, session: SessionRef) -> str:
+        if session.native_session_id:
+            thread_id = session.native_session_id
+            if thread_id not in self.loaded_threads:
+                response = await self._request(
+                    "thread/resume",
+                    {"threadId": thread_id, "cwd": str(session.workspace)},
+                )
+                thread_id = str(response.get("thread", {}).get("id", thread_id))
+                self.loaded_threads.add(thread_id)
+            return thread_id
+
+        response = await self._request(
+            "thread/start",
+            {
+                "cwd": str(session.workspace),
+                "approvalPolicy": "on-request",
+                "sandbox": "workspace-write",
+            },
         )
-        return run
+        thread_id = str(response.get("thread", {}).get("id", ""))
+        if not thread_id:
+            raise CodexProtocolError("thread/start response did not include thread.id")
+        self.loaded_threads.add(thread_id)
+        return thread_id
 
     @staticmethod
-    def _prompt(task: TaskEnvelope) -> str:
+    def _prompt(request: RuntimeSubmission) -> str:
+        task = submission_task(request)
         criteria = (
             "\n".join(f"- {item}" for item in task.success_criteria) or "- Complete objective"
         )
         constraints = "\n".join(f"- {item}" for item in task.constraints) or "- Stay in workspace"
-        return (
+        prompt = (
             f"Objective:\n{task.objective}\n\nSuccess criteria:\n{criteria}"
             f"\n\nConstraints:\n{constraints}"
         )
+        metadata = submission_metadata(request)
+        if metadata:
+            prompt += "\n\nIteration directive:\n" + json.dumps(metadata, ensure_ascii=False)
+        return prompt
 
     async def events(self, run: RunRef) -> AsyncIterator[AgentEvent]:
-        queue = self.queues[run.run_id]
+        queue = self.queues[self._call_id(run)]
         while (event := await queue.get()) is not None:
             yield event
 
@@ -184,16 +244,16 @@ class CodexRuntime:
         await self._send({"id": native_id, "result": {"decision": native_decision}})
 
     async def interrupt(self, run: RunRef) -> None:
+        call_id = self._call_id(run)
         thread_id = run.native_run_id
-        turn_id = next(
-            (turn for turn, owner in self.turn_to_run.items() if owner == run.run_id), None
-        )
+        turn_id = self.call_turns.get(call_id)
         if thread_id and turn_id:
             await self._request("turn/interrupt", {"threadId": thread_id, "turnId": turn_id})
 
     async def resume(self, run: RunRef) -> None:
         if run.native_run_id:
             await self._request("thread/resume", {"threadId": run.native_run_id})
+            self.loaded_threads.add(run.native_run_id)
 
     async def artifacts(self, run: RunRef) -> list[ArtifactRef]:
         return []
@@ -201,7 +261,7 @@ class CodexRuntime:
     async def usage(self, run: RunRef) -> UsageSnapshot:
         try:
             result = await self._request("account/rateLimits/read", {})
-        except CodexProtocolError:
+        except (CodexProtocolError, OSError):
             return UsageSnapshot()
         serialized = json.dumps(result).lower()
         pressure = UsagePressure.EXHAUSTED if "exhaust" in serialized else UsagePressure.UNKNOWN
@@ -211,67 +271,98 @@ class CodexRuntime:
         await self.interrupt(run)
 
     async def close(self) -> None:
-        if self.process and self.process.returncode is None:
-            self.process.terminate()
+        process = self.process
+        if process and process.returncode is None:
+            process.terminate()
             try:
-                await asyncio.wait_for(self.process.wait(), 3)
+                await asyncio.wait_for(process.wait(), 3)
             except TimeoutError:
-                self.process.kill()
-                await self.process.wait()
-        if self.reader_task:
+                process.kill()
+                await process.wait()
+        if self.reader_task and not self.reader_task.done():
             self.reader_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self.reader_task
+        if self.stderr_task and not self.stderr_task.done():
+            self.stderr_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self.stderr_task
 
     async def _ensure_server(self) -> None:
-        if self.process and self.process.returncode is None:
-            return
-        self.process = await asyncio.create_subprocess_exec(
-            self.command,
-            "app-server",
-            "--listen",
-            "stdio://",
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        self.reader_task = asyncio.create_task(self._reader())
-        asyncio.create_task(self._stderr_reader())
-        await self._request(
-            "initialize",
-            {
-                "clientInfo": {
-                    "name": "accretion",
-                    "title": "Accretion",
-                    "version": "0.1.0",
-                }
-            },
-        )
-        await self._send({"method": "initialized", "params": {}})
+        async with self.server_lock:
+            if (
+                self.process
+                and self.process.returncode is None
+                and self.reader_task
+                and not self.reader_task.done()
+            ):
+                return
+            if self.process and self.process.returncode is None:
+                self.process.terminate()
+                await self.process.wait()
+            self.loaded_threads.clear()
+            process = await asyncio.create_subprocess_exec(
+                self.command,
+                "app-server",
+                "--listen",
+                "stdio://",
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            self.process = process
+            self.reader_task = asyncio.create_task(self._reader(process))
+            self.stderr_task = asyncio.create_task(self._stderr_reader(process))
+            try:
+                await self._request(
+                    "initialize",
+                    {
+                        "clientInfo": {
+                            "name": "accretion",
+                            "title": "Accretion",
+                            "version": "0.1.0",
+                        }
+                    },
+                )
+                await self._send({"method": "initialized", "params": {}})
+            except Exception:
+                if process.returncode is None:
+                    process.terminate()
+                    await process.wait()
+                raise
 
     async def _request(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
         self.request_id += 1
         request_id = self.request_id
         future: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
         self.pending[request_id] = future
-        await self._send({"method": method, "id": request_id, "params": params})
         try:
+            await self._send({"method": method, "id": request_id, "params": params})
             return await asyncio.wait_for(future, 30)
         except TimeoutError as exc:
             self.pending.pop(request_id, None)
             raise CodexProtocolError(f"{method} timed out") from exc
+        except Exception:
+            self.pending.pop(request_id, None)
+            if not future.done():
+                future.cancel()
+            raise
 
     async def _send(self, message: dict[str, Any]) -> None:
-        if not self.process or not self.process.stdin:
+        if not self.process or not self.process.stdin or self.process.returncode is not None:
             raise CodexProtocolError("app-server is not running")
         data = json.dumps(message, separators=(",", ":")).encode() + b"\n"
         async with self.write_lock:
             self.process.stdin.write(data)
             await self.process.stdin.drain()
 
-    async def _reader(self) -> None:
-        assert self.process and self.process.stdout
+    async def _reader(self, process: asyncio.subprocess.Process) -> None:
+        if not process.stdout:
+            await self._fail_active_runs("Codex App Server did not expose stdout")
+            return
         error: Exception = CodexProtocolError("Codex App Server exited unexpectedly")
         try:
-            while line := await self.process.stdout.readline():
+            while line := await process.stdout.readline():
                 try:
                     message = json.loads(line)
                 except json.JSONDecodeError:
@@ -283,13 +374,16 @@ class CodexRuntime:
                     future = self.pending.pop(request_id, None)
                     if future:
                         if "error" in message:
-                            future.set_exception(
-                                CodexProtocolError(
-                                    redact_text(str(message["error"].get("message", "error")))
-                                )
+                            native_error = message["error"]
+                            detail = (
+                                native_error.get("message", "error")
+                                if isinstance(native_error, dict)
+                                else native_error
                             )
+                            future.set_exception(CodexProtocolError(redact_text(str(detail))))
                         else:
-                            future.set_result(message.get("result", {}))
+                            result = message.get("result", {})
+                            future.set_result(result if isinstance(result, dict) else {})
                     continue
                 if "id" in message and "method" in message:
                     await self._handle_server_request(message)
@@ -307,105 +401,140 @@ class CodexRuntime:
             self.pending.clear()
             await self._fail_active_runs(str(error))
 
-    async def _stderr_reader(self) -> None:
-        assert self.process and self.process.stderr
-        while line := await self.process.stderr.readline():
+    async def _stderr_reader(self, process: asyncio.subprocess.Process) -> None:
+        if not process.stderr:
+            return
+        while line := await process.stderr.readline():
             self.stderr_tail.append(redact_text(line.decode(errors="replace").strip()))
             self.stderr_tail = self.stderr_tail[-50:]
 
     async def _handle_server_request(self, message: dict[str, Any]) -> None:
         method = str(message["method"])
         params = redact(message.get("params", {}))
-        run_id = self._resolve_run(params)
-        if not run_id or run_id not in self.queues:
+        call_id = self._resolve_call(params)
+        if not call_id or call_id not in self.queues or call_id in self.terminal_calls:
             await self._send({"id": message["id"], "result": {"decision": "decline"}})
             return
         approval_id = new_id("approval")
         self.approval_routes[approval_id] = (message["id"], method)
-        await self.queues[run_id].put(
+        run = self.run_refs[call_id]
+        await self.queues[call_id].put(
             make_event(
-                run_id=run_id,
-                session_id=self.run_refs[run_id].session_id,
+                run_id=run.run_id,
+                session_id=run.session_id,
                 provider=Provider.CODEX,
                 native_type=method,
                 normalized_type=EventType.APPROVAL_REQUIRED,
                 payload={
+                    "runtime_call_id": call_id,
                     "approval_id": approval_id,
                     "native_request_id": str(message["id"]),
                     "method": method,
                     "request": params,
                 },
                 adapter_version=self.adapter_version,
+                correlation_id=call_id,
             )
         )
 
     async def _handle_notification(self, message: dict[str, Any]) -> None:
         method = str(message["method"])
         params = redact(message.get("params", {}))
-        run_id = self._resolve_run(params)
-        if not run_id or run_id not in self.queues:
+        call_id = self._resolve_call(params)
+        if not call_id or call_id not in self.queues or call_id in self.terminal_calls:
             return
         normalized = self._normalize(method, params)
+        run = self.run_refs[call_id]
         event = make_event(
-            run_id=run_id,
-            session_id=self.run_refs[run_id].session_id,
+            run_id=run.run_id,
+            session_id=run.session_id,
             provider=Provider.CODEX,
             native_type=method,
             normalized_type=normalized,
-            payload={"provider_extension": params},
+            payload={"runtime_call_id": call_id, "provider_extension": params},
             adapter_version=self.adapter_version,
+            correlation_id=call_id,
         )
-        if normalized in {EventType.RUN_COMPLETED, EventType.RUN_FAILED, EventType.RUN_CANCELLED}:
-            await self._finish_run(run_id, event)
+        if normalized in _CALL_TERMINALS:
+            await self._finish_call(call_id, event)
         else:
-            await self.queues[run_id].put(event)
+            await self.queues[call_id].put(event)
 
-    async def _finish_run(self, run_id: str, event: AgentEvent) -> None:
-        if run_id in self.terminal_runs:
+    async def _finish_call(self, call_id: str, event: AgentEvent) -> None:
+        if call_id in self.terminal_calls:
             return
-        self.terminal_runs.add(run_id)
-        queue = self.queues.get(run_id)
+        self.terminal_calls.add(call_id)
+        run = self.run_refs.get(call_id)
+        if run and self.session_active_calls.get(run.session_id) == call_id:
+            self.session_active_calls.pop(run.session_id, None)
+        queue = self.queues.get(call_id)
         if queue is not None:
             await queue.put(event)
             await queue.put(None)
 
-    async def _fail_run(self, run_id: str, message: str) -> None:
-        run = self.run_refs.get(run_id)
-        if run is None or run_id in self.terminal_runs:
+    async def _fail_call(self, call_id: str, message: str) -> None:
+        run = self.run_refs.get(call_id)
+        if run is None or call_id in self.terminal_calls:
             return
-        await self._finish_run(
-            run_id,
+        await self._finish_call(
+            call_id,
             make_event(
-                run_id=run_id,
+                run_id=run.run_id,
                 session_id=run.session_id,
                 provider=Provider.CODEX,
                 native_type="process/exit",
-                normalized_type=EventType.RUN_FAILED,
-                payload={"error": redact_text(message), "stderr": self.stderr_tail[-10:]},
+                normalized_type=EventType.RUNTIME_CALL_FAILED,
+                payload={
+                    "runtime_call_id": call_id,
+                    "error": redact_text(message),
+                    "stderr": self.stderr_tail[-10:],
+                },
                 adapter_version=self.adapter_version,
+                correlation_id=call_id,
             ),
         )
 
     async def _fail_active_runs(self, message: str) -> None:
-        for run_id in list(self.queues):
-            await self._fail_run(run_id, message)
+        # Retain the P0 method name because recovery tests exercise it directly.
+        for call_id in list(self.run_refs):
+            await self._fail_call(call_id, message)
 
-    def _resolve_run(self, params: dict[str, Any]) -> str | None:
-        thread_id = params.get("threadId") or params.get("thread", {}).get("id")
-        turn_id = params.get("turnId") or params.get("turn", {}).get("id")
-        return self.thread_to_run.get(str(thread_id)) or self.turn_to_run.get(str(turn_id))
+    def _resolve_call(self, params: dict[str, Any]) -> str | None:
+        thread = params.get("thread")
+        turn = params.get("turn")
+        thread_id = params.get("threadId") or (
+            thread.get("id") if isinstance(thread, dict) else None
+        )
+        turn_id = params.get("turnId") or (turn.get("id") if isinstance(turn, dict) else None)
+        return self.turn_to_call.get(str(turn_id)) or self.thread_to_call.get(str(thread_id))
+
+    def _canonical_session(self, session: SessionRef) -> SessionRef:
+        current = self.sessions.get(session.session_id)
+        if current is None:
+            self.sessions[session.session_id] = session
+            return session
+        native_session_id = current.native_session_id or session.native_session_id
+        canonical = session.model_copy(update={"native_session_id": native_session_id})
+        self.sessions[session.session_id] = canonical
+        return canonical
+
+    @staticmethod
+    def _call_id(run: RunRef) -> str:
+        return run.runtime_call_id or run.run_id
 
     @staticmethod
     def _normalize(method: str, params: dict[str, Any]) -> EventType:
         if method == "turn/started":
-            return EventType.RUN_STARTED
+            return EventType.RUNTIME_CALL_STARTED
         if method == "turn/completed":
-            status = str(params.get("turn", {}).get("status", "completed")).lower()
+            turn = params.get("turn")
+            status = str(turn.get("status", "completed") if isinstance(turn, dict) else "completed")
+            status = status.lower()
             if status in {"failed", "error"}:
-                return EventType.RUN_FAILED
+                return EventType.RUNTIME_CALL_FAILED
             if status in {"interrupted", "cancelled"}:
-                return EventType.RUN_CANCELLED
-            return EventType.RUN_COMPLETED
+                return EventType.RUNTIME_CALL_CANCELLED
+            return EventType.RUNTIME_CALL_COMPLETED
         if method.endswith("requestApproval"):
             return EventType.APPROVAL_REQUIRED
         if "commandExecution" in method and method.endswith("/started"):
@@ -415,5 +544,5 @@ class CodexRuntime:
         if "fileChange" in method:
             return EventType.FILE_CHANGED
         if method in {"error", "turn/error"}:
-            return EventType.RUN_FAILED
+            return EventType.RUNTIME_CALL_FAILED
         return EventType.RUN_PROGRESS

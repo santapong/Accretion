@@ -5,8 +5,8 @@
 ### Observable, deterministic orchestration for local AI coding agents
 
 Accretion supervises Codex and Claude Code through one provider-neutral control
-plane, with isolated workspaces, durable planning decisions, and a complete
-normalized execution trace.
+plane, with deterministic planning, bounded verifier-gated feedback loops,
+isolated workspaces, and a durable normalized execution trace.
 
 [![CI](https://github.com/santapong/Accretion/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/santapong/Accretion/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
@@ -21,15 +21,16 @@ normalized execution trace.
 </div>
 
 > [!IMPORTANT]
-> Accretion is pre-release, local-first software. P0 runtime feasibility and P1
-> deterministic planning are implemented. LOOP, GRAPH, and HYBRID execution
-> remain intentionally blocked until their P2/P3 engines are available.
+> Accretion is pre-release, local-first software. P0 runtime feasibility, P1
+> deterministic planning, and P2 verifier-gated feedback loops are implemented.
+> `DIRECT/direct-v1` and `LOOP/feedback-loop-v1` can execute. `GRAPH`, `HYBRID`,
+> and the safe-unknown fallback remain intentionally blocked until P3.
 
 ## Why Accretion
 
 AI coding runtimes expose different protocols, session models, event formats,
 and failure behavior. Accretion puts a durable control plane around them so an
-operator can answer four questions before and during every run:
+operator can answer five questions before and during every run:
 
 - **What will execute?** Typed task contracts produce an inspectable profile and
   a versioned strategy decision.
@@ -39,6 +40,8 @@ operator can answer four questions before and during every run:
   Git worktree with explicit capability constraints.
 - **What actually happened?** Provider activity becomes a normalized,
   append-only event stream that survives UI reconnects and backend restarts.
+- **Did the result really pass?** Independent deterministic verifiers inspect an
+  immutable candidate snapshot; provider-reported completion is never acceptance.
 
 ## Capabilities
 
@@ -46,16 +49,19 @@ operator can answer four questions before and during every run:
 |---|---|
 | Runtime control | Structured Codex App Server and Claude Code adapters, plus a deterministic fake runtime |
 | Task planning | Versioned prompt/context contracts, deterministic profiling, static strategy selection, and explicit unknown handling |
-| Safety | High-risk and irreversible-task gates, audited overrides, capability allow/deny lists, and side-effect idempotency |
+| Feedback execution | Bounded multi-turn loops, structured repair directives, one reusable provider session, and durable pause/resume/cancel controls |
+| Independent acceptance | Output-contract, Git-diff, trajectory-policy, and bounded command verifiers with fail-closed policy evaluation |
+| Safety | Hard wall-time, turn, tool-call, and iteration ceilings; high-risk approval gates; audited overrides; and side-effect idempotency |
 | Isolation | One Git worktree lease per mutable run with captured diff artifacts |
-| Observability | Durable PostgreSQL state, monotonic normalized events, resumable SSE, runtime health, and usage pressure |
-| Operator experience | React task creation, planning review, override feedback, runtime dashboard, and live trace inspection |
+| Recovery | Atomic iteration commits, optimistic revisions, session continuation, and restart reconciliation without replaying committed work |
+| Observability | Durable PostgreSQL state, immutable verifier evidence, monotonic normalized events, resumable SSE, runtime health, and usage pressure |
+| Operator experience | React task creation, planning review, override feedback, runtime controls, live trace inspection, and a read-only React Flow loop projection |
 
 ## Architecture
 
 <div align="center">
   <a href="docs/assets/accretion-architecture.svg">
-    <img src="docs/assets/accretion-architecture.svg" alt="Accretion architecture: the React operator interface sends tasks to the FastAPI control plane for deterministic planning and safe execution through Codex, Claude, or the fake runtime; PostgreSQL, resumable SSE, and disposable Git worktrees provide the durable foundation" width="100%" />
+    <img src="docs/assets/accretion-architecture.svg" alt="Accretion architecture: the React operator interface sends tasks to the FastAPI control plane for deterministic planning, bounded feedback execution, and independent verification through Codex, Claude, or the fake runtime; PostgreSQL, resumable SSE, and disposable Git worktrees provide the durable foundation" width="100%" />
   </a>
 </div>
 
@@ -65,13 +71,28 @@ The profiler reads typed task metadata and deterministic repository evidence. It
 does **not** parse objective keywords or invoke an LLM. The selector persists one
 of the following static decisions:
 
-| Mode | Template | P1 behavior |
+| Mode | Template | Current behavior |
 |---|---|---|
-| `DIRECT` | `direct-v1` | Executable now |
-| `LOOP` | `feedback-loop-v1` | Selected and persisted; execution arrives in P2 |
-| `GRAPH` | `fixed-graph-v1` | Selected and persisted; execution arrives in P3 |
-| `HYBRID` | `hybrid-rd-v1` | Selected and persisted; execution arrives in P3 |
-| Safe fallback | `safe-unknown-v1` | Used for low confidence or required unknowns; execution blocked in P1 |
+| `DIRECT` | `direct-v1` | Executes one provider call, then applies the configured acceptance policy |
+| `LOOP` | `feedback-loop-v1` | Executes bounded observe/verify/repair iterations in one provider session |
+| `GRAPH` | `fixed-graph-v1` | Decision is persisted; execution is blocked until P3 |
+| `HYBRID` | `hybrid-rd-v1` | Decision is persisted; execution is blocked until P3 |
+| Safe fallback | `safe-unknown-v1` | Used for low confidence or required unknowns; execution is blocked until P3 |
+
+### How a feedback loop succeeds
+
+1. The runtime produces a candidate in the run's disposable worktree.
+2. Accretion captures an immutable observation and invokes the policy's independent
+   verifiers.
+3. `PASS` completes the run; `FAIL` becomes a structured repair directive for the
+   next iteration.
+4. `INCONCLUSIVE`, exhausted budgets, repeated failure, or no progress fail closed
+   to explicit escalation. Cancellation and restart reconciliation close the
+   current attempt without losing committed iteration history.
+
+Worker text such as “done” or “tests pass” is never sufficient evidence. Every
+loop remains bounded by persisted wall-time, turn, tool-call, and iteration
+ceilings.
 
 ## Project status
 
@@ -79,8 +100,8 @@ of the following static decisions:
 |---|---|---|
 | P0 — Runtime feasibility | Complete | Runtime adapters, isolation, normalized events, health, recovery, and idempotency |
 | P1 — Deterministic planning | Complete | Prompt/context contracts, profiling, selection, persistence, API, and New Task UI |
-| P2 — Feedback loops | Planned | Bounded loop execution and independent verification |
-| P3 — Static graphs | Planned | GRAPH/HYBRID engines, checkpoints, replay, and React Flow visualization |
+| P2 — Feedback loops | Complete | Bounded repeat execution, independent verification, recovery, controls, and loop visualization |
+| P3 — Static graphs | Planned | GRAPH/HYBRID engines, checkpoints, replay, and general workflow visualization |
 
 See the [v0.1 system design](docs/sdd/Accretion_SDD_v0.1.md) and the
 [multi-release SDD index](docs/sdd/Accretion_SDD_INDEX_v0.3.md) for the full
@@ -136,6 +157,10 @@ ACCRETION_ENABLE_LIVE_PROVIDERS=true
 Accretion checks CLI authentication status but never reads or copies raw
 provider credentials.
 
+For deterministic acceptance, declare concrete repository-relative output paths
+when creating a task. If required evidence or a configured verifier is unavailable,
+Accretion returns `INCONCLUSIVE` and escalates instead of accepting the run.
+
 ## Configuration
 
 All settings use the `ACCRETION_` prefix and can be placed in `.env`.
@@ -173,7 +198,8 @@ ACCRETION_LIVE_PROVIDERS=1 \
 ```
 
 The validated CLI range and recorded acceptance evidence are documented in the
-[P0 runbook](docs/P0_RUNBOOK.md).
+[P0 runtime runbook](docs/P0_RUNBOOK.md) and the
+[P2 loops and verifiers runbook](docs/P2_RUNBOOK.md).
 
 ## Repository guide
 
@@ -183,6 +209,9 @@ src/accretion/api/        FastAPI routes and schemas
 src/accretion/runtimes/   Codex, Claude, and fake runtime adapters
 src/accretion/persistence Durable state, planning history, and side effects
 src/accretion/planning.py Deterministic profiler and selector policy
+src/accretion/looping.py  Loop policy, budgets, and terminal outcomes
+src/accretion/projections.py Read-only execution graph projections
+src/accretion/verifiers/  Deterministic verifier implementations and registry
 migrations/               Alembic schema history
 tests/                    Unit, API, PostgreSQL, and live acceptance tests
 docs/sdd/                 Versioned system design specifications

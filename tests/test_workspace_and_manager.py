@@ -3,12 +3,17 @@ import subprocess
 from pathlib import Path
 
 from accretion.concurrency import ConcurrencyLimiter
-from accretion.contracts import Provider, Run, RunState, TaskType
+from accretion.contracts import EventType, Provider, Run, RunState, TaskType
 from accretion.ids import new_id
 from accretion.persistence.side_effects import MemorySideEffectLedger, SideEffectStatus
 from accretion.persistence.store import MemoryStore
 from accretion.runtimes.fake import FakeRuntime
 from accretion.services.run_manager import RunManager
+from accretion.verifiers.command import CommandVerifier
+from accretion.verifiers.git_diff import GitDiffVerifier
+from accretion.verifiers.output_contract import OutputContractVerifier
+from accretion.verifiers.registry import VerifierRegistry
+from accretion.verifiers.trajectory import TrajectoryPolicyVerifier
 from accretion.workspace import WorktreeManager
 
 
@@ -33,6 +38,15 @@ async def test_worktrees_are_isolated_and_successful_run_completes(tmp_path: Pat
         runtimes={Provider.FAKE: FakeRuntime(step_delay=0.01)},
         limiter=ConcurrencyLimiter(global_limit=2, provider_limit=2, project_limit=2),
         live_providers_enabled=False,
+        verifier_registry=VerifierRegistry(
+            [
+                GitDiffVerifier(),
+                OutputContractVerifier(),
+                TrajectoryPolicyVerifier(),
+                CommandVerifier("fixture-success", ("git", "diff", "--quiet")),
+            ]
+        ),
+        default_verifier_ids=("fixture-success",),
     )
     project = await manager.create_project("fixture", repository)
     task = await manager.create_task(
@@ -51,12 +65,16 @@ async def test_worktrees_are_isolated_and_successful_run_completes(tmp_path: Pat
         store.leases[first_result.workspace_lease_id].path
         != store.leases[second_result.workspace_lease_id].path
     )
-    assert [event.normalized_type.value for event in await store.list_events(first.run_id)] == [
-        "RUN_CREATED",
-        "RUN_STARTED",
-        "RUN_PROGRESS",
-        "RUN_COMPLETED",
+    event_types = [
+        event.normalized_type.value for event in await store.list_events(first.run_id)
     ]
+    assert event_types[:2] == ["RUN_CREATED", "RUN_STARTED"]
+    assert event_types[-1] == "RUN_COMPLETED"
+    assert event_types.count("RUN_COMPLETED") == 1
+    assert event_types.index("RUNTIME_CALL_COMPLETED") < event_types.index(
+        "VERIFICATION_STARTED"
+    )
+    assert event_types.count("VERIFICATION_RESULT") == 2
 
 
 async def test_startup_reconciles_pending_runs_and_uncertain_side_effects(tmp_path: Path) -> None:
@@ -94,7 +112,11 @@ async def test_startup_reconciles_pending_runs_and_uncertain_side_effects(tmp_pa
     )
 
     await manager.reconcile()
+    await manager.reconcile()
 
     reconciled = await store.get_run(run.run_id)
     assert reconciled and reconciled.state is RunState.REQUIRES_HUMAN
+    assert reconciled.error and reconciled.error.code == "RUN_RECOVERY_REQUIRES_HUMAN"
+    events = await store.list_events(run.run_id)
+    assert sum(event.normalized_type is EventType.RUN_FAILED for event in events) == 1
     assert ledger.operations[operation.idempotency_key].status is SideEffectStatus.UNKNOWN

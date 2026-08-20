@@ -68,8 +68,8 @@ async def test_live_codex_runs_two_independent_threads_on_one_server(tmp_path: P
             collect(runtime, first_run), collect(runtime, second_run)
         )
         assert first_run.native_run_id != second_run.native_run_id
-        assert first_events[-1].normalized_type is EventType.RUN_COMPLETED
-        assert second_events[-1].normalized_type is EventType.RUN_COMPLETED
+        assert first_events[-1].normalized_type is EventType.RUNTIME_CALL_COMPLETED
+        assert second_events[-1].normalized_type is EventType.RUNTIME_CALL_COMPLETED
     finally:
         await runtime.close()
 
@@ -82,10 +82,10 @@ async def test_live_claude_emits_normalized_start_progress_terminal(tmp_path: Pa
     session = await runtime.create_session(SessionConfig(run_id=new_id("run"), workspace=workspace))
     run = await runtime.submit(session, harmless_task())
     normalized = [event.normalized_type for event in await collect(runtime, run)]
-    assert EventType.RUN_STARTED in normalized
+    assert EventType.RUNTIME_CALL_STARTED in normalized
     assert EventType.RUN_PROGRESS in normalized
-    assert normalized.index(EventType.RUN_STARTED) < len(normalized) - 1
-    assert normalized[-1] is EventType.RUN_COMPLETED
+    assert normalized.index(EventType.RUNTIME_CALL_STARTED) < len(normalized) - 1
+    assert normalized[-1] is EventType.RUNTIME_CALL_COMPLETED
 
 
 async def test_live_claude_and_codex_run_in_separate_worktrees(tmp_path: Path) -> None:
@@ -108,7 +108,7 @@ async def test_live_claude_and_codex_run_in_separate_worktrees(tmp_path: Path) -
             collect(codex, codex_run), collect(claude, claude_run)
         )
         assert codex_workspace != claude_workspace
-        assert codex_events[-1].normalized_type is EventType.RUN_COMPLETED
-        assert claude_events[-1].normalized_type is EventType.RUN_COMPLETED
+        assert codex_events[-1].normalized_type is EventType.RUNTIME_CALL_COMPLETED
+        assert claude_events[-1].normalized_type is EventType.RUNTIME_CALL_COMPLETED
     finally:
         await codex.close()

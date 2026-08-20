@@ -1,6 +1,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
+import { RunExecution } from "./RunExecution";
 import type { AgentEvent, Project, Run, TaskCreate, TaskPlanning } from "./types";
 import "./styles.css";
 
@@ -72,7 +73,11 @@ function NewTaskForm({ projects, onPlanning }: {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
-    const requiredOutputs = lines(data.get("required_outputs")).map((description) => ({ description }));
+    const requiredOutputs = lines(data.get("required_outputs")).map((path) => ({
+      path,
+      kind: "file",
+      non_empty: true,
+    }));
     const payload: TaskCreate = {
       project_id: String(data.get("project_id")),
       objective: String(data.get("objective")),
@@ -86,6 +91,7 @@ function NewTaskForm({ projects, onPlanning }: {
       budgets: {
         wall_time_seconds: Number(data.get("wall_time_seconds")),
         max_turns: Number(data.get("max_turns")),
+        max_tool_calls: Number(data.get("max_tool_calls")),
         max_loop_iterations: Number(data.get("max_loop_iterations")),
         max_parallel_runs: Number(data.get("max_parallel_runs")),
       },
@@ -109,13 +115,14 @@ function NewTaskForm({ projects, onPlanning }: {
       <label>Risk<select name="risk_level" defaultValue="LOW"><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select></label>
       <label>Wall time (seconds)<input name="wall_time_seconds" type="number" min="1" defaultValue="1800" /></label>
       <label>Max turns<input name="max_turns" type="number" min="1" defaultValue="20" /></label>
+      <label>Max tool calls<input name="max_tool_calls" type="number" min="1" defaultValue="100" /></label>
       <label>Loop iterations<input name="max_loop_iterations" type="number" min="1" defaultValue="1" /></label>
       <label>Parallel runs<input name="max_parallel_runs" type="number" min="1" defaultValue="1" /></label>
       <label>Constraints <small>one per line</small><textarea name="constraints" rows={4} /></label>
       <label>Success criteria <small>one per line</small><textarea name="success_criteria" rows={4} /></label>
       <label>Allowed capabilities <small>one per line</small><textarea name="allowed_capabilities" rows={4} /></label>
       <label>Denied capabilities <small>one per line</small><textarea name="denied_capabilities" rows={4} /></label>
-      <label className="field-wide">Required outputs <small>one per line</small><textarea name="required_outputs" rows={3} /></label>
+      <label className="field-wide">Required output paths <small>one repository-relative file path per line</small><textarea name="required_outputs" rows={3} placeholder={"reports/result.json\nsrc/generated-summary.md"} /></label>
       <div className="form-actions field-wide"><button className="primary-button" disabled={!projects.length} type="submit">Create and profile task</button>{status ? <p className="form-status" role="status">{status}</p> : null}</div>
     </form>
   );
@@ -138,6 +145,8 @@ function PlanningReview({ planning, onUpdate }: {
   const [feedback, setFeedback] = useState<string>();
   const [provider, setProvider] = useState("FAKE");
   const directSupported = decision.selected_mode === "DIRECT" && decision.selected_template_id === "direct-v1";
+  const loopSupported = decision.selected_mode === "LOOP" && decision.selected_template_id === "feedback-loop-v1";
+  const executionSupported = directSupported || loopSupported;
 
   async function override(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -194,8 +203,8 @@ function PlanningReview({ planning, onUpdate }: {
           </form>
           <div className="run-control">
             <label>Runtime<select value={provider} onChange={(event) => setProvider(event.target.value)}><option>FAKE</option><option>CODEX</option><option>CLAUDE</option></select></label>
-            <button className="primary-button" type="button" disabled={!directSupported} onClick={run}>Create run</button>
-            {!directSupported ? <p>Execution is blocked in P1. LOOP arrives in P2; GRAPH and HYBRID arrive in P3.</p> : null}
+            <button className="primary-button" type="button" disabled={!executionSupported} onClick={run}>Create run</button>
+            {!executionSupported ? <p>Execution is blocked until P3. GRAPH, HYBRID, and safe-unknown decisions require graph and checkpoint support.</p> : null}
           </div>
         </div>
         {feedback ? <p className="form-status" role="status">{feedback}</p> : null}
@@ -271,7 +280,7 @@ export default function App() {
     <main>
       <nav>
         <div className="brand-mark">A</div>
-        <div><strong>Accretion</strong><span>Operator / P1</span></div>
+        <div><strong>Accretion</strong><span>Operator / P2</span></div>
         <div className="nav-status"><i />Control plane</div>
       </nav>
 
@@ -317,10 +326,13 @@ export default function App() {
                   <StatePill state={run.state} />
                 </button>
               ))}
-              {runs.length === 0 ? <div className="empty">No runs yet. Create one through the API.</div> : null}
+              {runs.length === 0 ? <div className="empty">No runs yet. Create and profile a task above.</div> : null}
             </div>
           </section>
-          <EventStream run={selected} />
+          <div className="inspector-stack">
+            <RunExecution run={selected} />
+            <EventStream run={selected} />
+          </div>
         </div>
       </div>
     </main>

@@ -47,19 +47,51 @@ class WorktreeManager:
             return "INVALID"
         return "CONSISTENT" if revision.startswith(lease.base_revision) else "REVISION_CONFLICT"
 
-    async def capture_diff(self, lease: WorkspaceLease) -> ArtifactRef | None:
-        diff = await self._git(lease.path, "diff", "--binary", "HEAD")
+    async def diff(self, lease: WorkspaceLease) -> str:
+        """Return the current worktree delta without mutating the workspace."""
+
+        tracked = await self._git(
+            lease.path,
+            "diff",
+            "--no-ext-diff",
+            "--binary",
+            "HEAD",
+        )
+        untracked_output = await self._git(
+            lease.path,
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+            "-z",
+        )
+        parts = [tracked]
+        for relative_path in (item for item in untracked_output.split("\0") if item):
+            parts.append(await self._untracked_diff(lease.path, relative_path))
+        return "".join(parts)
+
+    async def capture_diff(
+        self,
+        lease: WorkspaceLease,
+        *,
+        name: str = "workspace.patch",
+        kind: str = "GIT_DIFF",
+    ) -> ArtifactRef | None:
+        if Path(name).name != name or not name.endswith(".patch"):
+            raise WorkspaceError("artifact name must be a local .patch filename")
+        diff = await self.diff(lease)
         if not diff:
             return None
         target_dir = self.artifact_root / lease.run_id
         target_dir.mkdir(parents=True, exist_ok=True)
-        target = target_dir / "workspace.patch"
+        target = target_dir / name
+        if target.exists():
+            raise WorkspaceError(f"artifact already exists: {target.name}")
         target.write_text(diff, encoding="utf-8")
         digest = hashlib.sha256(diff.encode()).hexdigest()
         return ArtifactRef(
             artifact_id=new_id("artifact"),
             run_id=lease.run_id,
-            kind="GIT_DIFF",
+            kind=kind,
             path=target,
             sha256=digest,
         )
@@ -90,4 +122,25 @@ class WorktreeManager:
         if process.returncode != 0:
             message = stderr.decode(errors="replace").strip()
             raise WorkspaceError(message or f"git {' '.join(args)} failed")
+        return stdout.decode(errors="replace")
+
+    @staticmethod
+    async def _untracked_diff(cwd: Path, relative_path: str) -> str:
+        process = await asyncio.create_subprocess_exec(
+            "git",
+            "diff",
+            "--no-ext-diff",
+            "--binary",
+            "--no-index",
+            "--",
+            "/dev/null",
+            relative_path,
+            cwd=cwd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await process.communicate()
+        if process.returncode not in {0, 1}:
+            message = stderr.decode(errors="replace").strip()
+            raise WorkspaceError(message or f"git could not diff {relative_path}")
         return stdout.decode(errors="replace")

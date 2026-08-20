@@ -9,10 +9,17 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from accretion.contracts import (
+    AcceptancePolicy,
     AgentEvent,
     ArtifactRef,
     ContextBundle,
     ErrorSummary,
+    ExecutionMode,
+    LoopExecution,
+    LoopExecutionStatus,
+    LoopIteration,
+    LoopState,
+    LoopStopReason,
     Project,
     PromptContract,
     Provider,
@@ -25,20 +32,33 @@ from accretion.contracts import (
     TaskEnvelope,
     TaskPlanning,
     TaskProfile,
+    VerificationResult,
     WorkspaceLease,
 )
 from accretion.persistence.models import (
+    AcceptancePolicyRow,
     AgentEventRow,
     ContextBundleRow,
+    LoopExecutionRow,
+    LoopIterationRow,
     ProjectRow,
     PromptContractRow,
     RunRow,
+    RuntimeSessionRow,
     StrategyDecisionRow,
     StrategyOverrideRow,
     TaskProfileRow,
     TaskRow,
+    VerificationRow,
     WorkspaceLeaseRow,
 )
+
+_TERMINAL_LOOP_EXECUTION_STATUSES = {
+    LoopExecutionStatus.SUCCEEDED,
+    LoopExecutionStatus.FAILED,
+    LoopExecutionStatus.CANCELLED,
+    LoopExecutionStatus.REQUIRES_HUMAN,
+}
 
 
 class StateStore(Protocol):
@@ -77,11 +97,49 @@ class StateStore(Protocol):
         *,
         session_id: str | None = None,
         workspace_lease_id: str | None = None,
+        strategy_decision_id: str | None = None,
+        execution_mode: ExecutionMode | None = None,
+        workflow_template_id: str | None = None,
+        acceptance_policy_id: str | None = None,
+        loop_execution_id: str | None = None,
         error: ErrorSummary | None = None,
     ) -> Run: ...
+    async def save_acceptance_policy(self, policy: AcceptancePolicy) -> None: ...
+    async def get_acceptance_policy(self, policy_id: str) -> AcceptancePolicy | None: ...
+    async def create_loop_execution(self, execution: LoopExecution) -> LoopExecution: ...
+    async def get_loop_execution(self, loop_execution_id: str) -> LoopExecution | None: ...
+    async def get_loop_execution_for_run(self, run_id: str) -> LoopExecution | None: ...
+    async def update_loop_execution(
+        self,
+        loop_execution_id: str,
+        state: LoopState,
+        *,
+        status: LoopExecutionStatus | None = None,
+        stop_reason: LoopStopReason | None = None,
+        expected_revision: int | None = None,
+    ) -> LoopExecution: ...
+    async def append_loop_iteration(
+        self,
+        loop_execution_id: str,
+        iteration: LoopIteration,
+        next_state: LoopState,
+        *,
+        status: LoopExecutionStatus | None = None,
+        stop_reason: LoopStopReason | None = None,
+        expected_revision: int | None = None,
+        verifications: Sequence[VerificationResult] = (),
+        events: Sequence[AgentEvent] = (),
+    ) -> LoopExecution: ...
+    async def list_loop_iterations(self, loop_execution_id: str) -> list[LoopIteration]: ...
+    async def save_verification(self, result: VerificationResult) -> None: ...
+    async def get_verification(self, verification_id: str) -> VerificationResult | None: ...
+    async def list_verifications(
+        self, run_id: str, iteration_id: str | None = None
+    ) -> list[VerificationResult]: ...
     async def save_lease(self, lease: WorkspaceLease) -> None: ...
     async def get_lease(self, lease_id: str) -> WorkspaceLease | None: ...
     async def save_session(self, session: SessionRef) -> None: ...
+    async def get_session_for_run(self, run_id: str) -> SessionRef | None: ...
     async def save_artifact(self, artifact: ArtifactRef) -> None: ...
     async def list_artifacts(self, run_id: str) -> list[ArtifactRef]: ...
     async def append_event(self, event: AgentEvent) -> AgentEvent: ...
@@ -104,6 +162,12 @@ class MemoryStore:
         self.profiles: dict[str, list[TaskProfile]] = {}
         self.decisions: dict[str, list[StrategyDecision]] = {}
         self.overrides: dict[str, list[StrategyOverride]] = {}
+        self.acceptance_policies: dict[str, AcceptancePolicy] = {}
+        self.loop_executions: dict[str, LoopExecution] = {}
+        self.loop_execution_by_run: dict[str, str] = {}
+        self.loop_iterations: dict[str, list[LoopIteration]] = {}
+        self.verifications: dict[str, VerificationResult] = {}
+        self.verification_ids_by_run: dict[str, list[str]] = {}
         self._lock = asyncio.Lock()
 
     async def create_project(self, project: Project) -> Project:
@@ -237,6 +301,11 @@ class MemoryStore:
         *,
         session_id: str | None = None,
         workspace_lease_id: str | None = None,
+        strategy_decision_id: str | None = None,
+        execution_mode: ExecutionMode | None = None,
+        workflow_template_id: str | None = None,
+        acceptance_policy_id: str | None = None,
+        loop_execution_id: str | None = None,
         error: ErrorSummary | None = None,
     ) -> Run:
         current = self.runs[run_id]
@@ -249,6 +318,29 @@ class MemoryStore:
                     if workspace_lease_id is not None
                     else current.workspace_lease_id
                 ),
+                "strategy_decision_id": (
+                    strategy_decision_id
+                    if strategy_decision_id is not None
+                    else current.strategy_decision_id
+                ),
+                "execution_mode": (
+                    execution_mode if execution_mode is not None else current.execution_mode
+                ),
+                "workflow_template_id": (
+                    workflow_template_id
+                    if workflow_template_id is not None
+                    else current.workflow_template_id
+                ),
+                "acceptance_policy_id": (
+                    acceptance_policy_id
+                    if acceptance_policy_id is not None
+                    else current.acceptance_policy_id
+                ),
+                "loop_execution_id": (
+                    loop_execution_id
+                    if loop_execution_id is not None
+                    else current.loop_execution_id
+                ),
                 "error": error,
                 "revision": current.revision + 1,
                 "updated_at": datetime.now(UTC),
@@ -257,6 +349,227 @@ class MemoryStore:
         self.runs[run_id] = updated
         return updated
 
+    async def save_acceptance_policy(self, policy: AcceptancePolicy) -> None:
+        async with self._lock:
+            current = self.acceptance_policies.get(policy.policy_id)
+            if current is not None and current != policy:
+                raise ValueError(f"acceptance policy {policy.policy_id} is immutable")
+            self.acceptance_policies[policy.policy_id] = policy
+
+    async def get_acceptance_policy(self, policy_id: str) -> AcceptancePolicy | None:
+        return self.acceptance_policies.get(policy_id)
+
+    async def create_loop_execution(self, execution: LoopExecution) -> LoopExecution:
+        async with self._lock:
+            if execution.acceptance_policy_ref not in self.acceptance_policies:
+                raise KeyError(execution.acceptance_policy_ref)
+            if execution.run_id not in self.runs:
+                raise KeyError(execution.run_id)
+            if execution.loop_execution_id in self.loop_executions:
+                raise ValueError(f"loop execution {execution.loop_execution_id} already exists")
+            if execution.run_id in self.loop_execution_by_run:
+                raise ValueError(f"run {execution.run_id} already has a loop execution")
+            policy = self.acceptance_policies[execution.acceptance_policy_ref]
+            stored = execution.model_copy(update={"acceptance_policy": policy})
+            self.loop_executions[stored.loop_execution_id] = stored
+            self.loop_execution_by_run[stored.run_id] = stored.loop_execution_id
+            self.loop_iterations[stored.loop_execution_id] = []
+            run = self.runs[stored.run_id]
+            self.runs[stored.run_id] = run.model_copy(
+                update={
+                    "acceptance_policy_id": stored.acceptance_policy_ref,
+                    "loop_execution_id": stored.loop_execution_id,
+                    "revision": run.revision + 1,
+                    "updated_at": datetime.now(UTC),
+                }
+            )
+            return stored
+
+    async def get_loop_execution(self, loop_execution_id: str) -> LoopExecution | None:
+        return self.loop_executions.get(loop_execution_id)
+
+    async def get_loop_execution_for_run(self, run_id: str) -> LoopExecution | None:
+        loop_execution_id = self.loop_execution_by_run.get(run_id)
+        return self.loop_executions.get(loop_execution_id) if loop_execution_id else None
+
+    async def update_loop_execution(
+        self,
+        loop_execution_id: str,
+        state: LoopState,
+        *,
+        status: LoopExecutionStatus | None = None,
+        stop_reason: LoopStopReason | None = None,
+        expected_revision: int | None = None,
+    ) -> LoopExecution:
+        async with self._lock:
+            return self._update_memory_loop_execution(
+                loop_execution_id,
+                state,
+                status=status,
+                stop_reason=stop_reason,
+                expected_revision=expected_revision,
+            )
+
+    async def append_loop_iteration(
+        self,
+        loop_execution_id: str,
+        iteration: LoopIteration,
+        next_state: LoopState,
+        *,
+        status: LoopExecutionStatus | None = None,
+        stop_reason: LoopStopReason | None = None,
+        expected_revision: int | None = None,
+        verifications: Sequence[VerificationResult] = (),
+        events: Sequence[AgentEvent] = (),
+    ) -> LoopExecution:
+        async with self._lock:
+            current = self.loop_executions[loop_execution_id]
+            self._validate_iteration_transition(current, iteration, next_state)
+            if expected_revision is not None and current.revision != expected_revision:
+                raise ValueError("loop execution revision conflict")
+            self._validate_iteration_evidence(iteration, verifications, events)
+            if any(
+                stored.iteration_id == iteration.iteration_id
+                for iterations in self.loop_iterations.values()
+                for stored in iterations
+            ):
+                raise ValueError("iteration identifier already exists")
+            if any(result.verification_id in self.verifications for result in verifications):
+                raise ValueError("verification identifier already exists")
+            existing_event_ids = {
+                stored.event_id for stored in self.run_events.get(iteration.run_id, [])
+            }
+            new_event_ids = {event.event_id for event in events}
+            if len(new_event_ids) != len(events) or existing_event_ids.intersection(new_event_ids):
+                raise ValueError("event identifier already exists")
+            self.loop_iterations[loop_execution_id].append(iteration)
+            for result in verifications:
+                self.verifications[result.verification_id] = result
+                self.verification_ids_by_run.setdefault(result.run_id, []).append(
+                    result.verification_id
+                )
+            run_events = self.run_events.setdefault(iteration.run_id, [])
+            run = self.runs[iteration.run_id]
+            for event in events:
+                stored_event = event.model_copy(update={"sequence": len(run_events) + 1})
+                run_events.append(stored_event)
+            if events:
+                self.runs[iteration.run_id] = run.model_copy(
+                    update={"last_sequence": run_events[-1].sequence}
+                )
+            return self._update_memory_loop_execution(
+                loop_execution_id,
+                next_state,
+                status=status,
+                stop_reason=stop_reason,
+                expected_revision=current.revision,
+            )
+
+    async def list_loop_iterations(self, loop_execution_id: str) -> list[LoopIteration]:
+        return list(self.loop_iterations.get(loop_execution_id, []))
+
+    async def save_verification(self, result: VerificationResult) -> None:
+        async with self._lock:
+            current = self.verifications.get(result.verification_id)
+            if current is not None:
+                if current != result:
+                    raise ValueError(f"verification {result.verification_id} is immutable")
+                return
+            if result.run_id not in self.runs:
+                raise KeyError(result.run_id)
+            if result.iteration_id is not None and not any(
+                item.iteration_id == result.iteration_id
+                for iterations in self.loop_iterations.values()
+                for item in iterations
+            ):
+                raise ValueError(
+                    "iteration verification must be saved with append_loop_iteration"
+                )
+            self.verifications[result.verification_id] = result
+            self.verification_ids_by_run.setdefault(result.run_id, []).append(
+                result.verification_id
+            )
+
+    async def get_verification(self, verification_id: str) -> VerificationResult | None:
+        return self.verifications.get(verification_id)
+
+    async def list_verifications(
+        self, run_id: str, iteration_id: str | None = None
+    ) -> list[VerificationResult]:
+        results = [
+            self.verifications[verification_id]
+            for verification_id in self.verification_ids_by_run.get(run_id, [])
+        ]
+        if iteration_id is not None:
+            results = [result for result in results if result.iteration_id == iteration_id]
+        return sorted(results, key=lambda result: (result.executed_at, result.verification_id))
+
+    def _update_memory_loop_execution(
+        self,
+        loop_execution_id: str,
+        state: LoopState,
+        *,
+        status: LoopExecutionStatus | None,
+        stop_reason: LoopStopReason | None,
+        expected_revision: int | None,
+    ) -> LoopExecution:
+        current = self.loop_executions[loop_execution_id]
+        if current.status in _TERMINAL_LOOP_EXECUTION_STATUSES:
+            raise ValueError("terminal loop execution is immutable")
+        if expected_revision is not None and current.revision != expected_revision:
+            raise ValueError("loop execution revision conflict")
+        next_status = status or current.status
+        now = datetime.now(UTC)
+        completed_at = (
+            now if next_status in _TERMINAL_LOOP_EXECUTION_STATUSES else current.completed_at
+        )
+        updated = current.model_copy(
+            update={
+                "state": state,
+                "status": next_status,
+                "stop_reason": stop_reason,
+                "revision": current.revision + 1,
+                "updated_at": now,
+                "completed_at": completed_at,
+            }
+        )
+        self.loop_executions[loop_execution_id] = updated
+        return updated
+
+    @staticmethod
+    def _validate_iteration_transition(
+        execution: LoopExecution, iteration: LoopIteration, next_state: LoopState
+    ) -> None:
+        if execution.status in _TERMINAL_LOOP_EXECUTION_STATUSES:
+            raise ValueError("terminal loop execution cannot accept iterations")
+        if iteration.loop_execution_id != execution.loop_execution_id:
+            raise ValueError("iteration belongs to a different loop execution")
+        if iteration.run_id != execution.run_id:
+            raise ValueError("iteration belongs to a different run")
+        expected_number = execution.state.iteration + 1
+        if iteration.number != expected_number or next_state.iteration != expected_number:
+            raise ValueError(f"expected loop iteration {expected_number}")
+
+    @staticmethod
+    def _validate_iteration_evidence(
+        iteration: LoopIteration,
+        verifications: Sequence[VerificationResult],
+        events: Sequence[AgentEvent],
+    ) -> None:
+        verification_ids = {result.verification_id for result in verifications}
+        if len(verification_ids) != len(verifications):
+            raise ValueError("verification identifiers must be unique")
+        if set(iteration.verification_refs) != verification_ids:
+            raise ValueError("iteration verification refs must match persisted verifications")
+        if any(
+            result.run_id != iteration.run_id
+            or result.iteration_id != iteration.iteration_id
+            for result in verifications
+        ):
+            raise ValueError("verification belongs to a different run or iteration")
+        if any(event.run_id != iteration.run_id for event in events):
+            raise ValueError("event belongs to a different run")
+
     async def save_lease(self, lease: WorkspaceLease) -> None:
         self.leases[lease.lease_id] = lease
 
@@ -264,7 +577,10 @@ class MemoryStore:
         return self.leases.get(lease_id)
 
     async def save_session(self, session: SessionRef) -> None:
-        self.sessions[session.session_id] = session
+        self.sessions[session.run_id] = session
+
+    async def get_session_for_run(self, run_id: str) -> SessionRef | None:
+        return self.sessions.get(run_id)
 
     async def save_artifact(self, artifact: ArtifactRef) -> None:
         self.artifacts.setdefault(artifact.run_id, []).append(artifact)
@@ -507,6 +823,11 @@ class PostgresStore:
         *,
         session_id: str | None = None,
         workspace_lease_id: str | None = None,
+        strategy_decision_id: str | None = None,
+        execution_mode: ExecutionMode | None = None,
+        workflow_template_id: str | None = None,
+        acceptance_policy_id: str | None = None,
+        loop_execution_id: str | None = None,
         error: ErrorSummary | None = None,
     ) -> Run:
         async with self.sessions.begin() as session:
@@ -518,12 +839,254 @@ class PostgresStore:
             row.workspace_lease_id = (
                 workspace_lease_id if workspace_lease_id is not None else row.workspace_lease_id
             )
+            row.strategy_decision_id = (
+                strategy_decision_id
+                if strategy_decision_id is not None
+                else row.strategy_decision_id
+            )
+            row.execution_mode = (
+                execution_mode.value if execution_mode is not None else row.execution_mode
+            )
+            row.workflow_template_id = (
+                workflow_template_id
+                if workflow_template_id is not None
+                else row.workflow_template_id
+            )
+            row.acceptance_policy_id = (
+                acceptance_policy_id
+                if acceptance_policy_id is not None
+                else row.acceptance_policy_id
+            )
+            row.loop_execution_id = (
+                loop_execution_id if loop_execution_id is not None else row.loop_execution_id
+            )
             row.error = error.model_dump(mode="json") if error else None
             row.revision += 1
             row.updated_at = datetime.now(UTC)
             await session.flush()
             result = self._row_to_run(row)
         return result
+
+    async def save_acceptance_policy(self, policy: AcceptancePolicy) -> None:
+        async with self.sessions.begin() as session:
+            current = await session.get(AcceptancePolicyRow, policy.policy_id)
+            if current is not None:
+                if AcceptancePolicy.model_validate(current.policy) != policy:
+                    raise ValueError(f"acceptance policy {policy.policy_id} is immutable")
+                return
+            session.add(
+                AcceptancePolicyRow(
+                    id=policy.policy_id,
+                    version=policy.version,
+                    policy=policy.model_dump(mode="json"),
+                    created_at=policy.created_at,
+                )
+            )
+
+    async def get_acceptance_policy(self, policy_id: str) -> AcceptancePolicy | None:
+        async with self.sessions() as session:
+            row = await session.get(AcceptancePolicyRow, policy_id)
+        return AcceptancePolicy.model_validate(row.policy) if row else None
+
+    async def create_loop_execution(self, execution: LoopExecution) -> LoopExecution:
+        async with self.sessions.begin() as session:
+            run = await session.scalar(
+                select(RunRow).where(RunRow.id == execution.run_id).with_for_update()
+            )
+            if run is None:
+                raise KeyError(execution.run_id)
+            if run.loop_execution_id is not None:
+                raise ValueError(f"run {execution.run_id} already has a loop execution")
+            policy = await session.get(AcceptancePolicyRow, execution.acceptance_policy_ref)
+            if policy is None:
+                raise KeyError(execution.acceptance_policy_ref)
+            stored_policy = AcceptancePolicy.model_validate(policy.policy)
+            session.add(self._loop_execution_to_row(execution))
+            run.acceptance_policy_id = execution.acceptance_policy_ref
+            run.loop_execution_id = execution.loop_execution_id
+            run.revision += 1
+            run.updated_at = datetime.now(UTC)
+        return execution.model_copy(
+            update={"acceptance_policy": stored_policy}
+        )
+
+    async def get_loop_execution(self, loop_execution_id: str) -> LoopExecution | None:
+        async with self.sessions() as session:
+            row = await session.get(LoopExecutionRow, loop_execution_id)
+            if row is None:
+                return None
+            policy = await session.get(AcceptancePolicyRow, row.acceptance_policy_id)
+        return self._row_to_loop_execution(row, policy)
+
+    async def get_loop_execution_for_run(self, run_id: str) -> LoopExecution | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(LoopExecutionRow).where(LoopExecutionRow.run_id == run_id)
+            )
+            if row is None:
+                return None
+            policy = await session.get(AcceptancePolicyRow, row.acceptance_policy_id)
+        return self._row_to_loop_execution(row, policy)
+
+    async def update_loop_execution(
+        self,
+        loop_execution_id: str,
+        state: LoopState,
+        *,
+        status: LoopExecutionStatus | None = None,
+        stop_reason: LoopStopReason | None = None,
+        expected_revision: int | None = None,
+    ) -> LoopExecution:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(LoopExecutionRow)
+                .where(LoopExecutionRow.id == loop_execution_id)
+                .with_for_update()
+            )
+            if row is None:
+                raise KeyError(loop_execution_id)
+            self._update_loop_row(
+                row,
+                state,
+                status=status,
+                stop_reason=stop_reason,
+                expected_revision=expected_revision,
+            )
+            await session.flush()
+            policy = await session.get(AcceptancePolicyRow, row.acceptance_policy_id)
+            updated = self._row_to_loop_execution(row, policy)
+        return updated
+
+    async def append_loop_iteration(
+        self,
+        loop_execution_id: str,
+        iteration: LoopIteration,
+        next_state: LoopState,
+        *,
+        status: LoopExecutionStatus | None = None,
+        stop_reason: LoopStopReason | None = None,
+        expected_revision: int | None = None,
+        verifications: Sequence[VerificationResult] = (),
+        events: Sequence[AgentEvent] = (),
+    ) -> LoopExecution:
+        async with self.sessions.begin() as session:
+            run = await session.scalar(
+                select(RunRow).where(RunRow.id == iteration.run_id).with_for_update()
+            )
+            if run is None:
+                raise KeyError(iteration.run_id)
+            row = await session.scalar(
+                select(LoopExecutionRow)
+                .where(LoopExecutionRow.id == loop_execution_id)
+                .with_for_update()
+            )
+            if row is None:
+                raise KeyError(loop_execution_id)
+            current = self._row_to_loop_execution(row)
+            MemoryStore._validate_iteration_transition(current, iteration, next_state)
+            if expected_revision is not None and row.revision != expected_revision:
+                raise ValueError("loop execution revision conflict")
+            MemoryStore._validate_iteration_evidence(iteration, verifications, events)
+            session.add(
+                LoopIterationRow(
+                    id=iteration.iteration_id,
+                    loop_execution_id=iteration.loop_execution_id,
+                    run_id=iteration.run_id,
+                    number=iteration.number,
+                    iteration=iteration.model_dump(mode="json"),
+                    created_at=iteration.completed_at,
+                )
+            )
+            for result in verifications:
+                session.add(
+                    VerificationRow(
+                        id=result.verification_id,
+                        run_id=result.run_id,
+                        loop_execution_id=loop_execution_id,
+                        iteration_id=result.iteration_id,
+                        verifier_id=result.verifier_id,
+                        verifier_version=result.verifier_version,
+                        target_ref=result.target_ref,
+                        status=result.status.value,
+                        result=result.model_dump(mode="json"),
+                        executed_at=result.executed_at,
+                    )
+                )
+            for event in events:
+                run.last_sequence += 1
+                stored_event = event.model_copy(update={"sequence": run.last_sequence})
+                session.add(self._event_to_row(stored_event))
+            self._update_loop_row(
+                row,
+                next_state,
+                status=status,
+                stop_reason=stop_reason,
+                expected_revision=row.revision,
+            )
+            await session.flush()
+            policy = await session.get(AcceptancePolicyRow, row.acceptance_policy_id)
+            updated = self._row_to_loop_execution(row, policy)
+        return updated
+
+    async def list_loop_iterations(self, loop_execution_id: str) -> list[LoopIteration]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(LoopIterationRow)
+                    .where(LoopIterationRow.loop_execution_id == loop_execution_id)
+                    .order_by(LoopIterationRow.number)
+                )
+            ).all()
+        return [LoopIteration.model_validate(row.iteration) for row in rows]
+
+    async def save_verification(self, result: VerificationResult) -> None:
+        async with self.sessions.begin() as session:
+            current = await session.get(VerificationRow, result.verification_id)
+            if current is not None:
+                if VerificationResult.model_validate(current.result) != result:
+                    raise ValueError(f"verification {result.verification_id} is immutable")
+                return
+            loop_execution_id: str | None = None
+            if result.iteration_id is not None:
+                iteration = await session.get(LoopIterationRow, result.iteration_id)
+                if iteration is None:
+                    raise ValueError(
+                        "iteration verification must be saved with append_loop_iteration"
+                    )
+                loop_execution_id = iteration.loop_execution_id
+            session.add(
+                VerificationRow(
+                    id=result.verification_id,
+                    run_id=result.run_id,
+                    loop_execution_id=loop_execution_id,
+                    iteration_id=result.iteration_id,
+                    verifier_id=result.verifier_id,
+                    verifier_version=result.verifier_version,
+                    target_ref=result.target_ref,
+                    status=result.status.value,
+                    result=result.model_dump(mode="json"),
+                    executed_at=result.executed_at,
+                )
+            )
+
+    async def get_verification(self, verification_id: str) -> VerificationResult | None:
+        async with self.sessions() as session:
+            row = await session.get(VerificationRow, verification_id)
+        return VerificationResult.model_validate(row.result) if row else None
+
+    async def list_verifications(
+        self, run_id: str, iteration_id: str | None = None
+    ) -> list[VerificationResult]:
+        query = select(VerificationRow).where(VerificationRow.run_id == run_id)
+        if iteration_id is not None:
+            query = query.where(VerificationRow.iteration_id == iteration_id)
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    query.order_by(VerificationRow.executed_at, VerificationRow.id)
+                )
+            ).all()
+        return [VerificationResult.model_validate(row.result) for row in rows]
 
     async def save_lease(self, lease: WorkspaceLease) -> None:
         async with self.sessions.begin() as session:
@@ -559,19 +1122,43 @@ class PostgresStore:
         )
 
     async def save_session(self, runtime_session: SessionRef) -> None:
-        from accretion.persistence.models import RuntimeSessionRow
-
         async with self.sessions.begin() as session:
-            session.add(
-                RuntimeSessionRow(
-                    id=runtime_session.session_id,
-                    run_id=runtime_session.run_id,
-                    provider=runtime_session.provider.value,
-                    native_session_id=runtime_session.native_session_id,
-                    workspace_path=str(runtime_session.workspace),
-                    created_at=datetime.now(UTC),
-                )
+            row = await session.scalar(
+                select(RuntimeSessionRow)
+                .where(RuntimeSessionRow.run_id == runtime_session.run_id)
+                .with_for_update()
             )
+            if row is None:
+                session.add(
+                    RuntimeSessionRow(
+                        id=runtime_session.session_id,
+                        run_id=runtime_session.run_id,
+                        provider=runtime_session.provider.value,
+                        native_session_id=runtime_session.native_session_id,
+                        workspace_path=str(runtime_session.workspace),
+                        created_at=datetime.now(UTC),
+                    )
+                )
+            else:
+                row.id = runtime_session.session_id
+                row.provider = runtime_session.provider.value
+                row.native_session_id = runtime_session.native_session_id
+                row.workspace_path = str(runtime_session.workspace)
+
+    async def get_session_for_run(self, run_id: str) -> SessionRef | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(RuntimeSessionRow).where(RuntimeSessionRow.run_id == run_id)
+            )
+        if row is None:
+            return None
+        return SessionRef(
+            session_id=row.id,
+            run_id=row.run_id,
+            provider=Provider(row.provider),
+            native_session_id=row.native_session_id,
+            workspace=row.workspace_path,
+        )
 
     async def save_artifact(self, artifact: ArtifactRef) -> None:
         from accretion.persistence.models import ArtifactRow
@@ -734,6 +1321,11 @@ class PostgresStore:
             revision=run.revision,
             session_id=run.session_id,
             workspace_lease_id=run.workspace_lease_id,
+            strategy_decision_id=run.strategy_decision_id,
+            execution_mode=run.execution_mode.value if run.execution_mode else None,
+            workflow_template_id=run.workflow_template_id,
+            acceptance_policy_id=run.acceptance_policy_id,
+            loop_execution_id=run.loop_execution_id,
             error=run.error.model_dump(mode="json") if run.error else None,
             created_at=run.created_at,
             updated_at=run.updated_at,
@@ -751,10 +1343,73 @@ class PostgresStore:
             revision=row.revision,
             session_id=row.session_id,
             workspace_lease_id=row.workspace_lease_id,
+            strategy_decision_id=row.strategy_decision_id,
+            execution_mode=ExecutionMode(row.execution_mode) if row.execution_mode else None,
+            workflow_template_id=row.workflow_template_id,
+            acceptance_policy_id=row.acceptance_policy_id,
+            loop_execution_id=row.loop_execution_id,
             error=ErrorSummary.model_validate(row.error) if row.error else None,
             created_at=row.created_at,
             updated_at=row.updated_at,
         )
+
+    @staticmethod
+    def _loop_execution_to_row(execution: LoopExecution) -> LoopExecutionRow:
+        return LoopExecutionRow(
+            id=execution.loop_execution_id,
+            run_id=execution.run_id,
+            acceptance_policy_id=execution.acceptance_policy_ref,
+            spec=execution.spec.model_dump(mode="json"),
+            state=execution.state.model_dump(mode="json"),
+            status=execution.status.value,
+            stop_reason=execution.stop_reason.value if execution.stop_reason else None,
+            revision=execution.revision,
+            created_at=execution.created_at,
+            updated_at=execution.updated_at,
+            completed_at=execution.completed_at,
+        )
+
+    @staticmethod
+    def _row_to_loop_execution(
+        row: LoopExecutionRow, policy: AcceptancePolicyRow | None = None
+    ) -> LoopExecution:
+        acceptance_policy = AcceptancePolicy.model_validate(policy.policy) if policy else None
+        return LoopExecution(
+            loop_execution_id=row.id,
+            run_id=row.run_id,
+            spec=row.spec,
+            state=row.state,
+            acceptance_policy_ref=row.acceptance_policy_id,
+            acceptance_policy=acceptance_policy,
+            status=row.status,
+            stop_reason=row.stop_reason,
+            revision=row.revision,
+            created_at=row.created_at,
+            updated_at=row.updated_at,
+            completed_at=row.completed_at,
+        )
+
+    @staticmethod
+    def _update_loop_row(
+        row: LoopExecutionRow,
+        state: LoopState,
+        *,
+        status: LoopExecutionStatus | None,
+        stop_reason: LoopStopReason | None,
+        expected_revision: int | None,
+    ) -> None:
+        if LoopExecutionStatus(row.status) in _TERMINAL_LOOP_EXECUTION_STATUSES:
+            raise ValueError("terminal loop execution is immutable")
+        if expected_revision is not None and row.revision != expected_revision:
+            raise ValueError("loop execution revision conflict")
+        if status is not None:
+            row.status = status.value
+        row.state = state.model_dump(mode="json")
+        row.stop_reason = stop_reason.value if stop_reason else None
+        row.revision += 1
+        row.updated_at = datetime.now(UTC)
+        if LoopExecutionStatus(row.status) in _TERMINAL_LOOP_EXECUTION_STATUSES:
+            row.completed_at = row.updated_at
 
     @staticmethod
     def _row_to_event(row: AgentEventRow) -> AgentEvent:
@@ -772,4 +1427,22 @@ class PostgresStore:
             node_id=row.node_id,
             payload=row.payload,
             adapter_version=row.adapter_version,
+        )
+
+    @staticmethod
+    def _event_to_row(event: AgentEvent) -> AgentEventRow:
+        return AgentEventRow(
+            id=event.event_id,
+            run_id=event.run_id,
+            session_id=event.session_id,
+            provider=event.provider.value,
+            native_type=event.native_type,
+            normalized_type=event.normalized_type.value,
+            sequence=event.sequence,
+            occurred_at=event.timestamp,
+            correlation_id=event.correlation_id,
+            causation_id=event.causation_id,
+            node_id=event.node_id,
+            payload=event.payload,
+            adapter_version=event.adapter_version,
         )
