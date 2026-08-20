@@ -53,6 +53,16 @@ ACCRETION_LIVE_PROVIDERS=1 uv run pytest -m live
 See [the P0 runbook](docs/P0_RUNBOOK.md) for runtime compatibility and acceptance
 instructions.
 
+## Contributing
+
+Development happens through short-lived branches and pull requests into
+`develop`. Stable releases are promoted from `develop` to `main`. Read
+[CONTRIBUTING.md](CONTRIBUTING.md) and the
+[branch policy](docs/BRANCH_POLICY.md) before opening a pull request.
+
+Security issues should be reported according to [SECURITY.md](SECURITY.md), not
+through a public issue.
+
 ## License
 
 MIT
