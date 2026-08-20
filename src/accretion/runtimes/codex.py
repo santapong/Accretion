@@ -85,7 +85,11 @@ class CodexRuntime:
             active_runs=len(self.run_refs),
             observed_usage_pressure=pressure,
             last_error=(
-                ErrorSummary(code="CODEX_UNAVAILABLE", message=redact_text(error))
+                ErrorSummary(
+                    code=f"CODEX_{status.value}",
+                    message=redact_text(error),
+                    retryable=status is RuntimeStatus.RATE_LIMITED,
+                )
                 if error
                 else None
             ),

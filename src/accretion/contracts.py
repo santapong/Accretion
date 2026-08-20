@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -73,6 +73,126 @@ class RiskLevel(StrEnum):
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
     CRITICAL = "CRITICAL"
+
+
+class ExecutionMode(StrEnum):
+    DIRECT = "DIRECT"
+    LOOP = "LOOP"
+    GRAPH = "GRAPH"
+    HYBRID = "HYBRID"
+
+
+class ExpectedHorizon(StrEnum):
+    SHORT = "SHORT"
+    MEDIUM = "MEDIUM"
+    LONG = "LONG"
+
+
+class OverridePolicyResult(StrEnum):
+    ACCEPTED = "ACCEPTED"
+    DENIED_TEMPLATE_MISMATCH = "DENIED_TEMPLATE_MISMATCH"
+    DENIED_SAFETY_POLICY = "DENIED_SAFETY_POLICY"
+
+
+class PromptContract(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    prompt_contract_id: str
+    task_id: str
+    version: Literal["p1-task-execution-v1"] = "p1-task-execution-v1"
+    role: str
+    objective: str = Field(min_length=1, max_length=20_000)
+    hard_constraints: list[str] = Field(default_factory=list)
+    non_goals: list[str] = Field(default_factory=list)
+    tool_rules: list[str] = Field(default_factory=list)
+    output_schema: dict[str, Any] = Field(default_factory=dict)
+    uncertainty_policy: dict[str, Any] = Field(default_factory=dict)
+    completion_criteria: list[str] = Field(default_factory=list)
+    examples: list[dict[str, Any]] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class ContextBundle(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    context_bundle_id: str
+    task_ref: str
+    version: Literal["context-bundle-v1"] = "context-bundle-v1"
+    phase: str = "TASK_EXECUTION"
+    project_summary: str
+    evidence_refs: list[str] = Field(default_factory=list)
+    artifact_refs: list[str] = Field(default_factory=list)
+    workspace_map: dict[str, Any] = Field(default_factory=dict)
+    previous_failure_refs: list[str] = Field(default_factory=list)
+    constraints: list[str] = Field(default_factory=list)
+    permissions: list[str] = Field(default_factory=list)
+    freshness: dict[str, Any] = Field(default_factory=dict)
+    provenance: list[str] = Field(default_factory=list)
+    token_budget: int = Field(default=8_000, gt=0)
+    experience_refs: list[str] = Field(default_factory=list, max_length=0)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class FeatureEvidence(StrictModel):
+    feature: str
+    value: bool | int | float | str | list[str] | None = None
+    source: str
+    available: bool = True
+    rationale: str
+
+
+class TaskProfile(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    profile_id: str
+    task_id: str
+    complexity: float | None = Field(default=None, ge=0, le=1)
+    structure_certainty: float | None = Field(default=None, ge=0, le=1)
+    feedback_dependency: float | None = Field(default=None, ge=0, le=1)
+    dependency_complexity: float | None = Field(default=None, ge=0, le=1)
+    parallelism_potential: float | None = Field(default=None, ge=0, le=1)
+    uncertainty: float | None = Field(default=None, ge=0, le=1)
+    verifier_strength: float | None = Field(default=None, ge=0, le=1)
+    risk: RiskLevel
+    irreversible_actions: bool
+    expected_horizon: ExpectedHorizon
+    profile_confidence: float = Field(ge=0, le=1)
+    observed_features: list[FeatureEvidence] = Field(default_factory=list)
+    unknown_features: list[str] = Field(default_factory=list)
+    semantic_rationale: str
+    profiler_version: Literal["deterministic-profiler-v1"] = "deterministic-profiler-v1"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class StrategyDecision(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    decision_id: str
+    task_id: str
+    selected_mode: ExecutionMode
+    selected_template_id: str
+    task_profile_ref: str
+    policy_version: Literal["selector-v1"] = "selector-v1"
+    matched_rules: list[str] = Field(default_factory=list)
+    alternatives: list[ExecutionMode] = Field(default_factory=list)
+    rationale: str
+    operator_override_allowed: bool
+    requires_approval: bool = False
+    requires_independent_verifier: bool = False
+    supersedes_decision_id: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class StrategyOverride(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    override_id: str
+    task_id: str
+    original_decision_id: str
+    requested_mode: ExecutionMode
+    requested_template_id: str
+    operator_identity: str
+    reason: str = Field(min_length=1, max_length=2_000)
+    policy_result: OverridePolicyResult
+    accepted: bool
+    resulting_decision_id: str | None = None
+    denial_reason: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class EventType(StrEnum):
@@ -242,7 +362,27 @@ class Project(StrictModel):
 
 class Task(StrictModel):
     envelope: TaskEnvelope
+    prompt_contract_id: str | None = None
+    context_bundle_id: str | None = None
+    current_profile_id: str | None = None
+    current_strategy_decision_id: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class TaskPlanning(StrictModel):
+    task_id: str
+    prompt_contract: PromptContract
+    context_bundle: ContextBundle
+    current_profile: TaskProfile
+    current_decision: StrategyDecision
+    profile_history: list[TaskProfile] = Field(default_factory=list)
+    decision_history: list[StrategyDecision] = Field(default_factory=list)
+    override_history: list[StrategyOverride] = Field(default_factory=list)
+
+
+class StrategyOverrideResult(StrictModel):
+    override: StrategyOverride
+    current_decision: StrategyDecision
 
 
 class Run(StrictModel):

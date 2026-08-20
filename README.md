@@ -2,7 +2,8 @@
 
 Accretion is a local-first, observable meta-harness for supervising Codex and
 Claude Code through a provider-neutral control plane. The current implementation
-targets the v0.1 P0 runtime-feasibility milestone.
+implements the v0.1 P0 runtime-feasibility milestone and P1 deterministic
+task-planning milestone.
 
 ## What is included
 
@@ -11,11 +12,16 @@ targets the v0.1 P0 runtime-feasibility milestone.
 - structured Codex App Server and Claude Code adapters
 - one Git worktree lease per mutable run
 - resumable Server-Sent Events (SSE)
-- a minimal React operator dashboard
+- versioned prompt/context contracts and immutable planning history
+- deterministic task profiling and inspectable static-template selection
+- audited, safety-constrained strategy overrides
+- a React New Task/planning review flow alongside the runtime dashboard
 - versioned Accretion v0.1-v0.3 system design specifications
 
-Dynamic workflow generation, learned routing, full verification, managed MCP,
-plugins, and identity are intentionally deferred to later milestones.
+LOOP, GRAPH, and HYBRID execution remain blocked until P2/P3 provide those
+engines. Dynamic workflow generation, learned routing, full verification,
+managed MCP, plugins, and identity are intentionally deferred to later
+milestones.
 
 ## Development
 

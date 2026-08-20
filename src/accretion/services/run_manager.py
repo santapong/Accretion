@@ -10,18 +10,22 @@ from accretion.contracts import (
     AgentRuntime,
     ErrorSummary,
     EventType,
+    ExecutionMode,
     Project,
     Provider,
     Run,
     RunRef,
     RunState,
     SessionConfig,
+    StrategyOverrideResult,
     Task,
     TaskEnvelope,
+    TaskPlanning,
 )
 from accretion.ids import new_id
 from accretion.persistence.side_effects import SideEffectLedger
 from accretion.persistence.store import StateStore
+from accretion.planning import build_initial_planning, evaluate_override
 from accretion.runtimes.common import make_event
 from accretion.workspace import WorktreeManager
 
@@ -36,6 +40,7 @@ class RunManager:
         limiter: ConcurrencyLimiter,
         live_providers_enabled: bool,
         side_effect_ledger: SideEffectLedger | None = None,
+        operator_identity: str = "local-operator",
     ) -> None:
         self.store = store
         self.worktrees = worktrees
@@ -43,6 +48,7 @@ class RunManager:
         self.limiter = limiter
         self.live_providers_enabled = live_providers_enabled
         self.side_effect_ledger = side_effect_ledger
+        self.operator_identity = operator_identity
         self.background: dict[str, asyncio.Task[None]] = {}
         self.active_refs: dict[str, RunRef] = {}
         self.event_conditions: dict[str, asyncio.Condition] = {}
@@ -63,7 +69,8 @@ class RunManager:
         objective: str,
         task_patch: dict[str, object],
     ) -> Task:
-        if await self.store.get_project(project_id) is None:
+        project = await self.store.get_project(project_id)
+        if project is None:
             raise KeyError(project_id)
         envelope = TaskEnvelope(
             task_id=new_id("task"),
@@ -71,12 +78,68 @@ class RunManager:
             objective=objective,
             **task_patch,
         )
-        return await self.store.create_task(Task(envelope=envelope))
+        task = Task(envelope=envelope)
+        prompt, context, profile, decision = build_initial_planning(task, project)
+        task = task.model_copy(
+            update={
+                "envelope": envelope.model_copy(
+                    update={
+                        "prompt_contract_ref": prompt.prompt_contract_id,
+                        "context_policy_ref": context.context_bundle_id,
+                    }
+                )
+            }
+        )
+        return await self.store.create_task_with_planning(task, prompt, context, profile, decision)
+
+    async def get_task_planning(self, task_id: str) -> TaskPlanning:
+        task = await self.store.get_task(task_id)
+        if task is None:
+            raise KeyError(task_id)
+        existing = await self.store.get_task_planning(task_id)
+        if existing is not None:
+            return existing
+        project = await self.store.get_project(task.envelope.project_id)
+        if project is None:
+            raise KeyError(task.envelope.project_id)
+        prompt, context, profile, decision = build_initial_planning(task, project)
+        return await self.store.save_task_planning(task_id, prompt, context, profile, decision)
+
+    async def override_strategy(
+        self,
+        *,
+        task_id: str,
+        requested_mode: ExecutionMode,
+        requested_template_id: str,
+        reason: str,
+    ) -> StrategyOverrideResult:
+        planning = await self.get_task_planning(task_id)
+        override, decision = evaluate_override(
+            profile=planning.current_profile,
+            current=planning.current_decision,
+            requested_mode=requested_mode,
+            requested_template_id=requested_template_id,
+            reason=reason,
+            operator_identity=self.operator_identity,
+        )
+        await self.store.append_strategy_override(override, decision)
+        current = decision or planning.current_decision
+        return StrategyOverrideResult(override=override, current_decision=current)
 
     async def start_run(self, task_id: str, provider: Provider) -> Run:
         task = await self.store.get_task(task_id)
         if task is None:
             raise KeyError(task_id)
+        planning = await self.get_task_planning(task_id)
+        decision = planning.current_decision
+        if (
+            decision.selected_mode is not ExecutionMode.DIRECT
+            or decision.selected_template_id != "direct-v1"
+        ):
+            raise MilestoneDependencyError(
+                decision.selected_mode.value,
+                decision.selected_template_id,
+            )
         if provider not in self.runtimes:
             raise ValueError(f"runtime {provider.value} is not configured")
         if provider in {Provider.CODEX, Provider.CLAUDE} and not self.live_providers_enabled:
@@ -236,3 +299,13 @@ class RunManager:
         if run is None:
             raise KeyError(run_id)
         return run
+
+
+class MilestoneDependencyError(RuntimeError):
+    def __init__(self, mode: str, template_id: str) -> None:
+        self.mode = mode
+        self.template_id = template_id
+        super().__init__(
+            f"{mode}/{template_id} execution is selected but unavailable in P1; "
+            "LOOP requires P2 and GRAPH/HYBRID require P3"
+        )

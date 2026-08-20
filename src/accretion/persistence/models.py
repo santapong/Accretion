@@ -3,7 +3,17 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -26,7 +36,77 @@ class TaskRow(Base):
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
     envelope: Mapped[dict[str, Any]] = mapped_column(JSON)
+    prompt_contract_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    context_bundle_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    current_profile_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    current_strategy_decision_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class PromptContractRow(Base):
+    __tablename__ = "prompt_contracts"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+    version: Mapped[str] = mapped_column(String(64))
+    contract: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ContextBundleRow(Base):
+    __tablename__ = "context_bundles"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+    version: Mapped[str] = mapped_column(String(64))
+    bundle: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class TaskProfileRow(Base):
+    __tablename__ = "task_profiles"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+    profiler_version: Mapped[str] = mapped_column(String(64))
+    profile: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_task_profiles_task_created", "task_id", "created_at"),)
+
+
+class StrategyDecisionRow(Base):
+    __tablename__ = "strategy_decisions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+    task_profile_id: Mapped[str] = mapped_column(
+        ForeignKey("task_profiles.id", ondelete="RESTRICT")
+    )
+    policy_version: Mapped[str] = mapped_column(String(64))
+    decision: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_strategy_decisions_task_created", "task_id", "created_at"),)
+
+
+class StrategyOverrideRow(Base):
+    __tablename__ = "strategy_overrides"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+    original_decision_id: Mapped[str] = mapped_column(
+        ForeignKey("strategy_decisions.id", ondelete="RESTRICT")
+    )
+    resulting_decision_id: Mapped[str | None] = mapped_column(
+        ForeignKey("strategy_decisions.id", ondelete="RESTRICT"), nullable=True
+    )
+    operator_identity: Mapped[str] = mapped_column(String(255))
+    accepted: Mapped[bool] = mapped_column(Boolean)
+    override: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_strategy_overrides_task_created", "task_id", "created_at"),)
 
 
 class RunRow(Base):
