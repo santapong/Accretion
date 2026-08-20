@@ -4,21 +4,39 @@ import asyncio
 import hashlib
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 
+from accretion.checkpoints import (
+    ReconcileClassification,
+    classify_run,
+    evaluate_checkpoint,
+)
 from accretion.concurrency import ConcurrencyLimiter
 from accretion.contracts import (
+    RISK_RANK,
     TERMINAL_RUN_STATES,
     AcceptancePolicy,
     AgentEvent,
     AgentRuntime,
+    ApprovalDecisionValue,
+    ApprovalRecord,
+    ApprovalStatus,
+    Checkpoint,
+    CheckpointKind,
+    CheckpointLoopCursor,
+    EdgeGuard,
     ErrorSummary,
     EventType,
     ExecutionMode,
+    ExecutionTrace,
     Finding,
     FindingSeverity,
+    GraphEdgeKind,
+    GraphNodeKind,
+    GraphNodeStatus,
     GraphProjection,
     IterationDirective,
     IterationDirectiveKind,
@@ -27,12 +45,16 @@ from accretion.contracts import (
     LoopExecutionStatus,
     LoopIteration,
     LoopIterationStatus,
+    LoopSpec,
     LoopState,
     LoopStopReason,
     Project,
     Provider,
     RiskLevel,
     Run,
+    RunEdge,
+    RunGraph,
+    RunNode,
     RunRef,
     RunState,
     RuntimeExecutionRequest,
@@ -43,11 +65,13 @@ from accretion.contracts import (
     TaskEnvelope,
     TaskPlanning,
     TaskType,
+    TemplateStatus,
     VerificationContext,
     VerificationResult,
     VerificationStatus,
     VerificationTarget,
     VerificationTargetKind,
+    WorkflowTemplate,
     WorkspaceLease,
 )
 from accretion.ids import new_id
@@ -59,8 +83,14 @@ from accretion.looping import (
 from accretion.persistence.side_effects import SideEffectLedger
 from accretion.persistence.store import StateStore
 from accretion.planning import build_initial_planning, evaluate_override
-from accretion.projections import build_loop_projection
+from accretion.projections import build_graph_projection, build_loop_projection
 from accretion.runtimes.common import make_event
+from accretion.templates import (
+    compute_template_checksum,
+    instantiate_run_graph,
+    seed_templates,
+)
+from accretion.tracing import build_execution_trace
 from accretion.verifiers.git_diff import GitDiffVerifier
 from accretion.verifiers.output_contract import OutputContractVerifier
 from accretion.verifiers.policy import evaluate_acceptance as evaluate_acceptance_policy
@@ -81,6 +111,57 @@ class RuntimeCallOutcome:
     stop_reason: LoopStopReason | None = None
 
 
+class NodeOutcome(StrEnum):
+    """What a graph node execution produced toward its outgoing edges."""
+
+    SUCCESS = "SUCCESS"
+    FAIL = "FAIL"
+    INCONCLUSIVE = "INCONCLUSIVE"
+    APPROVED = "APPROVED"
+    DENIED = "DENIED"
+    BUDGET_EXHAUSTED = "BUDGET_EXHAUSTED"
+    PAUSED = "PAUSED"
+    CANCELLED = "CANCELLED"
+
+
+_GUARD_MATCHES: dict[EdgeGuard, frozenset[NodeOutcome]] = {
+    EdgeGuard.ON_SUCCESS: frozenset({NodeOutcome.SUCCESS}),
+    EdgeGuard.ON_FAIL: frozenset({NodeOutcome.FAIL}),
+    EdgeGuard.ON_INCONCLUSIVE: frozenset({NodeOutcome.INCONCLUSIVE}),
+    EdgeGuard.ON_APPROVED: frozenset({NodeOutcome.APPROVED}),
+    EdgeGuard.ON_DENIED: frozenset({NodeOutcome.DENIED}),
+    EdgeGuard.ON_REPLAN_AVAILABLE: frozenset({NodeOutcome.FAIL}),
+    EdgeGuard.ON_REPLAN_EXHAUSTED: frozenset({NodeOutcome.FAIL}),
+}
+
+_TERMINAL_GUARD_STATES: dict[EdgeGuard, RunState] = {
+    EdgeGuard.ON_SUCCESS: RunState.SUCCEEDED,
+    EdgeGuard.ON_APPROVED: RunState.SUCCEEDED,
+    EdgeGuard.ON_FAIL: RunState.FAILED,
+    EdgeGuard.ON_INCONCLUSIVE: RunState.REQUIRES_HUMAN,
+    EdgeGuard.ON_DENIED: RunState.REQUIRES_HUMAN,
+    EdgeGuard.ON_REPLAN_EXHAUSTED: RunState.REQUIRES_HUMAN,
+}
+
+
+@dataclass(slots=True)
+class _GraphCursor:
+    """In-memory scheduler state, always recoverable from durable evidence."""
+
+    statuses: dict[str, GraphNodeStatus]
+    entered_via: dict[str, int]
+    current_key: str
+    arrival_guard: EdgeGuard | None = None
+    entry_edge_key: str | None = None
+    entered_via_retry: bool = False
+    last_artifact_id: str | None = None
+    last_artifact_sha256: str | None = None
+    last_results: list[VerificationResult] = field(default_factory=list)
+    last_error: ErrorSummary | None = None
+    stop_reason: LoopStopReason | None = None
+    gate_wait_seconds: float = 0.0
+
+
 class RunManager:
     def __init__(
         self,
@@ -94,6 +175,7 @@ class RunManager:
         operator_identity: str = "local-operator",
         verifier_registry: VerifierRegistry | None = None,
         default_verifier_ids: tuple[str, ...] = (),
+        auto_resume_on_reconcile: bool = False,
     ) -> None:
         self.store = store
         self.worktrees = worktrees
@@ -106,11 +188,13 @@ class RunManager:
             [GitDiffVerifier(), OutputContractVerifier(), TrajectoryPolicyVerifier()]
         )
         self.default_verifier_ids = default_verifier_ids
+        self.auto_resume_on_reconcile = auto_resume_on_reconcile
         self.background: dict[str, asyncio.Task[None]] = {}
         self.active_refs: dict[str, RunRef] = {}
         self.event_conditions: dict[str, asyncio.Condition] = {}
         self.pause_requested: set[str] = set()
         self.terminal_locks: dict[str, asyncio.Lock] = {}
+        self.approval_conditions: dict[str, asyncio.Condition] = {}
 
     async def create_project(self, name: str, repository_path: Path) -> Project:
         repository_path = repository_path.resolve(strict=True)
@@ -193,33 +277,72 @@ class RunManager:
             raise KeyError(task_id)
         planning = await self.get_task_planning(task_id)
         decision = planning.current_decision
-        supported = (
-            decision.selected_mode is ExecutionMode.DIRECT
-            and decision.selected_template_id == "direct-v1"
-        ) or (
-            decision.selected_mode is ExecutionMode.LOOP
-            and decision.selected_template_id == "feedback-loop-v1"
-        )
-        if not supported:
-            raise MilestoneDependencyError(
-                decision.selected_mode.value,
-                decision.selected_template_id,
+        if not await self.store.list_workflow_templates():
+            # Templates are code-defined; the store row is their idempotent,
+            # checksum-pinned projection (normally written at API startup).
+            await seed_templates(self.store)
+        template = await self.store.get_workflow_template(decision.selected_template_id)
+        if template is None:
+            any_version = [
+                candidate
+                for candidate in await self.store.list_workflow_templates()
+                if candidate.template_id == decision.selected_template_id
+            ]
+            if any_version:
+                raise WorkflowTemplateError(
+                    "TEMPLATE_NOT_VALIDATED",
+                    f"workflow template {decision.selected_template_id} is "
+                    f"{any_version[0].status.value}; only VALIDATED templates may execute",
+                )
+            raise WorkflowTemplateError(
+                "TEMPLATE_UNKNOWN",
+                f"workflow template {decision.selected_template_id} is not registered",
+            )
+        if template.status is not TemplateStatus.VALIDATED:
+            raise WorkflowTemplateError(
+                "TEMPLATE_NOT_VALIDATED",
+                f"workflow template {template.template_id} is {template.status.value}; "
+                "only VALIDATED templates may execute",
+            )
+        if template.mode is not decision.selected_mode:
+            raise WorkflowTemplateError(
+                "TEMPLATE_MODE_MISMATCH",
+                f"template {template.template_id} belongs to {template.mode.value}, "
+                f"not {decision.selected_mode.value}",
+            )
+        if compute_template_checksum(template) != template.checksum:
+            raise WorkflowTemplateError(
+                "TEMPLATE_CHECKSUM_MISMATCH",
+                f"template {template.template_id} content drifted from its checksum",
             )
         self._require_runtime(provider)
-        verifier_ids = self._verifier_ids(task)
+        verifier_ids = list(
+            dict.fromkeys([*self._verifier_ids(task), *template.required_verifiers])
+        )
         self.verifiers.resolve(verifier_ids)
-        if decision.requires_independent_verifier and "independent-review" not in verifier_ids:
+        # A template-declared outcome GATE is the independent human reviewer;
+        # gate-free templates keep the P2 independent-verifier requirement.
+        has_gates = bool(template.required_approval_gates)
+        if (
+            decision.requires_independent_verifier
+            and not has_gates
+            and "independent-review" not in verifier_ids
+        ):
             raise VerifierUnavailableError(
                 "the selected strategy requires an independent verifier"
             )
         policy = AcceptancePolicy(
             policy_id=new_id("acceptance_policy"),
             required_verifiers=verifier_ids,
-            require_independent_reviewer=decision.requires_independent_verifier,
-            independent_reviewer_ref=(
-                "independent-review" if decision.requires_independent_verifier else None
+            require_independent_reviewer=(
+                decision.requires_independent_verifier and not has_gates
             ),
-            require_human_if_risk_gte=RiskLevel.HIGH,
+            independent_reviewer_ref=(
+                "independent-review"
+                if decision.requires_independent_verifier and not has_gates
+                else None
+            ),
+            require_human_if_risk_gte=None if has_gates else RiskLevel.HIGH,
             outcome_check="all declared deterministic verifiers must pass",
         )
         await self.store.save_acceptance_policy(policy)
@@ -235,6 +358,13 @@ class RunManager:
             acceptance_policy_id=policy.policy_id,
         )
         await self.store.create_run(run)
+        graph = instantiate_run_graph(
+            template,
+            run_id=run.run_id,
+            task_id=task_id,
+            budgets=task.envelope.budgets,
+        )
+        await self.store.create_run_graph(graph)
         if decision.selected_mode is ExecutionMode.LOOP:
             execution = build_loop_execution(
                 run_id=run.run_id,
@@ -252,6 +382,9 @@ class RunManager:
                     "execution_mode": decision.selected_mode.value,
                     "workflow_template_id": decision.selected_template_id,
                     "acceptance_policy_id": policy.policy_id,
+                    "run_graph_id": graph.run_graph_id,
+                    "template_record_id": template.template_record_id,
+                    "template_checksum": template.checksum,
                 },
             )
         )
@@ -341,7 +474,11 @@ class RunManager:
                 if run.execution_mode is ExecutionMode.LOOP:
                     await self._execute_loop(run, task, lease, session)
                 else:
-                    await self._execute_direct(run, task, lease, session)
+                    graph = await self.store.get_run_graph(run.run_id)
+                    if graph is not None:
+                        await self._execute_graph(run, task, lease, session, graph)
+                    else:
+                        await self._execute_direct(run, task, lease, session)
         except asyncio.CancelledError:
             await self._cancel_execution(run_id)
             raise
@@ -437,6 +574,1000 @@ class RunManager:
             payload={"acceptance": acceptance.value},
         )
         await self.worktrees.release(lease, successful=state is RunState.SUCCEEDED)
+
+    @staticmethod
+    def _key_of(node_id: str) -> str:
+        return node_id.rsplit(":", 1)[-1]
+
+    async def _load_graph_cursor(
+        self, run: Run, graph: RunGraph, entry_key: str
+    ) -> _GraphCursor:
+        """Rebuild scheduler state from the last valid checkpoint and events."""
+
+        statuses = {node.key: GraphNodeStatus.PENDING for node in graph.nodes}
+        entered_via: dict[str, int] = {}
+        gate_wait = 0.0
+        required_at: dict[str, datetime] = {}
+        for event in await self.store.list_events(run.run_id):
+            if event.normalized_type is EventType.NODE_ENTERED:
+                via = event.payload.get("entered_via")
+                if via:
+                    entered_via[str(via)] = entered_via.get(str(via), 0) + 1
+            elif event.normalized_type is EventType.APPROVAL_REQUIRED and event.payload.get(
+                "approval_id"
+            ):
+                required_at[str(event.payload["approval_id"])] = event.timestamp
+            elif event.normalized_type is EventType.APPROVAL_RESOLVED and event.payload.get(
+                "approval_id"
+            ):
+                started = required_at.get(str(event.payload["approval_id"]))
+                if started is not None:
+                    gate_wait += max(0.0, (event.timestamp - started).total_seconds())
+        current = entry_key
+        checkpoint = await self.store.get_latest_checkpoint(run.run_id)
+        if checkpoint is not None and checkpoint.run_graph_id == graph.run_graph_id:
+            for key, status in checkpoint.node_statuses.items():
+                if key in statuses:
+                    statuses[key] = status
+            if checkpoint.active_node_ids:
+                active_key = self._key_of(checkpoint.active_node_ids[0])
+                if active_key in statuses:
+                    current = active_key
+        return _GraphCursor(
+            statuses=statuses,
+            entered_via=entered_via,
+            current_key=current,
+            gate_wait_seconds=gate_wait,
+        )
+
+    async def _graph_checkpoint(
+        self,
+        run: Run,
+        graph: RunGraph,
+        cursor: _GraphCursor,
+        lease: WorkspaceLease,
+        *,
+        active_key: str,
+        session_id: str,
+    ) -> None:
+        current = await self._require_run(run.run_id)
+        executions = await self.store.list_loop_executions_for_run(run.run_id)
+        checkpoint = Checkpoint(
+            checkpoint_id=new_id("checkpoint"),
+            run_id=run.run_id,
+            kind=CheckpointKind.NODE_BOUNDARY,
+            sequence=0,
+            run_state=current.state,
+            run_revision=current.revision,
+            active_node_ids=[f"{run.run_id}:{active_key}"],
+            node_statuses=dict(cursor.statuses),
+            loop_cursors=[
+                CheckpointLoopCursor(
+                    loop_execution_id=execution.loop_execution_id,
+                    iteration=execution.state.iteration,
+                    revision=execution.revision,
+                    status=execution.status,
+                )
+                for execution in executions
+            ],
+            run_graph_id=graph.run_graph_id,
+            graph_revision=graph.graph_revision,
+            workspace_lease_id=lease.lease_id,
+            workspace_revision=lease.base_revision,
+        )
+        event = self._control_event(
+            run,
+            "accretion/checkpoint-saved",
+            EventType.CHECKPOINT_SAVED,
+            session_id=session_id,
+            node_key=active_key,
+            payload={
+                "checkpoint_id": checkpoint.checkpoint_id,
+                "kind": checkpoint.kind.value,
+                "active_node_ids": checkpoint.active_node_ids,
+                "run_graph_id": graph.run_graph_id,
+            },
+        )
+        await self.store.append_checkpoint(checkpoint, events=[event])
+        await self._notify(run.run_id)
+
+    async def _execute_graph(
+        self,
+        run: Run,
+        task: Task,
+        lease: WorkspaceLease,
+        session: SessionRef,
+        graph: RunGraph,
+    ) -> None:
+        template = await self.store.get_workflow_template(
+            graph.template_id, graph.template_version
+        )
+        if template is None:
+            raise RuntimeError(f"run graph template {graph.template_id} is not registered")
+        nodes = {node.key: node for node in graph.nodes}
+        template_nodes = {spec.key: spec for spec in template.nodes}
+        out_edges: dict[str, list[RunEdge]] = {}
+        inbound_keys: set[str] = set()
+        for edge in graph.edges:
+            out_edges.setdefault(self._key_of(edge.source), []).append(edge)
+            inbound_keys.add(self._key_of(edge.target))
+        region_owner: dict[str, str] = {}
+        for spec in template.nodes:
+            if spec.loop is not None:
+                for member in spec.loop.region_keys:
+                    if member != spec.key:
+                        region_owner[member] = spec.key
+        gates = {gate.node_key: gate for gate in template.required_approval_gates}
+        entry_key = next(node.key for node in graph.nodes if node.key not in inbound_keys)
+        cursor = await self._load_graph_cursor(run, graph, entry_key)
+        policy = await self._require_policy(run.acceptance_policy_id)
+
+        while True:
+            deadline = (
+                run.created_at.timestamp()
+                + task.envelope.budgets.wall_time_seconds
+                + cursor.gate_wait_seconds
+            )
+            if run.run_id in self.pause_requested:
+                self.pause_requested.discard(run.run_id)
+                await self._pause_graph(run)
+                return
+            node = nodes[cursor.current_key]
+            if node.kind is GraphNodeKind.TERMINAL:
+                await self._commit_graph_terminal(run, lease, session, cursor, node)
+                return
+            outcome, session = await self._run_graph_node(
+                run,
+                task,
+                lease,
+                session,
+                node=node,
+                template_node=template_nodes[node.key],
+                template=template,
+                gate=gates.get(node.key),
+                policy=policy,
+                deadline=deadline,
+                cursor=cursor,
+            )
+            if outcome is NodeOutcome.PAUSED:
+                await self._pause_graph(run)
+                return
+            if outcome is NodeOutcome.CANCELLED:
+                await self._cancel_execution(run.run_id)
+                return
+            if outcome is NodeOutcome.BUDGET_EXHAUSTED:
+                await self._graph_budget_stop(run, lease, session, cursor)
+                return
+            selected = self._select_edge(
+                node, outcome, out_edges.get(node.key, []), cursor, template
+            )
+            if selected is None:
+                await self._commit_run_terminal(
+                    run,
+                    state=RunState.REQUIRES_HUMAN,
+                    event_type=EventType.RUN_FAILED,
+                    native_type="accretion/graph-no-eligible-edge",
+                    session_id=session.session_id,
+                    payload={"node": node.key, "outcome": outcome.value},
+                    error=ErrorSummary(
+                        code="GRAPH_NO_ELIGIBLE_EDGE",
+                        message=(
+                            f"node {node.key} produced {outcome.value} with no eligible edge"
+                        ),
+                    ),
+                )
+                await self.worktrees.release(lease, successful=False)
+                return
+            target_key = self._key_of(selected.target)
+            routed_key = region_owner.get(target_key, target_key)
+            cursor.entry_edge_key = selected.key
+            cursor.arrival_guard = selected.guard
+            cursor.entered_via_retry = selected.kind is GraphEdgeKind.RETRY
+            cursor.entered_via[selected.key] = cursor.entered_via.get(selected.key, 0) + 1
+            await self._graph_checkpoint(
+                run,
+                graph,
+                cursor,
+                lease,
+                active_key=routed_key,
+                session_id=session.session_id,
+            )
+            cursor.current_key = routed_key
+
+    async def _run_graph_node(
+        self,
+        run: Run,
+        task: Task,
+        lease: WorkspaceLease,
+        session: SessionRef,
+        *,
+        node: RunNode,
+        template_node: object,
+        template: WorkflowTemplate,
+        gate: object,
+        policy: AcceptancePolicy,
+        deadline: float,
+        cursor: _GraphCursor,
+    ) -> tuple[NodeOutcome, SessionRef]:
+        from accretion.contracts import GateSpec, WorkflowNodeSpec
+
+        spec = template_node if isinstance(template_node, WorkflowNodeSpec) else None
+        entered_via = cursor.entry_edge_key
+        cursor.entry_edge_key = None
+        if node.kind is GraphNodeKind.TASK:
+            if cursor.statuses.get(node.key) is GraphNodeStatus.SUCCEEDED:
+                return NodeOutcome.SUCCESS, session
+            await self._node_transition(
+                run, session.session_id, node.key, entered=True, entered_via=entered_via
+            )
+            await self._node_transition(run, session.session_id, node.key, entered=False)
+            cursor.statuses[node.key] = GraphNodeStatus.SUCCEEDED
+            return NodeOutcome.SUCCESS, session
+        if node.kind is GraphNodeKind.AGENT:
+            return await self._graph_agent(
+                run,
+                task,
+                session,
+                node=node,
+                instruction=spec.instruction if spec else None,
+                deadline=deadline,
+                cursor=cursor,
+                entered_via=entered_via,
+            )
+        if node.kind is GraphNodeKind.TOOL:
+            await self._node_transition(
+                run, session.session_id, node.key, entered=True, entered_via=entered_via
+            )
+            captures = cursor.entered_via.get(f"capture:{node.key}", 0) + 1
+            cursor.entered_via[f"capture:{node.key}"] = captures
+            artifact = await self.worktrees.capture_diff(
+                lease,
+                name=f"{node.key}-{captures:03}.patch",
+                kind="GRAPH_NODE_GIT_DIFF",
+            )
+            if artifact:
+                await self.store.save_artifact(artifact)
+                cursor.last_artifact_id = artifact.artifact_id
+                cursor.last_artifact_sha256 = artifact.sha256
+            await self._node_transition(run, session.session_id, node.key, entered=False)
+            cursor.statuses[node.key] = GraphNodeStatus.SUCCEEDED
+            return NodeOutcome.SUCCESS, session
+        if node.kind is GraphNodeKind.VERIFIER:
+            return await self._graph_verifier(
+                run,
+                task,
+                lease,
+                session,
+                node=node,
+                policy=policy,
+                cursor=cursor,
+                entered_via=entered_via,
+            )
+        if node.kind is GraphNodeKind.GATE:
+            assert isinstance(gate, GateSpec)
+            return await self._graph_gate(
+                run,
+                task,
+                session,
+                node=node,
+                gate=gate,
+                cursor=cursor,
+                entered_via=entered_via,
+            )
+        if node.kind is GraphNodeKind.LOOP:
+            assert spec is not None and spec.loop is not None
+            return await self._graph_loop(
+                run,
+                task,
+                lease,
+                session,
+                node=node,
+                loop_policy=spec.loop,
+                template=template,
+                policy=policy,
+                deadline=deadline,
+                cursor=cursor,
+                entered_via=entered_via,
+            )
+        raise RuntimeError(f"unsupported graph node kind {node.kind.value}")
+
+    async def _graph_agent(
+        self,
+        run: Run,
+        task: Task,
+        session: SessionRef,
+        *,
+        node: RunNode,
+        instruction: str | None,
+        deadline: float,
+        cursor: _GraphCursor,
+        entered_via: str | None,
+    ) -> tuple[NodeOutcome, SessionRef]:
+        objective = task.envelope.objective
+        if instruction:
+            objective = f"{objective}\n\n{instruction}"
+        if cursor.entered_via_retry and cursor.last_results:
+            directive = IterationDirective(
+                kind=IterationDirectiveKind.REPAIR,
+                objective=objective,
+                findings=[
+                    item for result in cursor.last_results for item in result.findings
+                ],
+                evidence_refs=[
+                    ref for result in cursor.last_results for ref in result.evidence_refs
+                ],
+            )
+        else:
+            directive = IterationDirective(
+                kind=IterationDirectiveKind.INITIAL, objective=objective
+            )
+        await self._node_transition(
+            run, session.session_id, node.key, entered=True, entered_via=entered_via
+        )
+        outcome = await self._runtime_call(
+            run,
+            session,
+            task.envelope.model_copy(update={"objective": objective}),
+            runtime_call_id=new_id("runtime_call"),
+            deadline=deadline,
+            node_key=node.key,
+            directive=directive,
+        )
+        session = outcome.session
+        await self._node_transition(
+            run,
+            session.session_id,
+            node.key,
+            entered=False,
+            status="SUCCEEDED" if outcome.completed else "FAILED",
+        )
+        if outcome.stop_reason is not None:
+            cursor.stop_reason = outcome.stop_reason
+            cursor.statuses[node.key] = GraphNodeStatus.FAILED
+            return NodeOutcome.BUDGET_EXHAUSTED, session
+        if outcome.cancelled:
+            if run.run_id in self.pause_requested:
+                self.pause_requested.discard(run.run_id)
+                return NodeOutcome.PAUSED, session
+            return NodeOutcome.CANCELLED, session
+        if outcome.completed:
+            cursor.statuses[node.key] = GraphNodeStatus.SUCCEEDED
+            return NodeOutcome.SUCCESS, session
+        cursor.last_error = outcome.error
+        cursor.statuses[node.key] = GraphNodeStatus.FAILED
+        return NodeOutcome.FAIL, session
+
+    async def _graph_verifier(
+        self,
+        run: Run,
+        task: Task,
+        lease: WorkspaceLease,
+        session: SessionRef,
+        *,
+        node: RunNode,
+        policy: AcceptancePolicy,
+        cursor: _GraphCursor,
+        entered_via: str | None,
+    ) -> tuple[NodeOutcome, SessionRef]:
+        await self._node_transition(
+            run, session.session_id, node.key, entered=True, entered_via=entered_via
+        )
+        if cursor.last_artifact_id is None:
+            artifact = await self.worktrees.capture_diff(
+                lease, name="final.patch", kind="FINAL_GIT_DIFF"
+            )
+            if artifact:
+                await self.store.save_artifact(artifact)
+                cursor.last_artifact_id = artifact.artifact_id
+                cursor.last_artifact_sha256 = artifact.sha256
+        results = await self._verify_candidate(
+            run=run,
+            task=task,
+            lease=lease,
+            session_id=session.session_id,
+            policy=policy,
+            artifact_ref=cursor.last_artifact_id,
+            diff_sha256=cursor.last_artifact_sha256,
+        )
+        cursor.last_results = results
+        acceptance = evaluate_acceptance_policy(
+            policy, results, risk=task.envelope.risk_level
+        ).status
+        status = {
+            VerificationStatus.PASS: "SUCCEEDED",
+            VerificationStatus.FAIL: "FAILED",
+            VerificationStatus.INCONCLUSIVE: "WAITING",
+        }[acceptance]
+        await self._node_transition(
+            run, session.session_id, node.key, entered=False, status=status
+        )
+        cursor.statuses[node.key] = GraphNodeStatus(status)
+        return {
+            VerificationStatus.PASS: NodeOutcome.SUCCESS,
+            VerificationStatus.FAIL: NodeOutcome.FAIL,
+            VerificationStatus.INCONCLUSIVE: NodeOutcome.INCONCLUSIVE,
+        }[acceptance], session
+
+    async def _graph_gate(
+        self,
+        run: Run,
+        task: Task,
+        session: SessionRef,
+        *,
+        node: RunNode,
+        gate: object,
+        cursor: _GraphCursor,
+        entered_via: str | None,
+    ) -> tuple[NodeOutcome, SessionRef]:
+        from accretion.contracts import GateSpec
+
+        assert isinstance(gate, GateSpec)
+        record = await self.store.save_approval(
+            ApprovalRecord(
+                approval_id=new_id("approval"),
+                run_id=run.run_id,
+                node_id=node.node_id,
+                native_request_id=f"gate:{node.key}",
+                method="accretion/gate",
+                summary=gate.summary,
+                payload={"gate_id": gate.gate_id},
+            )
+        )
+        await self._node_transition(
+            run, session.session_id, node.key, entered=True, entered_via=entered_via
+        )
+        auto_approve = (
+            RISK_RANK[task.envelope.risk_level] < RISK_RANK[gate.required_for_risk_gte]
+        )
+        if record.status is ApprovalStatus.PENDING and auto_approve:
+            # Documented SDD deviation: template gates below their risk
+            # threshold auto-approve with durable evidence, so a manually
+            # overridden low-risk graph run does not dead-end unattended.
+            record = await self.store.decide_approval(
+                record.approval_id, ApprovalDecisionValue.APPROVE
+            )
+            await self._append(
+                self._control_event(
+                    run,
+                    "accretion/gate-auto-approved",
+                    EventType.APPROVAL_RESOLVED,
+                    session_id=session.session_id,
+                    node_key=node.key,
+                    payload={
+                        "approval_id": record.approval_id,
+                        "gate_id": gate.gate_id,
+                        "decision": ApprovalDecisionValue.APPROVE.value,
+                        "auto_approved": True,
+                    },
+                )
+            )
+        elif record.status is ApprovalStatus.PENDING:
+            await self._append(
+                self._control_event(
+                    run,
+                    "accretion/gate-approval-required",
+                    EventType.APPROVAL_REQUIRED,
+                    session_id=session.session_id,
+                    node_key=node.key,
+                    payload={
+                        "approval_id": record.approval_id,
+                        "gate_id": gate.gate_id,
+                        "summary": gate.summary,
+                    },
+                )
+            )
+            cursor.statuses[node.key] = GraphNodeStatus.WAITING
+            wait_started = time.monotonic()
+            condition = self.approval_conditions.setdefault(
+                record.approval_id, asyncio.Condition()
+            )
+            while True:
+                current = await self.store.get_approval(record.approval_id)
+                if current is not None and current.status is not ApprovalStatus.PENDING:
+                    record = current
+                    break
+                if run.run_id in self.pause_requested:
+                    self.pause_requested.discard(run.run_id)
+                    cursor.gate_wait_seconds += time.monotonic() - wait_started
+                    return NodeOutcome.PAUSED, session
+                async with condition:
+                    try:
+                        await asyncio.wait_for(condition.wait(), timeout=0.2)
+                    except TimeoutError:
+                        continue
+            # The wall clock pauses while a durable PENDING approval waits.
+            cursor.gate_wait_seconds += time.monotonic() - wait_started
+            await self._append(
+                self._control_event(
+                    run,
+                    "accretion/gate-approval-resolved",
+                    EventType.APPROVAL_RESOLVED,
+                    session_id=session.session_id,
+                    node_key=node.key,
+                    payload={
+                        "approval_id": record.approval_id,
+                        "gate_id": gate.gate_id,
+                        "decision": record.decision.value if record.decision else None,
+                    },
+                )
+            )
+        else:
+            # Decided while the backend was down; make the evidence durable
+            # exactly once.
+            resolved_already = any(
+                event.normalized_type is EventType.APPROVAL_RESOLVED
+                and event.payload.get("approval_id") == record.approval_id
+                for event in await self.store.list_events(run.run_id)
+            )
+            if not resolved_already:
+                await self._append(
+                    self._control_event(
+                        run,
+                        "accretion/gate-approval-resolved",
+                        EventType.APPROVAL_RESOLVED,
+                        session_id=session.session_id,
+                        node_key=node.key,
+                        payload={
+                            "approval_id": record.approval_id,
+                            "gate_id": gate.gate_id,
+                            "decision": record.decision.value if record.decision else None,
+                        },
+                    )
+                )
+        approved = record.status is ApprovalStatus.APPROVED
+        await self._node_transition(
+            run,
+            session.session_id,
+            node.key,
+            entered=False,
+            status="SUCCEEDED" if approved else "FAILED",
+        )
+        cursor.statuses[node.key] = (
+            GraphNodeStatus.SUCCEEDED if approved else GraphNodeStatus.FAILED
+        )
+        return (NodeOutcome.APPROVED if approved else NodeOutcome.DENIED), session
+
+    async def _graph_loop(
+        self,
+        run: Run,
+        task: Task,
+        lease: WorkspaceLease,
+        session: SessionRef,
+        *,
+        node: RunNode,
+        loop_policy: object,
+        template: WorkflowTemplate,
+        policy: AcceptancePolicy,
+        deadline: float,
+        cursor: _GraphCursor,
+        entered_via: str | None,
+    ) -> tuple[NodeOutcome, SessionRef]:
+        from accretion.contracts import NodeLoopPolicy
+
+        assert isinstance(loop_policy, NodeLoopPolicy)
+        terminal_statuses = {
+            LoopExecutionStatus.SUCCEEDED,
+            LoopExecutionStatus.FAILED,
+            LoopExecutionStatus.CANCELLED,
+            LoopExecutionStatus.REQUIRES_HUMAN,
+        }
+        execution = await self.store.get_loop_execution_for_node(run.run_id, node.key)
+        if execution is None or execution.status in terminal_statuses:
+            attempt = execution.attempt + 1 if execution else 1
+            budgets = task.envelope.budgets
+            remaining_wall = max(1, int(deadline - datetime.now(UTC).timestamp()))
+            spec = LoopSpec(
+                loop_id=new_id("loop"),
+                max_iterations=node.max_iterations or budgets.max_loop_iterations,
+                max_wall_time_seconds=max(
+                    1, int(remaining_wall * loop_policy.budget_fraction)
+                ),
+                max_tool_calls=max(
+                    1, int(budgets.max_tool_calls * loop_policy.budget_fraction)
+                ),
+                max_turns=max(1, int(budgets.max_turns * loop_policy.budget_fraction)),
+            )
+            execution = await self.store.create_loop_execution(
+                LoopExecution(
+                    loop_execution_id=new_id("loop_execution"),
+                    run_id=run.run_id,
+                    node_key=node.key,
+                    attempt=attempt,
+                    spec=spec,
+                    state=LoopState(
+                        budget_remaining=LoopBudgetRemaining(
+                            wall_time_seconds=spec.max_wall_time_seconds,
+                            tool_calls=spec.max_tool_calls,
+                            turns=spec.max_turns,
+                            iterations=spec.max_iterations,
+                        )
+                    ),
+                    acceptance_policy_ref=policy.policy_id,
+                )
+            )
+        await self._node_transition(
+            run, session.session_id, node.key, entered=True, entered_via=entered_via
+        )
+        outcome, session = await self._run_bounded_region(
+            run,
+            task,
+            lease,
+            session,
+            node=node,
+            loop_policy=loop_policy,
+            template=template,
+            execution=execution,
+            cursor=cursor,
+        )
+        status = {
+            NodeOutcome.SUCCESS: "SUCCEEDED",
+            NodeOutcome.FAIL: "FAILED",
+            NodeOutcome.BUDGET_EXHAUSTED: "FAILED",
+            NodeOutcome.PAUSED: "WAITING",
+            NodeOutcome.CANCELLED: "CANCELLED",
+        }.get(outcome, "FAILED")
+        await self._node_transition(
+            run, session.session_id, node.key, entered=False, status=status
+        )
+        cursor.statuses[node.key] = GraphNodeStatus(status)
+        return outcome, session
+
+    async def _run_bounded_region(
+        self,
+        run: Run,
+        task: Task,
+        lease: WorkspaceLease,
+        session: SessionRef,
+        *,
+        node: RunNode,
+        loop_policy: object,
+        template: WorkflowTemplate,
+        execution: LoopExecution,
+        cursor: _GraphCursor,
+    ) -> tuple[NodeOutcome, SessionRef]:
+        """Drive a bounded, unverified loop region (verify_in_region=False).
+
+        Region completion at the iteration ceiling is normal completion, not
+        an escalation: acceptance is judged by the downstream VERIFIER node."""
+
+        from accretion.contracts import NodeLoopPolicy
+
+        assert isinstance(loop_policy, NodeLoopPolicy)
+        act_key = loop_policy.act_key
+        observe_key = loop_policy.observe_key
+        act_spec = next(
+            (spec for spec in template.nodes if spec.key == act_key), None
+        )
+        deadline = (
+            datetime.now(UTC).timestamp()
+            + execution.state.budget_remaining.wall_time_seconds
+        )
+        if execution.status is LoopExecutionStatus.PENDING:
+            execution = await self.store.update_loop_execution(
+                execution.loop_execution_id,
+                execution.state,
+                status=LoopExecutionStatus.RUNNING,
+                expected_revision=execution.revision,
+            )
+        previous_iterations = await self.store.list_loop_iterations(
+            execution.loop_execution_id
+        )
+        while True:
+            if run.run_id in self.pause_requested:
+                self.pause_requested.discard(run.run_id)
+                await self.store.update_loop_execution(
+                    execution.loop_execution_id,
+                    execution.state,
+                    status=LoopExecutionStatus.PAUSED,
+                    stop_reason=LoopStopReason.INTERRUPTED,
+                    expected_revision=execution.revision,
+                )
+                return NodeOutcome.PAUSED, session
+            if execution.state.budget_remaining.iterations <= 0:
+                execution = await self.store.update_loop_execution(
+                    execution.loop_execution_id,
+                    execution.state,
+                    status=LoopExecutionStatus.SUCCEEDED,
+                    stop_reason=LoopStopReason.MAX_ITERATIONS,
+                    expected_revision=execution.revision,
+                )
+                return NodeOutcome.SUCCESS, session
+            if datetime.now(UTC).timestamp() >= deadline:
+                cursor.stop_reason = LoopStopReason.WALL_TIME_EXCEEDED
+                await self.store.update_loop_execution(
+                    execution.loop_execution_id,
+                    execution.state,
+                    status=LoopExecutionStatus.REQUIRES_HUMAN,
+                    stop_reason=LoopStopReason.WALL_TIME_EXCEEDED,
+                    expected_revision=execution.revision,
+                )
+                return NodeOutcome.BUDGET_EXHAUSTED, session
+            number = execution.state.iteration + 1
+            iteration_id = new_id("iteration")
+            await self._append(
+                self._control_event(
+                    run,
+                    "accretion/loop-iteration-started",
+                    EventType.LOOP_ITERATION_STARTED,
+                    session_id=session.session_id,
+                    node_key=node.key,
+                    payload={"iteration_id": iteration_id, "number": number},
+                )
+            )
+            await self._node_transition(run, session.session_id, act_key, entered=True)
+            objective = task.envelope.objective
+            if act_spec is not None and act_spec.instruction:
+                objective = f"{objective}\n\n{act_spec.instruction}"
+            outcome = await self._runtime_call(
+                run,
+                session,
+                self._iteration_envelope(
+                    task.envelope.model_copy(update={"objective": objective}),
+                    IterationDirective(
+                        kind=IterationDirectiveKind.INITIAL, objective=objective
+                    ),
+                    deadline,
+                    execution.state.budget_remaining,
+                ),
+                runtime_call_id=new_id("runtime_call"),
+                deadline=deadline,
+                node_key=act_key,
+                iteration_number=number,
+                directive=IterationDirective(
+                    kind=IterationDirectiveKind.INITIAL, objective=objective
+                ),
+            )
+            session = outcome.session
+            await self._node_transition(
+                run,
+                session.session_id,
+                act_key,
+                entered=False,
+                status="SUCCEEDED" if outcome.completed else "FAILED",
+            )
+            if outcome.cancelled and outcome.stop_reason is None:
+                if run.run_id in self.pause_requested:
+                    self.pause_requested.discard(run.run_id)
+                    await self.store.update_loop_execution(
+                        execution.loop_execution_id,
+                        execution.state,
+                        status=LoopExecutionStatus.PAUSED,
+                        stop_reason=LoopStopReason.INTERRUPTED,
+                        expected_revision=execution.revision,
+                    )
+                    return NodeOutcome.PAUSED, session
+                return NodeOutcome.CANCELLED, session
+            artifact = None
+            if observe_key is not None:
+                await self._node_transition(
+                    run, session.session_id, observe_key, entered=True
+                )
+                artifact = await self.worktrees.capture_diff(
+                    lease,
+                    name=f"{node.key}-{execution.attempt:02}-{number:03}.patch",
+                    kind="LOOP_ITERATION_GIT_DIFF",
+                )
+                if artifact:
+                    await self.store.save_artifact(artifact)
+                    cursor.last_artifact_id = artifact.artifact_id
+                    cursor.last_artifact_sha256 = artifact.sha256
+                await self._node_transition(
+                    run, session.session_id, observe_key, entered=False
+                )
+            next_state, iteration = self._next_iteration_state(
+                execution=execution,
+                run=run,
+                iteration_id=iteration_id,
+                number=number,
+                outcome=outcome,
+                artifact_ref=artifact.artifact_id if artifact else None,
+                diff_sha256=artifact.sha256 if artifact else None,
+                results=[],
+                deadline=deadline,
+                previous=previous_iterations[-1] if previous_iterations else None,
+            )
+            status: LoopExecutionStatus | None = None
+            stop_reason: LoopStopReason | None = None
+            terminal_outcome_value: NodeOutcome | None = None
+            if outcome.stop_reason is not None:
+                cursor.stop_reason = outcome.stop_reason
+                status = LoopExecutionStatus.REQUIRES_HUMAN
+                stop_reason = outcome.stop_reason
+                terminal_outcome_value = NodeOutcome.BUDGET_EXHAUSTED
+            elif (
+                not outcome.completed
+                and next_state.provider_failure_count
+                >= execution.spec.provider_failure_threshold
+            ):
+                cursor.last_error = outcome.error
+                status = LoopExecutionStatus.FAILED
+                stop_reason = LoopStopReason.PROVIDER_FAILURE
+                terminal_outcome_value = NodeOutcome.FAIL
+            elif next_state.budget_remaining.iterations <= 0:
+                status = LoopExecutionStatus.SUCCEEDED
+                stop_reason = LoopStopReason.MAX_ITERATIONS
+                terminal_outcome_value = (
+                    NodeOutcome.SUCCESS if outcome.completed else NodeOutcome.FAIL
+                )
+                if not outcome.completed:
+                    status = LoopExecutionStatus.FAILED
+                    stop_reason = LoopStopReason.PROVIDER_FAILURE
+            checkpoint = Checkpoint(
+                checkpoint_id=new_id("checkpoint"),
+                run_id=run.run_id,
+                kind=CheckpointKind.NODE_BOUNDARY,
+                sequence=0,
+                run_state=RunState.RUNNING,
+                run_revision=run.revision,
+                active_node_ids=[node.node_id],
+                node_statuses=dict(cursor.statuses),
+                loop_cursors=[
+                    CheckpointLoopCursor(
+                        loop_execution_id=execution.loop_execution_id,
+                        iteration=next_state.iteration,
+                        revision=execution.revision + 1,
+                        status=status or LoopExecutionStatus.RUNNING,
+                    )
+                ],
+                workspace_lease_id=lease.lease_id,
+                workspace_revision=lease.base_revision,
+                workspace_diff_sha256=artifact.sha256 if artifact else None,
+            )
+            execution = await self.store.append_loop_iteration(
+                execution.loop_execution_id,
+                iteration,
+                next_state,
+                status=status,
+                stop_reason=stop_reason,
+                expected_revision=execution.revision,
+                events=[
+                    self._control_event(
+                        run,
+                        "accretion/loop-iteration-completed",
+                        EventType.LOOP_ITERATION_COMPLETED,
+                        session_id=session.session_id,
+                        node_key=node.key,
+                        payload={
+                            "iteration_id": iteration_id,
+                            "number": number,
+                            "status": iteration.status.value,
+                        },
+                    )
+                ],
+                checkpoint=checkpoint,
+            )
+            await self._notify(run.run_id)
+            previous_iterations.append(iteration)
+            if terminal_outcome_value is not None:
+                return terminal_outcome_value, session
+
+    def _select_edge(
+        self,
+        node: RunNode,
+        outcome: NodeOutcome,
+        edges: list[RunEdge],
+        cursor: _GraphCursor,
+        template: WorkflowTemplate,
+    ) -> RunEdge | None:
+        budget = template.global_budget_policy
+        candidates = [edge for edge in edges if edge.kind is not GraphEdgeKind.LOOP_BACK]
+        for edge in candidates:
+            if edge.kind is not GraphEdgeKind.RETRY or edge.guard is None:
+                continue
+            if outcome not in _GUARD_MATCHES.get(edge.guard, frozenset()):
+                continue
+            limit = (
+                budget.max_replans
+                if edge.guard is EdgeGuard.ON_REPLAN_AVAILABLE
+                else budget.max_node_retries
+            )
+            if cursor.entered_via.get(edge.key, 0) < limit:
+                return edge
+        guarded = [
+            edge
+            for edge in candidates
+            if edge.kind in {GraphEdgeKind.CONDITION, GraphEdgeKind.APPROVAL}
+            and edge.guard is not None
+            and outcome in _GUARD_MATCHES.get(edge.guard, frozenset())
+        ]
+        if len(guarded) == 1:
+            return guarded[0]
+        if len(guarded) > 1:
+            return None
+        if outcome is NodeOutcome.SUCCESS:
+            plain = [
+                edge
+                for edge in candidates
+                if edge.kind is GraphEdgeKind.NORMAL and edge.guard is None
+            ]
+            if len(plain) == 1:
+                return plain[0]
+        return None
+
+    async def _commit_graph_terminal(
+        self,
+        run: Run,
+        lease: WorkspaceLease,
+        session: SessionRef,
+        cursor: _GraphCursor,
+        node: RunNode,
+    ) -> None:
+        if cursor.arrival_guard is not None:
+            state = _TERMINAL_GUARD_STATES.get(
+                cursor.arrival_guard, RunState.REQUIRES_HUMAN
+            )
+        else:
+            state = RunState.SUCCEEDED
+        event_type = {
+            RunState.SUCCEEDED: EventType.RUN_COMPLETED,
+            RunState.CANCELLED: EventType.RUN_CANCELLED,
+        }.get(state, EventType.RUN_FAILED)
+        payload: dict[str, object] = {"node": node.key}
+        if cursor.arrival_guard is not None:
+            payload["guard"] = cursor.arrival_guard.value
+        error = cursor.last_error if state is RunState.FAILED else None
+        if error is not None:
+            payload["error"] = error.model_dump(mode="json")
+        await self._commit_run_terminal(
+            run,
+            state=state,
+            event_type=event_type,
+            native_type="accretion/graph-terminal",
+            session_id=session.session_id,
+            payload=payload,
+            node_key=node.key,
+            error=error,
+        )
+        await self.worktrees.release(lease, successful=state is RunState.SUCCEEDED)
+
+    async def _graph_budget_stop(
+        self,
+        run: Run,
+        lease: WorkspaceLease,
+        session: SessionRef,
+        cursor: _GraphCursor,
+    ) -> None:
+        if cursor.last_artifact_id is None:
+            artifact = await self.worktrees.capture_diff(
+                lease, name="final.patch", kind="FINAL_GIT_DIFF"
+            )
+            if artifact:
+                await self.store.save_artifact(artifact)
+        await self._commit_run_terminal(
+            run,
+            state=RunState.REQUIRES_HUMAN,
+            event_type=EventType.RUN_FAILED,
+            native_type="accretion/graph-budget-stop",
+            session_id=session.session_id,
+            payload={
+                "stop_reason": cursor.stop_reason.value
+                if cursor.stop_reason
+                else LoopStopReason.WALL_TIME_EXCEEDED.value
+            },
+        )
+        await self.worktrees.release(lease, successful=False)
+
+    async def _pause_graph(self, run: Run) -> None:
+        paused = await self.store.update_run(run.run_id, RunState.PAUSED)
+        await self._append_pause_if_missing(paused)
+
+    async def resolve_approval(
+        self, approval_id: str, decision: ApprovalDecisionValue
+    ) -> ApprovalRecord:
+        record = await self.store.decide_approval(approval_id, decision)
+        condition = self.approval_conditions.setdefault(approval_id, asyncio.Condition())
+        async with condition:
+            condition.notify_all()
+        return record
+
+    async def get_trace(self, run_id: str) -> ExecutionTrace:
+        run = await self._require_run(run_id)
+        graph = await self.store.get_run_graph(run_id)
+        return build_execution_trace(
+            run=run,
+            events=await self.store.list_events(run_id),
+            run_graph_id=graph.run_graph_id if graph else None,
+        )
 
     async def _execute_loop(
         self,
@@ -610,6 +1741,27 @@ class RunManager:
             ]
             status = terminal[0] if terminal else LoopExecutionStatus.RUNNING
             stop_reason = terminal[1] if terminal else None
+            iteration_checkpoint = Checkpoint(
+                checkpoint_id=new_id("checkpoint"),
+                run_id=run.run_id,
+                kind=CheckpointKind.NODE_BOUNDARY,
+                sequence=0,
+                run_state=RunState.RUNNING,
+                run_revision=run.revision,
+                active_node_ids=[self._node_id(run.run_id, "evaluate")],
+                loop_cursors=[
+                    CheckpointLoopCursor(
+                        loop_execution_id=execution.loop_execution_id,
+                        iteration=next_state.iteration,
+                        revision=execution.revision + 1,
+                        status=status,
+                    )
+                ],
+                budget_remaining=next_state.budget_remaining,
+                workspace_lease_id=lease.lease_id,
+                workspace_revision=lease.base_revision,
+                workspace_diff_sha256=artifact.sha256 if artifact else None,
+            )
             execution = await self.store.append_loop_iteration(
                 execution.loop_execution_id,
                 iteration,
@@ -619,6 +1771,7 @@ class RunManager:
                 expected_revision=execution.revision,
                 verifications=results,
                 events=transition_events,
+                checkpoint=iteration_checkpoint,
             )
             await self._notify(run.run_id)
             previous_iterations.append(iteration)
@@ -1478,7 +2631,11 @@ class RunManager:
         *,
         entered: bool,
         status: str = "SUCCEEDED",
+        entered_via: str | None = None,
     ) -> None:
+        payload: dict[str, object] = {"status": "RUNNING" if entered else status}
+        if entered and entered_via:
+            payload["entered_via"] = entered_via
         await self._append(
             self._control_event(
                 run,
@@ -1486,7 +2643,7 @@ class RunManager:
                 EventType.NODE_ENTERED if entered else EventType.NODE_EXITED,
                 session_id=session_id,
                 node_key=key,
-                payload={"status": "RUNNING" if entered else status},
+                payload=payload,
             )
         )
 
@@ -1522,15 +2679,29 @@ class RunManager:
 
     async def get_graph(self, run_id: str) -> GraphProjection:
         run = await self._require_run(run_id)
-        if run.execution_mode is not ExecutionMode.LOOP:
-            raise ValueError("P2 graph projection is available only for LOOP runs")
-        execution = await self._require_loop(run_id)
         task = await self._require_task(run.task_id)
-        return build_loop_projection(
+        if run.execution_mode is ExecutionMode.LOOP:
+            execution = await self._require_loop(run_id)
+            return build_loop_projection(
+                run=run,
+                task=task,
+                execution=execution,
+                events=await self.store.list_events(run_id),
+                verifications=await self.store.list_verifications(run_id),
+            )
+        graph = await self.store.get_run_graph(run_id)
+        if graph is None:
+            raise ProjectionUnavailableError(run)
+        executions = {
+            execution.loop_execution_id: execution
+            for execution in await self.store.list_loop_executions_for_run(run_id)
+        }
+        return build_graph_projection(
             run=run,
             task=task,
-            execution=execution,
+            run_graph=graph,
             events=await self.store.list_events(run_id),
+            loop_executions=executions,
             verifications=await self.store.list_verifications(run_id),
         )
 
@@ -1580,14 +2751,79 @@ class RunManager:
         if run_id in self.background and not self.background[run_id].done():
             return run
         self.pause_requested.discard(run_id)
+        graph = await self.store.get_run_graph(run_id)
         run = await self.store.update_run(run_id, RunState.RUNNING)
-        resume_operation = (
-            self._resume_loop(run_id)
-            if run.execution_mode is ExecutionMode.LOOP
-            else self._resume_direct(run_id)
-        )
+        if run.execution_mode is ExecutionMode.LOOP:
+            resume_operation = self._resume_loop(run_id)
+        elif graph is not None:
+            resume_operation = self._resume_graph(run_id)
+        else:
+            resume_operation = self._resume_direct(run_id)
         self.background[run_id] = asyncio.create_task(resume_operation)
         return run
+
+    async def _resume_graph(self, run_id: str) -> None:
+        run = await self._require_run(run_id)
+        task = await self._require_task(run.task_id)
+        if not run.workspace_lease_id:
+            await self._escalate_recovery_failure(
+                run,
+                message="paused graph run has no workspace lease",
+                native_type="accretion/resume-requires-human",
+            )
+            return
+        lease = await self.store.get_lease(run.workspace_lease_id)
+        prior_session = await self.store.get_session_for_run(run_id)
+        if (
+            lease is None
+            or prior_session is None
+            or await self.worktrees.inspect(lease) != "CONSISTENT"
+        ):
+            await self._escalate_recovery_failure(
+                run,
+                message="paused graph run cannot recover its workspace or session",
+                native_type="accretion/resume-requires-human",
+            )
+            return
+        graph = await self.store.get_run_graph(run_id)
+        if graph is None:
+            await self._escalate_recovery_failure(
+                run,
+                message="paused graph run has no persisted run graph",
+                native_type="accretion/resume-requires-human",
+            )
+            return
+        try:
+            async with self.limiter.slot(run.provider, run.project_id):
+                session = await self.runtimes[run.provider].create_session(
+                    SessionConfig(
+                        run_id=run_id,
+                        workspace=lease.path,
+                        allowed_tools=task.envelope.allowed_capabilities,
+                        denied_tools=task.envelope.denied_capabilities,
+                        resume_native_session_id=prior_session.native_session_id,
+                    )
+                )
+                await self.store.save_session(session)
+                run = await self.store.update_run(
+                    run_id,
+                    RunState.RUNNING,
+                    session_id=session.session_id,
+                )
+                await self._append(
+                    self._control_event(
+                        run,
+                        "accretion/run-resumed",
+                        EventType.RUN_RESUMED,
+                        session_id=session.session_id,
+                    )
+                )
+                await self._execute_graph(run, task, lease, session, graph)
+        except Exception as exc:
+            await self._fail_execution(run_id, exc)
+        finally:
+            self.active_refs.pop(run_id, None)
+            self.background.pop(run_id, None)
 
     async def _resume_direct(self, run_id: str) -> None:
         run = await self._require_run(run_id)
@@ -1707,8 +2943,12 @@ class RunManager:
         return await self._require_run(run_id)
 
     async def reconcile(self) -> None:
+        uncertain_run_ids: set[str] = set()
         if self.side_effect_ledger is not None:
-            await self.side_effect_ledger.reconcile_uncertain()
+            uncertain_run_ids = {
+                operation.run_id
+                for operation in await self.side_effect_ledger.reconcile_uncertain()
+            }
         for run in await self.store.list_runs(limit=10_000):
             execution = await self.store.get_loop_execution_for_run(run.run_id)
             if execution is not None and execution.status in {
@@ -1777,13 +3017,89 @@ class RunManager:
                 )
                 continue
             lease = await self.store.get_lease(run.workspace_lease_id)
-            if lease is None or await self.worktrees.inspect(lease) != "CONSISTENT":
+            if lease is None:
                 await self._escalate_recovery_failure(
                     run,
                     message="reconciling run cannot recover its workspace",
                     native_type="accretion/reconciliation-requires-human",
                 )
                 continue
+            workspace_status = await self.worktrees.inspect(lease)
+            loop_executions = {
+                item.loop_execution_id: item
+                for item in await self.store.list_loop_executions_for_run(run.run_id)
+            }
+            checkpoint = await self.store.get_latest_checkpoint(run.run_id)
+            evaluation = (
+                evaluate_checkpoint(
+                    checkpoint,
+                    run_last_sequence=run.last_sequence,
+                    loop_executions=loop_executions,
+                    workspace_status=workspace_status,
+                )
+                if checkpoint is not None
+                else None
+            )
+            classification = classify_run(
+                workspace_status=workspace_status,
+                has_uncertain_side_effects=run.run_id in uncertain_run_ids,
+                has_candidate_work=bool(await self.store.list_artifacts(run.run_id)),
+                checkpoint_evaluation=evaluation,
+            )
+            await self._append(
+                self._control_event(
+                    run,
+                    "accretion/reconciliation-classified",
+                    EventType.RUN_PROGRESS,
+                    payload={
+                        "classification": classification.classification.value,
+                        "reason": classification.reason,
+                        "checkpoint_id": checkpoint.checkpoint_id if checkpoint else None,
+                        "checkpoint_reason": (
+                            classification.checkpoint_reason.value
+                            if classification.checkpoint_reason
+                            else None
+                        ),
+                    },
+                )
+            )
+            if classification.classification is ReconcileClassification.REQUIRES_HUMAN:
+                message = classification.reason
+                if classification.checkpoint_reason is not None:
+                    message = (
+                        f"CHECKPOINT_INVALID:{classification.checkpoint_reason.value} — "
+                        f"{classification.reason}"
+                    )
+                await self._escalate_recovery_failure(
+                    run,
+                    message=message,
+                    native_type="accretion/reconciliation-requires-human",
+                )
+                continue
+            if classification.classification is ReconcileClassification.RECREATE:
+                project = await self.store.get_project(run.project_id)
+                if project is None:
+                    await self._escalate_recovery_failure(
+                        run,
+                        message="recreate-classified run has no project record",
+                        native_type="accretion/reconciliation-requires-human",
+                    )
+                    continue
+                try:
+                    fresh = await self.worktrees.reacquire(
+                        lease=lease, repository=project.repository_path
+                    )
+                except Exception:
+                    await self._escalate_recovery_failure(
+                        run,
+                        message="workspace recreation failed",
+                        native_type="accretion/reconciliation-requires-human",
+                    )
+                    continue
+                await self.store.save_lease(fresh)
+                run = await self.store.update_run(
+                    run.run_id, RunState.RECONCILING, workspace_lease_id=fresh.lease_id
+                )
             if execution is not None:
                 closed = await self._close_dangling_iteration(
                     run=run,
@@ -1802,6 +3118,29 @@ class RunManager:
                     )
             run = await self.store.update_run(run.run_id, RunState.PAUSED)
             await self._append_pause_if_missing(run)
+            if (
+                self.auto_resume_on_reconcile
+                and classification.classification is ReconcileClassification.RESUMABLE
+                and checkpoint is not None
+                and evaluation is not None
+                and evaluation.valid
+                and self._runtime_available(run.provider)
+            ):
+                # resume() registers background[run_id] itself; a distinct key
+                # keeps its not-already-running check truthful.
+                self.background[f"auto-resume:{run.run_id}"] = asyncio.create_task(
+                    self._auto_resume(run.run_id)
+                )
+
+    async def _auto_resume(self, run_id: str) -> None:
+        await self.resume(run_id)
+
+    def _runtime_available(self, provider: Provider) -> bool:
+        if provider not in self.runtimes:
+            return False
+        if provider in {Provider.CODEX, Provider.CLAUDE} and not self.live_providers_enabled:
+            return False
+        return True
 
     async def _escalate_recovery_failure(
         self,
@@ -2027,11 +3366,19 @@ class RunManager:
         return policy
 
 
-class MilestoneDependencyError(RuntimeError):
-    def __init__(self, mode: str, template_id: str) -> None:
-        self.mode = mode
-        self.template_id = template_id
+class WorkflowTemplateError(RuntimeError):
+    """A run cannot start because its template fails a fail-closed guard."""
+
+    def __init__(self, code: str, message: str) -> None:
+        self.code = code
+        super().__init__(message)
+
+
+class ProjectionUnavailableError(RuntimeError):
+    """The run predates P3 persistence and has no graph to project."""
+
+    def __init__(self, run: Run) -> None:
+        mode = run.execution_mode.value if run.execution_mode is not None else "UNKNOWN"
         super().__init__(
-            f"{mode}/{template_id} execution is selected but unavailable in P2; "
-            "GRAPH, HYBRID, and safe-unknown execution require P3"
+            f"Run {run.run_id} ({mode}) has no persisted run graph to project"
         )

@@ -5,7 +5,15 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from accretion.contracts import ExecutionMode, Provider, RiskLevel, TaskBudgets, TaskType
+from accretion.contracts import (
+    ApprovalDecisionValue,
+    ExecutionMode,
+    Provider,
+    RiskLevel,
+    TaskBudgets,
+    TaskType,
+    TemplateStatus,
+)
 
 
 class ProjectCreate(BaseModel):
@@ -39,6 +47,20 @@ class StrategyOverrideCreate(BaseModel):
     requested_mode: ExecutionMode
     requested_template_id: str = Field(min_length=1, max_length=255)
     reason: str = Field(min_length=1, max_length=2_000)
+
+
+class ApprovalDecisionCreate(BaseModel):
+    decision: ApprovalDecisionValue
+
+
+class WorkflowTemplateSummary(BaseModel):
+    """Read-only template listing; nodes and edges never enter the API."""
+
+    template_id: str
+    version: str
+    mode: ExecutionMode
+    status: TemplateStatus
+    checksum: str
 
 
 class ErrorEnvelope(BaseModel):

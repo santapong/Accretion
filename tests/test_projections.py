@@ -2,8 +2,11 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
+
 from accretion.contracts import (
     AcceptancePolicy,
+    AgentEvent,
     EventType,
     ExecutionMode,
     GraphNodeStatus,
@@ -13,6 +16,7 @@ from accretion.contracts import (
     Provider,
     RiskLevel,
     Run,
+    RunGraph,
     RunState,
     Task,
     TaskBudgets,
@@ -20,6 +24,7 @@ from accretion.contracts import (
     VerificationResult,
     VerificationStatus,
 )
+from accretion.ids import new_id
 from accretion.looping import build_loop_execution, build_loop_spec
 from accretion.projections import build_loop_projection
 from accretion.runtimes.common import make_event
@@ -256,3 +261,196 @@ def test_loop_projection_traversals_and_artifact_count_follow_trace() -> None:
     assert loop_node.status is GraphNodeStatus.WAITING
     assert (loop_node.iteration, loop_node.max_iterations) == (2, 3)
     assert act_node.artifact_count == 1
+
+
+def hybrid_fixture() -> tuple[Run, Task, RunGraph]:
+    from accretion.contracts import TaskEnvelope
+    from accretion.templates import HYBRID_RD_V1, instantiate_run_graph
+
+    run_id = new_id("run")
+    task = Task(
+        envelope=TaskEnvelope(
+            task_id=new_id("task"),
+            project_id=new_id("project"),
+            objective="Hybrid projection fixture.",
+        )
+    )
+    run = Run(
+        run_id=run_id,
+        task_id=task.envelope.task_id,
+        project_id=task.envelope.project_id,
+        provider=Provider.FAKE,
+        state=RunState.RUNNING,
+        execution_mode=ExecutionMode.HYBRID,
+        workflow_template_id="hybrid-rd-v1",
+    )
+    graph = instantiate_run_graph(
+        HYBRID_RD_V1,
+        run_id=run_id,
+        task_id=task.envelope.task_id,
+        budgets=task.envelope.budgets,
+    )
+    return run, task, graph
+
+
+def node_event(run: Run, key: str, *, entered: bool, entered_via: str | None = None) -> AgentEvent:
+    payload: dict[str, object] = {"status": "RUNNING" if entered else "SUCCEEDED"}
+    if entered and entered_via:
+        payload["entered_via"] = entered_via
+    return AgentEvent(
+        event_id=new_id("event"),
+        run_id=run.run_id,
+        session_id="ses_fixture",
+        provider=Provider.DETERMINISTIC,
+        native_type="fixture/node",
+        normalized_type=EventType.NODE_ENTERED if entered else EventType.NODE_EXITED,
+        correlation_id=run.run_id,
+        node_id=f"{run.run_id}:{key}",
+        payload=payload,
+        adapter_version="fixture-v1",
+    )
+
+
+def test_graph_projection_never_expands_nodes_with_iterations() -> None:
+    from accretion.projections import build_graph_projection
+
+    run, task, graph = hybrid_fixture()
+    events: list[AgentEvent] = []
+    for _ in range(7):
+        events.append(node_event(run, "experiment-act", entered=True))
+        events.append(node_event(run, "experiment-act", entered=False))
+        events.append(node_event(run, "experiment-observe", entered=True))
+        events.append(node_event(run, "experiment-observe", entered=False))
+    projection = build_graph_projection(
+        run=run,
+        task=task,
+        run_graph=graph,
+        events=events,
+        loop_executions={},
+        verifications=[],
+    )
+    assert len(projection.nodes) == len(graph.nodes)
+    assert len(projection.edges) == len(graph.edges)
+    assert projection.version == "graph-projection-v1"
+    assert projection.run_graph_version == graph.graph_revision
+    loop_back = next(
+        edge for edge in projection.edges if edge.edge_id.endswith("experiment-observe-act")
+    )
+    # The loop-back is the member's only in-edge, so every entry attributes
+    # to it under the deterministic fallback.
+    assert loop_back.traversal_count == 7
+
+
+def test_graph_projection_emits_parent_ids_for_subflow_children() -> None:
+    from accretion.projections import build_graph_projection
+
+    run, task, graph = hybrid_fixture()
+    projection = build_graph_projection(
+        run=run,
+        task=task,
+        run_graph=graph,
+        events=[],
+        loop_executions={},
+        verifications=[],
+    )
+    by_id = {node.node_id: node for node in projection.nodes}
+    assert by_id[f"{run.run_id}:experiment-act"].parent_id == f"{run.run_id}:experiment"
+    assert by_id[f"{run.run_id}:develop-observe"].parent_id == f"{run.run_id}:develop"
+    assert by_id[f"{run.run_id}:research"].parent_id is None
+
+
+def test_graph_projection_counts_exact_entered_via_edges() -> None:
+    from accretion.projections import build_graph_projection
+
+    run, task, graph = hybrid_fixture()
+    events = [
+        node_event(run, "initialize", entered=True),
+        node_event(run, "initialize", entered=False),
+        node_event(run, "research", entered=True, entered_via="initialize-research"),
+        node_event(run, "research", entered=False),
+    ]
+    projection = build_graph_projection(
+        run=run,
+        task=task,
+        run_graph=graph,
+        events=events,
+        loop_executions={},
+        verifications=[],
+    )
+    first_edge = next(
+        edge for edge in projection.edges if edge.edge_id.endswith("initialize-research")
+    )
+    assert first_edge.traversal_count == 1
+    assert first_edge.active
+
+
+def test_graph_projection_marks_waiting_gate_and_active_approval_edge() -> None:
+    from accretion.contracts import TaskEnvelope
+    from accretion.projections import build_graph_projection
+    from accretion.templates import FIXED_GRAPH_V1, instantiate_run_graph
+
+    run_id = new_id("run")
+    task = Task(
+        envelope=TaskEnvelope(
+            task_id=new_id("task"),
+            project_id=new_id("project"),
+            objective="Gate fixture.",
+        )
+    )
+    run = Run(
+        run_id=run_id,
+        task_id=task.envelope.task_id,
+        project_id=task.envelope.project_id,
+        provider=Provider.FAKE,
+        state=RunState.RUNNING,
+        execution_mode=ExecutionMode.GRAPH,
+        workflow_template_id="fixed-graph-v1",
+    )
+    graph = instantiate_run_graph(
+        FIXED_GRAPH_V1,
+        run_id=run_id,
+        task_id=task.envelope.task_id,
+        budgets=task.envelope.budgets,
+    )
+    approval_required = AgentEvent(
+        event_id=new_id("event"),
+        run_id=run_id,
+        session_id="ses_fixture",
+        provider=Provider.DETERMINISTIC,
+        native_type="fixture/approval",
+        normalized_type=EventType.APPROVAL_REQUIRED,
+        correlation_id=run_id,
+        node_id=f"{run_id}:approve-plan",
+        payload={"approval_id": "apr_fixture"},
+        adapter_version="fixture-v1",
+    )
+    projection = build_graph_projection(
+        run=run,
+        task=task,
+        run_graph=graph,
+        events=[node_event(run, "approve-plan", entered=True), approval_required],
+        loop_executions={},
+        verifications=[],
+    )
+    gate = next(node for node in projection.nodes if node.node_id.endswith("approve-plan"))
+    assert gate.status is GraphNodeStatus.WAITING
+    approval_edge = next(
+        edge for edge in projection.edges if edge.edge_id.endswith("plan-approve-plan")
+    )
+    assert approval_edge.active
+
+
+def test_graph_projection_rejects_template_mismatch() -> None:
+    from accretion.projections import build_graph_projection
+
+    run, task, graph = hybrid_fixture()
+    wrong_run = run.model_copy(update={"workflow_template_id": "direct-v1"})
+    with pytest.raises(ValueError, match="does not match"):
+        build_graph_projection(
+            run=wrong_run,
+            task=task,
+            run_graph=graph,
+            events=[],
+            loop_executions={},
+            verifications=[],
+        )
