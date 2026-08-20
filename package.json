@@ -1,0 +1,12 @@
+{
+  "name": "accretion",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "api:generate": "uv run --no-sync python scripts/export_openapi.py && npm exec --workspace @accretion/ui -- openapi-typescript ../../openapi.json -o src/api/schema.d.ts",
+    "build": "npm run build --workspace @accretion/ui",
+    "check": "npm run check --workspace @accretion/ui",
+    "test": "npm run test --workspace @accretion/ui"
+  }
+}
