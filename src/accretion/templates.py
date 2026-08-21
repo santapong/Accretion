@@ -283,6 +283,15 @@ def _validate_guard_coverage(
             elif len(covering) > 1:
                 keys = sorted(edge.key for edge in covering)
                 problems.append(f"node {key} outcome {outcome} matches multiple edges {keys}")
+        retry_guards = [
+            edge.guard for edge in edges if edge.kind is GraphEdgeKind.RETRY
+        ]
+        duplicated = {guard for guard in retry_guards if retry_guards.count(guard) > 1}
+        if duplicated:
+            problems.append(
+                f"node {key} has multiple RETRY edges sharing guards "
+                f"{sorted(guard.value for guard in duplicated if guard)}"
+            )
     return problems
 
 

@@ -82,7 +82,11 @@ from accretion.looping import (
 )
 from accretion.persistence.side_effects import SideEffectLedger
 from accretion.persistence.store import StateStore
-from accretion.planning import build_initial_planning, evaluate_override
+from accretion.planning import (
+    build_initial_planning,
+    evaluate_override,
+    has_irreversible_capabilities,
+)
 from accretion.projections import build_graph_projection, build_loop_projection
 from accretion.runtimes.common import make_event
 from accretion.templates import (
@@ -152,6 +156,7 @@ class _GraphCursor:
     entered_via: dict[str, int]
     current_key: str
     arrival_guard: EdgeGuard | None = None
+    arrival_edge_kind: GraphEdgeKind | None = None
     entry_edge_key: str | None = None
     entered_via_retry: bool = False
     last_artifact_id: str | None = None
@@ -600,10 +605,20 @@ class RunManager:
             elif event.normalized_type is EventType.APPROVAL_RESOLVED and event.payload.get(
                 "approval_id"
             ):
-                started = required_at.get(str(event.payload["approval_id"]))
+                started = required_at.pop(str(event.payload["approval_id"]), None)
                 if started is not None:
                     gate_wait += max(0.0, (event.timestamp - started).total_seconds())
-        current = entry_key
+        # A still-pending gate's entire span, including downtime, is wait: the
+        # wall clock stays paused while a durable PENDING approval exists.
+        now = datetime.now(UTC)
+        for started in required_at.values():
+            gate_wait += max(0.0, (now - started).total_seconds())
+        cursor = _GraphCursor(
+            statuses=statuses,
+            entered_via=entered_via,
+            current_key=entry_key,
+            gate_wait_seconds=gate_wait,
+        )
         checkpoint = await self.store.get_latest_checkpoint(run.run_id)
         if checkpoint is not None and checkpoint.run_graph_id == graph.run_graph_id:
             for key, status in checkpoint.node_statuses.items():
@@ -612,13 +627,47 @@ class RunManager:
             if checkpoint.active_node_ids:
                 active_key = self._key_of(checkpoint.active_node_ids[0])
                 if active_key in statuses:
-                    current = active_key
-        return _GraphCursor(
-            statuses=statuses,
-            entered_via=entered_via,
-            current_key=current,
-            gate_wait_seconds=gate_wait,
+                    cursor.current_key = active_key
+            # Restore the durable routing decision so guard-dependent behavior
+            # (a TERMINAL commit, a REPAIR retry) survives a restart.
+            if checkpoint.arrival_edge_key:
+                edge = next(
+                    (
+                        item
+                        for item in graph.edges
+                        if item.key == checkpoint.arrival_edge_key
+                    ),
+                    None,
+                )
+                if edge is not None:
+                    cursor.entry_edge_key = edge.key
+                    cursor.arrival_guard = edge.guard
+                    cursor.arrival_edge_kind = edge.kind
+                    cursor.entered_via_retry = edge.kind is GraphEdgeKind.RETRY
+                    if cursor.entered_via_retry:
+                        cursor.last_results = self._latest_verifications(
+                            await self.store.list_verifications(run.run_id)
+                        )
+        return cursor
+
+    async def _remaining_run_budgets(self, run_id: str, task: Task) -> tuple[int, int]:
+        spent = await self.store.get_budget_spent(run_id)
+        budgets = task.envelope.budgets
+        return (
+            budgets.max_turns - spent["turns"],
+            budgets.max_tool_calls - spent["tool_calls"],
         )
+
+    @staticmethod
+    def _latest_verifications(
+        results: list[VerificationResult],
+    ) -> list[VerificationResult]:
+        latest: dict[str, VerificationResult] = {}
+        for result in results:
+            current = latest.get(result.verifier_id)
+            if current is None or result.executed_at >= current.executed_at:
+                latest[result.verifier_id] = result
+        return list(latest.values())
 
     async def _graph_checkpoint(
         self,
@@ -640,6 +689,7 @@ class RunManager:
             run_state=current.state,
             run_revision=current.revision,
             active_node_ids=[f"{run.run_id}:{active_key}"],
+            arrival_edge_key=cursor.entry_edge_key,
             node_statuses=dict(cursor.statuses),
             loop_cursors=[
                 CheckpointLoopCursor(
@@ -738,7 +788,7 @@ class RunManager:
             if outcome is NodeOutcome.BUDGET_EXHAUSTED:
                 await self._graph_budget_stop(run, lease, session, cursor)
                 return
-            selected = self._select_edge(
+            selected, selection_error = self._select_edge(
                 node, outcome, out_edges.get(node.key, []), cursor, template
             )
             if selected is None:
@@ -749,7 +799,8 @@ class RunManager:
                     native_type="accretion/graph-no-eligible-edge",
                     session_id=session.session_id,
                     payload={"node": node.key, "outcome": outcome.value},
-                    error=ErrorSummary(
+                    error=selection_error
+                    or ErrorSummary(
                         code="GRAPH_NO_ELIGIBLE_EDGE",
                         message=(
                             f"node {node.key} produced {outcome.value} with no eligible edge"
@@ -762,6 +813,7 @@ class RunManager:
             routed_key = region_owner.get(target_key, target_key)
             cursor.entry_edge_key = selected.key
             cursor.arrival_guard = selected.guard
+            cursor.arrival_edge_kind = selected.kind
             cursor.entered_via_retry = selected.kind is GraphEdgeKind.RETRY
             cursor.entered_via[selected.key] = cursor.entered_via.get(selected.key, 0) + 1
             await self._graph_checkpoint(
@@ -901,19 +953,40 @@ class RunManager:
             directive = IterationDirective(
                 kind=IterationDirectiveKind.INITIAL, objective=objective
             )
+        # Task turn/tool ceilings are cumulative across the whole graph; every
+        # call draws from the same durable run-level account.
+        turns_left, tool_calls_left = await self._remaining_run_budgets(run.run_id, task)
+        if turns_left <= 0 or tool_calls_left <= 0:
+            cursor.stop_reason = (
+                LoopStopReason.MAX_TURNS if turns_left <= 0 else LoopStopReason.MAX_TOOL_CALLS
+            )
+            return NodeOutcome.BUDGET_EXHAUSTED, session
         await self._node_transition(
             run, session.session_id, node.key, entered=True, entered_via=entered_via
         )
         outcome = await self._runtime_call(
             run,
             session,
-            task.envelope.model_copy(update={"objective": objective}),
+            task.envelope.model_copy(
+                update={
+                    "objective": objective,
+                    "budgets": task.envelope.budgets.model_copy(
+                        update={
+                            "max_turns": turns_left,
+                            "max_tool_calls": tool_calls_left,
+                        }
+                    ),
+                }
+            ),
             runtime_call_id=new_id("runtime_call"),
             deadline=deadline,
             node_key=node.key,
             directive=directive,
         )
         session = outcome.session
+        await self.store.add_budget_spent(
+            run.run_id, turns=1, tool_calls=outcome.tool_calls
+        )
         await self._node_transition(
             run,
             session.session_id,
@@ -1016,9 +1089,13 @@ class RunManager:
         await self._node_transition(
             run, session.session_id, node.key, entered=True, entered_via=entered_via
         )
-        auto_approve = (
-            RISK_RANK[task.envelope.risk_level] < RISK_RANK[gate.required_for_risk_gte]
-        )
+        # A task that is protected for any reason - risk at or above the gate
+        # threshold, or irreversible capabilities - always requires the human
+        # decision; auto-approval exists only for genuinely unprotected runs
+        # that were manually routed onto a gated template.
+        auto_approve = RISK_RANK[task.envelope.risk_level] < RISK_RANK[
+            gate.required_for_risk_gte
+        ] and not has_irreversible_capabilities(task.envelope.allowed_capabilities)
         if record.status is ApprovalStatus.PENDING and auto_approve:
             # Documented SDD deviation: template gates below their risk
             # threshold auto-approve with durable evidence, so a manually
@@ -1155,6 +1232,18 @@ class RunManager:
         if execution is None or execution.status in terminal_statuses:
             attempt = execution.attempt + 1 if execution else 1
             budgets = task.envelope.budgets
+            # A new attempt draws from the run's remaining cumulative budget,
+            # never a fresh grant of the original ceilings.
+            turns_left, tool_calls_left = await self._remaining_run_budgets(
+                run.run_id, task
+            )
+            if turns_left <= 0 or tool_calls_left <= 0:
+                cursor.stop_reason = (
+                    LoopStopReason.MAX_TURNS
+                    if turns_left <= 0
+                    else LoopStopReason.MAX_TOOL_CALLS
+                )
+                return NodeOutcome.BUDGET_EXHAUSTED, session
             remaining_wall = max(1, int(deadline - datetime.now(UTC).timestamp()))
             spec = LoopSpec(
                 loop_id=new_id("loop"),
@@ -1163,9 +1252,16 @@ class RunManager:
                     1, int(remaining_wall * loop_policy.budget_fraction)
                 ),
                 max_tool_calls=max(
-                    1, int(budgets.max_tool_calls * loop_policy.budget_fraction)
+                    1,
+                    min(
+                        int(budgets.max_tool_calls * loop_policy.budget_fraction),
+                        tool_calls_left,
+                    ),
                 ),
-                max_turns=max(1, int(budgets.max_turns * loop_policy.budget_fraction)),
+                max_turns=max(
+                    1,
+                    min(int(budgets.max_turns * loop_policy.budget_fraction), turns_left),
+                ),
             )
             execution = await self.store.create_loop_execution(
                 LoopExecution(
@@ -1242,7 +1338,7 @@ class RunManager:
             datetime.now(UTC).timestamp()
             + execution.state.budget_remaining.wall_time_seconds
         )
-        if execution.status is LoopExecutionStatus.PENDING:
+        if execution.status in {LoopExecutionStatus.PENDING, LoopExecutionStatus.PAUSED}:
             execution = await self.store.update_loop_execution(
                 execution.loop_execution_id,
                 execution.state,
@@ -1264,14 +1360,43 @@ class RunManager:
                 )
                 return NodeOutcome.PAUSED, session
             if execution.state.budget_remaining.iterations <= 0:
+                # Resume parity with the in-loop ceiling: completion is only
+                # SUCCESS when the final persisted attempt actually completed.
+                last = previous_iterations[-1] if previous_iterations else None
+                completed = last is not None and last.status is LoopIterationStatus.COMPLETED
                 execution = await self.store.update_loop_execution(
                     execution.loop_execution_id,
                     execution.state,
-                    status=LoopExecutionStatus.SUCCEEDED,
-                    stop_reason=LoopStopReason.MAX_ITERATIONS,
+                    status=(
+                        LoopExecutionStatus.SUCCEEDED
+                        if completed
+                        else LoopExecutionStatus.FAILED
+                    ),
+                    stop_reason=(
+                        LoopStopReason.MAX_ITERATIONS
+                        if completed
+                        else LoopStopReason.PROVIDER_FAILURE
+                    ),
                     expected_revision=execution.revision,
                 )
-                return NodeOutcome.SUCCESS, session
+                return (
+                    NodeOutcome.SUCCESS if completed else NodeOutcome.FAIL
+                ), session
+            region_remaining = execution.state.budget_remaining
+            if region_remaining.tool_calls <= 0 or region_remaining.turns <= 0:
+                cursor.stop_reason = (
+                    LoopStopReason.MAX_TOOL_CALLS
+                    if region_remaining.tool_calls <= 0
+                    else LoopStopReason.MAX_TURNS
+                )
+                await self.store.update_loop_execution(
+                    execution.loop_execution_id,
+                    execution.state,
+                    status=LoopExecutionStatus.REQUIRES_HUMAN,
+                    stop_reason=cursor.stop_reason,
+                    expected_revision=execution.revision,
+                )
+                return NodeOutcome.BUDGET_EXHAUSTED, session
             if datetime.now(UTC).timestamp() >= deadline:
                 cursor.stop_reason = LoopStopReason.WALL_TIME_EXCEEDED
                 await self.store.update_loop_execution(
@@ -1328,13 +1453,60 @@ class RunManager:
             if outcome.cancelled and outcome.stop_reason is None:
                 if run.run_id in self.pause_requested:
                     self.pause_requested.discard(run.run_id)
-                    await self.store.update_loop_execution(
+                    # Close the started attempt durably: the interrupted
+                    # iteration and its consumed budget commit atomically with
+                    # the PAUSED transition, so resume starts at N+1 with a
+                    # diminished budget instead of replaying the attempt free.
+                    interrupted = RuntimeCallOutcome(
+                        session=outcome.session,
+                        ref=outcome.ref,
+                        completed=False,
+                        cancelled=True,
+                        tool_calls=outcome.tool_calls,
+                        error=outcome.error,
+                        stop_reason=LoopStopReason.INTERRUPTED,
+                    )
+                    next_state, iteration = self._next_iteration_state(
+                        execution=execution,
+                        run=run,
+                        iteration_id=iteration_id,
+                        number=number,
+                        outcome=interrupted,
+                        artifact_ref=None,
+                        diff_sha256=None,
+                        results=[],
+                        deadline=deadline,
+                        previous=previous_iterations[-1] if previous_iterations else None,
+                    )
+                    iteration = iteration.model_copy(
+                        update={"status": LoopIterationStatus.INTERRUPTED}
+                    )
+                    await self.store.append_loop_iteration(
                         execution.loop_execution_id,
-                        execution.state,
+                        iteration,
+                        next_state,
                         status=LoopExecutionStatus.PAUSED,
                         stop_reason=LoopStopReason.INTERRUPTED,
                         expected_revision=execution.revision,
+                        events=[
+                            self._control_event(
+                                run,
+                                "accretion/loop-iteration-interrupted",
+                                EventType.LOOP_ITERATION_COMPLETED,
+                                session_id=session.session_id,
+                                node_key=node.key,
+                                payload={
+                                    "iteration_id": iteration_id,
+                                    "number": number,
+                                    "status": LoopIterationStatus.INTERRUPTED.value,
+                                },
+                            )
+                        ],
                     )
+                    await self.store.add_budget_spent(
+                        run.run_id, turns=1, tool_calls=outcome.tool_calls
+                    )
+                    await self._notify(run.run_id)
                     return NodeOutcome.PAUSED, session
                 return NodeOutcome.CANCELLED, session
             artifact = None
@@ -1436,6 +1608,9 @@ class RunManager:
                 ],
                 checkpoint=checkpoint,
             )
+            await self.store.add_budget_spent(
+                run.run_id, turns=1, tool_calls=outcome.tool_calls
+            )
             await self._notify(run.run_id)
             previous_iterations.append(iteration)
             if terminal_outcome_value is not None:
@@ -1448,7 +1623,7 @@ class RunManager:
         edges: list[RunEdge],
         cursor: _GraphCursor,
         template: WorkflowTemplate,
-    ) -> RunEdge | None:
+    ) -> tuple[RunEdge | None, ErrorSummary | None]:
         budget = template.global_budget_policy
         candidates = [edge for edge in edges if edge.kind is not GraphEdgeKind.LOOP_BACK]
         for edge in candidates:
@@ -1462,7 +1637,7 @@ class RunManager:
                 else budget.max_node_retries
             )
             if cursor.entered_via.get(edge.key, 0) < limit:
-                return edge
+                return edge, None
         guarded = [
             edge
             for edge in candidates
@@ -1471,9 +1646,16 @@ class RunManager:
             and outcome in _GUARD_MATCHES.get(edge.guard, frozenset())
         ]
         if len(guarded) == 1:
-            return guarded[0]
+            return guarded[0], None
         if len(guarded) > 1:
-            return None
+            keys = sorted(edge.key for edge in guarded)
+            return None, ErrorSummary(
+                code="GRAPH_AMBIGUOUS_EDGES",
+                message=(
+                    f"node {node.key} produced {outcome.value} matching "
+                    f"multiple edges {keys}"
+                ),
+            )
         if outcome is NodeOutcome.SUCCESS:
             plain = [
                 edge
@@ -1481,8 +1663,11 @@ class RunManager:
                 if edge.kind is GraphEdgeKind.NORMAL and edge.guard is None
             ]
             if len(plain) == 1:
-                return plain[0]
-        return None
+                return plain[0], None
+        return None, ErrorSummary(
+            code="GRAPH_NO_ELIGIBLE_EDGE",
+            message=f"node {node.key} produced {outcome.value} with no eligible edge",
+        )
 
     async def _commit_graph_terminal(
         self,
@@ -1496,8 +1681,12 @@ class RunManager:
             state = _TERMINAL_GUARD_STATES.get(
                 cursor.arrival_guard, RunState.REQUIRES_HUMAN
             )
-        else:
+        elif cursor.arrival_edge_kind is GraphEdgeKind.NORMAL:
+            # The only guard-free success routing is an explicit NORMAL edge.
             state = RunState.SUCCEEDED
+        else:
+            # Unknown routing into a terminal never claims success.
+            state = RunState.REQUIRES_HUMAN
         event_type = {
             RunState.SUCCEEDED: EventType.RUN_COMPLETED,
             RunState.CANCELLED: EventType.RUN_CANCELLED,
@@ -2351,7 +2540,9 @@ class RunManager:
                 item
                 for item in reversed(await self.store.list_artifacts(run.run_id))
                 if item.kind == "LOOP_ITERATION_GIT_DIFF"
-                and item.path.name == f"iteration-{expected_number:03}.patch"
+                # P2 whole-run loops name captures "iteration-NNN.patch";
+                # node-scoped regions name them "{key}-AA-NNN.patch".
+                and item.path.name.endswith(f"-{expected_number:03}.patch")
             ),
             None,
         )
@@ -2520,7 +2711,15 @@ class RunManager:
                 EventType.RUN_FAILED,
             ),
         }
-        if execution is not None and execution.status in terminal_loop_states:
+        # A terminal loop status implies the run outcome only for whole-run
+        # LOOP mode; a graph node's bounded region can legitimately finish
+        # SUCCEEDED mid-graph before verification, and must never resolve the
+        # run (V01 invariant: completion never accepts its own output).
+        if (
+            run.execution_mode is ExecutionMode.LOOP
+            and execution is not None
+            and execution.status in terminal_loop_states
+        ):
             state, event_type = terminal_loop_states[execution.status]
             await self._commit_run_terminal(
                 run,
@@ -2535,7 +2734,7 @@ class RunManager:
                 node_key="complete",
             )
             return
-        if execution is not None:
+        if execution is not None and execution.status not in terminal_loop_states:
             closed = await self._close_dangling_iteration(
                 run=run,
                 execution=execution,
@@ -2566,7 +2765,12 @@ class RunManager:
             return
         error = ErrorSummary(code="RUN_EXECUTION_FAILED", message=str(exc)[:2000])
         execution = await self.store.get_loop_execution_for_run(run_id)
-        if execution is not None and execution.status in {
+        # See _cancel_execution: a terminal region execution never resolves a
+        # graph-mode run.
+        if (
+            run.execution_mode is ExecutionMode.LOOP
+            and execution is not None
+        ) and execution.status in {
             LoopExecutionStatus.SUCCEEDED,
             LoopExecutionStatus.FAILED,
             LoopExecutionStatus.CANCELLED,
@@ -2703,6 +2907,7 @@ class RunManager:
             events=await self.store.list_events(run_id),
             loop_executions=executions,
             verifications=await self.store.list_verifications(run_id),
+            artifacts=await self.store.list_artifacts(run_id),
         )
 
     async def wait_for_events(
@@ -2951,7 +3156,13 @@ class RunManager:
             }
         for run in await self.store.list_runs(limit=10_000):
             execution = await self.store.get_loop_execution_for_run(run.run_id)
-            if execution is not None and execution.status in {
+            # Only a whole-run LOOP execution's terminal status resolves the
+            # run; a graph node's bounded region ending SUCCEEDED mid-graph is
+            # not a verified run outcome and falls through to classification.
+            if (
+                run.execution_mode is ExecutionMode.LOOP
+                and execution is not None
+            ) and execution.status in {
                 LoopExecutionStatus.SUCCEEDED,
                 LoopExecutionStatus.FAILED,
                 LoopExecutionStatus.CANCELLED,
@@ -3100,7 +3311,12 @@ class RunManager:
                 run = await self.store.update_run(
                     run.run_id, RunState.RECONCILING, workspace_lease_id=fresh.lease_id
                 )
-            if execution is not None:
+            if execution is not None and execution.status not in {
+                LoopExecutionStatus.SUCCEEDED,
+                LoopExecutionStatus.FAILED,
+                LoopExecutionStatus.CANCELLED,
+                LoopExecutionStatus.REQUIRES_HUMAN,
+            }:
                 closed = await self._close_dangling_iteration(
                     run=run,
                     execution=execution,
@@ -3159,7 +3375,13 @@ class RunManager:
                 EventType.RUN_FAILED,
             ),
         }
-        if execution is not None and execution.status in terminal_loop_states:
+        # As in _cancel_execution: only a whole-run LOOP execution's terminal
+        # status may resolve the run.
+        if (
+            run.execution_mode is ExecutionMode.LOOP
+            and execution is not None
+            and execution.status in terminal_loop_states
+        ):
             state, event_type = terminal_loop_states[execution.status]
             await self._commit_run_terminal(
                 run,
@@ -3174,7 +3396,7 @@ class RunManager:
                 node_key="complete",
             )
             return
-        if execution is not None:
+        if execution is not None and execution.status not in terminal_loop_states:
             await self.store.update_loop_execution(
                 execution.loop_execution_id,
                 execution.state,
@@ -3229,6 +3451,11 @@ class RunManager:
         final_node_status: str | None = None,
         error: ErrorSummary | None = None,
     ) -> Run:
+        # The terminal RunState travels in the event payload so replay can
+        # reconstruct REQUIRES_HUMAN from immutable events alone (a bare
+        # RUN_FAILED cannot distinguish failure from escalation).
+        payload = dict(payload or {})
+        payload.setdefault("terminal_state", state.value)
         lock = self.terminal_locks.setdefault(run.run_id, asyncio.Lock())
         async with lock:
             current = await self._require_run(run.run_id)

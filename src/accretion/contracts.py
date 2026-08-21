@@ -750,6 +750,9 @@ class Checkpoint(StrictModel):
     run_state: RunState
     run_revision: int = Field(ge=0)
     active_node_ids: list[str] = Field(default_factory=list)
+    # The durable routing decision into the active node: without it a resume
+    # could not reproduce guard-dependent behavior (e.g. a TERMINAL commit).
+    arrival_edge_key: str | None = None
     node_statuses: dict[str, GraphNodeStatus] = Field(default_factory=dict)
     loop_cursors: list[CheckpointLoopCursor] = Field(default_factory=list)
     run_graph_id: str | None = None
@@ -909,7 +912,7 @@ class ExecutionTrace(StrictModel):
     version: Literal["execution-trace-v1"] = "execution-trace-v1"
     run_id: str
     run_graph_id: str | None = None
-    workflow_template_id: str
+    workflow_template_id: str | None = None
     traversals: list[NodeTraversal] = Field(default_factory=list)
     loop_iterations: list[LoopIterationTraceRef] = Field(default_factory=list)
     runtime_calls: list[RuntimeCallTraceRef] = Field(default_factory=list)
