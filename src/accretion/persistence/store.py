@@ -204,6 +204,10 @@ class StateStore(Protocol):
         self, run_id: str, node_key: str, attempt: int | None = None
     ) -> LoopExecution | None: ...
     async def list_loop_executions_for_run(self, run_id: str) -> list[LoopExecution]: ...
+    async def add_budget_spent(
+        self, run_id: str, *, turns: int = 0, tool_calls: int = 0
+    ) -> dict[str, int]: ...
+    async def get_budget_spent(self, run_id: str) -> dict[str, int]: ...
 
 
 class MemoryStore:
@@ -234,6 +238,7 @@ class MemoryStore:
         self.checkpoints: dict[str, list[Checkpoint]] = {}
         self.approvals: dict[str, ApprovalRecord] = {}
         self.approval_by_request: dict[tuple[str, str], str] = {}
+        self.budget_spent: dict[str, dict[str, int]] = {}
         self._lock = asyncio.Lock()
 
     async def create_project(self, project: Project) -> Project:
@@ -912,6 +917,20 @@ class MemoryStore:
             )
             self.approvals[approval_id] = decided
             return decided
+
+    async def add_budget_spent(
+        self, run_id: str, *, turns: int = 0, tool_calls: int = 0
+    ) -> dict[str, int]:
+        async with self._lock:
+            if run_id not in self.runs:
+                raise KeyError(run_id)
+            spent = self.budget_spent.setdefault(run_id, {"turns": 0, "tool_calls": 0})
+            spent["turns"] += turns
+            spent["tool_calls"] += tool_calls
+            return dict(spent)
+
+    async def get_budget_spent(self, run_id: str) -> dict[str, int]:
+        return dict(self.budget_spent.get(run_id, {"turns": 0, "tool_calls": 0}))
 
 
 class PostgresStore:
@@ -1902,6 +1921,31 @@ class PostgresStore:
             await session.flush()
             decided = self._row_to_approval(row)
         return decided
+
+    async def add_budget_spent(
+        self, run_id: str, *, turns: int = 0, tool_calls: int = 0
+    ) -> dict[str, int]:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(select(RunRow).where(RunRow.id == run_id).with_for_update())
+            if row is None:
+                raise KeyError(run_id)
+            spent = dict(row.budget_spent or {"turns": 0, "tool_calls": 0})
+            spent["turns"] = int(spent.get("turns", 0)) + turns
+            spent["tool_calls"] = int(spent.get("tool_calls", 0)) + tool_calls
+            row.budget_spent = spent
+            await session.flush()
+        return spent
+
+    async def get_budget_spent(self, run_id: str) -> dict[str, int]:
+        async with self.sessions() as session:
+            row = await session.get(RunRow, run_id)
+        if row is None:
+            raise KeyError(run_id)
+        spent = row.budget_spent or {}
+        return {
+            "turns": int(spent.get("turns", 0)),
+            "tool_calls": int(spent.get("tool_calls", 0)),
+        }
 
     @staticmethod
     async def _assemble_run_graph(session: AsyncSession, row: RunGraphRow) -> RunGraph:

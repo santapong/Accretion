@@ -707,7 +707,7 @@ export interface components {
              */
             version: "execution-trace-v1";
             /** Workflow Template Id */
-            workflow_template_id: string;
+            workflow_template_id?: string | null;
         };
         /**
          * ExpectedHorizon

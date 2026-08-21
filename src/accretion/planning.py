@@ -89,6 +89,12 @@ def _irreversible(capabilities: list[str]) -> bool:
     )
 
 
+def has_irreversible_capabilities(capabilities: list[str]) -> bool:
+    """Deterministic protection check reused by the executor's approval gates."""
+
+    return _irreversible(capabilities)
+
+
 def profile_task(task: Task, project: Project) -> TaskProfile:
     """Profile only typed task fields and repository facts; objective text is never parsed."""
 

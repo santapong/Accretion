@@ -392,18 +392,36 @@ async def test_safe_unknown_replan_exhaustion_escalates(tmp_path: Path) -> None:
 
 def test_openapi_exposes_no_writable_topology() -> None:
     schema = app.openapi()
+    components = schema.get("components", {}).get("schemas", {})
+
+    def walk(node: object, seen: set[str], origin: str) -> None:
+        """Transitively assert no reachable request schema exposes nodes/edges."""
+
+        if isinstance(node, dict):
+            ref = node.get("$ref")
+            if isinstance(ref, str):
+                name = ref.rsplit("/", 1)[-1]
+                if name not in seen:
+                    seen.add(name)
+                    walk(components.get(name, {}), seen, origin)
+                return
+            properties = node.get("properties")
+            if isinstance(properties, dict):
+                assert not {"nodes", "edges"} & set(properties), (
+                    f"{origin} accepts executable topology"
+                )
+                for value in properties.values():
+                    walk(value, seen, origin)
+            for key in ("items", "additionalProperties"):
+                if key in node:
+                    walk(node[key], seen, origin)
+            for key in ("anyOf", "oneOf", "allOf"):
+                for variant in node.get(key, []) or []:
+                    walk(variant, seen, origin)
+
     for path, operations in schema["paths"].items():
         for method, operation in operations.items():
             if method.lower() not in {"post", "put", "patch"}:
                 continue
-            body = operation.get("requestBody", {})
-            content = body.get("content", {}).get("application/json", {})
-            ref = content.get("schema", {}).get("$ref", "")
-            if not ref:
-                continue
-            name = ref.rsplit("/", 1)[-1]
-            component = schema["components"]["schemas"][name]
-            properties = set(component.get("properties", {}))
-            assert not {"nodes", "edges"} & properties, (
-                f"{method.upper()} {path} accepts executable topology via {name}"
-            )
+            for content in operation.get("requestBody", {}).get("content", {}).values():
+                walk(content.get("schema", {}), set(), f"{method.upper()} {path}")

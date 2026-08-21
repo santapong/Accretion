@@ -241,15 +241,26 @@ def build_execution_trace(
                 )
             )
         if kind in _TERMINAL_EVENT_STATES:
-            terminal_state = _TERMINAL_EVENT_STATES[kind]
-
-    if terminal_state is RunState.FAILED and run.state is RunState.REQUIRES_HUMAN:
-        terminal_state = RunState.REQUIRES_HUMAN
+            # Prefer the payload's durable terminal_state (which distinguishes
+            # REQUIRES_HUMAN escalation from plain failure); fall back to the
+            # event type for pre-P3 history.
+            recorded = payload.get("terminal_state")
+            try:
+                terminal_state = RunState(str(recorded)) if recorded else None
+            except ValueError:
+                terminal_state = None
+            if terminal_state not in {
+                RunState.SUCCEEDED,
+                RunState.FAILED,
+                RunState.CANCELLED,
+                RunState.REQUIRES_HUMAN,
+            }:
+                terminal_state = _TERMINAL_EVENT_STATES[kind]
 
     return ExecutionTrace(
         run_id=run.run_id,
         run_graph_id=run_graph_id,
-        workflow_template_id=run.workflow_template_id or "unknown-template",
+        workflow_template_id=run.workflow_template_id,
         traversals=traversals,
         loop_iterations=sorted(
             iterations.values(), key=lambda item: (item.number, item.iteration_id)

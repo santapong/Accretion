@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 
 from accretion.contracts import (
     AgentEvent,
+    ArtifactRef,
     EventType,
     GraphEdgeKind,
     GraphNodeKind,
@@ -15,6 +16,7 @@ from accretion.contracts import (
     GraphProjectionNode,
     LoopExecution,
     LoopExecutionStatus,
+    Provider,
     Run,
     RunGraph,
     RunState,
@@ -78,8 +80,10 @@ def _fold_node_events(
             if entered_via:
                 result.entered_via[str(entered_via)] += 1
         elif event.normalized_type is EventType.NODE_EXITED:
+            # Evidence never guesses optimistically: an unreadable exit status
+            # renders as FAILED, matching the trace fold's pessimism.
             result.statuses[key] = _status_from_value(
-                event.payload.get("status"), GraphNodeStatus.SUCCEEDED
+                event.payload.get("status"), GraphNodeStatus.FAILED
             )
         elif (
             event.normalized_type is EventType.APPROVAL_REQUIRED
@@ -336,6 +340,7 @@ def build_graph_projection(
     events: Iterable[AgentEvent],
     loop_executions: Mapping[str, LoopExecution],
     verifications: Iterable[VerificationResult],
+    artifacts: Iterable[ArtifactRef] = (),
 ) -> GraphProjection:
     """Data-driven projection for any RunGraph-backed run.
 
@@ -373,6 +378,20 @@ def build_graph_projection(
         current = loops_by_node.get(execution.node_key)
         if current is None or execution.attempt > current.attempt:
             loops_by_node[execution.node_key] = execution
+
+    # Diff artifacts attribute to nodes by their capture-name convention:
+    # "{key}-…​.patch" for TOOL/region captures, "final.patch" to the verifier.
+    artifact_counts: Counter[str] = Counter()
+    verifier_keys = [
+        node.key for node in run_graph.nodes if node.kind is GraphNodeKind.VERIFIER
+    ]
+    for artifact in artifacts:
+        name = artifact.path.name
+        owner = next((key for key in keys if name.startswith(f"{key}-")), None)
+        if owner is None and name == "final.patch" and verifier_keys:
+            owner = verifier_keys[0]
+        if owner is not None:
+            artifact_counts[owner] += 1
 
     terminal_keys = [
         node.key for node in run_graph.nodes if node.kind is GraphNodeKind.TERMINAL
@@ -427,6 +446,14 @@ def build_graph_projection(
             not in {RunState.SUCCEEDED, RunState.CANCELLED, RunState.FAILED}
         ):
             status = GraphNodeStatus.WAITING
+        if spec.kind is GraphNodeKind.AGENT:
+            provider = run.provider
+        elif spec.kind in {GraphNodeKind.TOOL, GraphNodeKind.VERIFIER}:
+            provider = Provider.DETERMINISTIC
+        elif spec.kind is GraphNodeKind.GATE:
+            provider = Provider.HUMAN
+        else:
+            provider = None
         nodes.append(
             GraphProjectionNode(
                 node_id=spec.node_id,
@@ -434,9 +461,10 @@ def build_graph_projection(
                 kind=spec.kind,
                 label=spec.label,
                 status=status,
-                provider=run.provider if spec.kind is GraphNodeKind.AGENT else None,
+                provider=provider,
                 iteration=iteration,
                 max_iterations=max_iterations,
+                artifact_count=artifact_counts.get(spec.key, 0),
                 verifier_state=verifier_state,
                 risk=task.envelope.risk_level,
             )
