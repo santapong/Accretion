@@ -2,6 +2,19 @@
 
 All notable changes to Accretion are documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Updated the Python, frontend, and GitHub Actions toolchains to their current
+  compatible releases.
+- Reworked UI project defaults and event-stream state to comply with the current
+  React Hooks correctness rules without duplicating query-backed state.
+
+### Security
+
+- Updated pytest to 9.1.1, resolving CVE-2025-71176 in development test runs.
+
 ## [0.1.0] - 2026-08-22
 
 ### Added

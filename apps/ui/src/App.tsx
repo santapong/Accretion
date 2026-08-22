@@ -66,10 +66,7 @@ function NewTaskForm({ projects, onPlanning }: {
 }) {
   const [projectId, setProjectId] = useState("");
   const [status, setStatus] = useState<string>();
-
-  useEffect(() => {
-    if (!projectId && projects[0]) setProjectId(projects[0].project_id);
-  }, [projectId, projects]);
+  const selectedProjectId = projectId || projects[0]?.project_id || "";
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -111,7 +108,7 @@ function NewTaskForm({ projects, onPlanning }: {
   return (
     <form className="task-form" onSubmit={submit}>
       <label className="field-wide">Objective<textarea name="objective" required rows={3} placeholder="Describe the outcome without routing instructions." /></label>
-      <label>Project<select name="project_id" required value={projectId} onChange={(event) => setProjectId(event.target.value)}><option value="">Select a project</option>{projects.map((project) => <option value={project.project_id} key={project.project_id}>{project.name}</option>)}</select></label>
+      <label>Project<select name="project_id" required value={selectedProjectId} onChange={(event) => setProjectId(event.target.value)}><option value="">Select a project</option>{projects.map((project) => <option value={project.project_id} key={project.project_id}>{project.name}</option>)}</select></label>
       <label>Task type<select name="task_type" defaultValue="OTHER"><option>RESEARCH</option><option>ANALYSIS</option><option>IMPLEMENT</option><option>REVIEW</option><option>EXPERIMENT</option><option>OTHER</option></select></label>
       <label>Risk<select name="risk_level" defaultValue="LOW"><option>LOW</option><option>MEDIUM</option><option>HIGH</option><option>CRITICAL</option></select></label>
       <label>Wall time (seconds)<input name="wall_time_seconds" type="number" min="1" defaultValue="1800" /></label>
@@ -221,8 +218,14 @@ function PlanningReview({ planning, onUpdate }: {
 
 export function EventStream({ run }: { run: Run | undefined }) {
   const queryClient = useQueryClient();
-  const [events, setEvents] = useState<AgentEvent[]>([]);
-  const [connection, setConnection] = useState("idle");
+  const [liveEvents, setLiveEvents] = useState<{ runId: string; events: AgentEvent[] }>({
+    runId: "",
+    events: [],
+  });
+  const [connectionState, setConnectionState] = useState<{ runId: string; value: string }>({
+    runId: "",
+    value: "idle",
+  });
   const [reconnect, setReconnect] = useState(0);
   const runId = run?.run_id;
   const runState = run?.state;
@@ -233,24 +236,32 @@ export function EventStream({ run }: { run: Run | undefined }) {
     retry: false,
   });
 
-  useEffect(() => {
-    if (auditQuery.data) setEvents(auditQuery.data.events ?? []);
-  }, [auditQuery.data]);
+  const eventsById = new Map(
+    [
+      ...(auditQuery.data?.events ?? []),
+      ...(liveEvents.runId === runId ? liveEvents.events : []),
+    ].map((event) => [event.event_id, event]),
+  );
+  const events = [...eventsById.values()].sort((left, right) => left.sequence - right.sequence);
+  const connection = connectionState.runId === runId
+    ? connectionState.value
+    : auditQuery.data
+      ? "connecting"
+      : "idle";
 
   useEffect(() => {
     if (!runId || !auditQuery.data) return;
     let recovering = false;
     let expected = auditQuery.data.run.last_sequence + 1;
-    setConnection("connecting");
     const source = new EventSource(api.eventUrl(runId, auditQuery.data.run.last_sequence));
-    source.addEventListener("open", () => setConnection("live"));
+    source.addEventListener("open", () => setConnectionState({ runId, value: "live" }));
     source.addEventListener("agent_event", (message) => {
       const event = JSON.parse((message as MessageEvent).data) as AgentEvent;
       if (event.sequence < expected) return;
       if (event.sequence !== expected) {
         recovering = true;
         source.close();
-        setConnection("recovering snapshot");
+        setConnectionState({ runId, value: "recovering snapshot" });
         void Promise.all([
           queryClient.refetchQueries({ queryKey: ["run-audit", runId] }),
           queryClient.refetchQueries({ queryKey: ["run-graph", runId] }),
@@ -260,11 +271,22 @@ export function EventStream({ run }: { run: Run | undefined }) {
         return;
       }
       expected = event.sequence + 1;
-      setEvents((current) => [...current.filter((item) => item.event_id !== event.event_id), event]);
+      setLiveEvents((current) => ({
+        runId,
+        events: [
+          ...(current.runId === runId
+            ? current.events.filter((item) => item.event_id !== event.event_id)
+            : []),
+          event,
+        ],
+      }));
     });
     source.addEventListener("error", () => {
       if (!recovering) {
-        setConnection(runState && terminal.has(runState) ? "complete" : "reconnecting");
+        setConnectionState({
+          runId,
+          value: runState && terminal.has(runState) ? "complete" : "reconnecting",
+        });
       }
     });
     return () => source.close();
