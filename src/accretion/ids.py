@@ -33,6 +33,8 @@ _PREFIXES = {
     "plugin": "plg",
     "policy": "pol",
     "capability_request": "cpr",
+    "benchmark_run": "bnr",
+    "architecture_metric": "acm",
 }
 
 

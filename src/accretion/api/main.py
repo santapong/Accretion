@@ -14,6 +14,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from accretion import __version__
 from accretion.api.schemas import (
     ApprovalDecisionCreate,
+    BenchmarkRunCreate,
     ErrorEnvelope,
     ProjectCreate,
     RunCreate,
@@ -21,14 +22,24 @@ from accretion.api.schemas import (
     TaskCreate,
     WorkflowTemplateSummary,
 )
+from accretion.benchmark import (
+    AcrArchRunner,
+    acr_arch_summary,
+    acr_arch_task_detail,
+    seed_acr_arch,
+)
 from accretion.concurrency import ConcurrencyLimiter
 from accretion.config import get_settings
 from accretion.contracts import (
     TERMINAL_RUN_STATES,
+    AcrArchSummary,
     AgentRuntime,
     ApprovalRecord,
     ApprovalStatus,
     ArtifactRef,
+    BenchmarkExecutionSource,
+    BenchmarkRun,
+    BenchmarkTaskDetail,
     Capability,
     EventType,
     ExecutionMode,
@@ -47,6 +58,7 @@ from accretion.contracts import (
     Task,
     TaskPlanning,
     TaskProfile,
+    TaskType,
     TemplateStatus,
     VerificationResult,
 )
@@ -115,6 +127,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.manager = manager
     await seed_templates(store)
     await seed_governance(store)
+    await seed_acr_arch(store)
     await manager.reconcile()
     yield
     for task in manager.background.values():
@@ -456,6 +469,47 @@ async def list_skills(request: Request) -> list[MetaSkill]:
 @app.get("/api/v1/plugins", response_model=list[MetaPlugin])
 async def list_plugins(request: Request) -> list[MetaPlugin]:
     return await manager(request).store.list_plugins()
+
+
+@app.get("/api/v1/benchmarks/acr-arch", response_model=AcrArchSummary)
+async def get_acr_arch(
+    request: Request,
+    mode: ExecutionMode | None = None,
+    provider: Provider | None = None,
+    task_type: TaskType | None = None,
+    verifier: str | None = None,
+    selector_version: str | None = None,
+) -> AcrArchSummary:
+    return await acr_arch_summary(
+        manager(request).store,
+        mode=mode,
+        provider=provider,
+        task_type=task_type,
+        verifier=verifier,
+        selector_version=selector_version,
+    )
+
+
+@app.post(
+    "/api/v1/benchmarks/acr-arch/run",
+    response_model=BenchmarkRun,
+    status_code=201,
+)
+async def run_acr_arch(payload: BenchmarkRunCreate, request: Request) -> BenchmarkRun:
+    if payload.execution_source is not BenchmarkExecutionSource.REPLAY:
+        raise ValueError("live benchmark runs require the explicit local CLI release gate")
+    return await AcrArchRunner().persist(manager(request).store)
+
+
+@app.get(
+    "/api/v1/benchmarks/acr-arch/tasks/{task_id}",
+    response_model=BenchmarkTaskDetail,
+)
+async def get_acr_arch_task(task_id: str, request: Request) -> BenchmarkTaskDetail:
+    detail = await acr_arch_task_detail(manager(request).store, task_id)
+    if detail is None:
+        raise KeyError(task_id)
+    return detail
 
 
 @app.get("/api/v1/runs/{run_id}/events")

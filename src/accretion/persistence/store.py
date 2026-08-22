@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Protocol
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from accretion.contracts import (
@@ -15,7 +15,10 @@ from accretion.contracts import (
     ApprovalDecisionValue,
     ApprovalRecord,
     ApprovalStatus,
+    ArchitectureMetric,
     ArtifactRef,
+    BenchmarkRun,
+    BenchmarkTask,
     Capability,
     CapabilityExecutionResult,
     CapabilityPolicy,
@@ -55,6 +58,9 @@ from accretion.persistence.models import (
     AcceptancePolicyRow,
     AgentEventRow,
     ApprovalRow,
+    ArchitectureMetricRow,
+    BenchmarkRunRow,
+    BenchmarkTaskRow,
     CapabilityPolicyRow,
     CapabilityRequestRow,
     CapabilityRow,
@@ -239,6 +245,16 @@ class StateStore(Protocol):
         self, result: CapabilityExecutionResult
     ) -> CapabilityExecutionResult: ...
     async def list_capability_results(self, run_id: str) -> list[CapabilityExecutionResult]: ...
+    async def upsert_benchmark_task(self, task: BenchmarkTask) -> BenchmarkTask: ...
+    async def get_benchmark_task(self, task_id: str) -> BenchmarkTask | None: ...
+    async def list_benchmark_tasks(self) -> list[BenchmarkTask]: ...
+    async def save_benchmark_run(
+        self, run: BenchmarkRun, metrics: Sequence[ArchitectureMetric]
+    ) -> BenchmarkRun: ...
+    async def list_benchmark_runs(self, limit: int = 20) -> list[BenchmarkRun]: ...
+    async def list_architecture_metrics(
+        self, benchmark_run_id: str | None = None
+    ) -> list[ArchitectureMetric]: ...
 
 
 class MemoryStore:
@@ -275,6 +291,9 @@ class MemoryStore:
         self.plugins: dict[tuple[str, str], MetaPlugin] = {}
         self.capability_policies: dict[tuple[str, str], CapabilityPolicy] = {}
         self.capability_results: dict[str, CapabilityExecutionResult] = {}
+        self.benchmark_tasks: dict[tuple[str, str], BenchmarkTask] = {}
+        self.benchmark_runs: dict[str, BenchmarkRun] = {}
+        self.architecture_metrics: dict[str, list[ArchitectureMetric]] = {}
         self._lock = asyncio.Lock()
 
     async def create_project(self, project: Project) -> Project:
@@ -1072,6 +1091,64 @@ class MemoryStore:
             ),
             key=lambda item: item.request.created_at,
         )
+
+    async def upsert_benchmark_task(self, task: BenchmarkTask) -> BenchmarkTask:
+        key = (task.benchmark_task_id, task.version)
+        current = self.benchmark_tasks.get(key)
+        if current is not None and current != task:
+            raise ValueError(
+                f"benchmark task {task.benchmark_task_id}@{task.version} is immutable"
+            )
+        self.benchmark_tasks[key] = task
+        return task
+
+    async def get_benchmark_task(self, task_id: str) -> BenchmarkTask | None:
+        candidates = [
+            item
+            for (item_id, _), item in self.benchmark_tasks.items()
+            if item_id == task_id
+        ]
+        return max(candidates, key=lambda item: item.version) if candidates else None
+
+    async def list_benchmark_tasks(self) -> list[BenchmarkTask]:
+        return sorted(
+            self.benchmark_tasks.values(),
+            key=lambda item: (item.benchmark_task_id, item.version),
+        )
+
+    async def save_benchmark_run(
+        self, run: BenchmarkRun, metrics: Sequence[ArchitectureMetric]
+    ) -> BenchmarkRun:
+        if len(metrics) != run.scenario_count or any(
+            item.benchmark_run_id != run.benchmark_run_id for item in metrics
+        ):
+            raise ValueError("benchmark run metrics do not match the run manifest")
+        if len({item.metric_id for item in metrics}) != len(metrics):
+            raise ValueError("benchmark metric identifiers must be unique")
+        current = self.benchmark_runs.get(run.benchmark_run_id)
+        if current is not None and (
+            current != run or self.architecture_metrics.get(run.benchmark_run_id) != list(metrics)
+        ):
+            raise ValueError(f"benchmark run {run.benchmark_run_id} is immutable")
+        self.benchmark_runs[run.benchmark_run_id] = run
+        self.architecture_metrics[run.benchmark_run_id] = list(metrics)
+        return run
+
+    async def list_benchmark_runs(self, limit: int = 20) -> list[BenchmarkRun]:
+        return sorted(
+            self.benchmark_runs.values(), key=lambda item: item.started_at, reverse=True
+        )[:limit]
+
+    async def list_architecture_metrics(
+        self, benchmark_run_id: str | None = None
+    ) -> list[ArchitectureMetric]:
+        if benchmark_run_id is not None:
+            return list(self.architecture_metrics.get(benchmark_run_id, []))
+        return [
+            metric
+            for run_id in sorted(self.architecture_metrics)
+            for metric in self.architecture_metrics[run_id]
+        ]
 
 
 class PostgresStore:
@@ -2315,6 +2392,160 @@ class PostgresStore:
             )
             for row in rows
         ]
+
+    async def upsert_benchmark_task(self, task: BenchmarkTask) -> BenchmarkTask:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(BenchmarkTaskRow).where(
+                    BenchmarkTaskRow.benchmark_task_id == task.benchmark_task_id,
+                    BenchmarkTaskRow.version == task.version,
+                )
+            )
+            definition = task.model_dump(mode="json")
+            if row is not None:
+                if row.definition != definition:
+                    raise ValueError(
+                        f"benchmark task {task.benchmark_task_id}@{task.version} is immutable"
+                    )
+                return BenchmarkTask.model_validate(row.definition)
+            session.add(
+                BenchmarkTaskRow(
+                    id=new_id("task"),
+                    benchmark_task_id=task.benchmark_task_id,
+                    version=task.version,
+                    category=task.category.value,
+                    task_type=task.task_type.value,
+                    environment_ref=task.environment_ref,
+                    environment_version=task.environment_version,
+                    definition=definition,
+                    created_at=datetime(2026, 8, 22, tzinfo=UTC),
+                )
+            )
+        return task
+
+    async def get_benchmark_task(self, task_id: str) -> BenchmarkTask | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(BenchmarkTaskRow)
+                .where(BenchmarkTaskRow.benchmark_task_id == task_id)
+                .order_by(BenchmarkTaskRow.version.desc())
+                .limit(1)
+            )
+        return BenchmarkTask.model_validate(row.definition) if row else None
+
+    async def list_benchmark_tasks(self) -> list[BenchmarkTask]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(BenchmarkTaskRow).order_by(
+                        BenchmarkTaskRow.benchmark_task_id,
+                        BenchmarkTaskRow.version,
+                    )
+                )
+            ).all()
+        return [BenchmarkTask.model_validate(row.definition) for row in rows]
+
+    async def save_benchmark_run(
+        self, run: BenchmarkRun, metrics: Sequence[ArchitectureMetric]
+    ) -> BenchmarkRun:
+        if len(metrics) != run.scenario_count or any(
+            item.benchmark_run_id != run.benchmark_run_id for item in metrics
+        ):
+            raise ValueError("benchmark run metrics do not match the run manifest")
+        if len({item.metric_id for item in metrics}) != len(metrics):
+            raise ValueError("benchmark metric identifiers must be unique")
+        async with self.sessions.begin() as session:
+            current = await session.get(BenchmarkRunRow, run.benchmark_run_id)
+            if current is not None:
+                if (
+                    current.corpus_sha256 != run.corpus_sha256
+                    or current.trace_sha256 != run.trace_sha256
+                    or current.scenario_count != run.scenario_count
+                ):
+                    raise ValueError(f"benchmark run {run.benchmark_run_id} is immutable")
+                metric_count = await session.scalar(
+                    select(func.count())
+                    .select_from(ArchitectureMetricRow)
+                    .where(
+                        ArchitectureMetricRow.benchmark_run_id == run.benchmark_run_id
+                    )
+                )
+                if metric_count != run.scenario_count:
+                    raise ValueError(
+                        f"benchmark run {run.benchmark_run_id} has incomplete metrics"
+                    )
+                return self._row_to_benchmark_run(current)
+            session.add(
+                BenchmarkRunRow(
+                    id=run.benchmark_run_id,
+                    suite_version=run.suite_version,
+                    configuration_version=run.configuration_version,
+                    execution_source=run.execution_source.value,
+                    status=run.status.value,
+                    corpus_sha256=run.corpus_sha256,
+                    trace_sha256=run.trace_sha256,
+                    scenario_count=run.scenario_count,
+                    started_at=run.started_at,
+                    completed_at=run.completed_at,
+                )
+            )
+            await session.flush()
+            session.add_all(
+                ArchitectureMetricRow(
+                    id=metric.metric_id,
+                    benchmark_run_id=metric.benchmark_run_id,
+                    benchmark_task_id=metric.benchmark_task_id,
+                    task_version=metric.task_version,
+                    mode=metric.mode.value,
+                    provider=metric.provider.value,
+                    verifier_id=metric.verifier_id,
+                    selector_version=metric.selector_version,
+                    metric=metric.model_dump(mode="json"),
+                )
+                for metric in metrics
+            )
+        return run
+
+    async def list_benchmark_runs(self, limit: int = 20) -> list[BenchmarkRun]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(BenchmarkRunRow)
+                    .order_by(BenchmarkRunRow.started_at.desc())
+                    .limit(limit)
+                )
+            ).all()
+        return [self._row_to_benchmark_run(row) for row in rows]
+
+    async def list_architecture_metrics(
+        self, benchmark_run_id: str | None = None
+    ) -> list[ArchitectureMetric]:
+        query = select(ArchitectureMetricRow).order_by(
+            ArchitectureMetricRow.benchmark_task_id,
+            ArchitectureMetricRow.mode,
+        )
+        if benchmark_run_id is not None:
+            query = query.where(
+                ArchitectureMetricRow.benchmark_run_id == benchmark_run_id
+            )
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [ArchitectureMetric.model_validate(row.metric) for row in rows]
+
+    @staticmethod
+    def _row_to_benchmark_run(row: BenchmarkRunRow) -> BenchmarkRun:
+        return BenchmarkRun(
+            benchmark_run_id=row.id,
+            suite_version=row.suite_version,
+            configuration_version=row.configuration_version,
+            execution_source=row.execution_source,
+            status=row.status,
+            corpus_sha256=row.corpus_sha256,
+            trace_sha256=row.trace_sha256,
+            scenario_count=row.scenario_count,
+            started_at=row.started_at,
+            completed_at=row.completed_at,
+        )
 
     @staticmethod
     async def _assemble_run_graph(session: AsyncSession, row: RunGraphRow) -> RunGraph:

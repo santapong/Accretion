@@ -132,6 +132,54 @@ test("navigates to the required operator screens", async () => {
   expect(await screen.findByRole("heading", { name: "Run history / trace replay" })).toBeInTheDocument();
 });
 
+test("filters and reproduces the versioned ACR-ARCH benchmark", async () => {
+  const metric = {
+    metric_id: "acm_fixture", benchmark_run_id: "bnr_fixture", benchmark_task_id: "acr-001",
+    task_version: "1.0.0", category: "DIRECT_SIMPLE", task_type: "REVIEW", mode: "DIRECT",
+    provider: "CLAUDE", execution_source: "REPLAY", verifier_id: "output-contract",
+    selector_version: "selector-v1", success: true, quality: 0.95, cost: 0.2, latency: 0.1,
+    risk: 0, human_burden: 0, utility: 0.9, architecture_regret: 0, duration_ms: 100,
+    turns: 2, tool_calls: 3, approvals: 0, trace_ref: "trace#fixture",
+    environment_ref: "acr-env-direct-simple", environment_version: "1.0.0",
+  };
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url.includes("/api/v1/benchmarks/acr-arch/tasks/acr-001")) return response({
+      task: {
+        benchmark_task_id: "acr-001", version: "1.0.0", title: "Direct fixture",
+        category: "DIRECT_SIMPLE", task_type: "REVIEW", environment_ref: "acr-env-direct-simple",
+        environment_version: "1.0.0", verifier_id: "output-contract", verifier_version: "1.0.0",
+        success_criteria: ["artifact passes"], budgets: {}, applicable_modes: ["DIRECT", "LOOP"],
+        selector_mode: "DIRECT", selector_version: "selector-v1",
+      }, metrics: [metric],
+    });
+    if (url.endsWith("/api/v1/benchmarks/acr-arch/run") && init?.method === "POST") return response({
+      benchmark_run_id: "bnr_fixture", suite_version: "1.0.0", configuration_version: "1.0.0",
+      execution_source: "REPLAY", status: "COMPLETED", corpus_sha256: "a".repeat(64),
+      trace_sha256: "b".repeat(64), scenario_count: 68,
+    }, 201);
+    if (url.includes("/api/v1/benchmarks/acr-arch?")) return response({
+      suite: "ACR-ARCH", suite_version: "1.0.0", configuration_version: "1.0.0",
+      task_count: 30, scenario_count: 68, metrics: [metric], filters: {
+        mode: ["DIRECT", "LOOP"], provider: ["CLAUDE", "CODEX"], task_type: ["REVIEW"],
+        verifier: ["output-contract"], selector_version: ["selector-v1"],
+      },
+    });
+    return response([]);
+  });
+
+  renderApp("/benchmarks/acr-arch");
+  expect(await screen.findByText("68")).toBeInTheDocument();
+  fireEvent.change(screen.getByLabelText("mode"), { target: { value: "LOOP" } });
+  await waitFor(() => expect(fetch).toHaveBeenCalledWith(
+    expect.stringContaining("mode=LOOP"),
+  ));
+  fireEvent.click(await screen.findByRole("button", { name: "acr-001" }));
+  expect(await screen.findByRole("heading", { name: "Direct fixture" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Reproduce replay" }));
+  expect(await screen.findByText(/Reproduced 68 scenarios/)).toBeInTheDocument();
+});
+
 test.each([
   ["DIRECT", "direct-v1"],
   ["LOOP", "feedback-loop-v1"],

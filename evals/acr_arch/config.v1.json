@@ -1,0 +1,9 @@
+{
+  "configuration_version": "1.0.0",
+  "human_burden_weight": 0.2,
+  "latency_weight": 0.15,
+  "risk_weight": 0.35,
+  "suite": "ACR-ARCH",
+  "suite_version": "1.0.0",
+  "usage_cost_weight": 0.15
+}
