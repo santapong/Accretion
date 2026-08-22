@@ -46,4 +46,5 @@ seams and naming, but no feature from a locked release ships early, and the pack
 files themselves must not be edited (they are hash-manifested).
 
 Baseline note: the package was prepared against `develop@9b59977` and describes P2 as
-planned; P2 verifier-gated feedback loops have since landed on `develop` (`85ddfa6`).
+planned. The v0.1 P0-P4 implementation and release gate have since completed; this
+historical note does not unlock v0.2 or v0.3 scope before the `v0.1.0` release tag.

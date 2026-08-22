@@ -8,11 +8,11 @@ Accretion supervises Codex and Claude Code through one provider-neutral control
 plane, with deterministic planning, bounded verifier-gated feedback loops,
 isolated workspaces, and a durable normalized execution trace.
 
-[![CI](https://github.com/santapong/Accretion/actions/workflows/ci.yml/badge.svg?branch=develop)](https://github.com/santapong/Accretion/actions/workflows/ci.yml)
+[![CI](https://github.com/santapong/Accretion/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/santapong/Accretion/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-MIT-6f42c1.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-pre--release-f59e0b)](#project-status)
+[![Status](https://img.shields.io/badge/status-v0.1.0-2ea44f)](#project-status)
 
 <br />
 
@@ -21,9 +21,10 @@ isolated workspaces, and a durable normalized execution trace.
 </div>
 
 > [!IMPORTANT]
-> Accretion is pre-release, local-first software. P0 runtime feasibility, P1
-> deterministic planning, P2 verifier-gated feedback loops, and P3 static graph
-> execution are implemented. All five validated templates can execute:
+> Accretion v0.1 is local-first software. P0 runtime feasibility, P1 deterministic
+> planning, P2 verifier-gated feedback loops, P3 static graph execution, and the P4
+> governed harness/operator release gate are implemented. All five validated
+> templates can execute:
 > `direct-v1`, `feedback-loop-v1`, `fixed-graph-v1` (with human approval gates),
 > `hybrid-rd-v1`, and the bounded `safe-unknown-v1` fallback.
 
@@ -56,7 +57,9 @@ operator can answer five questions before and during every run:
 | Isolation | One Git worktree lease per mutable run with captured diff artifacts |
 | Recovery | Atomic iteration commits, optimistic revisions, session continuation, and restart reconciliation without replaying committed work |
 | Observability | Durable PostgreSQL state, immutable verifier evidence, monotonic normalized events, resumable SSE, runtime health, and usage pressure |
-| Operator experience | React task creation, planning review, override feedback, runtime controls, live trace inspection, and a read-only React Flow loop projection |
+| Operator experience | Dashboard, task profiler, planning review, live run controls, runtime monitor, trace history, approvals, capability registries, read-only React Flow projections, and ACR-ARCH |
+| Governed capabilities | Immutable capability/skill/plugin/policy registries, task-scoped MCP exposure, approval-bound idempotent side effects, and executor-boundary credential injection |
+| Architecture benchmark | Frozen 30-task ACR-ARCH corpus, 68 balanced replay scenarios, raw dimensions, utility/regret, filterable operator UI, and opt-in live provider calibration |
 
 ## Architecture
 
@@ -119,13 +122,14 @@ ceilings.
 | P1 — Deterministic planning | Complete | Prompt/context contracts, profiling, selection, persistence, API, and New Task UI |
 | P2 — Feedback loops | Complete | Bounded repeat execution, independent verification, recovery, controls, and loop visualization |
 | P3 — Static graphs | Complete | Template registry, GRAPH/HYBRID engines, approval gates, checkpoints, replay, and graph visualization |
-| P4 — Release gate | Release blocking | Capability registry, MCP gateway, policy/approvals surface, complete operator UI, and ACR-ARCH remain before v0.1 |
+| P4 — Harness and release gate | Complete | Governed capabilities/MCP, credential boundary, side-effect evidence, complete operator surfaces, resumable SSE, and ACR-ARCH |
 
 See the [v0.1 system design](docs/sdd/Accretion_SDD_v0.1.md) and the
 [multi-release SDD index](docs/sdd/Accretion_SDD_INDEX_v0.3.md) for the full
 architecture and acceptance criteria. The latest
-[v0.1 release audit](docs/V0_1_RELEASE_AUDIT.md) records the verified gates and
-remaining release-blocking work.
+[v0.1 release audit](docs/V0_1_RELEASE_AUDIT.md) records the clean-checkout GO
+decision. See the [v0.1.0 release notes](docs/V0_1_RELEASE_NOTES.md) for the
+shipped scope, compatibility, and reproducibility hashes.
 
 ## Quick start
 
@@ -138,15 +142,18 @@ remaining release-blocking work.
 - Docker with Compose
 - Optional: supported, signed-in Codex and Claude Code CLIs for live providers
 
+The validated v0.1 live-provider range is Codex CLI `>=0.148,<0.149` and Claude
+Code `>=2.1.231,<2.2`.
+
 ### Install and migrate
 
 ```bash
-git clone --branch develop https://github.com/santapong/Accretion.git
+git clone --branch v0.1.0 https://github.com/santapong/Accretion.git
 cd Accretion
 cp .env.example .env
 
 uv sync --all-groups
-npm install
+npm ci
 docker compose up -d postgres
 uv run alembic upgrade head
 ```
@@ -215,6 +222,9 @@ provider tests are deliberately opt-in:
 ACCRETION_LIVE_PROVIDERS=1 \
   PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
   uv run --no-sync pytest -p pytest_asyncio.plugin -m live
+
+ACCRETION_LIVE_PROVIDERS=1 \
+  uv run --no-sync python scripts/run_acr_arch_live_sample.py
 ```
 
 The validated CLI range and recorded acceptance evidence are documented in the
@@ -231,6 +241,8 @@ src/accretion/persistence Durable state, planning history, and side effects
 src/accretion/planning.py Deterministic profiler and selector policy
 src/accretion/looping.py  Loop policy, budgets, and terminal outcomes
 src/accretion/projections.py Read-only execution graph projections
+src/accretion/governance.py Capability policy, credentials, and governed executor
+src/accretion/benchmark.py Frozen ACR-ARCH replay and architecture metrics
 src/accretion/verifiers/  Deterministic verifier implementations and registry
 migrations/               Alembic schema history
 tests/                    Unit, API, PostgreSQL, and live acceptance tests
