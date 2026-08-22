@@ -158,6 +158,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{run_id}/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Run Audit */
+        get: operations["get_run_audit_api_v1_runs__run_id__audit_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{run_id}/cancel": {
         parameters: {
             query?: never;
@@ -328,6 +345,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runtimes/{runtime_id}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Runtime Sessions */
+        get: operations["runtime_sessions_api_v1_runtimes__runtime_id__sessions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/skills": {
         parameters: {
             query?: never;
@@ -396,6 +430,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/tasks/{task_id}/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Task Profile */
+        get: operations["get_task_profile_api_v1_tasks__task_id__profile_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/tasks/{task_id}/runs": {
         parameters: {
             query?: never;
@@ -424,6 +475,23 @@ export interface paths {
         put?: never;
         /** Create Strategy Override */
         post: operations["create_strategy_override_api_v1_tasks__task_id__strategy_overrides_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/tasks/{task_id}/strategy/override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Strategy Override */
+        post: operations["create_strategy_override_api_v1_tasks__task_id__strategy_override_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -534,6 +602,41 @@ export interface components {
              */
             version: "acceptance-policy-v1";
         };
+        /** AgentEvent */
+        AgentEvent: {
+            /** Adapter Version */
+            adapter_version: string;
+            /** Causation Id */
+            causation_id?: string | null;
+            /** Correlation Id */
+            correlation_id: string;
+            /** Event Id */
+            event_id: string;
+            /** Native Type */
+            native_type: string;
+            /** Node Id */
+            node_id?: string | null;
+            normalized_type: components["schemas"]["EventType"];
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+            provider: components["schemas"]["Provider"];
+            /** Run Id */
+            run_id: string;
+            /**
+             * Sequence
+             * @default 0
+             */
+            sequence: number;
+            /** Session Id */
+            session_id: string;
+            /**
+             * Timestamp
+             * Format: date-time
+             */
+            timestamp?: string;
+        };
         /** ApprovalDecisionCreate */
         ApprovalDecisionCreate: {
             decision: components["schemas"]["ApprovalDecisionValue"];
@@ -621,6 +724,56 @@ export interface components {
          * @enum {string}
          */
         AuthMode: "SUBSCRIPTION" | "API" | "LOCAL";
+        /**
+         * AuthorizationOutcome
+         * @enum {string}
+         */
+        AuthorizationOutcome: "ALLOW" | "DENY" | "REQUIRE_APPROVAL";
+        /** BudgetPolicy */
+        BudgetPolicy: {
+            /**
+             * Max Node Retries
+             * @default 1
+             */
+            max_node_retries: number;
+            /**
+             * Max Replans
+             * @default 0
+             */
+            max_replans: number;
+            /**
+             * Max Runtime Calls
+             * @default 12
+             */
+            max_runtime_calls: number;
+            /**
+             * Max Total Tool Calls
+             * @default 100
+             */
+            max_total_tool_calls: number;
+            /**
+             * Max Total Turns
+             * @default 20
+             */
+            max_total_turns: number;
+            /**
+             * Max Wall Time Seconds
+             * @default 1800
+             */
+            max_wall_time_seconds: number;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /**
+             * Version
+             * @default budget-policy-v1
+             * @constant
+             */
+            version: "budget-policy-v1";
+        };
         /** Capability */
         Capability: {
             backend: components["schemas"]["CapabilityBackend"];
@@ -676,16 +829,80 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** CapabilityAuthorization */
+        CapabilityAuthorization: {
+            /** Approval Id */
+            approval_id?: string | null;
+            outcome: components["schemas"]["AuthorizationOutcome"];
+            /** Policy Id */
+            policy_id: string;
+            /** Policy Version */
+            policy_version: string;
+            /** Reason */
+            reason: string;
+        };
         /**
          * CapabilityBackend
          * @enum {string}
          */
         CapabilityBackend: "MCP" | "NATIVE" | "HTTP" | "CLI" | "PYTHON" | "AGENT_RUNTIME";
+        /** CapabilityExecutionResult */
+        CapabilityExecutionResult: {
+            authorization: components["schemas"]["CapabilityAuthorization"];
+            /** Completed At */
+            completed_at?: string | null;
+            error?: components["schemas"]["ErrorSummary"] | null;
+            /** Output */
+            output?: {
+                [key: string]: unknown;
+            } | null;
+            request: components["schemas"]["CapabilityRequest"];
+            /** Side Effect Operation Id */
+            side_effect_operation_id?: string | null;
+            status: components["schemas"]["CapabilityExecutionStatus"];
+        };
+        /**
+         * CapabilityExecutionStatus
+         * @enum {string}
+         */
+        CapabilityExecutionStatus: "DENIED" | "REQUIRES_APPROVAL" | "EXECUTING" | "SUCCEEDED" | "FAILED" | "UNKNOWN";
         /**
          * CapabilityKind
          * @enum {string}
          */
         CapabilityKind: "TOOL" | "AGENT";
+        /** CapabilityRequest */
+        CapabilityRequest: {
+            /** Arguments */
+            arguments?: {
+                [key: string]: unknown;
+            };
+            /** Capability Id */
+            capability_id: string;
+            /** Capability Version */
+            capability_version: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Declared Reason */
+            declared_reason: string;
+            /** Idempotency Key */
+            idempotency_key?: string | null;
+            /** Node Id */
+            node_id: string;
+            /** Request Id */
+            request_id: string;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+        };
         /**
          * CheckpointKind
          * @enum {string}
@@ -765,6 +982,11 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * EdgeGuard
+         * @enum {string}
+         */
+        EdgeGuard: "ON_SUCCESS" | "ON_FAIL" | "ON_INCONCLUSIVE" | "ON_APPROVED" | "ON_DENIED" | "ON_REPLAN_AVAILABLE" | "ON_REPLAN_EXHAUSTED";
         /** ErrorSummary */
         ErrorSummary: {
             /** Code */
@@ -777,6 +999,11 @@ export interface components {
              */
             retryable: boolean;
         };
+        /**
+         * EventType
+         * @enum {string}
+         */
+        EventType: "RUN_CREATED" | "RUN_STARTED" | "RUN_PROGRESS" | "NODE_ENTERED" | "NODE_EXITED" | "TOOL_REQUESTED" | "TOOL_STARTED" | "TOOL_COMPLETED" | "TOOL_FAILED" | "FILE_CHANGED" | "DIFF_AVAILABLE" | "APPROVAL_REQUIRED" | "APPROVAL_RESOLVED" | "ARTIFACT_CREATED" | "CHECKPOINT_SAVED" | "RUNTIME_CALL_STARTED" | "RUNTIME_CALL_COMPLETED" | "RUNTIME_CALL_FAILED" | "RUNTIME_CALL_CANCELLED" | "LOOP_ITERATION_STARTED" | "LOOP_ITERATION_COMPLETED" | "VERIFICATION_STARTED" | "VERIFICATION_RESULT" | "RUN_PAUSED" | "RUN_RESUMED" | "RUN_COMPLETED" | "RUN_FAILED" | "RUN_CANCELLED";
         /**
          * ExecutionMode
          * @enum {string}
@@ -873,6 +1100,23 @@ export interface components {
          * @enum {string}
          */
         FindingSeverity: "INFO" | "WARNING" | "ERROR";
+        /** GateSpec */
+        GateSpec: {
+            /** Gate Id */
+            gate_id: string;
+            /** Node Key */
+            node_key: string;
+            /** @default HIGH */
+            required_for_risk_gte: components["schemas"]["RiskLevel"];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Summary */
+            summary: string;
+        };
         /**
          * GraphEdgeKind
          * @enum {string}
@@ -1272,6 +1516,39 @@ export interface components {
             /** Version */
             version: string;
         };
+        /** NodeLoopPolicy */
+        NodeLoopPolicy: {
+            /** Act Key */
+            act_key: string;
+            /**
+             * Budget Fraction
+             * @default 1
+             */
+            budget_fraction: number;
+            /** Fixed Max Iterations */
+            fixed_max_iterations?: number | null;
+            /**
+             * Max Iterations Source
+             * @default TASK_BUDGET
+             * @enum {string}
+             */
+            max_iterations_source: "TASK_BUDGET" | "FIXED";
+            /** Observe Key */
+            observe_key?: string | null;
+            /** Region Keys */
+            region_keys: string[];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /**
+             * Verify In Region
+             * @default true
+             */
+            verify_in_region: boolean;
+        };
         /** NodeTraversal */
         NodeTraversal: {
             /**
@@ -1432,6 +1709,39 @@ export interface components {
             /** Workspace Lease Id */
             workspace_lease_id?: string | null;
         };
+        /**
+         * RunAudit
+         * @description Authoritative, linked evidence bundle for one operator-visible run.
+         */
+        RunAudit: {
+            /** Artifacts */
+            artifacts?: components["schemas"]["ArtifactRef"][];
+            /** Capability Results */
+            capability_results?: components["schemas"]["CapabilityExecutionResult"][];
+            /** Events */
+            events?: components["schemas"]["AgentEvent"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at?: string;
+            profile: components["schemas"]["TaskProfile"];
+            run: components["schemas"]["Run"];
+            runtime: components["schemas"]["RuntimeHealth"];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            session?: components["schemas"]["SessionRef"] | null;
+            strategy: components["schemas"]["StrategyDecision"];
+            task: components["schemas"]["Task"];
+            template: components["schemas"]["WorkflowTemplate"];
+            trace: components["schemas"]["ExecutionTrace"];
+            /** Verifications */
+            verifications?: components["schemas"]["VerificationResult"][];
+        };
         /** RunCreate */
         RunCreate: {
             /** @default FAKE */
@@ -1500,6 +1810,21 @@ export interface components {
          * @enum {string}
          */
         RuntimeStatus: "READY" | "BUSY" | "RATE_LIMITED" | "AUTH_REQUIRED" | "UNAVAILABLE" | "DEGRADED";
+        /** SessionRef */
+        SessionRef: {
+            /** Native Session Id */
+            native_session_id?: string | null;
+            provider: components["schemas"]["Provider"];
+            /** Run Id */
+            run_id: string;
+            /** Session Id */
+            session_id: string;
+            /**
+             * Workspace
+             * Format: path
+             */
+            workspace: string;
+        };
         /** StrategyDecision */
         StrategyDecision: {
             /** Alternatives */
@@ -1899,6 +2224,82 @@ export interface components {
             /** Verifier Id */
             verifier_id?: string | null;
         };
+        /** WorkflowEdgeSpec */
+        WorkflowEdgeSpec: {
+            guard?: components["schemas"]["EdgeGuard"] | null;
+            /** Key */
+            key: string;
+            kind: components["schemas"]["GraphEdgeKind"];
+            /** Label */
+            label?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Source */
+            source: string;
+            /** Target */
+            target: string;
+        };
+        /** WorkflowNodeSpec */
+        WorkflowNodeSpec: {
+            /** Instruction */
+            instruction?: string | null;
+            /** Key */
+            key: string;
+            kind: components["schemas"]["GraphNodeKind"];
+            /** Label */
+            label: string;
+            loop?: components["schemas"]["NodeLoopPolicy"] | null;
+            /** Parent Key */
+            parent_key?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+        };
+        /** WorkflowTemplate */
+        WorkflowTemplate: {
+            /** Checksum */
+            checksum: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Edges */
+            edges?: components["schemas"]["WorkflowEdgeSpec"][];
+            global_budget_policy?: components["schemas"]["BudgetPolicy"];
+            /** Input Schema */
+            input_schema?: {
+                [key: string]: unknown;
+            };
+            mode: components["schemas"]["ExecutionMode"];
+            /** Nodes */
+            nodes: components["schemas"]["WorkflowNodeSpec"][];
+            /** Required Approval Gates */
+            required_approval_gates?: components["schemas"]["GateSpec"][];
+            /** Required Verifiers */
+            required_verifiers?: string[];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** @default DRAFT */
+            status: components["schemas"]["TemplateStatus"];
+            /** Template Id */
+            template_id: string;
+            /** Template Record Id */
+            template_record_id: string;
+            /** Version */
+            version: string;
+        };
         /**
          * WorkflowTemplateSummary
          * @description Read-only template listing; nodes and edges never enter the API.
@@ -2206,6 +2607,37 @@ export interface operations {
             };
         };
     };
+    get_run_audit_api_v1_runs__run_id__audit_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunAudit"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     cancel_run_api_v1_runs__run_id__cancel_post: {
         parameters: {
             query?: never;
@@ -2239,7 +2671,9 @@ export interface operations {
     };
     run_events_api_v1_runs__run_id__events_get: {
         parameters: {
-            query?: never;
+            query?: {
+                after?: number;
+            };
             header?: {
                 "Last-Event-ID"?: string | null;
             };
@@ -2507,6 +2941,37 @@ export interface operations {
             };
         };
     };
+    runtime_sessions_api_v1_runtimes__runtime_id__sessions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                runtime_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionRef"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_skills_api_v1_skills_get: {
         parameters: {
             query?: never;
@@ -2622,6 +3087,37 @@ export interface operations {
             };
         };
     };
+    get_task_profile_api_v1_tasks__task_id__profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskProfile"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     start_run_api_v1_tasks__task_id__runs_post: {
         parameters: {
             query?: never;
@@ -2658,6 +3154,41 @@ export interface operations {
         };
     };
     create_strategy_override_api_v1_tasks__task_id__strategy_overrides_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StrategyOverrideCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StrategyOverrideResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_strategy_override_api_v1_tasks__task_id__strategy_override_post: {
         parameters: {
             query?: never;
             header?: never;

@@ -1138,6 +1138,25 @@ class Run(StrictModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
+class RunAudit(StrictModel):
+    """Authoritative, linked evidence bundle for one operator-visible run."""
+
+    schema_version: Literal["1.0"] = "1.0"
+    run: Run
+    task: Task
+    profile: TaskProfile
+    strategy: StrategyDecision
+    template: WorkflowTemplate
+    runtime: RuntimeHealth
+    session: SessionRef | None = None
+    events: list[AgentEvent] = Field(default_factory=list)
+    artifacts: list[ArtifactRef] = Field(default_factory=list)
+    verifications: list[VerificationResult] = Field(default_factory=list)
+    capability_results: list[CapabilityExecutionResult] = Field(default_factory=list)
+    trace: ExecutionTrace
+    generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 class AgentRuntime(Protocol):
     async def health(self) -> RuntimeHealth: ...
     async def create_session(self, config: SessionConfig) -> SessionRef: ...

@@ -17,7 +17,8 @@ function response(body: unknown, status = 200) {
   } as Response;
 }
 
-function renderApp() {
+function renderApp(path = "/") {
+  window.history.pushState({}, "", path);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(<QueryClientProvider client={client}><App /></QueryClientProvider>);
 }
@@ -94,6 +95,7 @@ vi.stubGlobal("EventSource", EventSourceStub);
 vi.stubGlobal("fetch", vi.fn());
 
 beforeEach(() => {
+  window.history.pushState({}, "", "/");
   vi.mocked(fetch).mockImplementation(async (input) => response(String(input).includes("runtimes") ? [{
     runtime_id: "runtime_fake", provider: "FAKE", status: "READY", auth_mode: "LOCAL",
     runtime_version: "fake-p0-v1", capabilities: [], active_sessions: 0, active_runs: 0,
@@ -106,15 +108,28 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-test("renders the P3 runtime dashboard and empty run state", async () => {
+test("renders the P4 runtime dashboard and operator navigation", async () => {
   renderApp();
   expect(screen.getByText("Runtime observatory")).toBeInTheDocument();
-  expect(screen.getByText("Operator / P3")).toBeInTheDocument();
+  expect(screen.getByText("Operator / P4")).toBeInTheDocument();
   expect(await screen.findByText("FAKE")).toBeInTheDocument();
-  expect(screen.getByText("New task")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Create and profile task" })).toBeDisabled();
-  expect(screen.getByText("No runs yet. Create and profile a task above.")).toBeInTheDocument();
-  expect(screen.getByText("Select a run to inspect its orchestration state.")).toBeInTheDocument();
+  expect(screen.getAllByRole("link", { name: "New task" })).toHaveLength(2);
+  expect(screen.getByRole("link", { name: "Runtimes" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Capabilities" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "ACR-ARCH" })).toBeInTheDocument();
+  expect(screen.getByText("No runs yet. Create and profile a task.")).toBeInTheDocument();
+});
+
+test("navigates to the required operator screens", async () => {
+  renderApp();
+  fireEvent.click(screen.getByRole("link", { name: "Runtimes" }));
+  expect(await screen.findByRole("heading", { name: "Runtime monitor" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("link", { name: "Capabilities" }));
+  expect(await screen.findByRole("heading", { name: "Capabilities, skills, and plugins" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("link", { name: "Approvals" }));
+  expect(await screen.findByRole("heading", { name: "Verifiers / approvals" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("link", { name: "History" }));
+  expect(await screen.findByRole("heading", { name: "Run history / trace replay" })).toBeInTheDocument();
 });
 
 test.each([
@@ -124,7 +139,7 @@ test.each([
   ["HYBRID", "hybrid-rd-v1"],
 ] as const)("enables run creation for %s / %s", async (mode, template) => {
   installPlanningApi(mode, template);
-  renderApp();
+  renderApp("/tasks/new");
   await createPlannedTask();
 
   expect(screen.getByText(`${mode} / ${template}`)).toBeInTheDocument();
@@ -158,7 +173,7 @@ test("surfaces the server's fail-closed template rejection", async () => {
       retryable: false,
     },
   });
-  renderApp();
+  renderApp("/tasks/new");
   await createPlannedTask();
 
   const createRun = screen.getByRole("button", { name: "Create run" });
@@ -169,7 +184,7 @@ test("surfaces the server's fail-closed template rejection", async () => {
 
 test("override template options come from the validated template registry", async () => {
   installPlanningApi("HYBRID", "hybrid-rd-v1");
-  renderApp();
+  renderApp("/tasks/new");
   await createPlannedTask();
 
   await screen.findByRole("option", { name: "hybrid-rd-v1" });

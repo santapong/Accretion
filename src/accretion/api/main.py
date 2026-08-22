@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 from typing import cast
 from uuid import uuid4
 
-from fastapi import FastAPI, Header, Request
+from fastapi import FastAPI, Header, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 
@@ -40,10 +40,13 @@ from accretion.contracts import (
     Project,
     Provider,
     Run,
+    RunAudit,
     RuntimeHealth,
+    SessionRef,
     StrategyOverrideResult,
     Task,
     TaskPlanning,
+    TaskProfile,
     TemplateStatus,
     VerificationResult,
 )
@@ -236,6 +239,16 @@ async def get_task_planning(task_id: str, request: Request) -> TaskPlanning:
     return await manager(request).get_task_planning(task_id)
 
 
+@app.get("/api/v1/tasks/{task_id}/profile", response_model=TaskProfile)
+async def get_task_profile(task_id: str, request: Request) -> TaskProfile:
+    return (await manager(request).get_task_planning(task_id)).current_profile
+
+
+@app.post(
+    "/api/v1/tasks/{task_id}/strategy/override",
+    response_model=StrategyOverrideResult,
+    status_code=201,
+)
 @app.post(
     "/api/v1/tasks/{task_id}/strategy-overrides",
     response_model=StrategyOverrideResult,
@@ -291,6 +304,38 @@ async def get_run_graph(run_id: str, request: Request) -> GraphProjection:
 @app.get("/api/v1/runs/{run_id}/trace", response_model=ExecutionTrace)
 async def get_run_trace(run_id: str, request: Request) -> ExecutionTrace:
     return await manager(request).get_trace(run_id)
+
+
+@app.get("/api/v1/runs/{run_id}/audit", response_model=RunAudit)
+async def get_run_audit(run_id: str, request: Request) -> RunAudit:
+    service = manager(request)
+    run = await service.store.get_run(run_id)
+    if run is None:
+        raise KeyError(run_id)
+    task = await service.store.get_task(run.task_id)
+    planning = await service.store.get_task_planning(run.task_id)
+    template = (
+        await service.store.get_workflow_template(run.workflow_template_id)
+        if run.workflow_template_id
+        else None
+    )
+    if task is None or planning is None or template is None:
+        raise RuntimeError(f"run {run_id} has incomplete planning provenance")
+    runtime = await service.runtimes[run.provider].health()
+    return RunAudit(
+        run=run,
+        task=task,
+        profile=planning.current_profile,
+        strategy=planning.current_decision,
+        template=template,
+        runtime=runtime,
+        session=await service.store.get_session_for_run(run_id),
+        events=await service.store.list_events(run_id),
+        artifacts=await service.store.list_artifacts(run_id),
+        verifications=await service.store.list_verifications(run_id),
+        capability_results=await service.store.list_capability_results(run_id),
+        trace=await service.get_trace(run_id),
+    )
 
 
 @app.get("/api/v1/templates", response_model=list[WorkflowTemplateSummary])
@@ -389,6 +434,15 @@ async def runtime_health(runtime_id: str, request: Request) -> RuntimeHealth:
     raise KeyError(runtime_id)
 
 
+@app.get("/api/v1/runtimes/{runtime_id}/sessions", response_model=list[SessionRef])
+async def runtime_sessions(runtime_id: str, request: Request) -> list[SessionRef]:
+    for runtime in manager(request).runtimes.values():
+        health = await runtime.health()
+        if health.runtime_id == runtime_id:
+            return await manager(request).store.list_sessions(health.provider)
+    raise KeyError(runtime_id)
+
+
 @app.get("/api/v1/capabilities", response_model=list[Capability])
 async def list_capabilities(request: Request) -> list[Capability]:
     return await manager(request).store.list_capabilities()
@@ -408,18 +462,19 @@ async def list_plugins(request: Request) -> list[MetaPlugin]:
 async def run_events(
     run_id: str,
     request: Request,
+    after: int = Query(default=0, ge=0),
     last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
 ) -> StreamingResponse:
     run = await manager(request).store.get_run(run_id)
     if run is None:
         raise KeyError(run_id)
     try:
-        after = int(last_event_id or 0)
+        cursor_start = int(last_event_id) if last_event_id is not None else after
     except ValueError as exc:
         raise ValueError("Last-Event-ID must be an integer") from exc
 
     async def stream() -> AsyncIterator[str]:
-        cursor = after
+        cursor = cursor_start
         terminal_event_seen = any(
             event.sequence <= cursor and event.normalized_type in SSE_TERMINAL_EVENTS
             for event in await manager(request).store.list_events(run_id)

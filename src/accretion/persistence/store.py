@@ -177,6 +177,7 @@ class StateStore(Protocol):
     async def get_lease(self, lease_id: str) -> WorkspaceLease | None: ...
     async def save_session(self, session: SessionRef) -> None: ...
     async def get_session_for_run(self, run_id: str) -> SessionRef | None: ...
+    async def list_sessions(self, provider: Provider | None = None) -> list[SessionRef]: ...
     async def save_artifact(self, artifact: ArtifactRef) -> None: ...
     async def list_artifacts(self, run_id: str) -> list[ArtifactRef]: ...
     async def append_event(self, event: AgentEvent) -> AgentEvent: ...
@@ -724,6 +725,14 @@ class MemoryStore:
 
     async def get_session_for_run(self, run_id: str) -> SessionRef | None:
         return self.sessions.get(run_id)
+
+    async def list_sessions(self, provider: Provider | None = None) -> list[SessionRef]:
+        sessions = [
+            item
+            for item in self.sessions.values()
+            if provider is None or item.provider is provider
+        ]
+        return sorted(sessions, key=lambda item: (item.provider.value, item.run_id))
 
     async def save_artifact(self, artifact: ArtifactRef) -> None:
         self.artifacts.setdefault(artifact.run_id, []).append(artifact)
@@ -1673,6 +1682,26 @@ class PostgresStore:
             native_session_id=row.native_session_id,
             workspace=row.workspace_path,
         )
+
+    async def list_sessions(self, provider: Provider | None = None) -> list[SessionRef]:
+        query = select(RuntimeSessionRow).order_by(
+            RuntimeSessionRow.provider,
+            RuntimeSessionRow.created_at.desc(),
+        )
+        if provider is not None:
+            query = query.where(RuntimeSessionRow.provider == provider.value)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [
+            SessionRef(
+                session_id=row.id,
+                run_id=row.run_id,
+                provider=Provider(row.provider),
+                native_session_id=row.native_session_id,
+                workspace=row.workspace_path,
+            )
+            for row in rows
+        ]
 
     async def save_artifact(self, artifact: ArtifactRef) -> None:
         from accretion.persistence.models import ArtifactRow

@@ -70,6 +70,11 @@ async def test_planning_api_and_p2_loop_execution(tmp_path: Path) -> None:
         planning_response = await client.get(f"/api/v1/tasks/{task_id}/planning")
         assert planning_response.status_code == 200
         assert planning_response.json()["current_decision"]["selected_mode"] == "LOOP"
+        profile_response = await client.get(f"/api/v1/tasks/{task_id}/profile")
+        assert profile_response.status_code == 200
+        assert profile_response.json()["profile_id"] == planning_response.json()[
+            "current_profile"
+        ]["profile_id"]
 
         run_response = await client.post(f"/api/v1/tasks/{task_id}/runs", json={"provider": "FAKE"})
         assert run_response.status_code == 202
@@ -93,6 +98,18 @@ async def test_planning_api_and_p2_loop_execution(tmp_path: Path) -> None:
             "PASS",
             "INCONCLUSIVE",
         }
+        audit_response = await client.get(f"/api/v1/runs/{run_id}/audit")
+        assert audit_response.status_code == 200
+        audit = audit_response.json()
+        assert audit["run"]["run_id"] == run_id
+        assert audit["task"]["envelope"]["task_id"] == task_id
+        assert audit["profile"]["profile_id"] == audit["strategy"]["task_profile_ref"]
+        assert audit["strategy"]["selected_template_id"] == audit["template"]["template_id"]
+        assert audit["runtime"]["provider"] == audit["session"]["provider"] == "FAKE"
+        assert audit["trace"]["run_id"] == run_id
+        sessions = await client.get("/api/v1/runtimes/runtime_fake/sessions")
+        assert sessions.status_code == 200
+        assert [item["run_id"] for item in sessions.json()] == [run_id]
 
 
 async def test_denied_override_is_returned_and_current_decision_is_unchanged(
@@ -119,7 +136,7 @@ async def test_denied_override_is_returned_and_current_decision_is_unchanged(
         ).json()
         task_id = task["envelope"]["task_id"]
         response = await client.post(
-            f"/api/v1/tasks/{task_id}/strategy-overrides",
+            f"/api/v1/tasks/{task_id}/strategy/override",
             json={
                 "requested_mode": "DIRECT",
                 "requested_template_id": "direct-v1",

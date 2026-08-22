@@ -30,13 +30,9 @@ export type WorkflowTemplateSummary = components["schemas"]["WorkflowTemplateSum
 export type ExecutionTrace = components["schemas"]["ExecutionTrace"];
 export type ApprovalRecord = components["schemas"]["ApprovalRecord"];
 export type ApprovalDecisionValue = components["schemas"]["ApprovalDecisionValue"];
-
-export interface AgentEvent {
-  event_id: string;
-  sequence: number;
-  provider: Provider;
-  normalized_type: string;
-  native_type: string;
-  timestamp: string;
-  payload: Record<string, unknown>;
-}
+export type AgentEvent = components["schemas"]["AgentEvent"];
+export type Capability = components["schemas"]["Capability"];
+export type MetaSkill = components["schemas"]["MetaSkill"];
+export type MetaPlugin = components["schemas"]["MetaPlugin"];
+export type RunAudit = components["schemas"]["RunAudit"];
+export type SessionRef = components["schemas"]["SessionRef"];

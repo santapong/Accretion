@@ -1,5 +1,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  BrowserRouter,
+  Link,
+  NavLink,
+  Route,
+  Routes,
+  useParams,
+} from "react-router-dom";
 import { api } from "./api";
 import { RunExecution } from "./RunExecution";
 import type { AgentEvent, Project, Run, TaskCreate, TaskPlanning } from "./types";
@@ -211,27 +219,56 @@ function PlanningReview({ planning, onUpdate }: {
   );
 }
 
-function EventStream({ run }: { run: Run | undefined }) {
+export function EventStream({ run }: { run: Run | undefined }) {
+  const queryClient = useQueryClient();
   const [events, setEvents] = useState<AgentEvent[]>([]);
   const [connection, setConnection] = useState("idle");
+  const [reconnect, setReconnect] = useState(0);
   const runId = run?.run_id;
   const runState = run?.state;
+  const auditQuery = useQuery({
+    queryKey: ["run-audit", runId],
+    queryFn: () => api.audit(runId!),
+    enabled: Boolean(runId),
+    retry: false,
+  });
 
   useEffect(() => {
-    setEvents([]);
-    if (!runId) return;
+    if (auditQuery.data) setEvents(auditQuery.data.events ?? []);
+  }, [auditQuery.data]);
+
+  useEffect(() => {
+    if (!runId || !auditQuery.data) return;
+    let recovering = false;
+    let expected = auditQuery.data.run.last_sequence + 1;
     setConnection("connecting");
-    const source = new EventSource(api.eventUrl(runId));
+    const source = new EventSource(api.eventUrl(runId, auditQuery.data.run.last_sequence));
     source.addEventListener("open", () => setConnection("live"));
     source.addEventListener("agent_event", (message) => {
       const event = JSON.parse((message as MessageEvent).data) as AgentEvent;
+      if (event.sequence < expected) return;
+      if (event.sequence !== expected) {
+        recovering = true;
+        source.close();
+        setConnection("recovering snapshot");
+        void Promise.all([
+          queryClient.refetchQueries({ queryKey: ["run-audit", runId] }),
+          queryClient.refetchQueries({ queryKey: ["run-graph", runId] }),
+          queryClient.refetchQueries({ queryKey: ["run-trace", runId] }),
+          queryClient.refetchQueries({ queryKey: ["runs"] }),
+        ]).then(() => setReconnect((value) => value + 1));
+        return;
+      }
+      expected = event.sequence + 1;
       setEvents((current) => [...current.filter((item) => item.event_id !== event.event_id), event]);
     });
     source.addEventListener("error", () => {
-      setConnection(runState && terminal.has(runState) ? "complete" : "reconnecting");
+      if (!recovering) {
+        setConnection(runState && terminal.has(runState) ? "complete" : "reconnecting");
+      }
     });
     return () => source.close();
-  }, [runId, runState]);
+  }, [auditQuery.data, queryClient, reconnect, runId, runState]);
 
   if (!run) {
     return <div className="empty">Select a run to inspect its normalized trace.</div>;
@@ -247,7 +284,8 @@ function EventStream({ run }: { run: Run | undefined }) {
         <span className={`connection connection-${connection}`}><i />{connection}</span>
       </header>
       <div className="event-list" aria-live="polite">
-        {events.length === 0 ? <div className="empty">Waiting for events…</div> : null}
+        {auditQuery.isLoading ? <div className="empty">Loading authoritative snapshot…</div> : null}
+        {!auditQuery.isLoading && events.length === 0 ? <div className="empty">Waiting for events…</div> : null}
         {events.map((event) => (
           <article className="event" key={event.event_id}>
             <span className="sequence">{String(event.sequence).padStart(3, "0")}</span>
@@ -255,7 +293,7 @@ function EventStream({ run }: { run: Run | undefined }) {
               <strong>{event.normalized_type.replaceAll("_", " ")}</strong>
               <p>{event.provider} · {event.native_type}</p>
             </div>
-            <time>{new Date(event.timestamp).toLocaleTimeString()}</time>
+            <time>{event.timestamp ? new Date(event.timestamp).toLocaleTimeString() : "pending"}</time>
           </article>
         ))}
       </div>
@@ -263,76 +301,234 @@ function EventStream({ run }: { run: Run | undefined }) {
   );
 }
 
-export default function App() {
-  const queryClient = useQueryClient();
-  const runtimeQuery = useQuery({ queryKey: ["runtimes"], queryFn: api.runtimes, refetchInterval: 5000 });
-  const runQuery = useQuery({ queryKey: ["runs"], queryFn: api.runs, refetchInterval: 2500 });
-  const projectQuery = useQuery({ queryKey: ["projects"], queryFn: api.projects });
-  const [selectedId, setSelectedId] = useState<string>();
-  const [planning, setPlanning] = useState<TaskPlanning>();
-  const runs = runQuery.data ?? [];
-  const selected = runs.find((run) => run.run_id === selectedId) ?? runs[0];
-  const activeCount = runs.filter((run) => !terminal.has(run.state)).length;
+function RuntimeCards() {
+  const runtimeQuery = useQuery({
+    queryKey: ["runtimes"],
+    queryFn: api.runtimes,
+    refetchInterval: 5000,
+  });
+  return (
+    <section className="runtime-grid" aria-label="Runtime health">
+      {(runtimeQuery.data ?? []).map((runtime) => (
+        <article className="runtime-card" key={runtime.runtime_id}>
+          <div className="runtime-title"><span>{runtime.provider.slice(0, 1)}</span><h2>{runtime.provider}</h2></div>
+          <StatePill state={runtime.status} />
+          <dl>
+            <div><dt>Version</dt><dd>{runtime.runtime_version}</dd></div>
+            <div><dt>Pressure</dt><dd>{runtime.observed_usage_pressure}</dd></div>
+            <div><dt>Active</dt><dd>{runtime.active_runs}</dd></div>
+          </dl>
+        </article>
+      ))}
+      {runtimeQuery.isError ? <div className="error">Runtime health is unavailable.</div> : null}
+    </section>
+  );
+}
 
+function DashboardPage() {
+  const runQuery = useQuery({ queryKey: ["runs"], queryFn: api.runs, refetchInterval: 2500 });
+  const approvalQuery = useQuery({
+    queryKey: ["approvals", "pending"],
+    queryFn: () => api.approvals(undefined, "PENDING"),
+    refetchInterval: 2500,
+  });
+  const runs = runQuery.data ?? [];
+  const activeCount = runs.filter((run) => !terminal.has(run.state)).length;
+  const failureCount = runs.filter((run) => run.state === "FAILED").length;
+  return (
+    <>
+      <header className="hero">
+        <div><p className="eyebrow">Runtime observatory</p><h1>One control plane.<br /><em>Every execution visible.</em></h1></div>
+        <div className="dashboard-stats">
+          <div className="stat"><span>{activeCount}</span><p>active runs</p></div>
+          <div className="stat"><span>{failureCount}</span><p>failures</p></div>
+          <div className="stat"><span>{approvalQuery.data?.length ?? 0}</span><p>approvals</p></div>
+        </div>
+      </header>
+      <RuntimeCards />
+      <section className="runs-panel page-panel">
+        <header className="panel-header"><div><p className="eyebrow">Recent activity</p><h2>Runs</h2></div><Link to="/tasks/new" className="secondary-button">New task</Link></header>
+        <div className="run-list">
+          {runs.map((run) => (
+            <Link className="run" key={run.run_id} to={`/runs/${run.run_id}`}>
+              <span className="provider-dot">{run.provider.slice(0, 1)}</span>
+              <span><strong>{shortId(run.run_id)}</strong><small>{run.provider} · {run.last_sequence} events</small></span>
+              <StatePill state={run.state} />
+            </Link>
+          ))}
+          {!runs.length ? <div className="empty">No runs yet. Create and profile a task.</div> : null}
+        </div>
+      </section>
+    </>
+  );
+}
+
+function NewTaskPage() {
+  const queryClient = useQueryClient();
+  const projectQuery = useQuery({ queryKey: ["projects"], queryFn: api.projects });
+  const [planning, setPlanning] = useState<TaskPlanning>();
+  return (
+    <>
+      <section className="task-studio page-panel">
+        <header className="section-heading"><div><p className="eyebrow">Create and review</p><h2>New task</h2></div><span>deterministic-profiler-v1</span></header>
+        <ProjectCreator onCreated={(project) => { queryClient.setQueryData<Project[]>(["projects"], (current = []) => [...current, project]); }} />
+        <NewTaskForm projects={projectQuery.data ?? []} onPlanning={setPlanning} />
+      </section>
+      {planning ? <PlanningReview planning={planning} onUpdate={setPlanning} /> : null}
+    </>
+  );
+}
+
+function LiveRunPage() {
+  const { runId } = useParams();
+  const runQuery = useQuery({ queryKey: ["runs"], queryFn: api.runs, refetchInterval: 2500 });
+  const selected = (runQuery.data ?? []).find((run) => run.run_id === runId);
+  return (
+    <div className="inspector-stack page-stack">
+      <header className="section-heading"><div><p className="eyebrow">Live run</p><h2>{runId ? shortId(runId) : "Run not selected"}</h2></div>{selected ? <StatePill state={selected.state} /> : null}</header>
+      <RunExecution run={selected} />
+      <EventStream run={selected} />
+    </div>
+  );
+}
+
+function RuntimeSessions({ runtimeId }: { runtimeId: string }) {
+  const sessions = useQuery({
+    queryKey: ["runtime-sessions", runtimeId],
+    queryFn: () => api.runtimeSessions(runtimeId),
+    refetchInterval: 5000,
+  });
+  return (
+    <ul className="registry-list">
+      {(sessions.data ?? []).map((session) => (
+        <li key={session.session_id}><strong>{shortId(session.session_id)}</strong><span>{shortId(session.run_id)} · {session.native_session_id ? shortId(session.native_session_id) : "pending native session"}</span></li>
+      ))}
+      {!sessions.data?.length ? <li><span>No persisted sessions.</span></li> : null}
+    </ul>
+  );
+}
+
+function RuntimeMonitorPage() {
+  const runtimes = useQuery({ queryKey: ["runtimes"], queryFn: api.runtimes, refetchInterval: 5000 });
+  return (
+    <section className="page-panel">
+      <header className="section-heading"><div><p className="eyebrow">Provider health</p><h2>Runtime monitor</h2></div></header>
+      <div className="registry-grid">
+        {(runtimes.data ?? []).map((runtime) => (
+          <article className="registry-card" key={runtime.runtime_id}>
+            <header><h3>{runtime.provider}</h3><StatePill state={runtime.status} /></header>
+            <p>{runtime.runtime_version} · {runtime.auth_mode} · {runtime.observed_usage_pressure}</p>
+            <RuntimeSessions runtimeId={runtime.runtime_id} />
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function HistoryPage() {
+  const runs = useQuery({ queryKey: ["runs"], queryFn: api.runs });
+  const [selectedId, setSelectedId] = useState<string>();
+  const selected = selectedId ?? runs.data?.[0]?.run_id;
+  const audit = useQuery({
+    queryKey: ["run-audit", selected],
+    queryFn: () => api.audit(selected!),
+    enabled: Boolean(selected),
+  });
+  return (
+    <section className="page-panel">
+      <header className="section-heading"><div><p className="eyebrow">Immutable evidence</p><h2>Run history / trace replay</h2></div></header>
+      <div className="history-grid">
+        <div className="run-list">{(runs.data ?? []).map((run) => <button className={selected === run.run_id ? "run selected" : "run"} key={run.run_id} onClick={() => setSelectedId(run.run_id)}><span><strong>{shortId(run.run_id)}</strong><small>{run.provider} · {run.last_sequence} events</small></span><StatePill state={run.state} /></button>)}</div>
+        {audit.data ? (
+          <article className="audit-chain">
+            <h3>Complete provenance</h3>
+            <ol>
+              <li>Task <strong>{shortId(audit.data.task.envelope.task_id)}</strong></li>
+              <li>Profile <strong>{shortId(audit.data.profile.profile_id)}</strong></li>
+              <li>Strategy <strong>{audit.data.strategy.selected_mode}</strong></li>
+              <li>Template <strong>{audit.data.template.template_id}@{audit.data.template.version}</strong></li>
+              <li>Runtime <strong>{audit.data.runtime.provider} / {audit.data.runtime.runtime_version}</strong></li>
+              <li>Events <strong>{audit.data.events?.length ?? 0}</strong></li>
+              <li>Artifacts <strong>{audit.data.artifacts?.length ?? 0}</strong></li>
+              <li>Verifications <strong>{audit.data.verifications?.length ?? 0}</strong></li>
+            </ol>
+            <p>{audit.data.trace.traversals?.length ?? 0} traversals · {audit.data.trace.tool_calls?.length ?? 0} tool calls · {audit.data.trace.checkpoints?.length ?? 0} checkpoints</p>
+            <Link to={`/runs/${audit.data.run.run_id}`} className="primary-button">Open live run</Link>
+          </article>
+        ) : <div className="empty">Select a run to replay its linked audit trace.</div>}
+      </div>
+    </section>
+  );
+}
+
+function ApprovalsPage() {
+  const queryClient = useQueryClient();
+  const approvals = useQuery({ queryKey: ["approvals"], queryFn: () => api.approvals() });
+  async function decide(approvalId: string, decision: "APPROVE" | "DENY") {
+    await api.decideApproval(approvalId, decision);
+    await queryClient.invalidateQueries({ queryKey: ["approvals"] });
+  }
+  return (
+    <section className="page-panel">
+      <header className="section-heading"><div><p className="eyebrow">Human authority</p><h2>Verifiers / approvals</h2></div></header>
+      <div className="registry-list">{(approvals.data ?? []).map((approval) => <article className="approval-request" key={approval.approval_id}><div><strong>{approval.summary || approval.method}</strong><small>{shortId(approval.run_id)} · {approval.status}</small></div>{approval.status === "PENDING" ? <div className="approval-actions"><button className="primary-button" onClick={() => decide(approval.approval_id, "APPROVE")}>Approve</button><button className="secondary-button" onClick={() => decide(approval.approval_id, "DENY")}>Deny</button></div> : <StatePill state={approval.status} />}</article>)}</div>
+      {!approvals.data?.length ? <div className="empty">No approval records.</div> : null}
+    </section>
+  );
+}
+
+function CapabilitiesPage() {
+  const capabilities = useQuery({ queryKey: ["capabilities"], queryFn: api.capabilities });
+  const skills = useQuery({ queryKey: ["skills"], queryFn: api.skills });
+  const plugins = useQuery({ queryKey: ["plugins"], queryFn: api.plugins });
+  return (
+    <section className="page-panel">
+      <header className="section-heading"><div><p className="eyebrow">Read-only registry</p><h2>Capabilities, skills, and plugins</h2></div></header>
+      <div className="registry-grid">
+        <article className="registry-card"><h3>Capabilities</h3><ul className="registry-list">{(capabilities.data ?? []).map((item) => <li key={`${item.capability_id}:${item.version}`}><strong>{item.capability_id}@{item.version}</strong><span>{item.kind} · {item.risk} · {item.backend}</span></li>)}</ul></article>
+        <article className="registry-card"><h3>Skills</h3><ul className="registry-list">{(skills.data ?? []).map((item) => <li key={`${item.skill_id}:${item.version}`}><strong>{item.skill_id}@{item.version}</strong><span>{(item.required_capabilities ?? []).join(", ")}</span></li>)}</ul></article>
+        <article className="registry-card"><h3>Plugins</h3><ul className="registry-list">{(plugins.data ?? []).map((item) => <li key={`${item.plugin_id}:${item.version}`}><strong>{item.plugin_id}@{item.version}</strong><span>{(item.skill_refs ?? []).join(", ")}</span></li>)}</ul></article>
+      </div>
+    </section>
+  );
+}
+
+function BenchmarkPage() {
+  return <section className="page-panel"><header className="section-heading"><div><p className="eyebrow">Architecture evaluation</p><h2>ACR-ARCH</h2></div></header><div className="empty">The versioned benchmark runner is being connected in the next release-gate change.</div></section>;
+}
+
+const navigation = [
+  ["/", "Dashboard"], ["/tasks/new", "New task"], ["/runtimes", "Runtimes"],
+  ["/history", "History"], ["/approvals", "Approvals"], ["/capabilities", "Capabilities"],
+  ["/benchmarks/acr-arch", "ACR-ARCH"],
+] as const;
+
+function OperatorShell() {
   return (
     <main>
       <nav>
-        <div className="brand-mark">A</div>
-        <div><strong>Accretion</strong><span>Operator / P3</span></div>
+        <Link className="brand-link" to="/"><span className="brand-mark">A</span><span><strong>Accretion</strong><small>Operator / P4</small></span></Link>
+        <div className="nav-links">{navigation.map(([path, label]) => <NavLink end={path === "/"} key={path} to={path}>{label}</NavLink>)}</div>
         <div className="nav-status"><i />Control plane</div>
       </nav>
-
       <div className="shell">
-        <section className="task-studio">
-          <header className="section-heading"><div><p className="eyebrow">Create and review</p><h2>New task</h2></div><span>deterministic-profiler-v1</span></header>
-          <ProjectCreator onCreated={(project) => { queryClient.setQueryData<Project[]>(["projects"], (current = []) => [...current, project]); }} />
-          <NewTaskForm projects={projectQuery.data ?? []} onPlanning={setPlanning} />
-        </section>
-        {planning ? <PlanningReview planning={planning} onUpdate={setPlanning} /> : null}
-
-        <header className="hero">
-          <div>
-            <p className="eyebrow">Runtime observatory</p>
-            <h1>One control plane.<br /><em>Every execution visible.</em></h1>
-          </div>
-          <div className="stat"><span>{activeCount}</span><p>active runs</p></div>
-        </header>
-
-        <section className="runtime-grid" aria-label="Runtime health">
-          {(runtimeQuery.data ?? []).map((runtime) => (
-            <article className="runtime-card" key={runtime.runtime_id}>
-              <div className="runtime-title"><span>{runtime.provider.slice(0, 1)}</span><h2>{runtime.provider}</h2></div>
-              <StatePill state={runtime.status} />
-              <dl>
-                <div><dt>Version</dt><dd>{runtime.runtime_version}</dd></div>
-                <div><dt>Pressure</dt><dd>{runtime.observed_usage_pressure}</dd></div>
-                <div><dt>Active</dt><dd>{runtime.active_runs}</dd></div>
-              </dl>
-            </article>
-          ))}
-          {runtimeQuery.isError ? <div className="error">Runtime health is unavailable.</div> : null}
-        </section>
-
-        <div className="workspace-grid">
-          <section className="runs-panel">
-            <header className="panel-header"><div><p className="eyebrow">Recent activity</p><h2>Runs</h2></div><span>{runs.length}</span></header>
-            <div className="run-list">
-              {runs.map((run) => (
-                <button className={selected?.run_id === run.run_id ? "run selected" : "run"} key={run.run_id} onClick={() => setSelectedId(run.run_id)}>
-                  <span className="provider-dot">{run.provider.slice(0, 1)}</span>
-                  <span><strong>{shortId(run.run_id)}</strong><small>{run.provider} · {run.last_sequence} events</small></span>
-                  <StatePill state={run.state} />
-                </button>
-              ))}
-              {runs.length === 0 ? <div className="empty">No runs yet. Create and profile a task above.</div> : null}
-            </div>
-          </section>
-          <div className="inspector-stack">
-            <RunExecution run={selected} />
-            <EventStream run={selected} />
-          </div>
-        </div>
+        <Routes>
+          <Route path="/" element={<DashboardPage />} />
+          <Route path="/tasks/new" element={<NewTaskPage />} />
+          <Route path="/runs/:runId" element={<LiveRunPage />} />
+          <Route path="/runtimes" element={<RuntimeMonitorPage />} />
+          <Route path="/history" element={<HistoryPage />} />
+          <Route path="/approvals" element={<ApprovalsPage />} />
+          <Route path="/capabilities" element={<CapabilitiesPage />} />
+          <Route path="/benchmarks/acr-arch" element={<BenchmarkPage />} />
+          <Route path="*" element={<section className="page-panel"><h2>Page not found</h2><Link to="/">Return to dashboard</Link></section>} />
+        </Routes>
       </div>
     </main>
   );
+}
+
+export default function App() {
+  return <BrowserRouter><OperatorShell /></BrowserRouter>;
 }
