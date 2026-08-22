@@ -4,6 +4,12 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added a developer documentation hub, accessible architecture and lifecycle
+  diagrams, and a deterministic public-API showcase using the fake runtime.
+- Added an actionable v0.2 P5–P7 delivery plan tied to the normative v0.2 SDD.
+
 ### Changed
 
 - Updated the Python, frontend, and GitHub Actions toolchains to their current

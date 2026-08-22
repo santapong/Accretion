@@ -1,5 +1,7 @@
 # Branch policy
 
+<img src="assets/delivery-workflow.svg" alt="Protected delivery workflow from a short-lived branch into develop, through required CI and squash merge, then through a release pull request to main and a semantic version tag" width="100%" />
+
 ## Long-lived branches
 
 ### `main`
@@ -28,6 +30,10 @@ Create branches from `develop` with a concise kebab-case suffix:
 
 Create `hotfix/` branches from `main`. After a hotfix reaches `main`, merge the
 same change back into `develop` through a pull request.
+
+Historical experiment branches, including `codex/v0.1-local-control-plane`, are
+not release baselines and must not receive new work. Use the immutable release
+tag for v0.1 evaluation and the latest `develop` for current development.
 
 ## Merge and release rules
 
