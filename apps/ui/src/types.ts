@@ -36,3 +36,7 @@ export type MetaSkill = components["schemas"]["MetaSkill"];
 export type MetaPlugin = components["schemas"]["MetaPlugin"];
 export type RunAudit = components["schemas"]["RunAudit"];
 export type SessionRef = components["schemas"]["SessionRef"];
+export type AcrArchSummary = components["schemas"]["AcrArchSummary"];
+export type ArchitectureMetric = components["schemas"]["ArchitectureMetric"];
+export type BenchmarkRun = components["schemas"]["BenchmarkRun"];
+export type BenchmarkTaskDetail = components["schemas"]["BenchmarkTaskDetail"];

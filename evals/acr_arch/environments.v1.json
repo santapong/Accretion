@@ -1,0 +1,45 @@
+{
+  "environment_bundle_version": "1.0.0",
+  "environments": [
+    {
+      "container_image": "python:3.12.11-slim@sha256:fixture-v1",
+      "environment_id": "acr-env-direct-simple",
+      "fixture_revision": "acr-arch-fixtures-v1",
+      "network": "disabled",
+      "version": "1.0.0",
+      "writable_scope": "isolated-worktree"
+    },
+    {
+      "container_image": "python:3.12.11-slim@sha256:fixture-v1",
+      "environment_id": "acr-env-feedback-refinement",
+      "fixture_revision": "acr-arch-fixtures-v1",
+      "network": "disabled",
+      "version": "1.0.0",
+      "writable_scope": "isolated-worktree"
+    },
+    {
+      "container_image": "python:3.12.11-slim@sha256:fixture-v1",
+      "environment_id": "acr-env-predictable-graph",
+      "fixture_revision": "acr-arch-fixtures-v1",
+      "network": "disabled",
+      "version": "1.0.0",
+      "writable_scope": "isolated-worktree"
+    },
+    {
+      "container_image": "python:3.12.11-slim@sha256:fixture-v1",
+      "environment_id": "acr-env-hybrid-engineering",
+      "fixture_revision": "acr-arch-fixtures-v1",
+      "network": "disabled",
+      "version": "1.0.0",
+      "writable_scope": "isolated-worktree"
+    },
+    {
+      "container_image": "python:3.12.11-slim@sha256:fixture-v1",
+      "environment_id": "acr-env-safety-recovery",
+      "fixture_revision": "acr-arch-fixtures-v1",
+      "network": "disabled",
+      "version": "1.0.0",
+      "writable_scope": "isolated-worktree"
+    }
+  ]
+}

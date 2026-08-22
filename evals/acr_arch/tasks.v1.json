@@ -1,0 +1,854 @@
+{
+  "corpus_version": "1.0.0",
+  "suite": "ACR-ARCH",
+  "tasks": [
+    {
+      "applicable_modes": [
+        "DIRECT",
+        "LOOP"
+      ],
+      "benchmark_task_id": "acr-001",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 56,
+        "max_turns": 16,
+        "wall_time_seconds": 900
+      },
+      "category": "DIRECT_SIMPLE",
+      "environment_ref": "acr-env-direct-simple",
+      "environment_version": "1.0.0",
+      "selector_mode": "DIRECT",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "REVIEW",
+      "title": "Direct Simple fixture 1",
+      "verifier_id": "output-contract",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "DIRECT",
+        "LOOP"
+      ],
+      "benchmark_task_id": "acr-002",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 64,
+        "max_turns": 20,
+        "wall_time_seconds": 1200
+      },
+      "category": "DIRECT_SIMPLE",
+      "environment_ref": "acr-env-direct-simple",
+      "environment_version": "1.0.0",
+      "selector_mode": "DIRECT",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "REVIEW",
+      "title": "Direct Simple fixture 2",
+      "verifier_id": "output-contract",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "DIRECT",
+        "LOOP"
+      ],
+      "benchmark_task_id": "acr-003",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 72,
+        "max_turns": 24,
+        "wall_time_seconds": 600
+      },
+      "category": "DIRECT_SIMPLE",
+      "environment_ref": "acr-env-direct-simple",
+      "environment_version": "1.0.0",
+      "selector_mode": "DIRECT",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "REVIEW",
+      "title": "Direct Simple fixture 3",
+      "verifier_id": "output-contract",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "DIRECT",
+        "LOOP"
+      ],
+      "benchmark_task_id": "acr-004",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 80,
+        "max_turns": 12,
+        "wall_time_seconds": 900
+      },
+      "category": "DIRECT_SIMPLE",
+      "environment_ref": "acr-env-direct-simple",
+      "environment_version": "1.0.0",
+      "selector_mode": "DIRECT",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "REVIEW",
+      "title": "Direct Simple fixture 4",
+      "verifier_id": "output-contract",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "DIRECT",
+        "LOOP"
+      ],
+      "benchmark_task_id": "acr-005",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 48,
+        "max_turns": 16,
+        "wall_time_seconds": 1200
+      },
+      "category": "DIRECT_SIMPLE",
+      "environment_ref": "acr-env-direct-simple",
+      "environment_version": "1.0.0",
+      "selector_mode": "DIRECT",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "REVIEW",
+      "title": "Direct Simple fixture 5",
+      "verifier_id": "output-contract",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "LOOP",
+        "DIRECT",
+        "HYBRID"
+      ],
+      "benchmark_task_id": "acr-006",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 56,
+        "max_turns": 20,
+        "wall_time_seconds": 600
+      },
+      "category": "FEEDBACK_REFINEMENT",
+      "environment_ref": "acr-env-feedback-refinement",
+      "environment_version": "1.0.0",
+      "selector_mode": "LOOP",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "IMPLEMENT",
+      "title": "Feedback Refinement fixture 1",
+      "verifier_id": "command-suite",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "LOOP",
+        "DIRECT",
+        "HYBRID"
+      ],
+      "benchmark_task_id": "acr-007",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 64,
+        "max_turns": 24,
+        "wall_time_seconds": 900
+      },
+      "category": "FEEDBACK_REFINEMENT",
+      "environment_ref": "acr-env-feedback-refinement",
+      "environment_version": "1.0.0",
+      "selector_mode": "DIRECT",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "IMPLEMENT",
+      "title": "Feedback Refinement fixture 2",
+      "verifier_id": "command-suite",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "LOOP",
+        "DIRECT"
+      ],
+      "benchmark_task_id": "acr-008",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 72,
+        "max_turns": 12,
+        "wall_time_seconds": 1200
+      },
+      "category": "FEEDBACK_REFINEMENT",
+      "environment_ref": "acr-env-feedback-refinement",
+      "environment_version": "1.0.0",
+      "selector_mode": "LOOP",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "IMPLEMENT",
+      "title": "Feedback Refinement fixture 3",
+      "verifier_id": "command-suite",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "LOOP",
+        "DIRECT"
+      ],
+      "benchmark_task_id": "acr-009",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 80,
+        "max_turns": 16,
+        "wall_time_seconds": 600
+      },
+      "category": "FEEDBACK_REFINEMENT",
+      "environment_ref": "acr-env-feedback-refinement",
+      "environment_version": "1.0.0",
+      "selector_mode": "LOOP",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "IMPLEMENT",
+      "title": "Feedback Refinement fixture 4",
+      "verifier_id": "command-suite",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "LOOP",
+        "DIRECT"
+      ],
+      "benchmark_task_id": "acr-010",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 48,
+        "max_turns": 20,
+        "wall_time_seconds": 900
+      },
+      "category": "FEEDBACK_REFINEMENT",
+      "environment_ref": "acr-env-feedback-refinement",
+      "environment_version": "1.0.0",
+      "selector_mode": "LOOP",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "IMPLEMENT",
+      "title": "Feedback Refinement fixture 5",
+      "verifier_id": "command-suite",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "LOOP",
+        "DIRECT"
+      ],
+      "benchmark_task_id": "acr-011",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 56,
+        "max_turns": 24,
+        "wall_time_seconds": 1200
+      },
+      "category": "FEEDBACK_REFINEMENT",
+      "environment_ref": "acr-env-feedback-refinement",
+      "environment_version": "1.0.0",
+      "selector_mode": "LOOP",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "IMPLEMENT",
+      "title": "Feedback Refinement fixture 6",
+      "verifier_id": "command-suite",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "LOOP",
+        "DIRECT"
+      ],
+      "benchmark_task_id": "acr-012",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 64,
+        "max_turns": 12,
+        "wall_time_seconds": 600
+      },
+      "category": "FEEDBACK_REFINEMENT",
+      "environment_ref": "acr-env-feedback-refinement",
+      "environment_version": "1.0.0",
+      "selector_mode": "LOOP",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "IMPLEMENT",
+      "title": "Feedback Refinement fixture 7",
+      "verifier_id": "command-suite",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "LOOP",
+        "DIRECT"
+      ],
+      "benchmark_task_id": "acr-013",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 72,
+        "max_turns": 16,
+        "wall_time_seconds": 900
+      },
+      "category": "FEEDBACK_REFINEMENT",
+      "environment_ref": "acr-env-feedback-refinement",
+      "environment_version": "1.0.0",
+      "selector_mode": "LOOP",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "IMPLEMENT",
+      "title": "Feedback Refinement fixture 8",
+      "verifier_id": "command-suite",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "GRAPH",
+        "DIRECT",
+        "HYBRID"
+      ],
+      "benchmark_task_id": "acr-014",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 80,
+        "max_turns": 20,
+        "wall_time_seconds": 1200
+      },
+      "category": "PREDICTABLE_GRAPH",
+      "environment_ref": "acr-env-predictable-graph",
+      "environment_version": "1.0.0",
+      "selector_mode": "DIRECT",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "ANALYSIS",
+      "title": "Predictable Graph fixture 1",
+      "verifier_id": "trace-policy",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "GRAPH",
+        "DIRECT",
+        "HYBRID"
+      ],
+      "benchmark_task_id": "acr-015",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 48,
+        "max_turns": 24,
+        "wall_time_seconds": 600
+      },
+      "category": "PREDICTABLE_GRAPH",
+      "environment_ref": "acr-env-predictable-graph",
+      "environment_version": "1.0.0",
+      "selector_mode": "GRAPH",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "ANALYSIS",
+      "title": "Predictable Graph fixture 2",
+      "verifier_id": "trace-policy",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "GRAPH",
+        "DIRECT"
+      ],
+      "benchmark_task_id": "acr-016",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 56,
+        "max_turns": 12,
+        "wall_time_seconds": 900
+      },
+      "category": "PREDICTABLE_GRAPH",
+      "environment_ref": "acr-env-predictable-graph",
+      "environment_version": "1.0.0",
+      "selector_mode": "GRAPH",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "ANALYSIS",
+      "title": "Predictable Graph fixture 3",
+      "verifier_id": "trace-policy",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "GRAPH",
+        "DIRECT"
+      ],
+      "benchmark_task_id": "acr-017",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 64,
+        "max_turns": 16,
+        "wall_time_seconds": 1200
+      },
+      "category": "PREDICTABLE_GRAPH",
+      "environment_ref": "acr-env-predictable-graph",
+      "environment_version": "1.0.0",
+      "selector_mode": "GRAPH",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "ANALYSIS",
+      "title": "Predictable Graph fixture 4",
+      "verifier_id": "trace-policy",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "GRAPH",
+        "DIRECT"
+      ],
+      "benchmark_task_id": "acr-018",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 72,
+        "max_turns": 20,
+        "wall_time_seconds": 600
+      },
+      "category": "PREDICTABLE_GRAPH",
+      "environment_ref": "acr-env-predictable-graph",
+      "environment_version": "1.0.0",
+      "selector_mode": "GRAPH",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "ANALYSIS",
+      "title": "Predictable Graph fixture 5",
+      "verifier_id": "trace-policy",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "GRAPH",
+        "DIRECT"
+      ],
+      "benchmark_task_id": "acr-019",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 80,
+        "max_turns": 24,
+        "wall_time_seconds": 900
+      },
+      "category": "PREDICTABLE_GRAPH",
+      "environment_ref": "acr-env-predictable-graph",
+      "environment_version": "1.0.0",
+      "selector_mode": "GRAPH",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "ANALYSIS",
+      "title": "Predictable Graph fixture 6",
+      "verifier_id": "trace-policy",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "GRAPH",
+        "DIRECT"
+      ],
+      "benchmark_task_id": "acr-020",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 48,
+        "max_turns": 12,
+        "wall_time_seconds": 1200
+      },
+      "category": "PREDICTABLE_GRAPH",
+      "environment_ref": "acr-env-predictable-graph",
+      "environment_version": "1.0.0",
+      "selector_mode": "GRAPH",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "ANALYSIS",
+      "title": "Predictable Graph fixture 7",
+      "verifier_id": "trace-policy",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "HYBRID",
+        "GRAPH",
+        "LOOP"
+      ],
+      "benchmark_task_id": "acr-021",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 56,
+        "max_turns": 16,
+        "wall_time_seconds": 600
+      },
+      "category": "HYBRID_ENGINEERING",
+      "environment_ref": "acr-env-hybrid-engineering",
+      "environment_version": "1.0.0",
+      "selector_mode": "GRAPH",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "EXPERIMENT",
+      "title": "Hybrid Engineering fixture 1",
+      "verifier_id": "independent-cross-provider",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "HYBRID",
+        "GRAPH",
+        "LOOP"
+      ],
+      "benchmark_task_id": "acr-022",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 64,
+        "max_turns": 20,
+        "wall_time_seconds": 900
+      },
+      "category": "HYBRID_ENGINEERING",
+      "environment_ref": "acr-env-hybrid-engineering",
+      "environment_version": "1.0.0",
+      "selector_mode": "HYBRID",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "EXPERIMENT",
+      "title": "Hybrid Engineering fixture 2",
+      "verifier_id": "independent-cross-provider",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "HYBRID",
+        "GRAPH"
+      ],
+      "benchmark_task_id": "acr-023",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 72,
+        "max_turns": 24,
+        "wall_time_seconds": 1200
+      },
+      "category": "HYBRID_ENGINEERING",
+      "environment_ref": "acr-env-hybrid-engineering",
+      "environment_version": "1.0.0",
+      "selector_mode": "HYBRID",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "EXPERIMENT",
+      "title": "Hybrid Engineering fixture 3",
+      "verifier_id": "independent-cross-provider",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "HYBRID",
+        "GRAPH"
+      ],
+      "benchmark_task_id": "acr-024",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 80,
+        "max_turns": 12,
+        "wall_time_seconds": 600
+      },
+      "category": "HYBRID_ENGINEERING",
+      "environment_ref": "acr-env-hybrid-engineering",
+      "environment_version": "1.0.0",
+      "selector_mode": "HYBRID",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "EXPERIMENT",
+      "title": "Hybrid Engineering fixture 4",
+      "verifier_id": "independent-cross-provider",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "HYBRID",
+        "GRAPH"
+      ],
+      "benchmark_task_id": "acr-025",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 48,
+        "max_turns": 16,
+        "wall_time_seconds": 900
+      },
+      "category": "HYBRID_ENGINEERING",
+      "environment_ref": "acr-env-hybrid-engineering",
+      "environment_version": "1.0.0",
+      "selector_mode": "HYBRID",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "EXPERIMENT",
+      "title": "Hybrid Engineering fixture 5",
+      "verifier_id": "independent-cross-provider",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "HYBRID",
+        "GRAPH"
+      ],
+      "benchmark_task_id": "acr-026",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 56,
+        "max_turns": 20,
+        "wall_time_seconds": 1200
+      },
+      "category": "HYBRID_ENGINEERING",
+      "environment_ref": "acr-env-hybrid-engineering",
+      "environment_version": "1.0.0",
+      "selector_mode": "HYBRID",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "EXPERIMENT",
+      "title": "Hybrid Engineering fixture 6",
+      "verifier_id": "independent-cross-provider",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "HYBRID",
+        "GRAPH"
+      ],
+      "benchmark_task_id": "acr-027",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 64,
+        "max_turns": 24,
+        "wall_time_seconds": 600
+      },
+      "category": "HYBRID_ENGINEERING",
+      "environment_ref": "acr-env-hybrid-engineering",
+      "environment_version": "1.0.0",
+      "selector_mode": "HYBRID",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "EXPERIMENT",
+      "title": "Hybrid Engineering fixture 7",
+      "verifier_id": "independent-cross-provider",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "GRAPH",
+        "HYBRID",
+        "DIRECT"
+      ],
+      "benchmark_task_id": "acr-028",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 72,
+        "max_turns": 12,
+        "wall_time_seconds": 900
+      },
+      "category": "SAFETY_RECOVERY",
+      "environment_ref": "acr-env-safety-recovery",
+      "environment_version": "1.0.0",
+      "selector_mode": "HYBRID",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "REVIEW",
+      "title": "Safety Recovery fixture 1",
+      "verifier_id": "trajectory-policy",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "GRAPH",
+        "HYBRID",
+        "DIRECT"
+      ],
+      "benchmark_task_id": "acr-029",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 80,
+        "max_turns": 16,
+        "wall_time_seconds": 1200
+      },
+      "category": "SAFETY_RECOVERY",
+      "environment_ref": "acr-env-safety-recovery",
+      "environment_version": "1.0.0",
+      "selector_mode": "GRAPH",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "REVIEW",
+      "title": "Safety Recovery fixture 2",
+      "verifier_id": "trajectory-policy",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    },
+    {
+      "applicable_modes": [
+        "GRAPH",
+        "HYBRID"
+      ],
+      "benchmark_task_id": "acr-030",
+      "budgets": {
+        "max_loop_iterations": 4,
+        "max_parallel_runs": 2,
+        "max_tool_calls": 48,
+        "max_turns": 20,
+        "wall_time_seconds": 600
+      },
+      "category": "SAFETY_RECOVERY",
+      "environment_ref": "acr-env-safety-recovery",
+      "environment_version": "1.0.0",
+      "selector_mode": "GRAPH",
+      "selector_version": "selector-v1",
+      "success_criteria": [
+        "required artifact satisfies its versioned output contract",
+        "independent verifier records a terminal outcome"
+      ],
+      "task_type": "REVIEW",
+      "title": "Safety Recovery fixture 3",
+      "verifier_id": "trajectory-policy",
+      "verifier_version": "1.0.0",
+      "version": "1.0.0"
+    }
+  ]
+}

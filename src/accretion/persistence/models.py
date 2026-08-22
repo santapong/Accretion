@@ -406,6 +406,178 @@ class CapabilityRequestRow(Base):
     )
 
 
+class ProjectVersionRow(Base):
+    __tablename__ = "project_versions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    version: Mapped[str] = mapped_column(String(64))
+    revision: Mapped[str] = mapped_column(String(128))
+    manifest: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("project_id", "version", name="uq_project_versions_project_version"),
+    )
+
+
+class EvidenceRow(Base):
+    __tablename__ = "evidence"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    project_id: Mapped[str | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=True
+    )
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ClaimRow(Base):
+    __tablename__ = "claims"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    project_id: Mapped[str | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=True
+    )
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class TheoryRow(Base):
+    __tablename__ = "theories"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    project_id: Mapped[str | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=True
+    )
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class HypothesisRow(Base):
+    __tablename__ = "hypotheses"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    project_id: Mapped[str | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=True
+    )
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ExperimentRow(Base):
+    __tablename__ = "experiments"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    project_id: Mapped[str | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=True
+    )
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ExperimentRunRow(Base):
+    __tablename__ = "experiment_runs"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    experiment_id: Mapped[str] = mapped_column(
+        ForeignKey("experiments.id", ondelete="CASCADE")
+    )
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ResultRow(Base):
+    __tablename__ = "results"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    experiment_run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("experiment_runs.id", ondelete="CASCADE"), nullable=True
+    )
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class DecisionRow(Base):
+    __tablename__ = "decisions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    project_id: Mapped[str | None] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), nullable=True
+    )
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class BenchmarkTaskRow(Base):
+    __tablename__ = "benchmark_tasks"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    benchmark_task_id: Mapped[str] = mapped_column(String(96))
+    version: Mapped[str] = mapped_column(String(32))
+    category: Mapped[str] = mapped_column(String(32))
+    task_type: Mapped[str] = mapped_column(String(32))
+    environment_ref: Mapped[str] = mapped_column(String(255))
+    environment_version: Mapped[str] = mapped_column(String(32))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "benchmark_task_id", "version", name="uq_benchmark_tasks_id_version"
+        ),
+        Index("ix_benchmark_tasks_category", "category", "task_type"),
+    )
+
+
+class BenchmarkRunRow(Base):
+    __tablename__ = "benchmark_runs"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    suite_version: Mapped[str] = mapped_column(String(32))
+    configuration_version: Mapped[str] = mapped_column(String(32))
+    execution_source: Mapped[str] = mapped_column(String(16))
+    status: Mapped[str] = mapped_column(String(16))
+    corpus_sha256: Mapped[str] = mapped_column(String(64))
+    trace_sha256: Mapped[str] = mapped_column(String(64))
+    scenario_count: Mapped[int] = mapped_column(Integer)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        Index("ix_benchmark_runs_suite_started", "suite_version", "started_at"),
+    )
+
+
+class ArchitectureMetricRow(Base):
+    __tablename__ = "architecture_metrics"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    benchmark_run_id: Mapped[str] = mapped_column(
+        ForeignKey("benchmark_runs.id", ondelete="CASCADE")
+    )
+    benchmark_task_id: Mapped[str] = mapped_column(String(96))
+    task_version: Mapped[str] = mapped_column(String(32))
+    mode: Mapped[str] = mapped_column(String(16))
+    provider: Mapped[str] = mapped_column(String(16))
+    verifier_id: Mapped[str] = mapped_column(String(96))
+    selector_version: Mapped[str] = mapped_column(String(64))
+    metric: Mapped[dict[str, Any]] = mapped_column(JSON)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "benchmark_run_id",
+            "benchmark_task_id",
+            "task_version",
+            "mode",
+            name="uq_architecture_metrics_run_task_mode",
+        ),
+        Index("ix_architecture_metrics_filters", "mode", "provider", "verifier_id"),
+    )
+
+
 class WorkflowTemplateRow(Base):
     __tablename__ = "workflow_templates"
 

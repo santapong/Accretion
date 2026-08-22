@@ -87,6 +87,25 @@ class ExecutionMode(StrEnum):
     HYBRID = "HYBRID"
 
 
+class BenchmarkCategory(StrEnum):
+    DIRECT_SIMPLE = "DIRECT_SIMPLE"
+    FEEDBACK_REFINEMENT = "FEEDBACK_REFINEMENT"
+    PREDICTABLE_GRAPH = "PREDICTABLE_GRAPH"
+    HYBRID_ENGINEERING = "HYBRID_ENGINEERING"
+    SAFETY_RECOVERY = "SAFETY_RECOVERY"
+
+
+class BenchmarkExecutionSource(StrEnum):
+    REPLAY = "REPLAY"
+    LIVE = "LIVE"
+
+
+class BenchmarkRunStatus(StrEnum):
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+
+
 class ExpectedHorizon(StrEnum):
     SHORT = "SHORT"
     MEDIUM = "MEDIUM"
@@ -520,6 +539,85 @@ class TaskBudgets(StrictModel):
     max_tool_calls: int = Field(default=100, gt=0)
     max_loop_iterations: int = Field(default=1, gt=0)
     max_parallel_runs: int = Field(default=1, gt=0)
+
+
+class BenchmarkTask(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    benchmark_task_id: str
+    version: str
+    title: str
+    category: BenchmarkCategory
+    task_type: TaskType
+    environment_ref: str
+    environment_version: str
+    verifier_id: str
+    verifier_version: str
+    success_criteria: list[str] = Field(min_length=1)
+    budgets: TaskBudgets
+    applicable_modes: list[ExecutionMode] = Field(min_length=2)
+    selector_mode: ExecutionMode
+    selector_version: str
+
+
+class ArchitectureMetric(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    metric_id: str
+    benchmark_run_id: str
+    benchmark_task_id: str
+    task_version: str
+    category: BenchmarkCategory
+    task_type: TaskType
+    mode: ExecutionMode
+    provider: Provider
+    execution_source: BenchmarkExecutionSource
+    verifier_id: str
+    selector_version: str
+    success: bool
+    quality: float = Field(ge=0, le=1)
+    cost: float = Field(ge=0, le=1)
+    latency: float = Field(ge=0, le=1)
+    risk: float = Field(ge=0, le=1)
+    human_burden: float = Field(ge=0, le=1)
+    utility: float
+    architecture_regret: float = Field(ge=0)
+    duration_ms: int = Field(ge=0)
+    turns: int = Field(ge=0)
+    tool_calls: int = Field(ge=0)
+    approvals: int = Field(ge=0)
+    trace_ref: str
+    environment_ref: str
+    environment_version: str
+
+
+class BenchmarkRun(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    benchmark_run_id: str
+    suite_version: str
+    configuration_version: str
+    execution_source: BenchmarkExecutionSource
+    status: BenchmarkRunStatus
+    corpus_sha256: str
+    trace_sha256: str
+    scenario_count: int = Field(ge=0)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None
+
+
+class AcrArchSummary(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    suite: Literal["ACR-ARCH"] = "ACR-ARCH"
+    suite_version: str
+    configuration_version: str
+    task_count: int = Field(ge=0)
+    scenario_count: int = Field(ge=0)
+    latest_run: BenchmarkRun | None = None
+    metrics: list[ArchitectureMetric] = Field(default_factory=list)
+    filters: dict[str, list[str]] = Field(default_factory=dict)
+
+
+class BenchmarkTaskDetail(StrictModel):
+    task: BenchmarkTask
+    metrics: list[ArchitectureMetric] = Field(default_factory=list)
 
 
 class TaskEnvelope(StrictModel):

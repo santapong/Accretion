@@ -1,6 +1,9 @@
 import type {
+  AcrArchSummary,
   ApprovalDecisionValue,
   ApprovalRecord,
+  BenchmarkRun,
+  BenchmarkTaskDetail,
   Capability,
   ExecutionTrace,
   Project,
@@ -22,6 +25,14 @@ import type {
   VerificationResult,
   WorkflowTemplateSummary,
 } from "./types";
+
+export interface AcrArchFilters {
+  mode?: string;
+  provider?: string;
+  task_type?: string;
+  verifier?: string;
+  selector_version?: string;
+}
 
 const API_ROOT = import.meta.env.VITE_API_URL ?? "";
 
@@ -76,6 +87,18 @@ export const api = {
   capabilities: () => getJson<Capability[]>("/api/v1/capabilities"),
   skills: () => getJson<MetaSkill[]>("/api/v1/skills"),
   plugins: () => getJson<MetaPlugin[]>("/api/v1/plugins"),
+  acrArch: (filters: AcrArchFilters = {}) => {
+    const query = new URLSearchParams(
+      Object.entries(filters).filter((entry): entry is [string, string] => Boolean(entry[1])),
+    );
+    return getJson<AcrArchSummary>(`/api/v1/benchmarks/acr-arch?${query}`);
+  },
+  runAcrArch: () => postJson<BenchmarkRun>(
+    "/api/v1/benchmarks/acr-arch/run",
+    { execution_source: "REPLAY" },
+  ),
+  acrArchTask: (taskId: string) =>
+    getJson<BenchmarkTaskDetail>(`/api/v1/benchmarks/acr-arch/tasks/${taskId}`),
   eventUrl: (runId: string, after = 0) =>
     `${API_ROOT}/api/v1/runs/${runId}/events?after=${after}`,
 };

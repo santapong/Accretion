@@ -38,6 +38,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/benchmarks/acr-arch": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Acr Arch */
+        get: operations["get_acr_arch_api_v1_benchmarks_acr_arch_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/benchmarks/acr-arch/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Acr Arch */
+        post: operations["run_acr_arch_api_v1_benchmarks_acr_arch_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/benchmarks/acr-arch/tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Acr Arch Task */
+        get: operations["get_acr_arch_task_api_v1_benchmarks_acr_arch_tasks__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/capabilities": {
         parameters: {
             query?: never;
@@ -602,6 +653,36 @@ export interface components {
              */
             version: "acceptance-policy-v1";
         };
+        /** AcrArchSummary */
+        AcrArchSummary: {
+            /** Configuration Version */
+            configuration_version: string;
+            /** Filters */
+            filters?: {
+                [key: string]: string[];
+            };
+            latest_run?: components["schemas"]["BenchmarkRun"] | null;
+            /** Metrics */
+            metrics?: components["schemas"]["ArchitectureMetric"][];
+            /** Scenario Count */
+            scenario_count: number;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /**
+             * Suite
+             * @default ACR-ARCH
+             * @constant
+             */
+            suite: "ACR-ARCH";
+            /** Suite Version */
+            suite_version: string;
+            /** Task Count */
+            task_count: number;
+        };
         /** AgentEvent */
         AgentEvent: {
             /** Adapter Version */
@@ -703,6 +784,62 @@ export interface components {
              */
             schema_version: "1.0";
         };
+        /** ArchitectureMetric */
+        ArchitectureMetric: {
+            /** Approvals */
+            approvals: number;
+            /** Architecture Regret */
+            architecture_regret: number;
+            /** Benchmark Run Id */
+            benchmark_run_id: string;
+            /** Benchmark Task Id */
+            benchmark_task_id: string;
+            category: components["schemas"]["BenchmarkCategory"];
+            /** Cost */
+            cost: number;
+            /** Duration Ms */
+            duration_ms: number;
+            /** Environment Ref */
+            environment_ref: string;
+            /** Environment Version */
+            environment_version: string;
+            execution_source: components["schemas"]["BenchmarkExecutionSource"];
+            /** Human Burden */
+            human_burden: number;
+            /** Latency */
+            latency: number;
+            /** Metric Id */
+            metric_id: string;
+            mode: components["schemas"]["ExecutionMode"];
+            provider: components["schemas"]["Provider"];
+            /** Quality */
+            quality: number;
+            /** Risk */
+            risk: number;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Selector Version */
+            selector_version: string;
+            /** Success */
+            success: boolean;
+            task_type: components["schemas"]["TaskType"];
+            /** Task Version */
+            task_version: string;
+            /** Tool Calls */
+            tool_calls: number;
+            /** Trace Ref */
+            trace_ref: string;
+            /** Turns */
+            turns: number;
+            /** Utility */
+            utility: number;
+            /** Verifier Id */
+            verifier_id: string;
+        };
         /** ArtifactRef */
         ArtifactRef: {
             /** Artifact Id */
@@ -729,6 +866,95 @@ export interface components {
          * @enum {string}
          */
         AuthorizationOutcome: "ALLOW" | "DENY" | "REQUIRE_APPROVAL";
+        /**
+         * BenchmarkCategory
+         * @enum {string}
+         */
+        BenchmarkCategory: "DIRECT_SIMPLE" | "FEEDBACK_REFINEMENT" | "PREDICTABLE_GRAPH" | "HYBRID_ENGINEERING" | "SAFETY_RECOVERY";
+        /**
+         * BenchmarkExecutionSource
+         * @enum {string}
+         */
+        BenchmarkExecutionSource: "REPLAY" | "LIVE";
+        /** BenchmarkRun */
+        BenchmarkRun: {
+            /** Benchmark Run Id */
+            benchmark_run_id: string;
+            /** Completed At */
+            completed_at?: string | null;
+            /** Configuration Version */
+            configuration_version: string;
+            /** Corpus Sha256 */
+            corpus_sha256: string;
+            execution_source: components["schemas"]["BenchmarkExecutionSource"];
+            /** Scenario Count */
+            scenario_count: number;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at?: string;
+            status: components["schemas"]["BenchmarkRunStatus"];
+            /** Suite Version */
+            suite_version: string;
+            /** Trace Sha256 */
+            trace_sha256: string;
+        };
+        /** BenchmarkRunCreate */
+        BenchmarkRunCreate: {
+            /** @default REPLAY */
+            execution_source: components["schemas"]["BenchmarkExecutionSource"];
+        };
+        /**
+         * BenchmarkRunStatus
+         * @enum {string}
+         */
+        BenchmarkRunStatus: "RUNNING" | "COMPLETED" | "FAILED";
+        /** BenchmarkTask */
+        BenchmarkTask: {
+            /** Applicable Modes */
+            applicable_modes: components["schemas"]["ExecutionMode"][];
+            /** Benchmark Task Id */
+            benchmark_task_id: string;
+            budgets: components["schemas"]["TaskBudgets"];
+            category: components["schemas"]["BenchmarkCategory"];
+            /** Environment Ref */
+            environment_ref: string;
+            /** Environment Version */
+            environment_version: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            selector_mode: components["schemas"]["ExecutionMode"];
+            /** Selector Version */
+            selector_version: string;
+            /** Success Criteria */
+            success_criteria: string[];
+            task_type: components["schemas"]["TaskType"];
+            /** Title */
+            title: string;
+            /** Verifier Id */
+            verifier_id: string;
+            /** Verifier Version */
+            verifier_version: string;
+            /** Version */
+            version: string;
+        };
+        /** BenchmarkTaskDetail */
+        BenchmarkTaskDetail: {
+            /** Metrics */
+            metrics?: components["schemas"]["ArchitectureMetric"][];
+            task: components["schemas"]["BenchmarkTask"];
+        };
         /** BudgetPolicy */
         BudgetPolicy: {
             /**
@@ -2377,6 +2603,105 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ApprovalRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_acr_arch_api_v1_benchmarks_acr_arch_get: {
+        parameters: {
+            query?: {
+                mode?: components["schemas"]["ExecutionMode"] | null;
+                provider?: components["schemas"]["Provider"] | null;
+                task_type?: components["schemas"]["TaskType"] | null;
+                verifier?: string | null;
+                selector_version?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcrArchSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    run_acr_arch_api_v1_benchmarks_acr_arch_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BenchmarkRunCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BenchmarkRun"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_acr_arch_task_api_v1_benchmarks_acr_arch_tasks__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BenchmarkTaskDetail"];
                 };
             };
             /** @description Validation Error */

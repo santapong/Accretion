@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 from accretion.contracts import (
     ApprovalDecisionValue,
+    BenchmarkExecutionSource,
     ExecutionMode,
     Provider,
     RiskLevel,
@@ -51,6 +52,10 @@ class StrategyOverrideCreate(BaseModel):
 
 class ApprovalDecisionCreate(BaseModel):
     decision: ApprovalDecisionValue
+
+
+class BenchmarkRunCreate(BaseModel):
+    execution_source: BenchmarkExecutionSource = BenchmarkExecutionSource.REPLAY
 
 
 class WorkflowTemplateSummary(BaseModel):
