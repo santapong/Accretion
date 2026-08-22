@@ -198,6 +198,43 @@ async def test_invalid_sse_cursor_uses_error_envelope(tmp_path: Path) -> None:
     assert body["correlation_id"]
 
 
+async def test_sse_query_cursor_replays_only_events_after_snapshot(tmp_path: Path) -> None:
+    run_manager = build_manager(tmp_path)
+    run = await run_manager.store.create_run(
+        Run(
+            run_id=new_id("run"),
+            task_id=new_id("task"),
+            project_id=new_id("project"),
+            provider=Provider.FAKE,
+            state=RunState.SUCCEEDED,
+        )
+    )
+    for index, event_type in enumerate(
+        [EventType.RUN_STARTED, EventType.RUN_PROGRESS, EventType.RUN_COMPLETED],
+        start=1,
+    ):
+        await run_manager.store.append_event(
+            make_event(
+                run_id=run.run_id,
+                session_id="ses_cursor",
+                provider=Provider.FAKE,
+                native_type=f"fixture/{index}",
+                normalized_type=event_type,
+                adapter_version="fixture-v1",
+            )
+        )
+
+    app.state.manager = run_manager
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        response = await client.get(f"/api/v1/runs/{run.run_id}/events?after=1")
+
+    assert response.status_code == 200
+    assert "id: 1\n" not in response.text
+    assert "id: 2\n" in response.text
+    assert "id: 3\n" in response.text
+
+
 async def test_direct_pause_during_session_creation_resumes_once_to_verified_success(
     tmp_path: Path,
 ) -> None:
