@@ -3,6 +3,9 @@
   "private": true,
   "version": "0.1.0",
   "workspaces": ["apps/*"],
+  "devDependencies": {
+    "vite": "^8.2.1"
+  },
   "scripts": {
     "api:generate": "uv run --no-sync python scripts/export_openapi.py && npm exec --workspace @accretion/ui -- openapi-typescript ../../openapi.json -o src/api/schema.d.ts",
     "build": "npm run build --workspace @accretion/ui",
