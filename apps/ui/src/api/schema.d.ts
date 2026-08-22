@@ -38,6 +38,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Capabilities */
+        get: operations["list_capabilities_api_v1_capabilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Plugins */
+        get: operations["list_plugins_api_v1_plugins_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/projects": {
         parameters: {
             query?: never;
@@ -286,6 +320,23 @@ export interface paths {
         };
         /** Runtime Health */
         get: operations["runtime_health_api_v1_runtimes__runtime_id__health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Skills */
+        get: operations["list_skills_api_v1_skills_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -570,6 +621,71 @@ export interface components {
          * @enum {string}
          */
         AuthMode: "SUBSCRIPTION" | "API" | "LOCAL";
+        /** Capability */
+        Capability: {
+            backend: components["schemas"]["CapabilityBackend"];
+            /** Capability Id */
+            capability_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Credential Refs */
+            credential_refs?: string[];
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** @default NONE */
+            idempotency: components["schemas"]["IdempotencyMode"];
+            /** Input Schema */
+            input_schema?: {
+                [key: string]: unknown;
+            };
+            /** @default TOOL */
+            kind: components["schemas"]["CapabilityKind"];
+            /** Output Schema */
+            output_schema?: {
+                [key: string]: unknown;
+            };
+            /** Provider Projections */
+            provider_projections?: {
+                [key: string]: unknown;
+            };
+            /** Required Permissions */
+            required_permissions?: string[];
+            /** @default LOW */
+            risk: components["schemas"]["RiskLevel"];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Side Effects */
+            side_effects?: string[];
+            /** Verifier Policy Ref */
+            verifier_policy_ref?: string | null;
+            /** Version */
+            version: string;
+        };
+        /**
+         * CapabilityBackend
+         * @enum {string}
+         */
+        CapabilityBackend: "MCP" | "NATIVE" | "HTTP" | "CLI" | "PYTHON" | "AGENT_RUNTIME";
+        /**
+         * CapabilityKind
+         * @enum {string}
+         */
+        CapabilityKind: "TOOL" | "AGENT";
         /**
          * CheckpointKind
          * @enum {string}
@@ -867,6 +983,11 @@ export interface components {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
         };
+        /**
+         * IdempotencyMode
+         * @enum {string}
+         */
+        IdempotencyMode: "NONE" | "KEYED" | "TRANSACTIONAL";
         /** LoopBudgetRemaining */
         LoopBudgetRemaining: {
             /** Iterations */
@@ -1065,6 +1186,92 @@ export interface components {
          * @enum {string}
          */
         LoopStopReason: "VERIFIED_SUCCESS" | "MAX_ITERATIONS" | "WALL_TIME_EXCEEDED" | "MAX_TOOL_CALLS" | "MAX_TURNS" | "NO_PROGRESS" | "REPEATED_FAILURE" | "POLICY_ESCALATION" | "VERIFIER_UNAVAILABLE" | "PROVIDER_FAILURE" | "OPERATOR_CANCELLED" | "INTERRUPTED";
+        /** MetaPlugin */
+        MetaPlugin: {
+            /**
+             * Allowlisted
+             * @default false
+             */
+            allowlisted: boolean;
+            /** Capability Refs */
+            capability_refs?: string[];
+            /** Checksum */
+            checksum: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Plugin Id */
+            plugin_id: string;
+            /** Policy Refs */
+            policy_refs?: string[];
+            /** Provider Projections */
+            provider_projections?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Skill Refs */
+            skill_refs?: string[];
+            /** Verifier Refs */
+            verifier_refs?: string[];
+            /** Version */
+            version: string;
+        };
+        /** MetaSkill */
+        MetaSkill: {
+            /** Activation Criteria */
+            activation_criteria?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Description */
+            description: string;
+            /** Examples */
+            examples?: {
+                [key: string]: unknown;
+            }[];
+            /** Instructions */
+            instructions: string;
+            /** Outputs */
+            outputs?: {
+                [key: string]: unknown;
+            }[];
+            /** Provider Overrides */
+            provider_overrides?: {
+                [key: string]: unknown;
+            };
+            /** Required Capabilities */
+            required_capabilities?: string[];
+            /** Required Context */
+            required_context?: string[];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Skill Id */
+            skill_id: string;
+            /** Verifiers */
+            verifiers?: string[];
+            /** Version */
+            version: string;
+        };
         /** NodeTraversal */
         NodeTraversal: {
             /**
@@ -1782,6 +1989,46 @@ export interface operations {
             };
         };
     };
+    list_capabilities_api_v1_capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Capability"][];
+                };
+            };
+        };
+    };
+    list_plugins_api_v1_plugins_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetaPlugin"][];
+                };
+            };
+        };
+    };
     list_projects_api_v1_projects_get: {
         parameters: {
             query?: never;
@@ -2256,6 +2503,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_skills_api_v1_skills_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetaSkill"][];
                 };
             };
         };

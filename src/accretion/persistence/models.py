@@ -323,6 +323,89 @@ class SideEffectOperationRow(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class CapabilityRow(Base):
+    __tablename__ = "capabilities"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    capability_id: Mapped[str] = mapped_column(String(255))
+    version: Mapped[str] = mapped_column(String(64))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("capability_id", "version", name="uq_capabilities_id_version"),
+        Index("ix_capabilities_enabled_id", "enabled", "capability_id"),
+    )
+
+
+class SkillRow(Base):
+    __tablename__ = "skills"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    skill_id: Mapped[str] = mapped_column(String(255))
+    version: Mapped[str] = mapped_column(String(64))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (UniqueConstraint("skill_id", "version", name="uq_skills_id_version"),)
+
+
+class PluginRow(Base):
+    __tablename__ = "plugins"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    plugin_id: Mapped[str] = mapped_column(String(255))
+    version: Mapped[str] = mapped_column(String(64))
+    checksum: Mapped[str] = mapped_column(String(64))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    allowlisted: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("plugin_id", "version", name="uq_plugins_id_version"),
+        Index("ix_plugins_allowlisted_id", "allowlisted", "plugin_id"),
+    )
+
+
+class CapabilityPolicyRow(Base):
+    __tablename__ = "policies"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    policy_id: Mapped[str] = mapped_column(String(255))
+    version: Mapped[str] = mapped_column(String(64))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("policy_id", "version", name="uq_policies_id_version"),
+    )
+
+
+class CapabilityRequestRow(Base):
+    __tablename__ = "capability_requests"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    capability_id: Mapped[str] = mapped_column(String(255))
+    capability_version: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(32))
+    request: Mapped[dict[str, Any]] = mapped_column(JSON)
+    authorization: Mapped[dict[str, Any]] = mapped_column(JSON)
+    output: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    error: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
+    side_effect_operation_id: Mapped[str | None] = mapped_column(
+        ForeignKey("side_effect_operations.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_capability_requests_run_created", "run_id", "created_at"),
+        Index("ix_capability_requests_capability", "capability_id", "capability_version"),
+    )
+
+
 class WorkflowTemplateRow(Base):
     __tablename__ = "workflow_templates"
 

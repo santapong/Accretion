@@ -29,11 +29,14 @@ from accretion.contracts import (
     ApprovalRecord,
     ApprovalStatus,
     ArtifactRef,
+    Capability,
     EventType,
     ExecutionMode,
     ExecutionTrace,
     GraphProjection,
     LoopExecution,
+    MetaPlugin,
+    MetaSkill,
     Project,
     Provider,
     Run,
@@ -44,6 +47,7 @@ from accretion.contracts import (
     TemplateStatus,
     VerificationResult,
 )
+from accretion.governance import seed_governance
 from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore
@@ -79,10 +83,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     engine = create_engine(settings.database_url)
     sessions = create_session_factory(engine)
     store = PostgresStore(sessions)
+    gateway_environment = {
+        "ACCRETION_DATABASE_URL": settings.database_url,
+        "ACCRETION_CAPABILITY_POLICY_ID": settings.capability_policy_id,
+        "ACCRETION_GRANTED_PERMISSIONS": json.dumps(settings.granted_permissions),
+        "ACCRETION_CREDENTIAL_ENV_MAP": json.dumps(settings.credential_env_map),
+    }
     runtimes: dict[Provider, AgentRuntime] = {
         Provider.FAKE: FakeRuntime(),
-        Provider.CODEX: CodexRuntime(settings.codex_command),
-        Provider.CLAUDE: ClaudeRuntime(settings.claude_command),
+        Provider.CODEX: CodexRuntime(settings.codex_command, gateway_environment),
+        Provider.CLAUDE: ClaudeRuntime(settings.claude_command, gateway_environment),
     }
     manager = RunManager(
         store=store,
@@ -101,6 +111,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.engine = engine
     app.state.manager = manager
     await seed_templates(store)
+    await seed_governance(store)
     await manager.reconcile()
     yield
     for task in manager.background.values():
@@ -376,6 +387,21 @@ async def runtime_health(runtime_id: str, request: Request) -> RuntimeHealth:
         if health.runtime_id == runtime_id:
             return health
     raise KeyError(runtime_id)
+
+
+@app.get("/api/v1/capabilities", response_model=list[Capability])
+async def list_capabilities(request: Request) -> list[Capability]:
+    return await manager(request).store.list_capabilities()
+
+
+@app.get("/api/v1/skills", response_model=list[MetaSkill])
+async def list_skills(request: Request) -> list[MetaSkill]:
+    return await manager(request).store.list_skills()
+
+
+@app.get("/api/v1/plugins", response_model=list[MetaPlugin])
+async def list_plugins(request: Request) -> list[MetaPlugin]:
+    return await manager(request).store.list_plugins()
 
 
 @app.get("/api/v1/runs/{run_id}/events")

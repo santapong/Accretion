@@ -16,6 +16,9 @@ from accretion.contracts import (
     ApprovalRecord,
     ApprovalStatus,
     ArtifactRef,
+    Capability,
+    CapabilityExecutionResult,
+    CapabilityPolicy,
     Checkpoint,
     ContextBundle,
     ErrorSummary,
@@ -25,6 +28,8 @@ from accretion.contracts import (
     LoopIteration,
     LoopState,
     LoopStopReason,
+    MetaPlugin,
+    MetaSkill,
     Project,
     PromptContract,
     Provider,
@@ -45,14 +50,19 @@ from accretion.contracts import (
     WorkflowTemplate,
     WorkspaceLease,
 )
+from accretion.ids import new_id
 from accretion.persistence.models import (
     AcceptancePolicyRow,
     AgentEventRow,
     ApprovalRow,
+    CapabilityPolicyRow,
+    CapabilityRequestRow,
+    CapabilityRow,
     CheckpointRow,
     ContextBundleRow,
     LoopExecutionRow,
     LoopIterationRow,
+    PluginRow,
     ProjectRow,
     PromptContractRow,
     RunGraphEdgeRow,
@@ -60,6 +70,7 @@ from accretion.persistence.models import (
     RunGraphRow,
     RunRow,
     RuntimeSessionRow,
+    SkillRow,
     StrategyDecisionRow,
     StrategyOverrideRow,
     TaskProfileRow,
@@ -208,6 +219,25 @@ class StateStore(Protocol):
         self, run_id: str, *, turns: int = 0, tool_calls: int = 0
     ) -> dict[str, int]: ...
     async def get_budget_spent(self, run_id: str) -> dict[str, int]: ...
+    async def upsert_capability(self, capability: Capability) -> Capability: ...
+    async def get_capability(
+        self, capability_id: str, version: str | None = None
+    ) -> Capability | None: ...
+    async def list_capabilities(self, enabled_only: bool = True) -> list[Capability]: ...
+    async def upsert_skill(self, skill: MetaSkill) -> MetaSkill: ...
+    async def list_skills(self) -> list[MetaSkill]: ...
+    async def upsert_plugin(self, plugin: MetaPlugin) -> MetaPlugin: ...
+    async def list_plugins(self, allowlisted_only: bool = True) -> list[MetaPlugin]: ...
+    async def upsert_capability_policy(
+        self, policy: CapabilityPolicy
+    ) -> CapabilityPolicy: ...
+    async def get_capability_policy(
+        self, policy_id: str, version: str | None = None
+    ) -> CapabilityPolicy | None: ...
+    async def save_capability_result(
+        self, result: CapabilityExecutionResult
+    ) -> CapabilityExecutionResult: ...
+    async def list_capability_results(self, run_id: str) -> list[CapabilityExecutionResult]: ...
 
 
 class MemoryStore:
@@ -239,6 +269,11 @@ class MemoryStore:
         self.approvals: dict[str, ApprovalRecord] = {}
         self.approval_by_request: dict[tuple[str, str], str] = {}
         self.budget_spent: dict[str, dict[str, int]] = {}
+        self.capabilities: dict[tuple[str, str], Capability] = {}
+        self.skills: dict[tuple[str, str], MetaSkill] = {}
+        self.plugins: dict[tuple[str, str], MetaPlugin] = {}
+        self.capability_policies: dict[tuple[str, str], CapabilityPolicy] = {}
+        self.capability_results: dict[str, CapabilityExecutionResult] = {}
         self._lock = asyncio.Lock()
 
     async def create_project(self, project: Project) -> Project:
@@ -931,6 +966,103 @@ class MemoryStore:
 
     async def get_budget_spent(self, run_id: str) -> dict[str, int]:
         return dict(self.budget_spent.get(run_id, {"turns": 0, "tool_calls": 0}))
+
+    async def upsert_capability(self, capability: Capability) -> Capability:
+        key = (capability.capability_id, capability.version)
+        current = self.capabilities.get(key)
+        if current is not None and current != capability:
+            raise ValueError(
+                f"capability {capability.capability_id}@{capability.version} is immutable"
+            )
+        self.capabilities[key] = capability
+        return capability
+
+    async def get_capability(
+        self, capability_id: str, version: str | None = None
+    ) -> Capability | None:
+        if version is not None:
+            return self.capabilities.get((capability_id, version))
+        candidates = [
+            item for (item_id, _), item in self.capabilities.items() if item_id == capability_id
+        ]
+        return max(candidates, key=lambda item: item.created_at) if candidates else None
+
+    async def list_capabilities(self, enabled_only: bool = True) -> list[Capability]:
+        return sorted(
+            (
+                item
+                for item in self.capabilities.values()
+                if item.enabled or not enabled_only
+            ),
+            key=lambda item: (item.capability_id, item.version),
+        )
+
+    async def upsert_skill(self, skill: MetaSkill) -> MetaSkill:
+        key = (skill.skill_id, skill.version)
+        current = self.skills.get(key)
+        if current is not None and current != skill:
+            raise ValueError(f"skill {skill.skill_id}@{skill.version} is immutable")
+        self.skills[key] = skill
+        return skill
+
+    async def list_skills(self) -> list[MetaSkill]:
+        return sorted(self.skills.values(), key=lambda item: (item.skill_id, item.version))
+
+    async def upsert_plugin(self, plugin: MetaPlugin) -> MetaPlugin:
+        key = (plugin.plugin_id, plugin.version)
+        current = self.plugins.get(key)
+        if current is not None and current != plugin:
+            raise ValueError(f"plugin {plugin.plugin_id}@{plugin.version} is immutable")
+        self.plugins[key] = plugin
+        return plugin
+
+    async def list_plugins(self, allowlisted_only: bool = True) -> list[MetaPlugin]:
+        return sorted(
+            (
+                item
+                for item in self.plugins.values()
+                if item.allowlisted or not allowlisted_only
+            ),
+            key=lambda item: (item.plugin_id, item.version),
+        )
+
+    async def upsert_capability_policy(
+        self, policy: CapabilityPolicy
+    ) -> CapabilityPolicy:
+        key = (policy.policy_id, policy.version)
+        current = self.capability_policies.get(key)
+        if current is not None and current != policy:
+            raise ValueError(f"policy {policy.policy_id}@{policy.version} is immutable")
+        self.capability_policies[key] = policy
+        return policy
+
+    async def get_capability_policy(
+        self, policy_id: str, version: str | None = None
+    ) -> CapabilityPolicy | None:
+        if version is not None:
+            return self.capability_policies.get((policy_id, version))
+        candidates = [
+            item
+            for (item_id, _), item in self.capability_policies.items()
+            if item_id == policy_id
+        ]
+        return max(candidates, key=lambda item: item.created_at) if candidates else None
+
+    async def save_capability_result(
+        self, result: CapabilityExecutionResult
+    ) -> CapabilityExecutionResult:
+        self.capability_results[result.request.request_id] = result
+        return result
+
+    async def list_capability_results(self, run_id: str) -> list[CapabilityExecutionResult]:
+        return sorted(
+            (
+                item
+                for item in self.capability_results.values()
+                if item.request.run_id == run_id
+            ),
+            key=lambda item: item.request.created_at,
+        )
 
 
 class PostgresStore:
@@ -1946,6 +2078,214 @@ class PostgresStore:
             "turns": int(spent.get("turns", 0)),
             "tool_calls": int(spent.get("tool_calls", 0)),
         }
+
+    async def upsert_capability(self, capability: Capability) -> Capability:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(CapabilityRow).where(
+                    CapabilityRow.capability_id == capability.capability_id,
+                    CapabilityRow.version == capability.version,
+                )
+            )
+            definition = capability.model_dump(mode="json")
+            if row is not None:
+                if row.definition != definition:
+                    raise ValueError(
+                        f"capability {capability.capability_id}@{capability.version} is immutable"
+                    )
+                return Capability.model_validate(row.definition)
+            session.add(
+                CapabilityRow(
+                    id=new_id("capability"),
+                    capability_id=capability.capability_id,
+                    version=capability.version,
+                    definition=definition,
+                    enabled=capability.enabled,
+                    created_at=capability.created_at,
+                )
+            )
+        return capability
+
+    async def get_capability(
+        self, capability_id: str, version: str | None = None
+    ) -> Capability | None:
+        query = select(CapabilityRow).where(CapabilityRow.capability_id == capability_id)
+        if version is not None:
+            query = query.where(CapabilityRow.version == version)
+        else:
+            query = query.order_by(CapabilityRow.created_at.desc()).limit(1)
+        async with self.sessions() as session:
+            row = await session.scalar(query)
+        return Capability.model_validate(row.definition) if row else None
+
+    async def list_capabilities(self, enabled_only: bool = True) -> list[Capability]:
+        query = select(CapabilityRow).order_by(
+            CapabilityRow.capability_id, CapabilityRow.version
+        )
+        if enabled_only:
+            query = query.where(CapabilityRow.enabled.is_(True))
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [Capability.model_validate(row.definition) for row in rows]
+
+    async def upsert_skill(self, skill: MetaSkill) -> MetaSkill:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(SkillRow).where(
+                    SkillRow.skill_id == skill.skill_id,
+                    SkillRow.version == skill.version,
+                )
+            )
+            definition = skill.model_dump(mode="json")
+            if row is not None:
+                if row.definition != definition:
+                    raise ValueError(f"skill {skill.skill_id}@{skill.version} is immutable")
+                return MetaSkill.model_validate(row.definition)
+            session.add(
+                SkillRow(
+                    id=new_id("skill"),
+                    skill_id=skill.skill_id,
+                    version=skill.version,
+                    definition=definition,
+                    created_at=skill.created_at,
+                )
+            )
+        return skill
+
+    async def list_skills(self) -> list[MetaSkill]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(SkillRow).order_by(SkillRow.skill_id, SkillRow.version)
+                )
+            ).all()
+        return [MetaSkill.model_validate(row.definition) for row in rows]
+
+    async def upsert_plugin(self, plugin: MetaPlugin) -> MetaPlugin:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(PluginRow).where(
+                    PluginRow.plugin_id == plugin.plugin_id,
+                    PluginRow.version == plugin.version,
+                )
+            )
+            definition = plugin.model_dump(mode="json")
+            if row is not None:
+                if row.definition != definition:
+                    raise ValueError(f"plugin {plugin.plugin_id}@{plugin.version} is immutable")
+                return MetaPlugin.model_validate(row.definition)
+            session.add(
+                PluginRow(
+                    id=new_id("plugin"),
+                    plugin_id=plugin.plugin_id,
+                    version=plugin.version,
+                    checksum=plugin.checksum,
+                    definition=definition,
+                    allowlisted=plugin.allowlisted,
+                    created_at=plugin.created_at,
+                )
+            )
+        return plugin
+
+    async def list_plugins(self, allowlisted_only: bool = True) -> list[MetaPlugin]:
+        query = select(PluginRow).order_by(PluginRow.plugin_id, PluginRow.version)
+        if allowlisted_only:
+            query = query.where(PluginRow.allowlisted.is_(True))
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [MetaPlugin.model_validate(row.definition) for row in rows]
+
+    async def upsert_capability_policy(
+        self, policy: CapabilityPolicy
+    ) -> CapabilityPolicy:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(CapabilityPolicyRow).where(
+                    CapabilityPolicyRow.policy_id == policy.policy_id,
+                    CapabilityPolicyRow.version == policy.version,
+                )
+            )
+            definition = policy.model_dump(mode="json")
+            if row is not None:
+                if row.definition != definition:
+                    raise ValueError(f"policy {policy.policy_id}@{policy.version} is immutable")
+                return CapabilityPolicy.model_validate(row.definition)
+            session.add(
+                CapabilityPolicyRow(
+                    id=new_id("policy"),
+                    policy_id=policy.policy_id,
+                    version=policy.version,
+                    definition=definition,
+                    created_at=policy.created_at,
+                )
+            )
+        return policy
+
+    async def get_capability_policy(
+        self, policy_id: str, version: str | None = None
+    ) -> CapabilityPolicy | None:
+        query = select(CapabilityPolicyRow).where(CapabilityPolicyRow.policy_id == policy_id)
+        if version is not None:
+            query = query.where(CapabilityPolicyRow.version == version)
+        else:
+            query = query.order_by(CapabilityPolicyRow.created_at.desc()).limit(1)
+        async with self.sessions() as session:
+            row = await session.scalar(query)
+        return CapabilityPolicy.model_validate(row.definition) if row else None
+
+    async def save_capability_result(
+        self, result: CapabilityExecutionResult
+    ) -> CapabilityExecutionResult:
+        async with self.sessions.begin() as session:
+            if await session.get(RunRow, result.request.run_id) is None:
+                raise KeyError(result.request.run_id)
+            row = await session.get(CapabilityRequestRow, result.request.request_id)
+            if row is None:
+                row = CapabilityRequestRow(
+                    id=result.request.request_id,
+                    run_id=result.request.run_id,
+                    capability_id=result.request.capability_id,
+                    capability_version=result.request.capability_version,
+                    status=result.status.value,
+                    request=result.request.model_dump(mode="json"),
+                    authorization=result.authorization.model_dump(mode="json"),
+                    output=result.output,
+                    error=result.error.model_dump(mode="json") if result.error else None,
+                    side_effect_operation_id=result.side_effect_operation_id,
+                    created_at=result.request.created_at,
+                    completed_at=result.completed_at,
+                )
+                session.add(row)
+            else:
+                row.status = result.status.value
+                row.authorization = result.authorization.model_dump(mode="json")
+                row.output = result.output
+                row.error = result.error.model_dump(mode="json") if result.error else None
+                row.side_effect_operation_id = result.side_effect_operation_id
+                row.completed_at = result.completed_at
+        return result
+
+    async def list_capability_results(self, run_id: str) -> list[CapabilityExecutionResult]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(CapabilityRequestRow)
+                    .where(CapabilityRequestRow.run_id == run_id)
+                    .order_by(CapabilityRequestRow.created_at, CapabilityRequestRow.id)
+                )
+            ).all()
+        return [
+            CapabilityExecutionResult(
+                request=row.request,
+                authorization=row.authorization,
+                status=row.status,
+                output=row.output,
+                error=row.error,
+                side_effect_operation_id=row.side_effect_operation_id,
+                completed_at=row.completed_at,
+            )
+            for row in rows
+        ]
 
     @staticmethod
     async def _assemble_run_graph(session: AsyncSession, row: RunGraphRow) -> RunGraph:

@@ -223,11 +223,149 @@ class CheckpointKind(StrEnum):
     SIDE_EFFECT_BOUNDARY = "SIDE_EFFECT_BOUNDARY"
 
 
+class ErrorSummary(StrictModel):
+    code: str
+    message: str
+    retryable: bool = False
+
+
 class ApprovalStatus(StrEnum):
     PENDING = "PENDING"
     APPROVED = "APPROVED"
     DENIED = "DENIED"
     CANCELLED = "CANCELLED"
+
+
+class CapabilityKind(StrEnum):
+    TOOL = "TOOL"
+    AGENT = "AGENT"
+
+
+class CapabilityBackend(StrEnum):
+    MCP = "MCP"
+    NATIVE = "NATIVE"
+    HTTP = "HTTP"
+    CLI = "CLI"
+    PYTHON = "PYTHON"
+    AGENT_RUNTIME = "AGENT_RUNTIME"
+
+
+class IdempotencyMode(StrEnum):
+    NONE = "NONE"
+    KEYED = "KEYED"
+    TRANSACTIONAL = "TRANSACTIONAL"
+
+
+class AuthorizationOutcome(StrEnum):
+    ALLOW = "ALLOW"
+    DENY = "DENY"
+    REQUIRE_APPROVAL = "REQUIRE_APPROVAL"
+
+
+class CapabilityExecutionStatus(StrEnum):
+    DENIED = "DENIED"
+    REQUIRES_APPROVAL = "REQUIRES_APPROVAL"
+    EXECUTING = "EXECUTING"
+    SUCCEEDED = "SUCCEEDED"
+    FAILED = "FAILED"
+    UNKNOWN = "UNKNOWN"
+
+
+class Capability(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    capability_id: str
+    kind: CapabilityKind = CapabilityKind.TOOL
+    version: str
+    description: str = ""
+    input_schema: dict[str, Any] = Field(default_factory=dict)
+    output_schema: dict[str, Any] = Field(default_factory=dict)
+    risk: RiskLevel = RiskLevel.LOW
+    side_effects: list[str] = Field(default_factory=list)
+    required_permissions: list[str] = Field(default_factory=list)
+    credential_refs: list[str] = Field(default_factory=list)
+    idempotency: IdempotencyMode = IdempotencyMode.NONE
+    backend: CapabilityBackend
+    provider_projections: dict[str, Any] = Field(default_factory=dict)
+    verifier_policy_ref: str | None = None
+    enabled: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class MetaSkill(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    skill_id: str
+    version: str
+    description: str
+    activation_criteria: dict[str, Any] = Field(default_factory=dict)
+    instructions: str
+    required_capabilities: list[str] = Field(default_factory=list)
+    required_context: list[str] = Field(default_factory=list)
+    outputs: list[dict[str, Any]] = Field(default_factory=list)
+    verifiers: list[str] = Field(default_factory=list)
+    examples: list[dict[str, Any]] = Field(default_factory=list)
+    provider_overrides: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class MetaPlugin(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    plugin_id: str
+    version: str
+    description: str = ""
+    capability_refs: list[str] = Field(default_factory=list)
+    skill_refs: list[str] = Field(default_factory=list)
+    verifier_refs: list[str] = Field(default_factory=list)
+    policy_refs: list[str] = Field(default_factory=list)
+    provider_projections: dict[str, Any] = Field(default_factory=dict)
+    checksum: str
+    allowlisted: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class CapabilityPolicy(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    policy_id: str
+    version: str
+    description: str = ""
+    explicitly_denied: list[str] = Field(default_factory=list)
+    require_approval_at_risk: RiskLevel = RiskLevel.HIGH
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class CredentialReference(StrictModel):
+    credential_ref: str
+    available: bool
+
+
+class CapabilityRequest(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    request_id: str
+    run_id: str
+    node_id: str
+    capability_id: str
+    capability_version: str
+    arguments: dict[str, Any] = Field(default_factory=dict)
+    declared_reason: str = Field(min_length=1, max_length=2_000)
+    idempotency_key: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class CapabilityAuthorization(StrictModel):
+    outcome: AuthorizationOutcome
+    policy_id: str
+    policy_version: str
+    reason: str
+    approval_id: str | None = None
+
+
+class CapabilityExecutionResult(StrictModel):
+    request: CapabilityRequest
+    authorization: CapabilityAuthorization
+    status: CapabilityExecutionStatus
+    output: dict[str, Any] | None = None
+    error: ErrorSummary | None = None
+    side_effect_operation_id: str | None = None
+    completed_at: datetime | None = None
 
 
 class PromptContract(StrictModel):
@@ -360,12 +498,6 @@ class EventType(StrEnum):
     RUN_COMPLETED = "RUN_COMPLETED"
     RUN_FAILED = "RUN_FAILED"
     RUN_CANCELLED = "RUN_CANCELLED"
-
-
-class ErrorSummary(StrictModel):
-    code: str
-    message: str
-    retryable: bool = False
 
 
 class RuntimeHealth(StrictModel):

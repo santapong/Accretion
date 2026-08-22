@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 import shutil
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
@@ -20,6 +21,35 @@ from accretion.ids import new_id
 from accretion.redaction import redact
 
 RuntimeSubmission = TaskEnvelope | RuntimeExecutionRequest
+
+_PROVIDER_ENV_ALLOWLIST = {
+    "PATH",
+    "HOME",
+    "USER",
+    "LOGNAME",
+    "SHELL",
+    "LANG",
+    "LC_ALL",
+    "TERM",
+    "TMPDIR",
+    "XDG_CONFIG_HOME",
+    "XDG_DATA_HOME",
+    "XDG_CACHE_HOME",
+    "CODEX_HOME",
+    "CLAUDE_CONFIG_DIR",
+    "SSL_CERT_FILE",
+    "SSL_CERT_DIR",
+}
+
+
+def provider_environment(extra: Mapping[str, str] | None = None) -> dict[str, str]:
+    """Build a provider environment that never inherits application credentials."""
+
+    environment = {
+        key: value for key, value in os.environ.items() if key in _PROVIDER_ENV_ALLOWLIST
+    }
+    environment.update(extra or {})
+    return environment
 
 
 def submission_task(submission: RuntimeSubmission) -> TaskEnvelope:

@@ -3,7 +3,8 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
-from collections.abc import AsyncIterator
+import sys
+from collections.abc import AsyncIterator, Mapping
 from typing import Any
 
 from accretion.contracts import (
@@ -32,6 +33,7 @@ from accretion.runtimes.common import (
     classify_runtime_health,
     command_result,
     make_event,
+    provider_environment,
     submission_call_id,
     submission_metadata,
     submission_task,
@@ -53,8 +55,13 @@ class CodexRuntime:
 
     adapter_version = "codex-app-server-p2-v1"
 
-    def __init__(self, command: str = "codex") -> None:
+    def __init__(
+        self,
+        command: str = "codex",
+        gateway_environment: Mapping[str, str] | None = None,
+    ) -> None:
         self.command = command
+        self.gateway_environment = dict(gateway_environment or {})
         self.process: asyncio.subprocess.Process | None = None
         self.reader_task: asyncio.Task[None] | None = None
         self.stderr_task: asyncio.Task[None] | None = None
@@ -73,6 +80,7 @@ class CodexRuntime:
         self.write_lock = asyncio.Lock()
         self.server_lock = asyncio.Lock()
         self.terminal_calls: set[str] = set()
+        self.session_configs: dict[str, SessionConfig] = {}
 
     async def health(self) -> RuntimeHealth:
         version_code, version_output = await command_result([self.command, "--version"])
@@ -133,6 +141,7 @@ class CodexRuntime:
             workspace=config.workspace,
         )
         self.sessions[session.session_id] = session
+        self.session_configs[session.session_id] = config
         return session
 
     async def submit(self, session: SessionRef, request: RuntimeSubmission) -> RunRef:
@@ -195,12 +204,33 @@ class CodexRuntime:
                 self.loaded_threads.add(thread_id)
             return thread_id
 
+        gateway_env = {
+            **self.gateway_environment,
+            "ACCRETION_GATEWAY_RUN_ID": session.run_id,
+        }
         response = await self._request(
             "thread/start",
             {
                 "cwd": str(session.workspace),
                 "approvalPolicy": "on-request",
                 "sandbox": "workspace-write",
+                "developerInstructions": (
+                    "Use native tools only for local workspace operations. "
+                    "All consequential external actions must use the Accretion MCP gateway."
+                ),
+                "config": {
+                    "mcp_servers": {
+                        "accretion": {
+                            "command": sys.executable,
+                            "args": ["-m", "accretion.mcp_gateway"],
+                            "env": gateway_env,
+                            "enabled": True,
+                            "required": True,
+                        }
+                    },
+                    "sandbox_workspace_write": {"network_access": False},
+                    "shell_environment_policy": {"inherit": "core"},
+                },
             },
         )
         thread_id = str(response.get("thread", {}).get("id", ""))
@@ -309,6 +339,7 @@ class CodexRuntime:
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
+                env=provider_environment(),
             )
             self.process = process
             self.reader_task = asyncio.create_task(self._reader(process))
