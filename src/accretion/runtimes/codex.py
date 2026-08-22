@@ -225,7 +225,12 @@ class CodexRuntime:
                             "args": ["-m", "accretion.mcp_gateway"],
                             "env": gateway_env,
                             "enabled": True,
-                            "required": True,
+                            # Direct adapter users (including provider health/live
+                            # probes) do not have an orchestrator store behind the
+                            # gateway. Keep the server optional in that restricted
+                            # no-capability mode; API-managed runs always provide
+                            # gateway_environment and therefore fail closed.
+                            "required": bool(self.gateway_environment),
                         }
                     },
                     "sandbox_workspace_write": {"network_access": False},

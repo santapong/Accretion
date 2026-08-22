@@ -42,6 +42,18 @@ python scripts/generate_acr_arch_fixtures.py
 uv run pytest tests/test_acr_arch.py
 ```
 
+The signed-in provider calibration is intentionally separate from the frozen replay
+dataset. It selects two tasks from every category, balances five calls per provider,
+and independently verifies the exact artifact written by each isolated provider run:
+
+```bash
+ACCRETION_LIVE_PROVIDERS=1 uv run python scripts/run_acr_arch_live_sample.py
+```
+
+The command writes its redacted report to
+`artifacts/release/acr-arch-live-sample.json`; live results never alter the frozen
+replay traces or release metrics.
+
 The tests pin the corpus and trace SHA-256 digests, validate the exact category
 composition, require two or more modes per task, recompute all 68 metrics, and
 round-trip the immutable records through PostgreSQL when
