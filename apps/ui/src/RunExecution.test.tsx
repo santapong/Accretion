@@ -261,3 +261,52 @@ test("renders hybrid subflows without expanding iterations and offers the gate d
   const routes = screen.getByRole("list", { name: "Projection routes" });
   expect(within(routes).getAllByText("7 traversals").length).toBeGreaterThan(0);
 });
+
+test("shows P5 proposal authority, revision diff, router evidence, and replan control", async () => {
+  const dynamicRun: Run = { ...run, state: "PAUSED" };
+  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/workflow/proposals")) return response([{
+      proposal_id: "wfp_fixture", run_id: run.run_id, planner_version: "fragment-planner-v2",
+      confidence: 0.9, nodes: [{ local_id: "start" }, { local_id: "complete" }], edges: [],
+      fragment_refs: ["single-act-verify@1.0.0"], assumptions: ["Budgets remain authoritative."],
+      rationale_summary: "Composed a reviewed workflow fragment.",
+    }]);
+    if (url.endsWith("/validations")) return response([{
+      validation_id: "gvl_fixture", proposal_id: "wfp_fixture", status: "ACCEPT",
+      errors: [], warnings: [], required_repairs: [], validator_version: "graph-validator-v2",
+    }]);
+    if (url.endsWith("/graph/revisions")) return response([
+      { revision_id: "grv_1", revision: 1, reason: "INITIAL", normalized_graph_hash: "a".repeat(64), protected_state_refs: [] },
+      { revision_id: "grv_2", revision: 2, reason: "HUMAN_REQUEST", normalized_graph_hash: "b".repeat(64), protected_state_refs: ["run:start"] },
+    ]);
+    if (url.includes("/graph/diff")) return response({
+      from_revision: 1, to_revision: 2, added_nodes: ["review"], removed_nodes: [],
+      changed_nodes: [], protected_state_refs: ["run:start"],
+    });
+    if (url.endsWith("/runtime-decisions")) return response([{
+      decision_id: "rtd_fixture", selected_runtime: "FAKE", policy_version: "performance-router-v2",
+      selected_reason: "selected from observable evidence", candidates: [{
+        provider: "FAKE", runtime_version: "fake-p2-v1", score: 0.8, available: true,
+      }],
+    }]);
+    if (url.endsWith("/replans")) return response([]);
+    if (url.endsWith("/graph")) return response(graph);
+    if (url.endsWith("/verifications")) return response(verifications);
+    if (url.includes("/api/v1/approvals")) return response([]);
+    if (url.endsWith("/loop")) return response(loop);
+    return response({});
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}><RunExecution run={dynamicRun} /></QueryClientProvider>,
+  );
+
+  await screen.findByText("single-act-verify@1.0.0");
+  const inspector = screen.getByRole("region", { name: "Dynamic workflow" });
+  expect(within(inspector).getByText("single-act-verify@1.0.0")).toBeInTheDocument();
+  expect(within(inspector).getByText("r2")).toBeInTheDocument();
+  expect(within(inspector).getByText("1 protected state refs")).toBeInTheDocument();
+  expect(within(inspector).getByText("Runtime: FAKE")).toBeInTheDocument();
+  expect(within(inspector).getByRole("button", { name: "Request safe replan" })).toBeInTheDocument();
+});

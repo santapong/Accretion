@@ -30,6 +30,17 @@ class ProjectRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
+class ProjectFeatureSettingsRow(Base):
+    __tablename__ = "project_feature_settings"
+
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True
+    )
+    settings: Mapped[dict[str, Any]] = mapped_column(JSON)
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class TaskRow(Base):
     __tablename__ = "tasks"
 
@@ -183,9 +194,7 @@ class LoopIterationRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (
-        UniqueConstraint(
-            "loop_execution_id", "number", name="uq_loop_iterations_execution_number"
-        ),
+        UniqueConstraint("loop_execution_id", "number", name="uq_loop_iterations_execution_number"),
         Index("ix_loop_iterations_execution_number", "loop_execution_id", "number"),
     )
 
@@ -377,9 +386,7 @@ class CapabilityPolicyRow(Base):
     definition: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
-    __table_args__ = (
-        UniqueConstraint("policy_id", "version", name="uq_policies_id_version"),
-    )
+    __table_args__ = (UniqueConstraint("policy_id", "version", name="uq_policies_id_version"),)
 
 
 class CapabilityRequestRow(Base):
@@ -480,9 +487,7 @@ class ExperimentRunRow(Base):
     __tablename__ = "experiment_runs"
 
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
-    experiment_id: Mapped[str] = mapped_column(
-        ForeignKey("experiments.id", ondelete="CASCADE")
-    )
+    experiment_id: Mapped[str] = mapped_column(ForeignKey("experiments.id", ondelete="CASCADE"))
     record: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
@@ -523,9 +528,7 @@ class BenchmarkTaskRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (
-        UniqueConstraint(
-            "benchmark_task_id", "version", name="uq_benchmark_tasks_id_version"
-        ),
+        UniqueConstraint("benchmark_task_id", "version", name="uq_benchmark_tasks_id_version"),
         Index("ix_benchmark_tasks_category", "category", "task_type"),
     )
 
@@ -542,13 +545,9 @@ class BenchmarkRunRow(Base):
     trace_sha256: Mapped[str] = mapped_column(String(64))
     scenario_count: Mapped[int] = mapped_column(Integer)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    __table_args__ = (
-        Index("ix_benchmark_runs_suite_started", "suite_version", "started_at"),
-    )
+    __table_args__ = (Index("ix_benchmark_runs_suite_started", "suite_version", "started_at"),)
 
 
 class ArchitectureMetricRow(Base):
@@ -643,6 +642,88 @@ class RunGraphEdgeRow(Base):
     position: Mapped[int] = mapped_column(Integer)
     edge: Mapped[dict[str, Any]] = mapped_column(JSON)
 
-    __table_args__ = (
-        UniqueConstraint("run_graph_id", "key", name="uq_run_graph_edges_graph_key"),
+    __table_args__ = (UniqueConstraint("run_graph_id", "key", name="uq_run_graph_edges_graph_key"),)
+
+
+class WorkflowProposalRow(Base):
+    __tablename__ = "workflow_proposals"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+    run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("runs.id", ondelete="CASCADE"), nullable=True
     )
+    based_on_graph_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    planner_version: Mapped[str] = mapped_column(String(64))
+    proposal: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_workflow_proposals_task_created", "task_id", "created_at"),
+        Index("ix_workflow_proposals_run_created", "run_id", "created_at"),
+    )
+
+
+class GraphValidationResultRow(Base):
+    __tablename__ = "graph_validation_results"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    proposal_id: Mapped[str] = mapped_column(
+        ForeignKey("workflow_proposals.id", ondelete="CASCADE")
+    )
+    status: Mapped[str] = mapped_column(String(32))
+    validator_version: Mapped[str] = mapped_column(String(64))
+    result: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_graph_validation_proposal_created", "proposal_id", "created_at"),)
+
+
+class RunGraphRevisionRow(Base):
+    __tablename__ = "run_graph_revisions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_graph_id: Mapped[str] = mapped_column(ForeignKey("run_graphs.id", ondelete="CASCADE"))
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    revision: Mapped[int] = mapped_column(Integer)
+    parent_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    proposal_id: Mapped[str] = mapped_column(
+        ForeignKey("workflow_proposals.id", ondelete="RESTRICT")
+    )
+    graph_hash: Mapped[str] = mapped_column(String(64))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("run_graph_id", "revision", name="uq_run_graph_revisions_graph_revision"),
+        Index("ix_run_graph_revisions_run_revision", "run_id", "revision"),
+    )
+
+
+class ReplanRequestRow(Base):
+    __tablename__ = "replan_requests"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    based_on_graph_revision: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(32))
+    request: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_replan_requests_run_created", "run_id", "created_at"),)
+
+
+class RuntimeDecisionRow(Base):
+    __tablename__ = "runtime_decisions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    node_id: Mapped[str] = mapped_column(String(128))
+    selected_runtime: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    policy_version: Mapped[str] = mapped_column(String(64))
+    decision: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_runtime_decisions_run_created", "run_id", "created_at"),)

@@ -35,6 +35,11 @@ _PREFIXES = {
     "capability_request": "cpr",
     "benchmark_run": "bnr",
     "architecture_metric": "acm",
+    "workflow_proposal": "wfp",
+    "graph_validation": "gvl",
+    "graph_revision": "grv",
+    "replan_request": "rpl",
+    "runtime_decision": "rtd",
 }
 
 

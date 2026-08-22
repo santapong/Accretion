@@ -17,9 +17,12 @@ from accretion.api.schemas import (
     BenchmarkRunCreate,
     ErrorEnvelope,
     ProjectCreate,
+    ProjectFeatureUpdate,
+    ReplanCreate,
     RunCreate,
     StrategyOverrideCreate,
     TaskCreate,
+    WorkflowProposeCreate,
     WorkflowTemplateSummary,
 )
 from accretion.benchmark import (
@@ -63,6 +66,23 @@ from accretion.contracts import (
     VerificationResult,
 )
 from accretion.governance import seed_governance
+from accretion.orchestration.models import (
+    GraphRevisionDiff,
+    GraphValidationResult,
+    ProjectFeatureSettings,
+    ReplanOutcome,
+    ReplanRequest,
+    RunGraphRevision,
+    RuntimeDecision,
+    WorkflowActivationOutcome,
+    WorkflowProposal,
+    WorkflowValidationOutcome,
+)
+from accretion.orchestration.service import (
+    DynamicWorkflowConflictError,
+    DynamicWorkflowDisabledError,
+    DynamicWorkflowService,
+)
 from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore
@@ -125,6 +145,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     app.state.engine = engine
     app.state.manager = manager
+    app.state.dynamic_workflows = DynamicWorkflowService(
+        manager,
+        globally_enabled=settings.enable_dynamic_workflows,
+        operator_identity=settings.operator_identity,
+    )
     await seed_templates(store)
     await seed_governance(store)
     await seed_acr_arch(store)
@@ -145,13 +170,17 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["Content-Type", "Last-Event-ID"],
 )
 
 
 def manager(request: Request) -> RunManager:
     return cast(RunManager, request.app.state.manager)
+
+
+def dynamic_workflows(request: Request) -> DynamicWorkflowService:
+    return cast(DynamicWorkflowService, request.app.state.dynamic_workflows)
 
 
 @app.exception_handler(KeyError)
@@ -197,6 +226,20 @@ async def execution_mode_mismatch_handler(
     return _error(409, "EXECUTION_MODE_MISMATCH", str(exc))
 
 
+@app.exception_handler(DynamicWorkflowDisabledError)
+async def dynamic_workflow_disabled_handler(
+    request: Request, exc: DynamicWorkflowDisabledError
+) -> JSONResponse:
+    return _error(403, "DYNAMIC_WORKFLOWS_DISABLED", str(exc))
+
+
+@app.exception_handler(DynamicWorkflowConflictError)
+async def dynamic_workflow_conflict_handler(
+    request: Request, exc: DynamicWorkflowConflictError
+) -> JSONResponse:
+    return _error(409, "DYNAMIC_WORKFLOW_CONFLICT", str(exc))
+
+
 def _error(status: int, code: str, message: str, retryable: bool = False) -> JSONResponse:
     body = ErrorEnvelope(
         code=code,
@@ -230,6 +273,30 @@ async def get_project(project_id: str, request: Request) -> Project:
     return project
 
 
+@app.get(
+    "/api/v2/projects/{project_id}/features",
+    response_model=ProjectFeatureSettings,
+)
+async def get_project_features(
+    project_id: str, request: Request
+) -> ProjectFeatureSettings:
+    return await dynamic_workflows(request).get_project_features(project_id)
+
+
+@app.patch(
+    "/api/v2/projects/{project_id}/features",
+    response_model=ProjectFeatureSettings,
+)
+async def update_project_features(
+    project_id: str, payload: ProjectFeatureUpdate, request: Request
+) -> ProjectFeatureSettings:
+    return await dynamic_workflows(request).update_project_features(
+        project_id,
+        dynamic_workflows=payload.dynamic_workflows,
+        expected_revision=payload.expected_revision,
+    )
+
+
 @app.post("/api/v1/tasks", response_model=Task, status_code=201)
 async def create_task(payload: TaskCreate, request: Request) -> Task:
     return await manager(request).create_task(
@@ -255,6 +322,21 @@ async def get_task_planning(task_id: str, request: Request) -> TaskPlanning:
 @app.get("/api/v1/tasks/{task_id}/profile", response_model=TaskProfile)
 async def get_task_profile(task_id: str, request: Request) -> TaskProfile:
     return (await manager(request).get_task_planning(task_id)).current_profile
+
+
+@app.post(
+    "/api/v2/tasks/{task_id}/workflow/propose",
+    response_model=WorkflowProposal,
+    status_code=201,
+)
+async def propose_dynamic_workflow(
+    task_id: str, payload: WorkflowProposeCreate, request: Request
+) -> WorkflowProposal:
+    return await dynamic_workflows(request).propose(
+        task_id,
+        execution_provider=payload.execution_provider,
+        planner_runtime=payload.planner_runtime,
+    )
 
 
 @app.post(
@@ -294,6 +376,140 @@ async def get_run(run_id: str, request: Request) -> Run:
     if run is None:
         raise KeyError(run_id)
     return run
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/workflow/proposals",
+    response_model=list[WorkflowProposal],
+)
+async def list_dynamic_workflow_proposals(
+    run_id: str, request: Request
+) -> list[WorkflowProposal]:
+    if await manager(request).store.get_run(run_id) is None:
+        raise KeyError(run_id)
+    return await manager(request).store.list_workflow_proposals(run_id=run_id)
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/workflow/proposals/{proposal_id}",
+    response_model=WorkflowProposal,
+)
+async def get_dynamic_workflow_proposal(
+    run_id: str, proposal_id: str, request: Request
+) -> WorkflowProposal:
+    proposal = await manager(request).store.get_workflow_proposal(proposal_id)
+    if proposal is None:
+        raise KeyError(proposal_id)
+    if proposal.run_id != run_id:
+        raise DynamicWorkflowConflictError(
+            f"proposal {proposal_id} does not belong to run {run_id}"
+        )
+    return proposal
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/workflow/proposals/{proposal_id}/validations",
+    response_model=list[GraphValidationResult],
+)
+async def list_dynamic_workflow_validations(
+    run_id: str, proposal_id: str, request: Request
+) -> list[GraphValidationResult]:
+    await get_dynamic_workflow_proposal(run_id, proposal_id, request)
+    return await manager(request).store.list_graph_validations(proposal_id)
+
+
+@app.post(
+    "/api/v2/runs/{run_id}/workflow/proposals/{proposal_id}/validate",
+    response_model=WorkflowValidationOutcome,
+)
+async def validate_dynamic_workflow(
+    run_id: str, proposal_id: str, request: Request
+) -> WorkflowValidationOutcome:
+    return await dynamic_workflows(request).validate(run_id, proposal_id)
+
+
+@app.post(
+    "/api/v2/runs/{run_id}/workflow/proposals/{proposal_id}/activate",
+    response_model=WorkflowActivationOutcome,
+    status_code=202,
+)
+async def activate_dynamic_workflow(
+    run_id: str, proposal_id: str, request: Request
+) -> WorkflowActivationOutcome:
+    return await dynamic_workflows(request).activate(run_id, proposal_id)
+
+
+@app.post(
+    "/api/v2/runs/{run_id}/replan",
+    response_model=ReplanOutcome,
+    status_code=202,
+)
+async def replan_dynamic_workflow(
+    run_id: str, payload: ReplanCreate, request: Request
+) -> ReplanOutcome:
+    return await dynamic_workflows(request).replan(
+        run_id,
+        reason=payload.reason,
+        evidence_refs=payload.evidence_refs,
+    )
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/replans",
+    response_model=list[ReplanRequest],
+)
+async def list_replan_requests(run_id: str, request: Request) -> list[ReplanRequest]:
+    if await manager(request).store.get_run(run_id) is None:
+        raise KeyError(run_id)
+    return await manager(request).store.list_replan_requests(run_id)
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/graph/revisions",
+    response_model=list[RunGraphRevision],
+)
+async def list_graph_revisions(run_id: str, request: Request) -> list[RunGraphRevision]:
+    if await manager(request).store.get_run(run_id) is None:
+        raise KeyError(run_id)
+    return await manager(request).store.list_graph_revisions(run_id)
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/graph/revisions/{revision}",
+    response_model=RunGraphRevision,
+)
+async def get_graph_revision(
+    run_id: str, revision: int, request: Request
+) -> RunGraphRevision:
+    result = await manager(request).store.get_graph_revision(run_id, revision)
+    if result is None:
+        raise KeyError(f"{run_id}/revision/{revision}")
+    return result
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/graph/diff",
+    response_model=GraphRevisionDiff,
+)
+async def get_graph_revision_diff(
+    run_id: str,
+    request: Request,
+    from_revision: int = Query(alias="from", ge=1),
+    to_revision: int = Query(alias="to", ge=1),
+) -> GraphRevisionDiff:
+    return await dynamic_workflows(request).graph_diff(
+        run_id, from_revision, to_revision
+    )
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/runtime-decisions",
+    response_model=list[RuntimeDecision],
+)
+async def list_runtime_decisions(run_id: str, request: Request) -> list[RuntimeDecision]:
+    if await manager(request).store.get_run(run_id) is None:
+        raise KeyError(run_id)
+    return await manager(request).store.list_runtime_decisions(run_id)
 
 
 @app.get("/api/v1/runs/{run_id}/artifacts", response_model=list[ArtifactRef])

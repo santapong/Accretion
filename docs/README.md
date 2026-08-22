@@ -13,6 +13,7 @@ and release reviewers. Start with the path that matches what you want to do.
 | Understand the system | [README architecture](../README.md#architecture) | [v0.1 SDD](sdd/Accretion_SDD_v0.1.md) |
 | Build a contribution | [Contributing](../CONTRIBUTING.md) | [Branch policy](BRANCH_POLICY.md) |
 | Operate or recover runs | [P0 runtime runbook](P0_RUNBOOK.md) | [P2 loops](P2_RUNBOOK.md), [P3 replay](P3_RUNBOOK.md) |
+| Operate P5 dynamic workflows | [P5 runbook](P5_RUNBOOK.md) | [P5 decisions](P5_DECISIONS.md), [acceptance](P5_ACCEPTANCE_REPORT.md) |
 | Reproduce research | [ACR-ARCH](ACR_ARCH_V01.md) | [v0.1 release audit](V0_1_RELEASE_AUDIT.md) |
 | Review security | [Security policy](../SECURITY.md) | [Trust-boundary diagram](assets/trust-boundary.svg) |
 | Plan the next release | [v0.2 delivery plan](V0_2_PLAN.md) | [v0.2 SDD](sdd/Accretion_SDD_v0.2.md) |
@@ -29,6 +30,7 @@ and release reviewers. Start with the path that matches what you want to do.
 | [Benchmark pipeline](assets/benchmark-pipeline.svg) | Frozen inputs through reproducible metrics | [ACR-ARCH](ACR_ARCH_V01.md) |
 | [Delivery workflow](assets/delivery-workflow.svg) | Protected branches, CI, and releases | [Branch policy](BRANCH_POLICY.md) |
 | [v0.2 roadmap](assets/v02-roadmap.svg) | P5–P7 sequencing and release gates | [v0.2 plan](V0_2_PLAN.md) |
+| [P5 lifecycle](assets/p5-dynamic-workflow.svg) | Proposal, deterministic validation, fallback, activation, and safe replan | [P5 runbook](P5_RUNBOOK.md) |
 
 Every SVG has a title and long description for assistive technology. Technical
 diagrams are repository-native so changes can be reviewed as text. The generated

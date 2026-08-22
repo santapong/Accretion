@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Protocol
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from accretion.contracts import (
@@ -54,6 +54,14 @@ from accretion.contracts import (
     WorkspaceLease,
 )
 from accretion.ids import new_id
+from accretion.orchestration.models import (
+    GraphValidationResult,
+    ProjectFeatureSettings,
+    ReplanRequest,
+    RunGraphRevision,
+    RuntimeDecision,
+    WorkflowProposal,
+)
 from accretion.persistence.models import (
     AcceptancePolicyRow,
     AgentEventRow,
@@ -66,15 +74,20 @@ from accretion.persistence.models import (
     CapabilityRow,
     CheckpointRow,
     ContextBundleRow,
+    GraphValidationResultRow,
     LoopExecutionRow,
     LoopIterationRow,
     PluginRow,
+    ProjectFeatureSettingsRow,
     ProjectRow,
     PromptContractRow,
+    ReplanRequestRow,
     RunGraphEdgeRow,
     RunGraphNodeRow,
+    RunGraphRevisionRow,
     RunGraphRow,
     RunRow,
+    RuntimeDecisionRow,
     RuntimeSessionRow,
     SkillRow,
     StrategyDecisionRow,
@@ -82,6 +95,7 @@ from accretion.persistence.models import (
     TaskProfileRow,
     TaskRow,
     VerificationRow,
+    WorkflowProposalRow,
     WorkflowTemplateRow,
     WorkspaceLeaseRow,
 )
@@ -205,6 +219,7 @@ class StateStore(Protocol):
         edges: Sequence[RunEdge] = (),
         expected_revision: int,
     ) -> RunGraph: ...
+    async def replace_run_graph(self, graph: RunGraph, *, expected_revision: int) -> RunGraph: ...
     async def append_checkpoint(
         self, checkpoint: Checkpoint, events: Sequence[AgentEvent] = ()
     ) -> Checkpoint: ...
@@ -235,9 +250,7 @@ class StateStore(Protocol):
     async def list_skills(self) -> list[MetaSkill]: ...
     async def upsert_plugin(self, plugin: MetaPlugin) -> MetaPlugin: ...
     async def list_plugins(self, allowlisted_only: bool = True) -> list[MetaPlugin]: ...
-    async def upsert_capability_policy(
-        self, policy: CapabilityPolicy
-    ) -> CapabilityPolicy: ...
+    async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy: ...
     async def get_capability_policy(
         self, policy_id: str, version: str | None = None
     ) -> CapabilityPolicy | None: ...
@@ -255,6 +268,26 @@ class StateStore(Protocol):
     async def list_architecture_metrics(
         self, benchmark_run_id: str | None = None
     ) -> list[ArchitectureMetric]: ...
+    async def get_project_features(self, project_id: str) -> ProjectFeatureSettings: ...
+    async def update_project_features(
+        self, settings: ProjectFeatureSettings, *, expected_revision: int
+    ) -> ProjectFeatureSettings: ...
+    async def save_workflow_proposal(self, proposal: WorkflowProposal) -> WorkflowProposal: ...
+    async def get_workflow_proposal(self, proposal_id: str) -> WorkflowProposal | None: ...
+    async def list_workflow_proposals(
+        self, *, task_id: str | None = None, run_id: str | None = None
+    ) -> list[WorkflowProposal]: ...
+    async def save_graph_validation(
+        self, result: GraphValidationResult
+    ) -> GraphValidationResult: ...
+    async def list_graph_validations(self, proposal_id: str) -> list[GraphValidationResult]: ...
+    async def save_graph_revision(self, revision: RunGraphRevision) -> RunGraphRevision: ...
+    async def list_graph_revisions(self, run_id: str) -> list[RunGraphRevision]: ...
+    async def get_graph_revision(self, run_id: str, revision: int) -> RunGraphRevision | None: ...
+    async def save_replan_request(self, request: ReplanRequest) -> ReplanRequest: ...
+    async def list_replan_requests(self, run_id: str) -> list[ReplanRequest]: ...
+    async def save_runtime_decision(self, decision: RuntimeDecision) -> RuntimeDecision: ...
+    async def list_runtime_decisions(self, run_id: str) -> list[RuntimeDecision]: ...
 
 
 class MemoryStore:
@@ -294,6 +327,12 @@ class MemoryStore:
         self.benchmark_tasks: dict[tuple[str, str], BenchmarkTask] = {}
         self.benchmark_runs: dict[str, BenchmarkRun] = {}
         self.architecture_metrics: dict[str, list[ArchitectureMetric]] = {}
+        self.project_features: dict[str, ProjectFeatureSettings] = {}
+        self.workflow_proposals: dict[str, WorkflowProposal] = {}
+        self.graph_validations: dict[str, list[GraphValidationResult]] = {}
+        self.graph_revisions: dict[str, list[RunGraphRevision]] = {}
+        self.replan_requests: dict[str, ReplanRequest] = {}
+        self.runtime_decisions: dict[str, RuntimeDecision] = {}
         self._lock = asyncio.Lock()
 
     async def create_project(self, project: Project) -> Project:
@@ -645,9 +684,7 @@ class MemoryStore:
                 for iterations in self.loop_iterations.values()
                 for item in iterations
             ):
-                raise ValueError(
-                    "iteration verification must be saved with append_loop_iteration"
-                )
+                raise ValueError("iteration verification must be saved with append_loop_iteration")
             self.verifications[result.verification_id] = result
             self.verification_ids_by_run.setdefault(result.run_id, []).append(
                 result.verification_id
@@ -725,8 +762,7 @@ class MemoryStore:
         if set(iteration.verification_refs) != verification_ids:
             raise ValueError("iteration verification refs must match persisted verifications")
         if any(
-            result.run_id != iteration.run_id
-            or result.iteration_id != iteration.iteration_id
+            result.run_id != iteration.run_id or result.iteration_id != iteration.iteration_id
             for result in verifications
         ):
             raise ValueError("verification belongs to a different run or iteration")
@@ -747,9 +783,7 @@ class MemoryStore:
 
     async def list_sessions(self, provider: Provider | None = None) -> list[SessionRef]:
         sessions = [
-            item
-            for item in self.sessions.values()
-            if provider is None or item.provider is provider
+            item for item in self.sessions.values() if provider is None or item.provider is provider
         ]
         return sorted(sessions, key=lambda item: (item.provider.value, item.run_id))
 
@@ -794,8 +828,7 @@ class MemoryStore:
         validated = [
             template
             for template in self.workflow_templates.values()
-            if template.template_id == template_id
-            and template.status is TemplateStatus.VALIDATED
+            if template.template_id == template_id and template.status is TemplateStatus.VALIDATED
         ]
         if len(validated) > 1:
             raise ValueError(
@@ -842,6 +875,23 @@ class MemoryStore:
             return self._update_memory_run_graph(
                 run_graph_id, nodes=nodes, edges=edges, expected_revision=expected_revision
             )
+
+    async def replace_run_graph(
+        self, graph: RunGraph, *, expected_revision: int
+    ) -> RunGraph:
+        async with self._lock:
+            current = self.run_graphs.get(graph.run_id)
+            if current is None or current.run_graph_id != graph.run_graph_id:
+                raise KeyError(graph.run_graph_id)
+            if current.graph_revision != expected_revision:
+                raise ValueError("run graph revision conflict")
+            node_ids = [node.node_id for node in graph.nodes]
+            edge_ids = [edge.edge_id for edge in graph.edges]
+            if len(node_ids) != len(set(node_ids)) or len(edge_ids) != len(set(edge_ids)):
+                raise ValueError("replacement graph identifiers must be unique")
+            updated = graph.model_copy(update={"graph_revision": expected_revision + 1})
+            self.run_graphs[graph.run_id] = updated
+            return updated
 
     def _update_memory_run_graph(
         self,
@@ -896,9 +946,7 @@ class MemoryStore:
             (item for item in stored_list if item.sequence == checkpoint.sequence), None
         )
         if existing is not None:
-            identity = checkpoint.model_dump(
-                mode="json", exclude=_CHECKPOINT_IDENTITY_EXCLUDED
-            )
+            identity = checkpoint.model_dump(mode="json", exclude=_CHECKPOINT_IDENTITY_EXCLUDED)
             if existing.model_dump(mode="json", exclude=_CHECKPOINT_IDENTITY_EXCLUDED) != identity:
                 raise ValueError(
                     f"checkpoint at sequence {checkpoint.sequence} is immutable evidence"
@@ -932,9 +980,7 @@ class MemoryStore:
         return max(stored, key=lambda checkpoint: checkpoint.sequence)
 
     async def list_checkpoints(self, run_id: str) -> list[Checkpoint]:
-        return sorted(
-            self.checkpoints.get(run_id, []), key=lambda checkpoint: checkpoint.sequence
-        )
+        return sorted(self.checkpoints.get(run_id, []), key=lambda checkpoint: checkpoint.sequence)
 
     async def save_approval(self, approval: ApprovalRecord) -> ApprovalRecord:
         async with self._lock:
@@ -1017,11 +1063,7 @@ class MemoryStore:
 
     async def list_capabilities(self, enabled_only: bool = True) -> list[Capability]:
         return sorted(
-            (
-                item
-                for item in self.capabilities.values()
-                if item.enabled or not enabled_only
-            ),
+            (item for item in self.capabilities.values() if item.enabled or not enabled_only),
             key=lambda item: (item.capability_id, item.version),
         )
 
@@ -1046,17 +1088,11 @@ class MemoryStore:
 
     async def list_plugins(self, allowlisted_only: bool = True) -> list[MetaPlugin]:
         return sorted(
-            (
-                item
-                for item in self.plugins.values()
-                if item.allowlisted or not allowlisted_only
-            ),
+            (item for item in self.plugins.values() if item.allowlisted or not allowlisted_only),
             key=lambda item: (item.plugin_id, item.version),
         )
 
-    async def upsert_capability_policy(
-        self, policy: CapabilityPolicy
-    ) -> CapabilityPolicy:
+    async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy:
         key = (policy.policy_id, policy.version)
         current = self.capability_policies.get(key)
         if current is not None and current != policy:
@@ -1070,9 +1106,7 @@ class MemoryStore:
         if version is not None:
             return self.capability_policies.get((policy_id, version))
         candidates = [
-            item
-            for (item_id, _), item in self.capability_policies.items()
-            if item_id == policy_id
+            item for (item_id, _), item in self.capability_policies.items() if item_id == policy_id
         ]
         return max(candidates, key=lambda item: item.created_at) if candidates else None
 
@@ -1084,11 +1118,7 @@ class MemoryStore:
 
     async def list_capability_results(self, run_id: str) -> list[CapabilityExecutionResult]:
         return sorted(
-            (
-                item
-                for item in self.capability_results.values()
-                if item.request.run_id == run_id
-            ),
+            (item for item in self.capability_results.values() if item.request.run_id == run_id),
             key=lambda item: item.request.created_at,
         )
 
@@ -1096,17 +1126,13 @@ class MemoryStore:
         key = (task.benchmark_task_id, task.version)
         current = self.benchmark_tasks.get(key)
         if current is not None and current != task:
-            raise ValueError(
-                f"benchmark task {task.benchmark_task_id}@{task.version} is immutable"
-            )
+            raise ValueError(f"benchmark task {task.benchmark_task_id}@{task.version} is immutable")
         self.benchmark_tasks[key] = task
         return task
 
     async def get_benchmark_task(self, task_id: str) -> BenchmarkTask | None:
         candidates = [
-            item
-            for (item_id, _), item in self.benchmark_tasks.items()
-            if item_id == task_id
+            item for (item_id, _), item in self.benchmark_tasks.items() if item_id == task_id
         ]
         return max(candidates, key=lambda item: item.version) if candidates else None
 
@@ -1135,9 +1161,9 @@ class MemoryStore:
         return run
 
     async def list_benchmark_runs(self, limit: int = 20) -> list[BenchmarkRun]:
-        return sorted(
-            self.benchmark_runs.values(), key=lambda item: item.started_at, reverse=True
-        )[:limit]
+        return sorted(self.benchmark_runs.values(), key=lambda item: item.started_at, reverse=True)[
+            :limit
+        ]
 
     async def list_architecture_metrics(
         self, benchmark_run_id: str | None = None
@@ -1149,6 +1175,106 @@ class MemoryStore:
             for run_id in sorted(self.architecture_metrics)
             for metric in self.architecture_metrics[run_id]
         ]
+
+    async def get_project_features(self, project_id: str) -> ProjectFeatureSettings:
+        if project_id not in self.projects:
+            raise KeyError(project_id)
+        return self.project_features.get(project_id, ProjectFeatureSettings(project_id=project_id))
+
+    async def update_project_features(
+        self, settings: ProjectFeatureSettings, *, expected_revision: int
+    ) -> ProjectFeatureSettings:
+        current = await self.get_project_features(settings.project_id)
+        if current.revision != expected_revision:
+            raise ValueError("project feature revision conflict")
+        updated = settings.model_copy(
+            update={"revision": expected_revision + 1, "updated_at": datetime.now(UTC)}
+        )
+        self.project_features[settings.project_id] = updated
+        return updated
+
+    async def save_workflow_proposal(self, proposal: WorkflowProposal) -> WorkflowProposal:
+        current = self.workflow_proposals.get(proposal.proposal_id)
+        if current is not None and current != proposal:
+            raise ValueError(f"workflow proposal {proposal.proposal_id} is immutable")
+        self.workflow_proposals[proposal.proposal_id] = proposal
+        return proposal
+
+    async def get_workflow_proposal(self, proposal_id: str) -> WorkflowProposal | None:
+        return self.workflow_proposals.get(proposal_id)
+
+    async def list_workflow_proposals(
+        self, *, task_id: str | None = None, run_id: str | None = None
+    ) -> list[WorkflowProposal]:
+        return sorted(
+            (
+                item
+                for item in self.workflow_proposals.values()
+                if (task_id is None or item.task_id == task_id)
+                and (run_id is None or item.run_id == run_id)
+            ),
+            key=lambda item: item.created_at,
+        )
+
+    async def save_graph_validation(self, result: GraphValidationResult) -> GraphValidationResult:
+        items = self.graph_validations.setdefault(result.proposal_id, [])
+        current = next((item for item in items if item.validation_id == result.validation_id), None)
+        if current is not None and current != result:
+            raise ValueError(f"graph validation {result.validation_id} is immutable")
+        if current is None:
+            items.append(result)
+        return result
+
+    async def list_graph_validations(self, proposal_id: str) -> list[GraphValidationResult]:
+        return sorted(self.graph_validations.get(proposal_id, []), key=lambda item: item.created_at)
+
+    async def save_graph_revision(self, revision: RunGraphRevision) -> RunGraphRevision:
+        items = self.graph_revisions.setdefault(revision.run_id, [])
+        current = next((item for item in items if item.revision == revision.revision), None)
+        if current is not None and current != revision:
+            raise ValueError(
+                f"run graph revision {revision.run_id}/{revision.revision} is immutable"
+            )
+        if current is None:
+            if items and revision.revision != items[-1].revision + 1:
+                raise ValueError("run graph revisions must be contiguous")
+            items.append(revision)
+        return revision
+
+    async def list_graph_revisions(self, run_id: str) -> list[RunGraphRevision]:
+        return sorted(self.graph_revisions.get(run_id, []), key=lambda item: item.revision)
+
+    async def get_graph_revision(self, run_id: str, revision: int) -> RunGraphRevision | None:
+        return next(
+            (item for item in self.graph_revisions.get(run_id, []) if item.revision == revision),
+            None,
+        )
+
+    async def save_replan_request(self, request: ReplanRequest) -> ReplanRequest:
+        current = self.replan_requests.get(request.replan_request_id)
+        if current is not None and current.run_id != request.run_id:
+            raise ValueError("replan request identity is immutable")
+        self.replan_requests[request.replan_request_id] = request
+        return request
+
+    async def list_replan_requests(self, run_id: str) -> list[ReplanRequest]:
+        return sorted(
+            (item for item in self.replan_requests.values() if item.run_id == run_id),
+            key=lambda item: item.created_at,
+        )
+
+    async def save_runtime_decision(self, decision: RuntimeDecision) -> RuntimeDecision:
+        current = self.runtime_decisions.get(decision.decision_id)
+        if current is not None and current != decision:
+            raise ValueError(f"runtime decision {decision.decision_id} is immutable")
+        self.runtime_decisions[decision.decision_id] = decision
+        return decision
+
+    async def list_runtime_decisions(self, run_id: str) -> list[RuntimeDecision]:
+        return sorted(
+            (item for item in self.runtime_decisions.values() if item.run_id == run_id),
+            key=lambda item: item.created_at,
+        )
 
 
 class PostgresStore:
@@ -1465,9 +1591,7 @@ class PostgresStore:
             run.loop_execution_id = execution.loop_execution_id
             run.revision += 1
             run.updated_at = datetime.now(UTC)
-        return execution.model_copy(
-            update={"acceptance_policy": stored_policy}
-        )
+        return execution.model_copy(update={"acceptance_policy": stored_policy})
 
     async def get_loop_execution(self, loop_execution_id: str) -> LoopExecution | None:
         async with self.sessions() as session:
@@ -1891,15 +2015,11 @@ class PostgresStore:
     async def get_workflow_template(
         self, template_id: str, version: str | None = None
     ) -> WorkflowTemplate | None:
-        query = select(WorkflowTemplateRow).where(
-            WorkflowTemplateRow.template_id == template_id
-        )
+        query = select(WorkflowTemplateRow).where(WorkflowTemplateRow.template_id == template_id)
         if version is not None:
             query = query.where(WorkflowTemplateRow.version == version)
         else:
-            query = query.where(
-                WorkflowTemplateRow.status == TemplateStatus.VALIDATED.value
-            )
+            query = query.where(WorkflowTemplateRow.status == TemplateStatus.VALIDATED.value)
         async with self.sessions() as session:
             rows = (await session.scalars(query)).all()
         if version is None and len(rows) > 1:
@@ -2038,6 +2158,68 @@ class PostgresStore:
             await session.flush()
             graph = await self._assemble_run_graph(session, row)
         return graph
+
+    async def replace_run_graph(
+        self, graph: RunGraph, *, expected_revision: int
+    ) -> RunGraph:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(RunGraphRow)
+                .where(RunGraphRow.id == graph.run_graph_id)
+                .with_for_update()
+            )
+            if row is None or row.run_id != graph.run_id:
+                raise KeyError(graph.run_graph_id)
+            if row.graph_revision != expected_revision:
+                raise ValueError("run graph revision conflict")
+            template = await session.get(WorkflowTemplateRow, graph.template_record_id)
+            if template is None:
+                raise KeyError(graph.template_record_id)
+            await session.execute(
+                delete(RunGraphEdgeRow).where(
+                    RunGraphEdgeRow.run_graph_id == graph.run_graph_id
+                )
+            )
+            await session.execute(
+                delete(RunGraphNodeRow).where(
+                    RunGraphNodeRow.run_graph_id == graph.run_graph_id
+                )
+            )
+            row.template_record_id = graph.template_record_id
+            row.template_id = graph.template_id
+            row.template_version = graph.template_version
+            row.template_checksum = graph.template_checksum
+            row.graph_revision = expected_revision + 1
+            row.instantiated_at = graph.instantiated_at
+            for position, node in enumerate(graph.nodes):
+                session.add(
+                    RunGraphNodeRow(
+                        id=node.node_id,
+                        run_graph_id=graph.run_graph_id,
+                        run_id=graph.run_id,
+                        key=node.key,
+                        kind=node.kind.value,
+                        status=node.status.value,
+                        position=position,
+                        node=node.model_dump(mode="json"),
+                    )
+                )
+            for position, edge in enumerate(graph.edges):
+                session.add(
+                    RunGraphEdgeRow(
+                        id=edge.edge_id,
+                        run_graph_id=graph.run_graph_id,
+                        key=edge.key,
+                        source=edge.source,
+                        target=edge.target,
+                        kind=edge.kind.value,
+                        traversal_count=edge.traversal_count,
+                        position=position,
+                        edge=edge.model_dump(mode="json"),
+                    )
+                )
+            await session.flush()
+            return await self._assemble_run_graph(session, row)
 
     async def append_checkpoint(
         self, checkpoint: Checkpoint, events: Sequence[AgentEvent] = ()
@@ -2225,9 +2407,7 @@ class PostgresStore:
         return Capability.model_validate(row.definition) if row else None
 
     async def list_capabilities(self, enabled_only: bool = True) -> list[Capability]:
-        query = select(CapabilityRow).order_by(
-            CapabilityRow.capability_id, CapabilityRow.version
-        )
+        query = select(CapabilityRow).order_by(CapabilityRow.capability_id, CapabilityRow.version)
         if enabled_only:
             query = query.where(CapabilityRow.enabled.is_(True))
         async with self.sessions() as session:
@@ -2301,9 +2481,7 @@ class PostgresStore:
             rows = (await session.scalars(query)).all()
         return [MetaPlugin.model_validate(row.definition) for row in rows]
 
-    async def upsert_capability_policy(
-        self, policy: CapabilityPolicy
-    ) -> CapabilityPolicy:
+    async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy:
         async with self.sessions.begin() as session:
             row = await session.scalar(
                 select(CapabilityPolicyRow).where(
@@ -2466,14 +2644,10 @@ class PostgresStore:
                 metric_count = await session.scalar(
                     select(func.count())
                     .select_from(ArchitectureMetricRow)
-                    .where(
-                        ArchitectureMetricRow.benchmark_run_id == run.benchmark_run_id
-                    )
+                    .where(ArchitectureMetricRow.benchmark_run_id == run.benchmark_run_id)
                 )
                 if metric_count != run.scenario_count:
-                    raise ValueError(
-                        f"benchmark run {run.benchmark_run_id} has incomplete metrics"
-                    )
+                    raise ValueError(f"benchmark run {run.benchmark_run_id} has incomplete metrics")
                 return self._row_to_benchmark_run(current)
             session.add(
                 BenchmarkRunRow(
@@ -2510,9 +2684,7 @@ class PostgresStore:
         async with self.sessions() as session:
             rows = (
                 await session.scalars(
-                    select(BenchmarkRunRow)
-                    .order_by(BenchmarkRunRow.started_at.desc())
-                    .limit(limit)
+                    select(BenchmarkRunRow).order_by(BenchmarkRunRow.started_at.desc()).limit(limit)
                 )
             ).all()
         return [self._row_to_benchmark_run(row) for row in rows]
@@ -2525,12 +2697,249 @@ class PostgresStore:
             ArchitectureMetricRow.mode,
         )
         if benchmark_run_id is not None:
-            query = query.where(
-                ArchitectureMetricRow.benchmark_run_id == benchmark_run_id
-            )
+            query = query.where(ArchitectureMetricRow.benchmark_run_id == benchmark_run_id)
         async with self.sessions() as session:
             rows = (await session.scalars(query)).all()
         return [ArchitectureMetric.model_validate(row.metric) for row in rows]
+
+    async def get_project_features(self, project_id: str) -> ProjectFeatureSettings:
+        async with self.sessions() as session:
+            if await session.get(ProjectRow, project_id) is None:
+                raise KeyError(project_id)
+            row = await session.get(ProjectFeatureSettingsRow, project_id)
+        if row is None:
+            return ProjectFeatureSettings(project_id=project_id)
+        return ProjectFeatureSettings.model_validate(row.settings)
+
+    async def update_project_features(
+        self, settings: ProjectFeatureSettings, *, expected_revision: int
+    ) -> ProjectFeatureSettings:
+        async with self.sessions.begin() as session:
+            if await session.get(ProjectRow, settings.project_id) is None:
+                raise KeyError(settings.project_id)
+            row = await session.get(
+                ProjectFeatureSettingsRow, settings.project_id, with_for_update=True
+            )
+            current_revision = row.revision if row is not None else 1
+            if current_revision != expected_revision:
+                raise ValueError("project feature revision conflict")
+            updated = settings.model_copy(
+                update={"revision": expected_revision + 1, "updated_at": datetime.now(UTC)}
+            )
+            if row is None:
+                session.add(
+                    ProjectFeatureSettingsRow(
+                        project_id=settings.project_id,
+                        settings=updated.model_dump(mode="json"),
+                        revision=updated.revision,
+                        updated_at=updated.updated_at,
+                    )
+                )
+            else:
+                row.settings = updated.model_dump(mode="json")
+                row.revision = updated.revision
+                row.updated_at = updated.updated_at
+        return updated
+
+    async def save_workflow_proposal(self, proposal: WorkflowProposal) -> WorkflowProposal:
+        async with self.sessions.begin() as session:
+            row = await session.get(WorkflowProposalRow, proposal.proposal_id)
+            if row is not None:
+                current = WorkflowProposal.model_validate(row.proposal)
+                if current != proposal:
+                    raise ValueError(f"workflow proposal {proposal.proposal_id} is immutable")
+                return current
+            session.add(
+                WorkflowProposalRow(
+                    id=proposal.proposal_id,
+                    task_id=proposal.task_id,
+                    run_id=proposal.run_id,
+                    based_on_graph_revision=proposal.based_on_graph_revision,
+                    planner_version=proposal.planner_version,
+                    proposal=proposal.model_dump(mode="json"),
+                    created_at=proposal.created_at,
+                )
+            )
+        return proposal
+
+    async def get_workflow_proposal(self, proposal_id: str) -> WorkflowProposal | None:
+        async with self.sessions() as session:
+            row = await session.get(WorkflowProposalRow, proposal_id)
+        return WorkflowProposal.model_validate(row.proposal) if row is not None else None
+
+    async def list_workflow_proposals(
+        self, *, task_id: str | None = None, run_id: str | None = None
+    ) -> list[WorkflowProposal]:
+        query = select(WorkflowProposalRow).order_by(WorkflowProposalRow.created_at)
+        if task_id is not None:
+            query = query.where(WorkflowProposalRow.task_id == task_id)
+        if run_id is not None:
+            query = query.where(WorkflowProposalRow.run_id == run_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [WorkflowProposal.model_validate(row.proposal) for row in rows]
+
+    async def save_graph_validation(self, result: GraphValidationResult) -> GraphValidationResult:
+        async with self.sessions.begin() as session:
+            row = await session.get(GraphValidationResultRow, result.validation_id)
+            if row is not None:
+                current = GraphValidationResult.model_validate(row.result)
+                if current != result:
+                    raise ValueError(f"graph validation {result.validation_id} is immutable")
+                return current
+            session.add(
+                GraphValidationResultRow(
+                    id=result.validation_id,
+                    proposal_id=result.proposal_id,
+                    status=result.status.value,
+                    validator_version=result.validator_version,
+                    result=result.model_dump(mode="json"),
+                    created_at=result.created_at,
+                )
+            )
+        return result
+
+    async def list_graph_validations(self, proposal_id: str) -> list[GraphValidationResult]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(GraphValidationResultRow)
+                    .where(GraphValidationResultRow.proposal_id == proposal_id)
+                    .order_by(GraphValidationResultRow.created_at)
+                )
+            ).all()
+        return [GraphValidationResult.model_validate(row.result) for row in rows]
+
+    async def save_graph_revision(self, revision: RunGraphRevision) -> RunGraphRevision:
+        async with self.sessions.begin() as session:
+            existing = await session.scalar(
+                select(RunGraphRevisionRow).where(
+                    RunGraphRevisionRow.run_graph_id == revision.run_graph_id,
+                    RunGraphRevisionRow.revision == revision.revision,
+                )
+            )
+            if existing is not None:
+                current = RunGraphRevision.model_validate(existing.definition)
+                if current != revision:
+                    raise ValueError(
+                        f"run graph revision {revision.run_id}/{revision.revision} is immutable"
+                    )
+                return current
+            latest = await session.scalar(
+                select(func.max(RunGraphRevisionRow.revision)).where(
+                    RunGraphRevisionRow.run_graph_id == revision.run_graph_id
+                )
+            )
+            expected = 1 if latest is None else latest + 1
+            if revision.revision != expected:
+                raise ValueError("run graph revisions must be contiguous")
+            session.add(
+                RunGraphRevisionRow(
+                    id=revision.revision_id,
+                    run_graph_id=revision.run_graph_id,
+                    run_id=revision.run_id,
+                    revision=revision.revision,
+                    parent_revision=revision.parent_revision,
+                    proposal_id=revision.proposal_id,
+                    graph_hash=revision.normalized_graph_hash,
+                    definition=revision.model_dump(mode="json"),
+                    activated_at=revision.activated_at,
+                    created_at=revision.created_at,
+                )
+            )
+        return revision
+
+    async def list_graph_revisions(self, run_id: str) -> list[RunGraphRevision]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(RunGraphRevisionRow)
+                    .where(RunGraphRevisionRow.run_id == run_id)
+                    .order_by(RunGraphRevisionRow.revision)
+                )
+            ).all()
+        return [RunGraphRevision.model_validate(row.definition) for row in rows]
+
+    async def get_graph_revision(self, run_id: str, revision: int) -> RunGraphRevision | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(RunGraphRevisionRow).where(
+                    RunGraphRevisionRow.run_id == run_id,
+                    RunGraphRevisionRow.revision == revision,
+                )
+            )
+        return RunGraphRevision.model_validate(row.definition) if row is not None else None
+
+    async def save_replan_request(self, request: ReplanRequest) -> ReplanRequest:
+        async with self.sessions.begin() as session:
+            row = await session.get(ReplanRequestRow, request.replan_request_id)
+            if row is None:
+                session.add(
+                    ReplanRequestRow(
+                        id=request.replan_request_id,
+                        run_id=request.run_id,
+                        based_on_graph_revision=request.based_on_graph_revision,
+                        status=request.status.value,
+                        request=request.model_dump(mode="json"),
+                        created_at=request.created_at,
+                        updated_at=request.updated_at,
+                    )
+                )
+            else:
+                current = ReplanRequest.model_validate(row.request)
+                if current.run_id != request.run_id:
+                    raise ValueError("replan request identity is immutable")
+                row.status = request.status.value
+                row.request = request.model_dump(mode="json")
+                row.updated_at = request.updated_at
+        return request
+
+    async def list_replan_requests(self, run_id: str) -> list[ReplanRequest]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(ReplanRequestRow)
+                    .where(ReplanRequestRow.run_id == run_id)
+                    .order_by(ReplanRequestRow.created_at)
+                )
+            ).all()
+        return [ReplanRequest.model_validate(row.request) for row in rows]
+
+    async def save_runtime_decision(self, decision: RuntimeDecision) -> RuntimeDecision:
+        async with self.sessions.begin() as session:
+            row = await session.get(RuntimeDecisionRow, decision.decision_id)
+            if row is not None:
+                current = RuntimeDecision.model_validate(row.decision)
+                if current != decision:
+                    raise ValueError(f"runtime decision {decision.decision_id} is immutable")
+                return current
+            session.add(
+                RuntimeDecisionRow(
+                    id=decision.decision_id,
+                    run_id=decision.run_id,
+                    node_id=decision.node_id,
+                    selected_runtime=(
+                        decision.selected_runtime.value
+                        if decision.selected_runtime is not None
+                        else None
+                    ),
+                    policy_version=decision.policy_version,
+                    decision=decision.model_dump(mode="json"),
+                    created_at=decision.created_at,
+                )
+            )
+        return decision
+
+    async def list_runtime_decisions(self, run_id: str) -> list[RuntimeDecision]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(RuntimeDecisionRow)
+                    .where(RuntimeDecisionRow.run_id == run_id)
+                    .order_by(RuntimeDecisionRow.created_at)
+                )
+            ).all()
+        return [RuntimeDecision.model_validate(row.decision) for row in rows]
 
     @staticmethod
     def _row_to_benchmark_run(row: BenchmarkRunRow) -> BenchmarkRun:

@@ -8,8 +8,9 @@ P3 enables the persisted `GRAPH/fixed-graph-v1`, `HYBRID/hybrid-rd-v1`, and
 `safe-unknown-v1` decisions. Every run instantiates an immutable `RunGraph`
 from a VALIDATED, checksum-pinned template; a fail-closed scheduler walks the
 graph, checkpoints at node boundaries, blocks on durable human approval gates,
-and delegates bounded loop regions to the P2 engine. Dynamic workflow
-synthesis and learned routing remain blocked until v0.2+ and are not emulated.
+and delegates bounded loop regions to the P2 engine. The v0.1 P3 API remains
+static and unchanged; opt-in P5 proposals now compile into this same scheduler
+only after deterministic validation. Learned routing remains out of scope.
 
 ## Safety and recovery invariants
 

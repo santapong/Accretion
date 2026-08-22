@@ -10,7 +10,15 @@ import {
 } from "react-router-dom";
 import { api, type AcrArchFilters } from "./api";
 import { RunExecution } from "./RunExecution";
-import type { AgentEvent, Project, Run, TaskCreate, TaskPlanning } from "./types";
+import type {
+  AgentEvent,
+  Project,
+  Run,
+  TaskCreate,
+  TaskPlanning,
+  WorkflowProposal,
+  WorkflowValidationOutcome,
+} from "./types";
 import "./styles.css";
 
 const terminal = new Set(["SUCCEEDED", "FAILED", "CANCELLED"]);
@@ -144,6 +152,8 @@ function PlanningReview({ planning, onUpdate }: {
   const [reason, setReason] = useState("");
   const [feedback, setFeedback] = useState<string>();
   const [provider, setProvider] = useState("FAKE");
+  const [dynamicProposal, setDynamicProposal] = useState<WorkflowProposal>();
+  const [dynamicValidation, setDynamicValidation] = useState<WorkflowValidationOutcome>();
   const modeTemplates = (templatesQuery.data ?? []).filter(
     (template) => template.mode === mode,
   );
@@ -174,6 +184,50 @@ function PlanningReview({ planning, onUpdate }: {
       setFeedback(`Run ${shortId(created.run_id)} created.`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Run creation failed.");
+    }
+  }
+
+  async function proposeDynamic() {
+    setFeedback("Preparing a governed P5 workflow proposal…");
+    try {
+      const task = await api.task(planning.task_id);
+      const features = await api.projectFeatures(task.envelope.project_id);
+      if (!features.dynamic_workflows) {
+        await api.updateProjectFeatures(
+          task.envelope.project_id,
+          true,
+          features.revision,
+        );
+      }
+      const proposal = await api.proposeWorkflow(planning.task_id, provider);
+      const validation = await api.validateWorkflow(proposal.run_id!, proposal.proposal_id);
+      setDynamicProposal(validation.proposal);
+      setDynamicValidation(validation);
+      setFeedback(
+        validation.validation.status === "ACCEPT"
+          ? "P5 graph accepted. Review the proposal before activation."
+          : validation.fallback_run_id
+            ? `Proposal rejected; static fallback ${shortId(validation.fallback_run_id)} started.`
+            : "Proposal requires operator attention.",
+      );
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Dynamic proposal failed.");
+    }
+  }
+
+  async function activateDynamic() {
+    if (!dynamicProposal?.run_id) return;
+    setFeedback("Activating the validated P5 graph…");
+    try {
+      const activation = await api.activateWorkflow(
+        dynamicProposal.run_id,
+        dynamicProposal.proposal_id,
+      );
+      setFeedback(
+        `Dynamic run ${shortId(activation.run_id)} activated at revision ${activation.revision.revision}.`,
+      );
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Dynamic activation failed.");
     }
   }
 
@@ -208,8 +262,22 @@ function PlanningReview({ planning, onUpdate }: {
           <div className="run-control">
             <label>Runtime<select value={provider} onChange={(event) => setProvider(event.target.value)}><option>FAKE</option><option>CODEX</option><option>CLAUDE</option></select></label>
             <button className="primary-button" type="button" onClick={run}>Create run</button>
+            <button className="secondary-button" type="button" onClick={proposeDynamic}>Propose P5 graph</button>
+            {dynamicValidation?.validation.status === "ACCEPT" ? (
+              <button className="primary-button" type="button" onClick={activateDynamic}>
+                Activate revision 1
+              </button>
+            ) : null}
           </div>
         </div>
+        {dynamicProposal ? (
+          <aside className="dynamic-proposal-preview">
+            <div><p className="eyebrow">Pending dynamic workflow</p><h3>{(dynamicProposal.fragment_refs ?? []).join(" · ")}</h3></div>
+            <StatePill state={dynamicValidation?.validation.status ?? "PENDING"} />
+            <p>{dynamicProposal.rationale_summary}</p>
+            <small>{dynamicProposal.nodes.length} nodes · {(dynamicProposal.edges ?? []).length} edges · planner {dynamicProposal.planner_version}</small>
+          </aside>
+        ) : null}
         {feedback ? <p className="form-status" role="status">{feedback}</p> : null}
       </div>
     </section>
