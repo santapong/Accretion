@@ -110,7 +110,7 @@ async def test_fake_runtime_rejects_overlapping_calls_without_overwriting_queue(
 async def test_codex_reuses_one_thread_for_sequential_turns(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    runtime = CodexRuntime()
+    runtime = CodexRuntime(gateway_environment={"ACCRETION_POLICY_ID": "policy_default"})
     methods: list[tuple[str, dict[str, Any]]] = []
     turn_number = 0
 
@@ -175,6 +175,16 @@ async def test_codex_reuses_one_thread_for_sequential_turns(
         "turn/start",
         "turn/start",
     ]
+    thread_config = methods[0][1]
+    assert thread_config["sandbox"] == "workspace-write"
+    assert thread_config["config"]["sandbox_workspace_write"]["network_access"] is False
+    assert thread_config["config"]["shell_environment_policy"] == {"inherit": "core"}
+    gateway = thread_config["config"]["mcp_servers"]["accretion"]
+    assert gateway["args"] == ["-m", "accretion.mcp_gateway"]
+    assert gateway["env"] == {
+        "ACCRETION_POLICY_ID": "policy_default",
+        "ACCRETION_GATEWAY_RUN_ID": run_id,
+    }
     assert methods[1][1]["threadId"] == methods[2][1]["threadId"] == "thread-shared"
     assert first.native_run_id == second.native_run_id == "thread-shared"
     assert first.runtime_call_id != second.runtime_call_id
@@ -238,15 +248,23 @@ async def test_claude_uses_session_id_once_then_resume(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     commands: list[tuple[str, ...]] = []
+    invocations: list[dict[str, object]] = []
 
-    async def start(*args: str, **_kwargs: object) -> _ClaudeProcess:
+    async def start(*args: str, **kwargs: object) -> _ClaudeProcess:
         commands.append(args)
+        invocations.append(kwargs)
         return _ClaudeProcess()
 
     monkeypatch.setattr("accretion.runtimes.claude.asyncio.create_subprocess_exec", start)
-    runtime = ClaudeRuntime()
+    runtime = ClaudeRuntime(gateway_environment={"ACCRETION_POLICY_ID": "policy_default"})
     run_id = new_id("run")
-    session = await runtime.create_session(SessionConfig(run_id=run_id, workspace=tmp_path))
+    session = await runtime.create_session(
+        SessionConfig(
+            run_id=run_id,
+            workspace=tmp_path,
+            allowed_tools=["accretion.echo"],
+        )
+    )
 
     first = await runtime.submit(session, _task())
     first_events = [event async for event in runtime.events(first)]
@@ -259,6 +277,26 @@ async def test_claude_uses_session_id_once_then_resume(
     assert "--session-id" not in commands[1]
     assert commands[0][commands[0].index("--session-id") + 1] == session.native_session_id
     assert commands[1][commands[1].index("--resume") + 1] == session.native_session_id
+    assert "--strict-mcp-config" in commands[0]
+    mcp_config = json.loads(commands[0][commands[0].index("--mcp-config") + 1])
+    assert mcp_config["mcpServers"]["accretion"]["args"] == [
+        "-m",
+        "accretion.mcp_gateway",
+    ]
+    assert mcp_config["mcpServers"]["accretion"]["env"] == {
+        "ACCRETION_POLICY_ID": "policy_default",
+        "ACCRETION_GATEWAY_RUN_ID": run_id,
+    }
+    visible_tools = commands[0][commands[0].index("--tools") + 1].split(",")
+    assert "mcp__accretion__accretion.echo" in visible_tools
+    assert "WebFetch" not in visible_tools
+    assert "WebSearch" not in visible_tools
+    process_environment = invocations[0]["env"]
+    assert isinstance(process_environment, dict)
+    assert not any(
+        "TOKEN" in key or "SECRET" in key or "PASSWORD" in key
+        for key in process_environment
+    )
     assert first.native_run_id == second.native_run_id == session.native_session_id
     assert first.runtime_call_id != second.runtime_call_id
     assert first_events[-1].normalized_type is EventType.RUNTIME_CALL_COMPLETED

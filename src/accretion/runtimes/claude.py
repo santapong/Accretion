@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 import uuid
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping
 from typing import Any
 
 from accretion.contracts import (
@@ -31,6 +32,7 @@ from accretion.runtimes.common import (
     classify_runtime_health,
     command_result,
     make_event,
+    provider_environment,
     submission_call_id,
     submission_metadata,
     submission_task,
@@ -47,8 +49,13 @@ _CALL_TERMINALS = {
 class ClaudeRuntime:
     adapter_version = "claude-stream-json-p2-v1"
 
-    def __init__(self, command: str = "claude") -> None:
+    def __init__(
+        self,
+        command: str = "claude",
+        gateway_environment: Mapping[str, str] | None = None,
+    ) -> None:
         self.command = command
+        self.gateway_environment = dict(gateway_environment or {})
         self.sessions: dict[str, SessionRef] = {}
         self.run_refs: dict[str, RunRef] = {}
         self.queues: dict[str, asyncio.Queue[AgentEvent | None]] = {}
@@ -59,6 +66,7 @@ class ClaudeRuntime:
         self.started_sessions: set[str] = set()
         self.interrupted_calls: set[str] = set()
         self.terminal_calls: set[str] = set()
+        self.session_configs: dict[str, SessionConfig] = {}
 
     async def health(self) -> RuntimeHealth:
         version_code, version_output = await command_result([self.command, "--version"])
@@ -118,6 +126,7 @@ class ClaudeRuntime:
         if config.resume_native_session_id:
             self.started_sessions.add(session.session_id)
         self.sessions[session.session_id] = session
+        self.session_configs[session.session_id] = config
         return session
 
     async def submit(self, session: SessionRef, request: RuntimeSubmission) -> RunRef:
@@ -161,6 +170,49 @@ class ClaudeRuntime:
             "--permission-mode",
             "dontAsk",
         ]
+        config = self.session_configs[session.session_id]
+        gateway_env = {
+            **self.gateway_environment,
+            "ACCRETION_GATEWAY_RUN_ID": session.run_id,
+        }
+        mcp_config = {
+            "mcpServers": {
+                "accretion": {
+                    "command": sys.executable,
+                    "args": ["-m", "accretion.mcp_gateway"],
+                    "env": gateway_env,
+                }
+            }
+        }
+        native_tools = ["Read", "Edit", "Write", "Glob", "Grep", "Bash"]
+        gateway_tools = [f"mcp__accretion__{name}" for name in config.allowed_tools]
+        allowed_tools = [
+            "Read",
+            "Edit",
+            "Write",
+            "Glob",
+            "Grep",
+            "Bash(git status*)",
+            "Bash(git diff*)",
+            "Bash(pytest*)",
+            "Bash(uv run*)",
+            "Bash(npm test*)",
+            "Bash(npm run*)",
+            *gateway_tools,
+        ]
+        command.extend(
+            [
+                "--strict-mcp-config",
+                "--mcp-config",
+                json.dumps(mcp_config, separators=(",", ":")),
+                "--tools",
+                ",".join([*native_tools, *gateway_tools]),
+                "--allowedTools",
+                ",".join(allowed_tools),
+                "--disable-slash-commands",
+                "--no-chrome",
+            ]
+        )
         if session.session_id in self.started_sessions and session.native_session_id:
             command.extend(["--resume", session.native_session_id])
         elif session.native_session_id:
@@ -178,6 +230,7 @@ class ClaudeRuntime:
                     cwd=session.workspace,
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
+                    env=provider_environment(),
                 )
                 self.processes[call_id] = process
                 self.started_sessions.add(session.session_id)

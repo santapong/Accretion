@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     enable_live_providers: bool = False
     auto_resume_on_reconcile: bool = True
     operator_identity: str = "local-operator"
+    capability_policy_id: str = "local-capability-policy"
+    granted_permissions: list[str] = Field(default_factory=list)
+    credential_env_map: dict[str, str] = Field(default_factory=dict)
 
     @property
     def worktree_dir(self) -> Path:

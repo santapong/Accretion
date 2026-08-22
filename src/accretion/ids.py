@@ -28,6 +28,11 @@ _PREFIXES = {
     "verification": "ver",
     "acceptance_policy": "acp",
     "runtime_call": "rtc",
+    "capability": "cap",
+    "skill": "skl",
+    "plugin": "plg",
+    "policy": "pol",
+    "capability_request": "cpr",
 }
 
 
