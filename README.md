@@ -119,11 +119,13 @@ ceilings.
 | P1 — Deterministic planning | Complete | Prompt/context contracts, profiling, selection, persistence, API, and New Task UI |
 | P2 — Feedback loops | Complete | Bounded repeat execution, independent verification, recovery, controls, and loop visualization |
 | P3 — Static graphs | Complete | Template registry, GRAPH/HYBRID engines, approval gates, checkpoints, replay, and graph visualization |
-| P4 — Release gate | Planned | Capability registry, MCP gateway, policy/approvals surface, complete operator UI, and ACR-ARCH |
+| P4 — Release gate | Release blocking | Capability registry, MCP gateway, policy/approvals surface, complete operator UI, and ACR-ARCH remain before v0.1 |
 
 See the [v0.1 system design](docs/sdd/Accretion_SDD_v0.1.md) and the
 [multi-release SDD index](docs/sdd/Accretion_SDD_INDEX_v0.3.md) for the full
-architecture and acceptance criteria.
+architecture and acceptance criteria. The latest
+[v0.1 release audit](docs/V0_1_RELEASE_AUDIT.md) records the verified gates and
+remaining release-blocking work.
 
 ## Quick start
 
