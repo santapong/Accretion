@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: accretion
+          POSTGRES_USER: accretion
+          POSTGRES_PASSWORD: accretion
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U accretion -d accretion"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ACCRETION_DATABASE_URL: postgresql+asyncpg://accretion:accretion@localhost:5432/accretion
+      ACCRETION_TEST_POSTGRES_URL: postgresql+asyncpg://accretion:accretion@localhost:5432/accretion
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --all-groups
+      - run: uv run --no-sync ruff check .
+      - run: uv run --no-sync mypy src
+      - run: uv run --no-sync alembic upgrade head
+      - run: uv run --no-sync alembic downgrade base
+      - run: uv run --no-sync alembic upgrade head
+      - run: uv run --no-sync pytest -p pytest_asyncio.plugin
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --all-groups
+      - run: npm ci
+      - run: npm run api:generate
+      - run: git diff --exit-code -- apps/ui/src/api/schema.d.ts
+      - run: npm run check
+      - run: npm run test
+      - run: npm run build

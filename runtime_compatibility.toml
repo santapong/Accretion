@@ -1,0 +1,12 @@
+[codex]
+command = "codex"
+validated_min = "0.148.0"
+validated_max_exclusive = "0.149.0"
+transport = "stdio"
+protocol = "app-server-stable"
+
+[claude]
+command = "claude"
+validated_min = "2.1.231"
+validated_max_exclusive = "2.2.0"
+protocol = "print-stream-json"

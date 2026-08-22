@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: accretion
+      POSTGRES_USER: accretion
+      POSTGRES_PASSWORD: accretion
+    ports:
+      - "5432:5432"
+    volumes:
+      - accretion-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U accretion -d accretion"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  accretion-postgres:
