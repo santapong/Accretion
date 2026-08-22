@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v9
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - run: uv sync --all-groups --locked
+      - run: uv run ruff format --check backend
+      - run: uv run ruff check backend
+      - run: uv run mypy backend/src
+      - run: uv run pytest
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+      - run: corepack enable
+      - run: corepack pnpm --dir frontend install --frozen-lockfile
+      - run: corepack pnpm --dir frontend typecheck
+      - run: corepack pnpm --dir frontend test
+      - run: corepack pnpm --dir frontend build
