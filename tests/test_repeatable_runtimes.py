@@ -181,6 +181,7 @@ async def test_codex_reuses_one_thread_for_sequential_turns(
     assert thread_config["config"]["shell_environment_policy"] == {"inherit": "core"}
     gateway = thread_config["config"]["mcp_servers"]["accretion"]
     assert gateway["args"] == ["-m", "accretion.mcp_gateway"]
+    assert gateway["required"] is True
     assert gateway["env"] == {
         "ACCRETION_POLICY_ID": "policy_default",
         "ACCRETION_GATEWAY_RUN_ID": run_id,
@@ -208,6 +209,32 @@ async def test_codex_startup_failure_returns_one_closed_failure_stream(
 
     events = [event async for event in runtime.events(run)]
     assert [event.normalized_type for event in events] == [EventType.RUNTIME_CALL_FAILED]
+
+
+async def test_codex_direct_probe_does_not_require_an_unconfigured_gateway(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    runtime = CodexRuntime()
+    methods: list[tuple[str, dict[str, Any]]] = []
+
+    async def server_ready() -> None:
+        return None
+
+    async def request(method: str, params: dict[str, Any]) -> dict[str, Any]:
+        methods.append((method, params))
+        if method == "thread/start":
+            return {"thread": {"id": "thread-probe"}}
+        return {"turn": {"id": "turn-probe"}}
+
+    monkeypatch.setattr(runtime, "_ensure_server", server_ready)
+    monkeypatch.setattr(runtime, "_request", request)
+    run_id = new_id("run")
+    session = await runtime.create_session(SessionConfig(run_id=run_id, workspace=tmp_path))
+    run = await runtime.submit(session, _task())
+
+    gateway = methods[0][1]["config"]["mcp_servers"]["accretion"]
+    assert gateway["required"] is False
+    await runtime._fail_call(run.runtime_call_id or run.run_id, "probe complete")
 
 
 class _Stdout:
