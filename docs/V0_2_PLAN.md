@@ -1,6 +1,6 @@
 # Accretion v0.2 delivery plan
 
-Status: planning after the completed v0.1 release gate. This document translates
+Status: P5 implemented behind opt-in gates; P6 and P7 remain planned. This document translates
 the normative [v0.2 SDD](sdd/Accretion_SDD_v0.2.md) into an implementation and
 review sequence; it does not change the SDD contracts.
 
@@ -31,6 +31,10 @@ tracked decisions.
 ## Scope and sequence
 
 ### P5 — Validated dynamic workflow proposals
+
+Implementation status: complete on the P5 feature branch, pending PR release
+review. Operational details and evidence are in the [P5 runbook](P5_RUNBOOK.md)
+and [P5 acceptance report](P5_ACCEPTANCE_REPORT.md).
 
 Outcome: a model may propose graph structure, but deterministic code decides
 whether that structure is admissible and executable.

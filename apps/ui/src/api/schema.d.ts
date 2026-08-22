@@ -583,6 +583,228 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/projects/{project_id}/features": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Project Features */
+        get: operations["get_project_features_api_v2_projects__project_id__features_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Update Project Features */
+        patch: operations["update_project_features_api_v2_projects__project_id__features_patch"];
+        trace?: never;
+    };
+    "/api/v2/runs/{run_id}/graph/diff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Graph Revision Diff */
+        get: operations["get_graph_revision_diff_api_v2_runs__run_id__graph_diff_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/runs/{run_id}/graph/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Graph Revisions */
+        get: operations["list_graph_revisions_api_v2_runs__run_id__graph_revisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/runs/{run_id}/graph/revisions/{revision}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Graph Revision */
+        get: operations["get_graph_revision_api_v2_runs__run_id__graph_revisions__revision__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/runs/{run_id}/replan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replan Dynamic Workflow */
+        post: operations["replan_dynamic_workflow_api_v2_runs__run_id__replan_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/runs/{run_id}/replans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Replan Requests */
+        get: operations["list_replan_requests_api_v2_runs__run_id__replans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/runs/{run_id}/runtime-decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Runtime Decisions */
+        get: operations["list_runtime_decisions_api_v2_runs__run_id__runtime_decisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/runs/{run_id}/workflow/proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Dynamic Workflow Proposals */
+        get: operations["list_dynamic_workflow_proposals_api_v2_runs__run_id__workflow_proposals_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/runs/{run_id}/workflow/proposals/{proposal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Dynamic Workflow Proposal */
+        get: operations["get_dynamic_workflow_proposal_api_v2_runs__run_id__workflow_proposals__proposal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/runs/{run_id}/workflow/proposals/{proposal_id}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Activate Dynamic Workflow */
+        post: operations["activate_dynamic_workflow_api_v2_runs__run_id__workflow_proposals__proposal_id__activate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/runs/{run_id}/workflow/proposals/{proposal_id}/validate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Validate Dynamic Workflow */
+        post: operations["validate_dynamic_workflow_api_v2_runs__run_id__workflow_proposals__proposal_id__validate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/runs/{run_id}/workflow/proposals/{proposal_id}/validations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Dynamic Workflow Validations */
+        get: operations["list_dynamic_workflow_validations_api_v2_runs__run_id__workflow_proposals__proposal_id__validations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/tasks/{task_id}/workflow/propose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Propose Dynamic Workflow */
+        post: operations["propose_dynamic_workflow_api_v2_tasks__task_id__workflow_propose_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -1150,6 +1372,11 @@ export interface components {
             /** Sequence */
             sequence: number;
         };
+        /**
+         * ConditionOperator
+         * @enum {string}
+         */
+        ConditionOperator: "ALL" | "ANY" | "NOT" | "EQ" | "NE" | "LT" | "LTE" | "GT" | "GTE" | "IN";
         /** ContextBundle */
         ContextBundle: {
             /** Artifact Refs */
@@ -1208,6 +1435,87 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** DynamicLoopSpec */
+        DynamicLoopSpec: {
+            /** Max Iterations */
+            max_iterations: number;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+        };
+        /** DynamicWorkflowEdgeSpec */
+        DynamicWorkflowEdgeSpec: {
+            condition?: components["schemas"]["TypedCondition"] | null;
+            /** @default NORMAL */
+            kind: components["schemas"]["GraphEdgeKind"];
+            /** Local Id */
+            local_id: string;
+            /** Max Traversals */
+            max_traversals?: number | null;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Source */
+            source: string;
+            /** Target */
+            target: string;
+        };
+        /** DynamicWorkflowNodeSpec */
+        DynamicWorkflowNodeSpec: {
+            /** Capability Refs */
+            capability_refs?: string[];
+            /**
+             * Checkpoint
+             * @default true
+             */
+            checkpoint: boolean;
+            /** Fragment Ref */
+            fragment_ref?: string | null;
+            /** Input Contract */
+            input_contract?: {
+                [key: string]: unknown;
+            };
+            kind: components["schemas"]["GraphNodeKind"];
+            /** Local Id */
+            local_id: string;
+            loop_spec?: components["schemas"]["DynamicLoopSpec"] | null;
+            /**
+             * Max Attempts
+             * @default 1
+             */
+            max_attempts: number;
+            /** Objective */
+            objective: string;
+            /** Output Contract */
+            output_contract?: {
+                [key: string]: unknown;
+            };
+            /** @default LOW */
+            risk_level: components["schemas"]["RiskLevel"];
+            /** @default ANY */
+            runtime_requirement: components["schemas"]["RuntimeRequirement"];
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Skill Refs */
+            skill_refs?: string[];
+            /**
+             * Timeout Seconds
+             * @default 300
+             */
+            timeout_seconds: number;
+            /** Verifier Refs */
+            verifier_refs?: string[];
+        };
         /**
          * EdgeGuard
          * @enum {string}
@@ -1229,7 +1537,7 @@ export interface components {
          * EventType
          * @enum {string}
          */
-        EventType: "RUN_CREATED" | "RUN_STARTED" | "RUN_PROGRESS" | "NODE_ENTERED" | "NODE_EXITED" | "TOOL_REQUESTED" | "TOOL_STARTED" | "TOOL_COMPLETED" | "TOOL_FAILED" | "FILE_CHANGED" | "DIFF_AVAILABLE" | "APPROVAL_REQUIRED" | "APPROVAL_RESOLVED" | "ARTIFACT_CREATED" | "CHECKPOINT_SAVED" | "RUNTIME_CALL_STARTED" | "RUNTIME_CALL_COMPLETED" | "RUNTIME_CALL_FAILED" | "RUNTIME_CALL_CANCELLED" | "LOOP_ITERATION_STARTED" | "LOOP_ITERATION_COMPLETED" | "VERIFICATION_STARTED" | "VERIFICATION_RESULT" | "RUN_PAUSED" | "RUN_RESUMED" | "RUN_COMPLETED" | "RUN_FAILED" | "RUN_CANCELLED";
+        EventType: "RUN_CREATED" | "WORKFLOW_PROPOSAL_CREATED" | "WORKFLOW_PROPOSAL_REPAIRED" | "GRAPH_VALIDATION_STARTED" | "GRAPH_VALIDATION_RESULT" | "GRAPH_REVISION_ACTIVATED" | "REPLAN_REQUESTED" | "REPLAN_STARTED" | "REPLAN_COMPLETED" | "RUNTIME_DECISION" | "RUN_STARTED" | "RUN_PROGRESS" | "NODE_ENTERED" | "NODE_EXITED" | "TOOL_REQUESTED" | "TOOL_STARTED" | "TOOL_COMPLETED" | "TOOL_FAILED" | "FILE_CHANGED" | "DIFF_AVAILABLE" | "APPROVAL_REQUIRED" | "APPROVAL_RESOLVED" | "ARTIFACT_CREATED" | "CHECKPOINT_SAVED" | "RUNTIME_CALL_STARTED" | "RUNTIME_CALL_COMPLETED" | "RUNTIME_CALL_FAILED" | "RUNTIME_CALL_CANCELLED" | "LOOP_ITERATION_STARTED" | "LOOP_ITERATION_COMPLETED" | "VERIFICATION_STARTED" | "VERIFICATION_RESULT" | "RUN_PAUSED" | "RUN_RESUMED" | "RUN_COMPLETED" | "RUN_FAILED" | "RUN_CANCELLED";
         /**
          * ExecutionMode
          * @enum {string}
@@ -1352,7 +1660,7 @@ export interface components {
          * GraphNodeKind
          * @enum {string}
          */
-        GraphNodeKind: "TASK" | "AGENT" | "TOOL" | "VERIFIER" | "GATE" | "LOOP" | "JOIN" | "TERMINAL";
+        GraphNodeKind: "TASK" | "AGENT" | "TOOL" | "VERIFIER" | "GATE" | "LOOP" | "JOIN" | "HUMAN" | "TERMINAL";
         /**
          * GraphNodeStatus
          * @enum {string}
@@ -1448,6 +1756,72 @@ export interface components {
             status: components["schemas"]["GraphNodeStatus"];
             verifier_state?: components["schemas"]["VerificationStatus"] | null;
         };
+        /** GraphRevisionDiff */
+        GraphRevisionDiff: {
+            /** Added Edges */
+            added_edges?: string[];
+            /** Added Nodes */
+            added_nodes?: string[];
+            /** Changed Edges */
+            changed_edges?: string[];
+            /** Changed Nodes */
+            changed_nodes?: string[];
+            /** From Revision */
+            from_revision: number;
+            /** Protected State Refs */
+            protected_state_refs?: string[];
+            /** Removed Edges */
+            removed_edges?: string[];
+            /** Removed Nodes */
+            removed_nodes?: string[];
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** To Revision */
+            to_revision: number;
+        };
+        /** GraphValidationResult */
+        GraphValidationResult: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Errors */
+            errors?: components["schemas"]["ValidationFinding"][];
+            /** Normalized Graph Hash */
+            normalized_graph_hash?: string | null;
+            /** Proposal Id */
+            proposal_id: string;
+            /** Required Repairs */
+            required_repairs?: string[];
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            status: components["schemas"]["GraphValidationStatus"];
+            /** Validation Id */
+            validation_id: string;
+            /**
+             * Validator Version
+             * @default graph-validator-v2
+             */
+            validator_version: string;
+            /** Warnings */
+            warnings?: components["schemas"]["ValidationFinding"][];
+        };
+        /**
+         * GraphValidationStatus
+         * @enum {string}
+         */
+        GraphValidationStatus: "ACCEPT" | "REJECT" | "REPAIRABLE";
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -1805,6 +2179,11 @@ export interface components {
          * @enum {string}
          */
         OverridePolicyResult: "ACCEPTED" | "DENIED_TEMPLATE_MISMATCH" | "DENIED_SAFETY_POLICY";
+        /**
+         * PlannerRuntime
+         * @enum {string}
+         */
+        PlannerRuntime: "AUTO" | "CLAUDE" | "CODEX" | "DETERMINISTIC";
         /** Project */
         Project: {
             /**
@@ -1831,6 +2210,49 @@ export interface components {
              * Format: path
              */
             repository_path: string;
+        };
+        /** ProjectFeatureSettings */
+        ProjectFeatureSettings: {
+            /**
+             * Candidate Search
+             * @default false
+             */
+            candidate_search: boolean;
+            /**
+             * Dynamic Workflows
+             * @default false
+             */
+            dynamic_workflows: boolean;
+            /**
+             * Experience Retrieval
+             * @default false
+             */
+            experience_retrieval: boolean;
+            /** Project Id */
+            project_id: string;
+            /**
+             * Revision
+             * @default 1
+             */
+            revision: number;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at?: string;
+        };
+        /** ProjectFeatureUpdate */
+        ProjectFeatureUpdate: {
+            /** Dynamic Workflows */
+            dynamic_workflows: boolean;
+            /** Expected Revision */
+            expected_revision: number;
         };
         /** PromptContract */
         PromptContract: {
@@ -1885,6 +2307,71 @@ export interface components {
          * @enum {string}
          */
         Provider: "CLAUDE" | "CODEX" | "FAKE" | "DETERMINISTIC" | "HUMAN";
+        /** ReplanCreate */
+        ReplanCreate: {
+            /** Evidence Refs */
+            evidence_refs?: string[];
+            reason: components["schemas"]["ReplanReason"];
+        };
+        /** ReplanOutcome */
+        ReplanOutcome: {
+            proposal: components["schemas"]["WorkflowProposal"];
+            request: components["schemas"]["ReplanRequest"];
+            revision?: components["schemas"]["RunGraphRevision"] | null;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            validation: components["schemas"]["GraphValidationResult"];
+        };
+        /**
+         * ReplanReason
+         * @enum {string}
+         */
+        ReplanReason: "INITIAL" | "EVIDENCE_CHANGE" | "NODE_FAILURE" | "BUDGET_CHANGE" | "RUNTIME_FAILURE" | "HUMAN_REQUEST";
+        /** ReplanRequest */
+        ReplanRequest: {
+            /** Based On Graph Revision */
+            based_on_graph_revision: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Evidence Refs */
+            evidence_refs?: string[];
+            reason: components["schemas"]["ReplanReason"];
+            /** Replan Request Id */
+            replan_request_id: string;
+            /** Requested By */
+            requested_by: string;
+            /** Resulting Proposal Id */
+            resulting_proposal_id?: string | null;
+            /** Resulting Revision */
+            resulting_revision?: number | null;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** @default REQUESTED */
+            status: components["schemas"]["ReplanStatus"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at?: string;
+        };
+        /**
+         * ReplanStatus
+         * @enum {string}
+         */
+        ReplanStatus: "REQUESTED" | "VALIDATING" | "ACTIVATED" | "REJECTED" | "REQUIRES_HUMAN";
         /**
          * RiskLevel
          * @enum {string}
@@ -1973,6 +2460,43 @@ export interface components {
             /** @default FAKE */
             provider: components["schemas"]["Provider"];
         };
+        /** RunGraphRevision */
+        RunGraphRevision: {
+            /** Activated At */
+            activated_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Edges */
+            edges: components["schemas"]["DynamicWorkflowEdgeSpec"][];
+            /** Nodes */
+            nodes: components["schemas"]["DynamicWorkflowNodeSpec"][];
+            /** Normalized Graph Hash */
+            normalized_graph_hash: string;
+            /** Parent Revision */
+            parent_revision?: number | null;
+            /** Proposal Id */
+            proposal_id: string;
+            /** Protected State Refs */
+            protected_state_refs?: string[];
+            reason: components["schemas"]["ReplanReason"];
+            /** Revision */
+            revision: number;
+            /** Revision Id */
+            revision_id: string;
+            /** Run Graph Id */
+            run_graph_id: string;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+        };
         /**
          * RunState
          * @enum {string}
@@ -2000,6 +2524,69 @@ export interface components {
             schema_version: "1.0";
             /** Started Sequence */
             started_sequence?: number | null;
+        };
+        /** RuntimeCandidate */
+        RuntimeCandidate: {
+            /** Available */
+            available: boolean;
+            /** Exclusion Reason */
+            exclusion_reason?: string | null;
+            /** Expected Latency */
+            expected_latency: number;
+            /** Historical Quality */
+            historical_quality: number;
+            provider: components["schemas"]["Provider"];
+            /** Risk Penalty */
+            risk_penalty: number;
+            /** Runtime Version */
+            runtime_version: string;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Score */
+            score: number;
+            /** Specialization Fit */
+            specialization_fit: number;
+            usage_pressure: components["schemas"]["UsagePressure"];
+        };
+        /** RuntimeDecision */
+        RuntimeDecision: {
+            /** Candidates */
+            candidates: components["schemas"]["RuntimeCandidate"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Decision Id */
+            decision_id: string;
+            /** Fallback Order */
+            fallback_order?: components["schemas"]["Provider"][];
+            /** Node Id */
+            node_id: string;
+            /** Observed Features */
+            observed_features?: {
+                [key: string]: unknown;
+            };
+            /**
+             * Policy Version
+             * @default performance-router-v2
+             */
+            policy_version: string;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Selected Reason */
+            selected_reason: string;
+            selected_runtime: components["schemas"]["Provider"] | null;
         };
         /** RuntimeHealth */
         RuntimeHealth: {
@@ -2032,10 +2619,35 @@ export interface components {
             status: components["schemas"]["RuntimeStatus"];
         };
         /**
+         * RuntimeRequirement
+         * @enum {string}
+         */
+        RuntimeRequirement: "ANY" | "CLAUDE" | "CODEX" | "DETERMINISTIC" | "HUMAN";
+        /**
          * RuntimeStatus
          * @enum {string}
          */
         RuntimeStatus: "READY" | "BUSY" | "RATE_LIMITED" | "AUTH_REQUIRED" | "UNAVAILABLE" | "DEGRADED";
+        /** SearchBudgetRequest */
+        SearchBudgetRequest: {
+            /**
+             * Branch Count
+             * @default 2
+             */
+            branch_count: number;
+            /**
+             * Max Parallel
+             * @default 2
+             */
+            max_parallel: number;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            total: components["schemas"]["TaskBudgets"];
+        };
         /** SessionRef */
         SessionRef: {
             /** Native Session Id */
@@ -2370,6 +2982,25 @@ export interface components {
             tool_call_id: string;
         };
         /**
+         * TypedCondition
+         * @description Restricted JSON expression tree; it is data and is never evaluated as code.
+         */
+        TypedCondition: {
+            /** Operands */
+            operands?: components["schemas"]["TypedCondition"][];
+            operator: components["schemas"]["ConditionOperator"];
+            /** Path */
+            path?: string | null;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Value */
+            value?: unknown;
+        };
+        /**
          * UsagePressure
          * @enum {string}
          */
@@ -2387,6 +3018,32 @@ export interface components {
             /** Error Type */
             type: string;
         };
+        /** ValidationFinding */
+        ValidationFinding: {
+            /** Code */
+            code: string;
+            /** Message */
+            message: string;
+            /** Path */
+            path?: string | null;
+            /**
+             * Repairable
+             * @default false
+             */
+            repairable: boolean;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            severity: components["schemas"]["ValidationSeverity"];
+        };
+        /**
+         * ValidationSeverity
+         * @enum {string}
+         */
+        ValidationSeverity: "WARNING" | "ERROR";
         /** VerificationResult */
         VerificationResult: {
             /**
@@ -2450,6 +3107,22 @@ export interface components {
             /** Verifier Id */
             verifier_id?: string | null;
         };
+        /** WorkflowActivationOutcome */
+        WorkflowActivationOutcome: {
+            /** Proposal Id */
+            proposal_id: string;
+            revision: components["schemas"]["RunGraphRevision"];
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Workflow Template Id */
+            workflow_template_id: string;
+        };
         /** WorkflowEdgeSpec */
         WorkflowEdgeSpec: {
             guard?: components["schemas"]["EdgeGuard"] | null;
@@ -2487,6 +3160,70 @@ export interface components {
              * @constant
              */
             schema_version: "1.0";
+        };
+        /** WorkflowProposal */
+        WorkflowProposal: {
+            /** Assumptions */
+            assumptions?: string[];
+            /** Based On Graph Revision */
+            based_on_graph_revision?: number | null;
+            /** Confidence */
+            confidence: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Edges */
+            edges?: components["schemas"]["DynamicWorkflowEdgeSpec"][];
+            /** Expected Approval Gates */
+            expected_approval_gates?: string[];
+            /** Expected Verifiers */
+            expected_verifiers?: string[];
+            /** Fragment Refs */
+            fragment_refs?: string[];
+            /** Nodes */
+            nodes: components["schemas"]["DynamicWorkflowNodeSpec"][];
+            /** Objective */
+            objective: string;
+            /** @default DETERMINISTIC */
+            planner_runtime: components["schemas"]["PlannerRuntime"];
+            /**
+             * Planner Version
+             * @default fragment-planner-v2
+             */
+            planner_version: string;
+            /** Proposal Id */
+            proposal_id: string;
+            /** Provenance Refs */
+            provenance_refs?: string[];
+            /** Rationale Summary */
+            rationale_summary: string;
+            /**
+             * Repair Attempt
+             * @default 0
+             */
+            repair_attempt: number;
+            requested_search_budget?: components["schemas"]["SearchBudgetRequest"] | null;
+            /** Required Capabilities */
+            required_capabilities?: string[];
+            /** Run Id */
+            run_id?: string | null;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Task Id */
+            task_id: string;
+        };
+        /** WorkflowProposeCreate */
+        WorkflowProposeCreate: {
+            /** @default FAKE */
+            execution_provider: components["schemas"]["Provider"];
+            /** @default DETERMINISTIC */
+            planner_runtime: components["schemas"]["PlannerRuntime"];
         };
         /** WorkflowTemplate */
         WorkflowTemplate: {
@@ -2539,6 +3276,19 @@ export interface components {
             template_id: string;
             /** Version */
             version: string;
+        };
+        /** WorkflowValidationOutcome */
+        WorkflowValidationOutcome: {
+            /** Fallback Run Id */
+            fallback_run_id?: string | null;
+            proposal: components["schemas"]["WorkflowProposal"];
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            validation: components["schemas"]["GraphValidationResult"];
         };
     };
     responses: never;
@@ -3597,6 +4347,460 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VerificationResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_project_features_api_v2_projects__project_id__features_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectFeatureSettings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_project_features_api_v2_projects__project_id__features_patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProjectFeatureUpdate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProjectFeatureSettings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_graph_revision_diff_api_v2_runs__run_id__graph_diff_get: {
+        parameters: {
+            query: {
+                from: number;
+                to: number;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GraphRevisionDiff"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_graph_revisions_api_v2_runs__run_id__graph_revisions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunGraphRevision"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_graph_revision_api_v2_runs__run_id__graph_revisions__revision__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                revision: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RunGraphRevision"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    replan_dynamic_workflow_api_v2_runs__run_id__replan_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplanCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplanOutcome"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_replan_requests_api_v2_runs__run_id__replans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReplanRequest"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_runtime_decisions_api_v2_runs__run_id__runtime_decisions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RuntimeDecision"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_dynamic_workflow_proposals_api_v2_runs__run_id__workflow_proposals_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowProposal"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dynamic_workflow_proposal_api_v2_runs__run_id__workflow_proposals__proposal_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowProposal"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    activate_dynamic_workflow_api_v2_runs__run_id__workflow_proposals__proposal_id__activate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowActivationOutcome"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    validate_dynamic_workflow_api_v2_runs__run_id__workflow_proposals__proposal_id__validate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowValidationOutcome"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_dynamic_workflow_validations_api_v2_runs__run_id__workflow_proposals__proposal_id__validations_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GraphValidationResult"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    propose_dynamic_workflow_api_v2_tasks__task_id__workflow_propose_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WorkflowProposeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkflowProposal"];
                 };
             };
             /** @description Validation Error */

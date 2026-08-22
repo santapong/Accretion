@@ -144,6 +144,7 @@ runtime, verification, graph, trace, and audit records.
 | P2 — Feedback loops | Complete | Bounded repeat execution, independent verification, recovery, controls, and loop visualization |
 | P3 — Static graphs | Complete | Template registry, GRAPH/HYBRID engines, approval gates, checkpoints, replay, and graph visualization |
 | P4 — Harness and release gate | Complete | Governed capabilities/MCP, credential boundary, side-effect evidence, complete operator surfaces, resumable SSE, and ACR-ARCH |
+| P5 — Dynamic workflows | Implemented (opt-in) | Typed proposals, deterministic graph validation, static fallback, immutable revisions, safe replan, and operator inspection |
 
 See the [v0.1 system design](docs/sdd/Accretion_SDD_v0.1.md) and the
 [multi-release SDD index](docs/sdd/Accretion_SDD_INDEX_v0.3.md) for the full
@@ -152,9 +153,11 @@ architecture and acceptance criteria. The latest
 decision. See the [v0.1.0 release notes](docs/V0_1_RELEASE_NOTES.md) for the
 shipped scope, compatibility, and reproducibility hashes.
 
-v0.2 is now in planning. Its [delivery plan](docs/V0_2_PLAN.md) sequences the P5–P7
-work while the [v0.2 SDD](docs/sdd/Accretion_SDD_v0.2.md) remains the normative
-contract; dynamic workflow implementation has not started.
+v0.2 implementation has started with the opt-in P5 dynamic-workflow slice. See
+the [P5 runbook](docs/P5_RUNBOOK.md), [acceptance report](docs/P5_ACCEPTANCE_REPORT.md),
+and [delivery plan](docs/V0_2_PLAN.md). P6 candidate search and P7 experience
+retrieval remain planned and unimplemented; the [v0.2 SDD](docs/sdd/Accretion_SDD_v0.2.md)
+remains the normative contract.
 
 ## Quick start
 

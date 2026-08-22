@@ -19,6 +19,7 @@ import type {
   ApprovalRecord,
   GraphProjection,
   GraphProjectionNode,
+  GraphValidationResult,
   LoopExecution,
   Run,
   VerificationResult,
@@ -364,6 +365,147 @@ function VerificationPanel({ verifications }: { verifications: VerificationResul
   );
 }
 
+function DynamicWorkflowInspector({ run }: { run: Run }) {
+  const queryClient = useQueryClient();
+  const [replanEvidence, setReplanEvidence] = useState("");
+  const [feedback, setFeedback] = useState<string>();
+  const proposals = useQuery({
+    queryKey: ["workflow-proposals", run.run_id],
+    queryFn: () => api.workflowProposals(run.run_id),
+    retry: false,
+    refetchInterval: terminalStates.has(run.state) ? false : 2500,
+  });
+  const proposalItems = Array.isArray(proposals.data) ? proposals.data : [];
+  const latestProposal = proposalItems.at(-1);
+  const validations = useQuery({
+    queryKey: ["workflow-validations", run.run_id, latestProposal?.proposal_id],
+    queryFn: () => api.workflowValidations(run.run_id, latestProposal!.proposal_id),
+    enabled: Boolean(latestProposal),
+    retry: false,
+  });
+  const revisions = useQuery({
+    queryKey: ["graph-revisions", run.run_id],
+    queryFn: () => api.graphRevisions(run.run_id),
+    retry: false,
+    refetchInterval: terminalStates.has(run.state) ? false : 2500,
+  });
+  const decisions = useQuery({
+    queryKey: ["runtime-decisions", run.run_id],
+    queryFn: () => api.runtimeDecisions(run.run_id),
+    retry: false,
+  });
+  const replans = useQuery({
+    queryKey: ["replans", run.run_id],
+    queryFn: () => api.replans(run.run_id),
+    retry: false,
+  });
+  const revisionItems = Array.isArray(revisions.data) ? revisions.data : [];
+  const decisionItems = Array.isArray(decisions.data) ? decisions.data : [];
+  const replanItems = Array.isArray(replans.data) ? replans.data : [];
+  const previousRevision = revisionItems.length > 1
+    ? revisionItems[revisionItems.length - 2].revision
+    : undefined;
+  const activeRevision = revisionItems.at(-1)?.revision;
+  const diff = useQuery({
+    queryKey: ["graph-revision-diff", run.run_id, previousRevision, activeRevision],
+    queryFn: () => api.graphDiff(run.run_id, previousRevision!, activeRevision!),
+    enabled: previousRevision != null && activeRevision != null,
+    retry: false,
+  });
+  if (!proposals.isLoading && !latestProposal && !revisionItems.length) return null;
+
+  const validationItems = Array.isArray(validations.data) ? validations.data : [];
+  const latestValidation: GraphValidationResult | undefined = validationItems.at(-1);
+
+  async function requestReplan() {
+    setFeedback("Pausing at a safe boundary and validating a new revision…");
+    try {
+      const result = await api.replan(
+        run.run_id,
+        "HUMAN_REQUEST",
+        replanEvidence.trim() ? [replanEvidence.trim()] : [],
+      );
+      setFeedback(
+        result.revision
+          ? `Revision ${result.revision.revision} activated with protected history preserved.`
+          : `Replan ${result.request.status.toLowerCase().replaceAll("_", " ")}.`,
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["workflow-proposals", run.run_id] }),
+        queryClient.invalidateQueries({ queryKey: ["graph-revisions", run.run_id] }),
+        queryClient.invalidateQueries({ queryKey: ["replans", run.run_id] }),
+        queryClient.invalidateQueries({ queryKey: ["run-graph", run.run_id] }),
+      ]);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Replan failed.");
+    }
+  }
+
+  return (
+    <section className="dynamic-inspector" aria-labelledby="dynamic-workflow-heading">
+      <header>
+        <div><p className="eyebrow">P5 authority boundary</p><h3 id="dynamic-workflow-heading">Dynamic workflow</h3></div>
+        <StatusBadge state={latestValidation?.status ?? (activeRevision ? "ACTIVE" : "PROPOSED")} />
+      </header>
+      {latestProposal ? (
+        <article className="proposal-inspector">
+          <div className="dynamic-metrics">
+            <span><strong>{latestProposal.nodes.length}</strong> nodes</span>
+            <span><strong>{(latestProposal.edges ?? []).length}</strong> edges</span>
+            <span><strong>{Math.round(latestProposal.confidence * 100)}%</strong> confidence</span>
+          </div>
+          <h4>{(latestProposal.fragment_refs ?? []).join(" · ")}</h4>
+          <p>{latestProposal.rationale_summary}</p>
+          <ul>{(latestProposal.assumptions ?? []).map((assumption) => <li key={assumption}>{assumption}</li>)}</ul>
+          {(latestValidation?.errors ?? []).length ? (
+            <ul className="finding-list">
+              {(latestValidation?.errors ?? []).map((finding) => (
+                <li className="finding-error" key={`${finding.code}-${finding.path}`}>
+                  <span>{finding.severity}</span><div><strong>{finding.code}</strong><p>{finding.message}</p></div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <small>{latestProposal.planner_version} · {latestValidation?.validator_version ?? "validation pending"}</small>
+        </article>
+      ) : null}
+      <div className="revision-timeline" aria-label="Graph revision timeline">
+        {revisionItems.map((revision) => (
+          <article key={revision.revision_id}>
+            <span>r{revision.revision}</span>
+            <div><strong>{revision.reason.replaceAll("_", " ")}</strong><small>{revision.normalized_graph_hash.slice(0, 12)}…</small></div>
+            <small>{(revision.protected_state_refs ?? []).length} protected refs</small>
+          </article>
+        ))}
+        {!revisionItems.length ? <p className="quiet">No graph revision is active.</p> : null}
+      </div>
+      {diff.data ? (
+        <div className="graph-diff-summary">
+          <strong>r{diff.data.from_revision} → r{diff.data.to_revision}</strong>
+          <span>+{(diff.data.added_nodes ?? []).length} / −{(diff.data.removed_nodes ?? []).length} nodes</span>
+          <span>{(diff.data.changed_nodes ?? []).length} changed</span>
+          <span>{(diff.data.protected_state_refs ?? []).length} protected state refs</span>
+        </div>
+      ) : null}
+      {decisionItems.map((decision) => (
+        <details className="router-decision" key={decision.decision_id}>
+          <summary><strong>Runtime: {decision.selected_runtime ?? "none"}</strong><span>{decision.policy_version}</span></summary>
+          <p>{decision.selected_reason}</p>
+          <ul>{decision.candidates.map((candidate) => <li key={`${candidate.provider}-${candidate.runtime_version}`}><strong>{candidate.provider}</strong><span>{candidate.score.toFixed(3)} · {candidate.available ? "available" : candidate.exclusion_reason}</span></li>)}</ul>
+        </details>
+      ))}
+      {replanItems.length ? <p className="quiet">{replanItems.length} durable replan request(s)</p> : null}
+      {run.state === "PAUSED" && revisionItems.length ? (
+        <div className="replan-control">
+          <label>Replan evidence reference<input value={replanEvidence} onChange={(event) => setReplanEvidence(event.target.value)} placeholder="operator:reason-or-evidence-id" /></label>
+          <button className="secondary-button" type="button" onClick={requestReplan}>Request safe replan</button>
+        </div>
+      ) : null}
+      {feedback ? <p className="form-status" role="status">{feedback}</p> : null}
+    </section>
+  );
+}
+
 export function RunExecution({ run }: { run: Run | undefined }) {
   const runId = run?.run_id;
   const refetchInterval = run && !terminalStates.has(run.state) ? 2500 : false;
@@ -401,6 +543,7 @@ export function RunExecution({ run }: { run: Run | undefined }) {
         <StatusBadge state={run.state} />
       </header>
       <div className="execution-content">
+        <DynamicWorkflowInspector run={run} />
         <PendingApprovals runId={run.run_id} />
         {loopQuery.data ? <BudgetSummary loop={loopQuery.data} /> : null}
         {projection ? <ProjectionCanvas projection={projection} /> : (

@@ -6,24 +6,34 @@ import type {
   BenchmarkTaskDetail,
   Capability,
   ExecutionTrace,
+  GraphProjection,
+  GraphRevisionDiff,
+  GraphValidationResult,
+  LoopExecution,
+  MetaPlugin,
+  MetaSkill,
   Project,
   ProjectCreate,
-  GraphProjection,
-  LoopExecution,
+  ProjectFeatureSettings,
+  ReplanOutcome,
+  ReplanRequest,
   Run,
   RunAudit,
   RunCreate,
+  RunGraphRevision,
+  RuntimeDecision,
   RuntimeHealth,
   SessionRef,
-  MetaPlugin,
-  MetaSkill,
   StrategyOverrideCreate,
   StrategyOverrideResult,
   Task,
   TaskCreate,
   TaskPlanning,
   VerificationResult,
+  WorkflowActivationOutcome,
+  WorkflowProposal,
   WorkflowTemplateSummary,
+  WorkflowValidationOutcome,
 } from "./types";
 
 export interface AcrArchFilters {
@@ -55,6 +65,19 @@ async function postJson<T>(path: string, payload: unknown): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function patchJson<T>(path: string, payload: unknown): Promise<T> {
+  const response = await fetch(`${API_ROOT}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { message?: string } | null;
+    throw new Error(body?.message ?? `Request failed (${response.status})`);
+  }
+  return response.json() as Promise<T>;
+}
+
 export const api = {
   runtimes: () => getJson<RuntimeHealth[]>("/api/v1/runtimes"),
   runtimeSessions: (runtimeId: string) =>
@@ -65,11 +88,55 @@ export const api = {
   projects: () => getJson<Project[]>("/api/v1/projects"),
   createProject: (payload: ProjectCreate) => postJson<Project>("/api/v1/projects", payload),
   createTask: (payload: TaskCreate) => postJson<Task>("/api/v1/tasks", payload),
+  task: (taskId: string) => getJson<Task>(`/api/v1/tasks/${taskId}`),
   planning: (taskId: string) => getJson<TaskPlanning>(`/api/v1/tasks/${taskId}/planning`),
   overrideStrategy: (taskId: string, payload: StrategyOverrideCreate) =>
     postJson<StrategyOverrideResult>(`/api/v1/tasks/${taskId}/strategy/override`, payload),
   startRun: (taskId: string, payload: RunCreate) =>
     postJson<Run>(`/api/v1/tasks/${taskId}/runs`, payload),
+  projectFeatures: (projectId: string) =>
+    getJson<ProjectFeatureSettings>(`/api/v2/projects/${projectId}/features`),
+  updateProjectFeatures: (projectId: string, dynamicWorkflows: boolean, revision: number) =>
+    patchJson<ProjectFeatureSettings>(`/api/v2/projects/${projectId}/features`, {
+      dynamic_workflows: dynamicWorkflows,
+      expected_revision: revision,
+    }),
+  proposeWorkflow: (taskId: string, provider: string) =>
+    postJson<WorkflowProposal>(`/api/v2/tasks/${taskId}/workflow/propose`, {
+      execution_provider: provider,
+      planner_runtime: "DETERMINISTIC",
+    }),
+  workflowProposals: (runId: string) =>
+    getJson<WorkflowProposal[]>(`/api/v2/runs/${runId}/workflow/proposals`),
+  workflowValidations: (runId: string, proposalId: string) =>
+    getJson<GraphValidationResult[]>(
+      `/api/v2/runs/${runId}/workflow/proposals/${proposalId}/validations`,
+    ),
+  validateWorkflow: (runId: string, proposalId: string) =>
+    postJson<WorkflowValidationOutcome>(
+      `/api/v2/runs/${runId}/workflow/proposals/${proposalId}/validate`,
+      {},
+    ),
+  activateWorkflow: (runId: string, proposalId: string) =>
+    postJson<WorkflowActivationOutcome>(
+      `/api/v2/runs/${runId}/workflow/proposals/${proposalId}/activate`,
+      {},
+    ),
+  graphRevisions: (runId: string) =>
+    getJson<RunGraphRevision[]>(`/api/v2/runs/${runId}/graph/revisions`),
+  graphDiff: (runId: string, from: number, to: number) =>
+    getJson<GraphRevisionDiff>(
+      `/api/v2/runs/${runId}/graph/diff?from=${from}&to=${to}`,
+    ),
+  runtimeDecisions: (runId: string) =>
+    getJson<RuntimeDecision[]>(`/api/v2/runs/${runId}/runtime-decisions`),
+  replans: (runId: string) =>
+    getJson<ReplanRequest[]>(`/api/v2/runs/${runId}/replans`),
+  replan: (runId: string, reason: string, evidenceRefs: string[]) =>
+    postJson<ReplanOutcome>(`/api/v2/runs/${runId}/replan`, {
+      reason,
+      evidence_refs: evidenceRefs,
+    }),
   loop: (runId: string) => getJson<LoopExecution>(`/api/v1/runs/${runId}/loop`),
   graph: (runId: string) => getJson<GraphProjection>(`/api/v1/runs/${runId}/graph`),
   trace: (runId: string) => getJson<ExecutionTrace>(`/api/v1/runs/${runId}/trace`),

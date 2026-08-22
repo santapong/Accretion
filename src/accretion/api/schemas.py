@@ -15,6 +15,7 @@ from accretion.contracts import (
     TaskType,
     TemplateStatus,
 )
+from accretion.orchestration.models import PlannerRuntime, ReplanReason
 
 
 class ProjectCreate(BaseModel):
@@ -42,6 +43,21 @@ class TaskCreate(BaseModel):
 
 class RunCreate(BaseModel):
     provider: Provider = Provider.FAKE
+
+
+class ProjectFeatureUpdate(BaseModel):
+    dynamic_workflows: bool
+    expected_revision: int = Field(ge=1)
+
+
+class WorkflowProposeCreate(BaseModel):
+    execution_provider: Provider = Provider.FAKE
+    planner_runtime: PlannerRuntime = PlannerRuntime.DETERMINISTIC
+
+
+class ReplanCreate(BaseModel):
+    reason: ReplanReason
+    evidence_refs: list[str] = Field(default_factory=list)
 
 
 class StrategyOverrideCreate(BaseModel):
