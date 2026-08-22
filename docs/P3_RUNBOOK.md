@@ -1,5 +1,7 @@
 # Accretion P3 static graphs, checkpoints, and replay runbook
 
+<img src="assets/checkpoint-replay.svg" alt="Checkpoint and replay lifecycle showing atomic checkpoint evidence, restart classification, safe resume, fail-closed escalation, and event-log-derived projections" width="100%" />
+
 ## Scope
 
 P3 enables the persisted `GRAPH/fixed-graph-v1`, `HYBRID/hybrid-rd-v1`, and

@@ -8,6 +8,12 @@ The candidate passes every MUST criterion in SDD Section 20, has no open critica
 security issue in the authenticated issue inventory, and reproduces the frozen
 ACR-ARCH dataset from a clean checkout and clean PostgreSQL 16 database.
 
+<img src="assets/benchmark-pipeline.svg" alt="Release-evidence pipeline from frozen benchmark inputs through schema validation, deterministic replay, raw dimensions, utility and regret, and durable operator reports" width="100%" />
+
+> Post-release note: the audited candidate was promoted and the immutable
+> `v0.1.0` tag now records the shipped release. The procedure below remains the
+> historical evidence used for that promotion.
+
 ## Clean-checkout evidence
 
 The complete gate was rerun from a new clone of the exact candidate with newly

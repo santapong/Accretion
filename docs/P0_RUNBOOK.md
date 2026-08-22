@@ -1,5 +1,10 @@
 # Accretion P0 runbook
 
+<img src="assets/accretion-architecture.svg" alt="Accretion runtime architecture from the operator interface through the authoritative control plane to provider adapters, isolated worktrees, durable state, events, and independent verification" width="100%" />
+
+For a first local run, follow the [developer guide](DEVELOPER_GUIDE.md) and
+[deterministic showcase](SHOWCASE.md) before enabling signed-in providers.
+
 ## Runtime compatibility
 
 P0 is validated against Codex CLI `>=0.148,<0.149` and Claude Code

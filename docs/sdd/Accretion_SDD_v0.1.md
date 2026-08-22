@@ -9,6 +9,11 @@ release_scope: "P0-P4"
 
 # Accretion v0.1 — System Design Specification
 
+Visual companions: [system architecture](../assets/accretion-architecture.svg),
+[feedback lifecycle](../assets/accretion-feedback-loop.svg), and
+[checkpoint/replay](../assets/checkpoint-replay.svg). These diagrams summarize;
+this SDD remains authoritative.
+
 **Release thesis:** v0.1 proves that one local control plane can safely supervise Claude Code and Codex, choose an inspectable execution structure (`DIRECT`, `LOOP`, `GRAPH`, or `HYBRID`), execute only validated static workflow templates, verify outcomes independently, and expose the complete run through a React Flow operator UI.
 
 > **Codex implementation rule:** Treat this document as authoritative for v0.1. Do not implement v0.2 dynamic workflow synthesis, learned routing, trajectory replay, reinforcement learning, self-evolution, or autonomous production deployment. If a future feature appears in an interface for forward compatibility, keep it disabled behind a feature flag and do not add execution behavior.

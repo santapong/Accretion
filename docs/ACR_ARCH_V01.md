@@ -4,6 +4,8 @@ ACR-ARCH is Accretion's frozen architecture-selection benchmark. The v0.1
 corpus is deliberately small enough to reproduce on a workstation while still
 covering every static execution mode and the safety/recovery boundary.
 
+<img src="assets/benchmark-pipeline.svg" alt="Reproducible ACR-ARCH pipeline from frozen tasks, environments, configuration, and replay traces through validation and deterministic scoring to queryable reports" width="100%" />
+
 ## Frozen inputs
 
 The benchmark inputs are versioned independently from `selector-v1`:

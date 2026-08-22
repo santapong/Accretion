@@ -1,5 +1,10 @@
 # Accretion SDD Index — v0.1 to v0.3
 
+<img src="../assets/v02-roadmap.svg" alt="Release roadmap from the completed v0.1 static control-plane gate through v0.2 P5 dynamic workflows, P6 routing and search, P7 verified experience, and the gated v0.3 integration platform" width="100%" />
+
+The [v0.2 delivery plan](../V0_2_PLAN.md) translates the normative v0.2 SDD into
+reviewable implementation slices without changing its contracts.
+
 ## Release map
 
 | Release | Primary responsibility | Prerequisite |
@@ -46,5 +51,6 @@ seams and naming, but no feature from a locked release ships early, and the pack
 files themselves must not be edited (they are hash-manifested).
 
 Baseline note: the package was prepared against `develop@9b59977` and describes P2 as
-planned. The v0.1 P0-P4 implementation and release gate have since completed; this
-historical note does not unlock v0.2 or v0.3 scope before the `v0.1.0` release tag.
+planned. The v0.1 P0-P4 implementation, release gate, and immutable `v0.1.0` tag
+have since completed, so v0.2 planning is unlocked under its delivery plan. v0.3
+and the hash-manifested v0.4+ package remain locked behind their declared gates.

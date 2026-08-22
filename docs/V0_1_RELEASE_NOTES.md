@@ -5,6 +5,12 @@ supervises signed-in Codex and Claude Code runtimes through a provider-neutral,
 local-first control plane while keeping architecture selection, workflow topology,
 policy, and independent acceptance authoritative in code.
 
+<img src="assets/accretion-architecture.svg" alt="Accretion v0.1 architecture showing the operator interface, authoritative planning and execution control plane, runtime adapters, durable state, isolated worktrees, normalized events, and independent verification" width="100%" />
+
+New users can reproduce one verified run with the
+[deterministic showcase](SHOWCASE.md); contributors should start at the
+[documentation hub](README.md).
+
 ## Shipped scope
 
 - Structured Codex App Server and Claude stream-JSON adapters with normalized,

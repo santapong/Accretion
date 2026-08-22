@@ -14,6 +14,9 @@ isolated workspaces, and a durable normalized execution trace.
 [![License](https://img.shields.io/badge/License-MIT-6f42c1.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-v0.1.0-2ea44f)](#project-status)
 
+[Documentation](docs/README.md) · [Developer guide](docs/DEVELOPER_GUIDE.md) ·
+[Showcase](docs/SHOWCASE.md) · [v0.2 plan](docs/V0_2_PLAN.md)
+
 <br />
 
 <img src="docs/assets/accretion-hero.png" alt="Two agent-runtime streams converging through the Accretion control plane into an observable event trace and isolated workspaces" width="100%" />
@@ -114,6 +117,24 @@ Worker text such as “done” or “tests pass” is never sufficient evidence.
 loop remains bounded by persisted wall-time, turn, tool-call, and iteration
 ceilings.
 
+## Developer showcase
+
+<div align="center">
+  <a href="docs/SHOWCASE.md">
+    <img src="docs/assets/accretion-showcase.png" alt="Illustrative developer workspace showing governed runtime streams, a validated workflow graph, normalized events, verification gates, and isolated Git workspaces" width="100%" />
+  </a>
+</div>
+
+Run a bounded, read-only task through the real HTTP API and deterministic fake
+runtime without consuming a signed-in provider session:
+
+```bash
+uv run python examples/showcase.py --repository "$PWD"
+```
+
+The [showcase walkthrough](docs/SHOWCASE.md) explains the resulting planning,
+runtime, verification, graph, trace, and audit records.
+
 ## Project status
 
 | Milestone | Status | Scope |
@@ -130,6 +151,10 @@ architecture and acceptance criteria. The latest
 [v0.1 release audit](docs/V0_1_RELEASE_AUDIT.md) records the clean-checkout GO
 decision. See the [v0.1.0 release notes](docs/V0_1_RELEASE_NOTES.md) for the
 shipped scope, compatibility, and reproducibility hashes.
+
+v0.2 is now in planning. Its [delivery plan](docs/V0_2_PLAN.md) sequences the P5–P7
+work while the [v0.2 SDD](docs/sdd/Accretion_SDD_v0.2.md) remains the normative
+contract; dynamic workflow implementation has not started.
 
 ## Quick start
 
@@ -246,6 +271,8 @@ src/accretion/benchmark.py Frozen ACR-ARCH replay and architecture metrics
 src/accretion/verifiers/  Deterministic verifier implementations and registry
 migrations/               Alembic schema history
 tests/                    Unit, API, PostgreSQL, and live acceptance tests
+examples/                 Safe public-API demonstrations using the fake runtime
+docs/                     Developer guides, runbooks, plans, and visual references
 docs/sdd/                 Versioned system design specifications
 ```
 

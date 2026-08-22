@@ -1,5 +1,7 @@
 # Accretion P2 loops and verifiers runbook
 
+<img src="assets/accretion-feedback-loop.svg" alt="Bounded P2 lifecycle from one runtime session to immutable observation and independent verification, with verified completion, structured repair, or human escalation" width="100%" />
+
 ## Scope
 
 P2 enables the persisted `LOOP/feedback-loop-v1` decision. A loop reuses one
