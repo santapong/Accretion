@@ -16,7 +16,8 @@ acceptance policy, or durable-state ownership.
 
 ## Entry gate
 
-The v0.1 prerequisites are now present:
+The v0.1 prerequisites are now present. Their canonical identifiers and frozen
+surfaces are recorded in the [v0.1 baseline](V0_1_BASELINE.md):
 
 - immutable `v0.1.0` release tag and published release evidence;
 - deterministic static strategy baseline and validated templates;
@@ -24,17 +25,19 @@ The v0.1 prerequisites are now present:
 - verifier-gated execution, checkpoints, replay, governance, and operator views;
 - frozen ACR-ARCH inputs and reproducible baseline reports.
 
-Before implementation begins, record a v0.2 baseline snapshot from the current
-`develop` branch and convert the unresolved SDD questions needed by P5 into
-tracked decisions.
+P5 began from the recorded `develop@bb249f5` integration snapshot. Its required
+SDD choices are captured in the [P5 decision record](P5_DECISIONS.md). The
+immutable `v0.1.0` release remains the experimental control and compatibility
+floor; the moving `develop` branch is not the v0.1 baseline.
 
 ## Scope and sequence
 
 ### P5 — Validated dynamic workflow proposals
 
-Implementation status: complete on the P5 feature branch, pending PR release
-review. Operational details and evidence are in the [P5 runbook](P5_RUNBOOK.md)
-and [P5 acceptance report](P5_ACCEPTANCE_REPORT.md).
+Implementation status: merged into `develop` by
+[PR #35](https://github.com/santapong/Accretion/pull/35) behind opt-in gates.
+Operational details and evidence are in the [P5 runbook](P5_RUNBOOK.md) and
+[P5 acceptance report](P5_ACCEPTANCE_REPORT.md).
 
 Outcome: a model may propose graph structure, but deterministic code decides
 whether that structure is admissible and executable.
