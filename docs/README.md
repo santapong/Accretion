@@ -14,7 +14,7 @@ and release reviewers. Start with the path that matches what you want to do.
 | Build a contribution | [Contributing](../CONTRIBUTING.md) | [Branch policy](BRANCH_POLICY.md) |
 | Operate or recover runs | [P0 runtime runbook](P0_RUNBOOK.md) | [P2 loops](P2_RUNBOOK.md), [P3 replay](P3_RUNBOOK.md) |
 | Operate P5 dynamic workflows | [P5 runbook](P5_RUNBOOK.md) | [P5 decisions](P5_DECISIONS.md), [acceptance](P5_ACCEPTANCE_REPORT.md) |
-| Reproduce research | [ACR-ARCH](ACR_ARCH_V01.md) | [v0.1 release audit](V0_1_RELEASE_AUDIT.md) |
+| Reproduce research | [Frozen v0.1 baseline](V0_1_BASELINE.md) | [ACR-ARCH](ACR_ARCH_V01.md), [release audit](V0_1_RELEASE_AUDIT.md) |
 | Review security | [Security policy](../SECURITY.md) | [Trust-boundary diagram](assets/trust-boundary.svg) |
 | Plan the next release | [v0.2 delivery plan](V0_2_PLAN.md) | [v0.2 SDD](sdd/Accretion_SDD_v0.2.md) |
 
@@ -38,7 +38,8 @@ bitmap in the showcase is illustrative and never defines behavior.
 
 ## Version authority
 
-- The immutable `v0.1.0` tag and its release notes define the shipped v0.1 baseline.
+- The immutable `v0.1.0` tag and the [frozen baseline record](V0_1_BASELINE.md)
+  define the shipped v0.1 compatibility and experimental reference.
 - `main` is the stable branch; `develop` integrates the next release.
 - `codex/v0.1-local-control-plane` is an unmerged historical prototype, not a
   release branch or source of current contracts.

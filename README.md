@@ -150,8 +150,9 @@ See the [v0.1 system design](docs/sdd/Accretion_SDD_v0.1.md) and the
 [multi-release SDD index](docs/sdd/Accretion_SDD_INDEX_v0.3.md) for the full
 architecture and acceptance criteria. The latest
 [v0.1 release audit](docs/V0_1_RELEASE_AUDIT.md) records the clean-checkout GO
-decision. See the [v0.1.0 release notes](docs/V0_1_RELEASE_NOTES.md) for the
-shipped scope, compatibility, and reproducibility hashes.
+decision. The [frozen v0.1 baseline](docs/V0_1_BASELINE.md) identifies the exact
+release and experimental control; the [v0.1.0 release notes](docs/V0_1_RELEASE_NOTES.md)
+describe its shipped scope, compatibility, and reproducibility hashes.
 
 v0.2 implementation has started with the opt-in P5 dynamic-workflow slice. See
 the [P5 runbook](docs/P5_RUNBOOK.md), [acceptance report](docs/P5_ACCEPTANCE_REPORT.md),
