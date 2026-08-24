@@ -143,6 +143,32 @@ _APPROVAL_DECISION_STATUS = {
 }
 
 
+def _ordered_context_history(contexts: Sequence[ContextBundle]) -> list[ContextBundle]:
+    """Order immutable context revisions by lineage, not timestamp coincidence."""
+
+    by_parent: dict[str | None, list[ContextBundle]] = {}
+    for context in contexts:
+        by_parent.setdefault(context.supersedes_context_bundle_id, []).append(context)
+    for children in by_parent.values():
+        children.sort(key=lambda item: (item.created_at, item.context_bundle_id))
+    ordered: list[ContextBundle] = []
+    visited: set[str] = set()
+
+    def visit(context: ContextBundle) -> None:
+        if context.context_bundle_id in visited:
+            return
+        visited.add(context.context_bundle_id)
+        ordered.append(context)
+        for child in by_parent.get(context.context_bundle_id, []):
+            visit(child)
+
+    for root in by_parent.get(None, []):
+        visit(root)
+    for context in sorted(contexts, key=lambda item: (item.created_at, item.context_bundle_id)):
+        visit(context)
+    return ordered
+
+
 class StateStore(Protocol):
     async def create_project(self, project: Project) -> Project: ...
     async def get_project(self, project_id: str) -> Project | None: ...
@@ -534,13 +560,12 @@ class MemoryStore:
             context_bundle=self.contexts[task.context_bundle_id],
             current_profile=current_profile,
             current_decision=current_decision,
-            context_history=sorted(
-                (
+            context_history=_ordered_context_history(
+                [
                     context
                     for context in self.contexts.values()
                     if context.task_ref == task_id
-                ),
-                key=lambda item: (item.created_at, item.context_bundle_id),
+                ]
             ),
             profile_history=profiles,
             decision_history=decisions,
@@ -1863,9 +1888,9 @@ class PostgresStore:
             context_bundle=ContextBundle.model_validate(context.bundle),
             current_profile=TaskProfile.model_validate(current_profile.profile),
             current_decision=StrategyDecision.model_validate(current_decision.decision),
-            context_history=[
-                ContextBundle.model_validate(row.bundle) for row in context_rows
-            ],
+            context_history=_ordered_context_history(
+                [ContextBundle.model_validate(row.bundle) for row in context_rows]
+            ),
             profile_history=[TaskProfile.model_validate(row.profile) for row in profile_rows],
             decision_history=[
                 StrategyDecision.model_validate(row.decision) for row in decision_rows
