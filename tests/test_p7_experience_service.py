@@ -123,6 +123,7 @@ async def seed_succeeded_run(
     return await manager.store.create_run(run)
 
 
+@pytest.mark.acceptance("V02-P7-001")
 async def test_materialize_query_select_and_freeze_context(tmp_path: Path) -> None:
     repository = tmp_path / "repository"
     repository.mkdir()
@@ -190,6 +191,7 @@ async def test_materialize_query_select_and_freeze_context(tmp_path: Path) -> No
         )
 
 
+@pytest.mark.acceptance("V02-P7-004")
 async def test_negative_knowledge_retraction_and_stale_rejection(tmp_path: Path) -> None:
     repository = tmp_path / "repository"
     repository.mkdir()
@@ -261,6 +263,7 @@ async def test_negative_knowledge_retraction_and_stale_rejection(tmp_path: Path)
     assert "SKILL_OR_PLUGIN_UNAVAILABLE" in unavailable_assessment.reasons
 
 
+@pytest.mark.acceptance("V02-P7-004")
 async def test_terminal_candidate_materialization_distinguishes_winner_and_out_ranked(
     tmp_path: Path,
 ) -> None:
@@ -348,6 +351,7 @@ async def test_terminal_candidate_materialization_distinguishes_winner_and_out_r
     assert "OUT_RANKED" in avoided.experience.failure_taxonomy
 
 
+@pytest.mark.acceptance("V02-P7-002")
 async def test_embedding_is_deterministic_redacted_and_repository_scoped(
     tmp_path: Path,
 ) -> None:

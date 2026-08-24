@@ -94,6 +94,7 @@ def request(
     )
 
 
+@pytest.mark.acceptance("AC3-MCP-01")
 async def test_registry_is_versioned_immutable_and_mcp_inventory_is_task_scoped() -> None:
     store, gateway, run = await setup_gateway(
         allowed=["accretion.echo", "accretion.protected-write"],
@@ -135,6 +136,7 @@ async def test_unknown_and_task_denied_capabilities_fail_closed_without_executio
 
 
 @pytest.mark.acceptance("V01-P0-006")
+@pytest.mark.acceptance("AC3-MCP-01")
 async def test_low_risk_call_executes_and_protected_call_requires_bound_approval_once() -> None:
     calls = 0
 

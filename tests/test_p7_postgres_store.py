@@ -49,6 +49,7 @@ def digest(value: str) -> str:
     return sha256(value.encode()).hexdigest()
 
 
+@pytest.mark.acceptance("V02-P7-001")
 async def test_p7_vector_evidence_round_trips_and_retracts(tmp_path: Path) -> None:
     assert POSTGRES_URL is not None
     engine = create_engine(POSTGRES_URL)
