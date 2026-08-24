@@ -72,7 +72,7 @@ curl http://localhost:8000/api/v1/runs/<run-id>/trace
 | Verification | `src/accretion/verifiers/` | fail-closed verifier tests |
 | Capability governance | `src/accretion/governance.py` | policy and side-effect-ledger tests |
 | Operator UI | `apps/ui/src/` | component tests + production build |
-| Benchmark | `src/accretion/benchmark.py` + `evals/` | fixture hashes + replay metrics |
+| Benchmark | `src/accretion/benchmark.py`, `src/accretion/search_benchmark.py` + `evals/` | fixture hashes + deterministic replay metrics |
 
 ## 6. Preserve the authority boundary
 

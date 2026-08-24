@@ -310,3 +310,62 @@ test("shows P5 proposal authority, revision diff, router evidence, and replan co
   expect(within(inspector).getByText("Runtime: FAKE")).toBeInTheDocument();
   expect(within(inspector).getByRole("button", { name: "Request safe replan" })).toBeInTheDocument();
 });
+
+test("renders P6 candidate lineage, provenance, scores, spend, and selection reason", async () => {
+  const searchRun: Run = { ...run, state: "SUCCEEDED" };
+  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/searches")) return response([{
+      schema_version: "2.0", revision: 5, status: "SUCCEEDED",
+      selected_candidate_id: "candidate_2", stop_reason: "ACCEPTED",
+      budget_spent: { schema_version: "2.0", wall_time_seconds: 2, turns: 2, tool_calls: 3 },
+      plan: {
+        schema_version: "2.0", search_id: "search_fixture", run_id: searchRun.run_id,
+        parent_node_id: "act", graph_revision: 1, mode: "CROSS_PROVIDER",
+        branch_count: 2, max_parallel: 2, candidate_directives: [],
+        per_branch_budget: { schema_version: "2.0", wall_time_seconds: 120, max_turns: 4, max_tool_calls: 12 },
+        total_budget: { schema_version: "2.0", wall_time_seconds: 240, max_turns: 8, max_tool_calls: 24 },
+        verifier_policy_ref: "policy", router_policy_version: "performance-router-v2",
+        requested_by: "operator",
+      },
+    }]);
+    if (url.endsWith("/search_fixture/candidates")) return response([
+      {
+        schema_version: "2.0", candidate_id: "candidate_1", search_id: "search_fixture",
+        run_id: searchRun.run_id, ordinal: 1, provider: "CLAUDE", runtime_id: "claude-cli",
+        runtime_model: "default", runtime_version: "2.1.0", status: "PRUNED", latency_ms: 1100,
+        terminal_reason: "not selected by independent candidate scorer",
+        trajectory_ref: "events:20-25", budget_spent: { schema_version: "2.0", wall_time_seconds: 1, turns: 1, tool_calls: 2 },
+      },
+      {
+        schema_version: "2.0", candidate_id: "candidate_2", search_id: "search_fixture",
+        run_id: searchRun.run_id, ordinal: 2, provider: "CODEX", runtime_id: "codex-cli",
+        runtime_model: "default", runtime_version: "0.149.0", status: "SELECTED", latency_ms: 900,
+        terminal_reason: "selected by independent candidate scorer",
+        trajectory_ref: "events:26-31", budget_spent: { schema_version: "2.0", wall_time_seconds: 1, turns: 1, tool_calls: 1 },
+      },
+    ]);
+    if (url.endsWith("/search_fixture/scores")) return response([
+      { schema_version: "2.0", score_id: "score_1", search_id: "search_fixture", candidate_id: "candidate_1", verifier_policy_ref: "policy", verifier_status: "PASS", eligible: true, quality_score: 0.75, cost_proxy: 0.2, latency_proxy: 0.1, risk_score: 0, total_score: 0.7, explanation: "accepted", scorer_version: "candidate-scorer-v2" },
+      { schema_version: "2.0", score_id: "score_2", search_id: "search_fixture", candidate_id: "candidate_2", verifier_policy_ref: "policy", verifier_status: "PASS", eligible: true, quality_score: 0.9, cost_proxy: 0.1, latency_proxy: 0.08, risk_score: 0, total_score: 0.86, explanation: "accepted", scorer_version: "candidate-scorer-v2" },
+    ]);
+    if (url.endsWith("/graph")) return response(graph);
+    if (url.endsWith("/verifications")) return response(verifications);
+    if (url.includes("/api/v1/approvals")) return response([]);
+    if (url.endsWith("/loop")) return response(loop);
+    return response([]);
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}><RunExecution run={searchRun} /></QueryClientProvider>,
+  );
+
+  const tree = await screen.findByRole("region", { name: "Candidate search tree" });
+  expect(await within(tree).findByText("CROSS PROVIDER")).toBeInTheDocument();
+  expect(within(tree).getByText("codex-cli · default · 0.149.0")).toBeInTheDocument();
+  expect(within(tree).getByText("0.860")).toBeInTheDocument();
+  expect(within(tree).getByText("selected by independent candidate scorer")).toBeInTheDocument();
+  expect(within(tree).getAllByText("SELECTED").length).toBeGreaterThan(0);
+  expect(within(tree).getByText("2/8 turns")).toBeInTheDocument();
+  expect(within(tree).getByText("3/24 tools")).toBeInTheDocument();
+});

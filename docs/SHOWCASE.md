@@ -103,4 +103,5 @@ The equivalent read-only API views are:
   payment, or messaging action.
 
 For architecture details, continue with the [developer guide](DEVELOPER_GUIDE.md)
-and [v0.1 SDD](sdd/Accretion_SDD_v0.1.md).
+and [v0.1 SDD](sdd/Accretion_SDD_v0.1.md). To extend the tour with opt-in,
+shared-budget candidate comparison, use the [P6 developer showcase](P6_SHOWCASE.md).

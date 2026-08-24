@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Background,
   BaseEdge,
@@ -17,11 +17,14 @@ import { api } from "./api";
 import { layoutProjection } from "./graphLayout";
 import type {
   ApprovalRecord,
+  CandidateScore,
+  CandidateTrajectory,
   GraphProjection,
   GraphProjectionNode,
   GraphValidationResult,
   LoopExecution,
   Run,
+  SearchRecord,
   VerificationResult,
 } from "./types";
 
@@ -365,6 +368,122 @@ function VerificationPanel({ verifications }: { verifications: VerificationResul
   );
 }
 
+function CandidateCard({
+  candidate,
+  score,
+  selected,
+}: {
+  candidate: CandidateTrajectory;
+  score: CandidateScore | undefined;
+  selected: boolean;
+}) {
+  const spend = candidate.budget_spent;
+  return (
+    <article className={`candidate-card ${selected ? "candidate-selected" : ""}`}>
+      <header>
+        <div><span>Candidate {String(candidate.ordinal).padStart(2, "0")}</span><strong>{candidate.provider}</strong></div>
+        <StatusBadge state={candidate.status} />
+      </header>
+      <p className="candidate-runtime">{candidate.runtime_id} · {candidate.runtime_model} · {candidate.runtime_version}</p>
+      {candidate.reviewer_provider ? <p className="candidate-reviewer">Reviewed by {candidate.reviewer_provider}</p> : null}
+      <dl>
+        <div><dt>Score</dt><dd>{score?.total_score == null ? "—" : score.total_score.toFixed(3)}</dd></div>
+        <div><dt>Quality</dt><dd>{score?.quality_score == null ? "—" : score.quality_score.toFixed(3)}</dd></div>
+        <div><dt>Cost proxy</dt><dd>{score ? score.cost_proxy.toFixed(3) : "—"}</dd></div>
+        <div><dt>Latency proxy</dt><dd>{score ? score.latency_proxy.toFixed(3) : "—"}</dd></div>
+        <div><dt>Spend</dt><dd>{spend?.turns ?? 0}t / {spend?.tool_calls ?? 0} tools</dd></div>
+        <div><dt>Latency</dt><dd>{candidate.latency_ms} ms</dd></div>
+      </dl>
+      <p className="candidate-reason">{candidate.terminal_reason ?? score?.explanation ?? "Candidate has not completed."}</p>
+      <small>{candidate.trajectory_ref ?? candidate.session_id ?? "trajectory pending"}</small>
+    </article>
+  );
+}
+
+function SearchTree({ run }: { run: Run }) {
+  const queryClient = useQueryClient();
+  const active = !terminalStates.has(run.state);
+  const searchesQuery = useQuery({
+    queryKey: ["run-searches", run.run_id],
+    queryFn: () => api.searches(run.run_id),
+    retry: false,
+    refetchInterval: active ? 2000 : false,
+  });
+  const searches: SearchRecord[] = Array.isArray(searchesQuery.data)
+    ? searchesQuery.data
+    : [];
+  const candidateQueries = useQueries({
+    queries: searches.map((search) => ({
+      queryKey: ["search-candidates", search.plan.search_id],
+      queryFn: () => api.searchCandidates(search.plan.search_id),
+      retry: false,
+      refetchInterval: active ? 2000 : false,
+    })),
+  });
+  const scoreQueries = useQueries({
+    queries: searches.map((search) => ({
+      queryKey: ["search-scores", search.plan.search_id],
+      queryFn: () => api.searchScores(search.plan.search_id),
+      retry: false,
+      refetchInterval: active ? 2000 : false,
+    })),
+  });
+  if (!searchesQuery.isLoading && !searches.length) return null;
+
+  async function cancel(searchId: string) {
+    await api.cancelSearch(searchId);
+    await queryClient.invalidateQueries({ queryKey: ["run-searches", run.run_id] });
+  }
+
+  return (
+    <section className="search-inspector" aria-label="Candidate search tree">
+      <header>
+        <div><p className="eyebrow">P6 bounded test-time compute</p><h3>Candidate search tree</h3></div>
+        <span>{searches.length} plan{searches.length === 1 ? "" : "s"}</span>
+      </header>
+      {searchesQuery.isLoading ? <p className="empty compact">Loading candidate lineage…</p> : null}
+      {searches.map((search, index) => {
+        const candidates = Array.isArray(candidateQueries[index]?.data)
+          ? candidateQueries[index].data
+          : [];
+        const scores = Array.isArray(scoreQueries[index]?.data)
+          ? scoreQueries[index].data
+          : [];
+        const scoresByCandidate = new Map(
+          scores.map((score) => [score.candidate_id, score]),
+        );
+        const cancellable = ["PLANNED", "RUNNING", "SELECTING"].includes(search.status);
+        return (
+          <details className="search-plan-tree" key={search.plan.search_id} open>
+            <summary>
+              <span><strong>{display(search.plan.mode)}</strong><small>{search.plan.parent_node_id} · r{search.plan.graph_revision}</small></span>
+              <StatusBadge state={search.status} />
+            </summary>
+            <div className="search-plan-meta">
+              <span>{search.plan.branch_count} branches / {search.plan.max_parallel} parallel</span>
+              <span>{search.budget_spent?.turns ?? 0}/{search.plan.total_budget.max_turns} turns</span>
+              <span>{search.budget_spent?.tool_calls ?? 0}/{search.plan.total_budget.max_tool_calls} tools</span>
+              <span>{search.stop_reason ? display(search.stop_reason) : "search pending"}</span>
+              {cancellable ? <button className="secondary-button" type="button" onClick={() => cancel(search.plan.search_id)}>Cancel search</button> : null}
+            </div>
+            <div className="candidate-tree">
+              {candidates.map((candidate) => (
+                <CandidateCard
+                  candidate={candidate}
+                  key={candidate.candidate_id}
+                  score={scoresByCandidate.get(candidate.candidate_id)}
+                  selected={search.selected_candidate_id === candidate.candidate_id}
+                />
+              ))}
+              {!candidates.length ? <p className="quiet">Candidates are created when the parent node starts.</p> : null}
+            </div>
+          </details>
+        );
+      })}
+    </section>
+  );
+}
+
 function DynamicWorkflowInspector({ run }: { run: Run }) {
   const queryClient = useQueryClient();
   const [replanEvidence, setReplanEvidence] = useState("");
@@ -544,6 +663,7 @@ export function RunExecution({ run }: { run: Run | undefined }) {
       </header>
       <div className="execution-content">
         <DynamicWorkflowInspector run={run} />
+        <SearchTree run={run} />
         <PendingApprovals runId={run.run_id} />
         {loopQuery.data ? <BudgetSummary loop={loopQuery.data} /> : null}
         {projection ? <ProjectionCanvas projection={projection} /> : (

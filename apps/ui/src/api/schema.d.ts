@@ -583,6 +583,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/benchmarks/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Search Benchmark */
+        get: operations["get_search_benchmark_api_v2_benchmarks_search_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/benchmarks/search/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Search Benchmark */
+        post: operations["run_search_benchmark_api_v2_benchmarks_search_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v2/projects/{project_id}/features": {
         parameters: {
             query?: never;
@@ -2517,6 +2551,24 @@ export interface components {
          * @enum {string}
          */
         Provider: "CLAUDE" | "CODEX" | "FAKE" | "DETERMINISTIC" | "HUMAN";
+        /** ProviderSearchBenchmark */
+        ProviderSearchBenchmark: {
+            /** Acceptance Rate */
+            acceptance_rate: number;
+            /** Accepted Tasks */
+            accepted_tasks: number;
+            /** Mean Best Quality */
+            mean_best_quality: number;
+            provider: components["schemas"]["Provider"];
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Task Count */
+            task_count: number;
+        };
         /** ReplanCreate */
         ReplanCreate: {
             /** Evidence Refs */
@@ -2838,6 +2890,105 @@ export interface components {
          * @enum {string}
          */
         RuntimeStatus: "READY" | "BUSY" | "RATE_LIMITED" | "AUTH_REQUIRED" | "UNAVAILABLE" | "DEGRADED";
+        /** SearchBenchmarkCurvePoint */
+        SearchBenchmarkCurvePoint: {
+            /** Acceptance Rate */
+            acceptance_rate: number;
+            /** Accepted Tasks */
+            accepted_tasks: number;
+            /** Candidate Count */
+            candidate_count: number;
+            /** Marginal Quality Gain */
+            marginal_quality_gain: number;
+            /** Mean Latency Ms */
+            mean_latency_ms: number;
+            /** Mean Quality */
+            mean_quality: number;
+            /** Mean Tool Calls */
+            mean_tool_calls: number;
+            /** Mean Turns */
+            mean_turns: number;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Task Count */
+            task_count: number;
+        };
+        /** SearchBenchmarkSummary */
+        SearchBenchmarkSummary: {
+            /** Benchmark Run Id */
+            benchmark_run_id: string;
+            /** Candidate Counts */
+            candidate_counts: number[];
+            /** Config Sha256 */
+            config_sha256: string;
+            /** Configuration Version */
+            configuration_version: string;
+            /** Corpus Sha256 */
+            corpus_sha256: string;
+            /** Curve */
+            curve: components["schemas"]["SearchBenchmarkCurvePoint"][];
+            /**
+             * Execution Source
+             * @default REPLAY
+             * @constant
+             */
+            execution_source: "REPLAY";
+            /**
+             * Frozen At
+             * Format: date-time
+             */
+            frozen_at: string;
+            /** Null Gain Task Ids */
+            null_gain_task_ids: string[];
+            /** Provider Comparison */
+            provider_comparison: components["schemas"]["ProviderSearchBenchmark"][];
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Selector Version */
+            selector_version: string;
+            /** Suite Version */
+            suite_version: string;
+            /** Task Count */
+            task_count: number;
+            /** Tasks */
+            tasks: components["schemas"]["SearchBenchmarkTaskResult"][];
+            /** Trace Sha256 */
+            trace_sha256: string;
+        };
+        /** SearchBenchmarkTaskResult */
+        SearchBenchmarkTaskResult: {
+            /** Accepted By Candidate Count */
+            accepted_by_candidate_count: {
+                [key: string]: boolean;
+            };
+            /** Family */
+            family: string;
+            /** Gain From Two To Four */
+            gain_from_two_to_four: number;
+            /** Quality By Candidate Count */
+            quality_by_candidate_count: {
+                [key: string]: number;
+            };
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            selected_provider_at_four?: components["schemas"]["Provider"] | null;
+            /** Task Id */
+            task_id: string;
+            /** Title */
+            title: string;
+        };
         /** SearchBudgetEnvelope */
         SearchBudgetEnvelope: {
             /** Max Tool Calls */
@@ -4738,6 +4889,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VerificationResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_search_benchmark_api_v2_benchmarks_search_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchBenchmarkSummary"];
+                };
+            };
+        };
+    };
+    run_search_benchmark_api_v2_benchmarks_search_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BenchmarkRunCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchBenchmarkSummary"];
                 };
             };
             /** @description Validation Error */

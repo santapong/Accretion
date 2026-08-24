@@ -63,6 +63,7 @@ operator can answer five questions before and during every run:
 | Operator experience | Dashboard, task profiler, planning review, live run controls, runtime monitor, trace history, approvals, capability registries, read-only React Flow projections, and ACR-ARCH |
 | Governed capabilities | Immutable capability/skill/plugin/policy registries, task-scoped MCP exposure, approval-bound idempotent side effects, and executor-boundary credential injection |
 | Architecture benchmark | Frozen 30-task ACR-ARCH corpus, 68 balanced replay scenarios, raw dimensions, utility/regret, filterable operator UI, and opt-in live provider calibration |
+| Candidate search | Opt-in P6 best-of-N, hypothesis, cross-provider, and generator-reviewer execution with shared budgets, isolated trajectories, independent ranking, and crash-safe promotion |
 
 ## Architecture
 
@@ -145,6 +146,7 @@ runtime, verification, graph, trace, and audit records.
 | P3 — Static graphs | Complete | Template registry, GRAPH/HYBRID engines, approval gates, checkpoints, replay, and graph visualization |
 | P4 — Harness and release gate | Complete | Governed capabilities/MCP, credential boundary, side-effect evidence, complete operator surfaces, resumable SSE, and ACR-ARCH |
 | P5 — Dynamic workflows | Implemented (opt-in) | Typed proposals, deterministic graph validation, static fallback, immutable revisions, safe replan, and operator inspection |
+| P6 — Bounded candidate search | Implemented (opt-in) | Evidence-based routing, isolated branches, shared budgets, fail-closed ranking, promotion recovery, operator lineage, and frozen N=1/2/4 replay research |
 
 See the [v0.1 system design](docs/sdd/Accretion_SDD_v0.1.md) and the
 [multi-release SDD index](docs/sdd/Accretion_SDD_INDEX_v0.3.md) for the full
@@ -154,11 +156,11 @@ decision. The [frozen v0.1 baseline](docs/V0_1_BASELINE.md) identifies the exact
 release and experimental control; the [v0.1.0 release notes](docs/V0_1_RELEASE_NOTES.md)
 describe its shipped scope, compatibility, and reproducibility hashes.
 
-v0.2 implementation has started with the opt-in P5 dynamic-workflow slice. See
-the [P5 runbook](docs/P5_RUNBOOK.md), [acceptance report](docs/P5_ACCEPTANCE_REPORT.md),
-and [delivery plan](docs/V0_2_PLAN.md). P6 candidate search and P7 experience
-retrieval remain planned and unimplemented; the [v0.2 SDD](docs/sdd/Accretion_SDD_v0.2.md)
-remains the normative contract.
+v0.2 now includes the opt-in P5 dynamic-workflow and P6 bounded-search slices.
+See the [P6 runbook](docs/P6_RUNBOOK.md), [developer showcase](docs/P6_SHOWCASE.md),
+[acceptance report](docs/P6_ACCEPTANCE_REPORT.md), and [delivery plan](docs/V0_2_PLAN.md).
+P7 experience retrieval and replay remain planned; the
+[v0.2 SDD](docs/sdd/Accretion_SDD_v0.2.md) remains the normative contract.
 
 ## Quick start
 
@@ -226,6 +228,8 @@ All settings use the `ACCRETION_` prefix and can be placed in `.env`.
 | `ACCRETION_DATABASE_URL` | Local PostgreSQL | Authoritative state and event store |
 | `ACCRETION_DATA_DIR` | `.accretion` | Worktrees and captured artifacts |
 | `ACCRETION_ENABLE_LIVE_PROVIDERS` | `false` | Allows Codex and Claude executions |
+| `ACCRETION_ENABLE_DYNAMIC_WORKFLOWS` | `false` | Enables P5 proposal and graph-revision services globally |
+| `ACCRETION_ENABLE_CANDIDATE_SEARCH` | `false` | Enables P6 search globally; project opt-in is still required |
 | `ACCRETION_GLOBAL_MAX_RUNS` | `4` | Global concurrency ceiling |
 | `ACCRETION_PROVIDER_MAX_RUNS` | `2` | Per-provider concurrency ceiling |
 | `ACCRETION_PROJECT_MAX_RUNS` | `2` | Per-project concurrency ceiling |
@@ -272,6 +276,8 @@ src/accretion/looping.py  Loop policy, budgets, and terminal outcomes
 src/accretion/projections.py Read-only execution graph projections
 src/accretion/governance.py Capability policy, credentials, and governed executor
 src/accretion/benchmark.py Frozen ACR-ARCH replay and architecture metrics
+src/accretion/search_benchmark.py Frozen P6 quality-vs-compute replay metrics
+src/accretion/orchestration/ P5 workflow and P6 candidate-search authority
 src/accretion/verifiers/  Deterministic verifier implementations and registry
 migrations/               Alembic schema history
 tests/                    Unit, API, PostgreSQL, and live acceptance tests

@@ -1,6 +1,6 @@
 # P6 bounded-search decisions
 
-Status: frozen before candidate execution is enabled.
+Status: implemented and frozen for the opt-in P6 candidate executor.
 
 These decisions constrain P6 only. They preserve the
 [frozen v0.1 baseline](V0_1_BASELINE.md), inherit the P5 graph authority
@@ -19,3 +19,7 @@ boundary, and do not authorize P7 experience retrieval.
 | Recovery | Interrupted candidates retain evidence and conservatively consume their reserved budget; they are not automatically rerun. | Recovery cannot duplicate unknown compute or hide candidate loss. |
 | Replay | `REPLAY_BRANCH` is reserved in the contract but execution returns `REPLAY_BRANCH_REQUIRES_P7`. | Unverified trajectory references cannot bypass P7 compatibility checks. |
 | Calibration | Deterministic replay is the required CI gate; signed-in Claude/Codex calibration remains separate and opt-in. | CI stays reproducible while live evidence remains attributable. |
+
+See the [P6 runbook](P6_RUNBOOK.md) for operations and the
+[P6 acceptance report](P6_ACCEPTANCE_REPORT.md) for criterion-level evidence,
+fixture hashes, and the frozen N=1/2/4 result.

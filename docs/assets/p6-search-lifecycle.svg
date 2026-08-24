@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 520" role="img" aria-labelledby="title description">
+  <title id="title">P6 bounded candidate-search lifecycle</title>
+  <desc id="description">An accepted P5 agent node receives an opt-in search plan. Accretion reserves one shared budget, creates one to four isolated candidates with no protected side-effect authority, executes and independently verifies them, and preserves every trajectory. A unique verified best candidate may create a promotion intent; ties, inconclusive evidence, cancellation, or exhausted budgets stop for human review. Before applying the selected patch, Accretion re-evaluates policy and records the parent workspace digests for crash-safe reconciliation.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1"><stop stop-color="#07120c"/><stop offset="1" stop-color="#102319"/></linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0 0L9 3L0 6Z" fill="#75db91"/></marker>
+    <style>.h{font:700 30px system-ui,sans-serif;fill:#f0f6f1}.t{font:700 18px system-ui,sans-serif;fill:#e5eee7}.c{font:14px system-ui,sans-serif;fill:#afbeb3}.k{font:700 13px system-ui,sans-serif;fill:#75db91;letter-spacing:1.4px}.a{fill:none;stroke:#75db91;stroke-width:3;marker-end:url(#arrow)}.box{fill:#13271b;stroke:#315d40;stroke-width:2}.gate{fill:#2c2415;stroke:#a77a35;stroke-width:2}.store{fill:#121c2a;stroke:#45668d;stroke-width:2}.stop{fill:#2b1717;stroke:#914646;stroke-width:2}</style>
+  </defs>
+  <rect width="1600" height="520" rx="24" fill="url(#bg)"/>
+  <text x="55" y="58" class="h">P6 — compare more computation without granting more authority</text>
+  <rect x="50" y="115" width="205" height="170" rx="18" class="box"/><text x="75" y="150" class="k">ATTACH</text><text x="75" y="187" class="t">Accepted P5 node</text><text x="75" y="219" class="c">pending AGENT only</text><text x="75" y="244" class="c">global + project opt-in</text>
+  <path d="M255 200H305" class="a"/>
+  <rect x="315" y="115" width="230" height="170" rx="18" class="gate"/><text x="340" y="150" class="k">RESERVE</text><text x="340" y="187" class="t">One shared budget</text><text x="340" y="219" class="c">wall time · turns · tools</text><text x="340" y="244" class="c">N=1–4 · bounded parallelism</text>
+  <path d="M545 200H595" class="a"/>
+  <rect x="605" y="95" width="245" height="210" rx="18" class="box"/><text x="630" y="132" class="k">ISOLATE</text><text x="630" y="169" class="t">Candidate branches</text><text x="630" y="201" class="c">separate worktrees + sessions</text><text x="630" y="226" class="c">protected effects denied</text><text x="630" y="251" class="c">all trajectories retained</text>
+  <path d="M850 200H900" class="a"/>
+  <rect x="910" y="95" width="245" height="210" rx="18" class="gate"/><text x="935" y="132" class="k">VERIFY + SCORE</text><text x="935" y="169" class="t">Independent evidence</text><text x="935" y="201" class="c">eligibility before ranking</text><text x="935" y="226" class="c">quality + cost observables</text><text x="935" y="251" class="c">ties never break silently</text>
+  <path d="M1155 200H1205" class="a"/>
+  <rect x="1215" y="95" width="330" height="210" rx="18" class="store"/><text x="1240" y="132" class="k">PROMOTE UNIQUE BEST</text><text x="1240" y="169" class="t">Intent → policy → patch</text><text x="1240" y="201" class="c">record parent-before digest</text><text x="1240" y="226" class="c">re-evaluate authority ceiling</text><text x="1240" y="251" class="c">record parent-after digest</text>
+  <path d="M1032 305V370H980" class="a"/>
+  <rect x="565" y="350" width="405" height="115" rx="18" class="stop"/><text x="590" y="386" class="k">FAIL CLOSED</text><text x="590" y="419" class="t">Human review, no automatic promotion</text><text x="590" y="446" class="c">tie · inconclusive · cancelled · budget · low diversity</text>
+  <path d="M1380 305V407H985" class="a"/>
+  <rect x="995" y="350" width="550" height="115" rx="18" class="store"/><text x="1020" y="386" class="k">DURABLE RECOVERY</text><text x="1020" y="419" class="t">Reconcile intent and workspace digests</text><text x="1020" y="446" class="c">interrupted candidates remain queryable and are never automatically rerun</text>
+</svg>

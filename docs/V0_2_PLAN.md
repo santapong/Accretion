@@ -1,8 +1,9 @@
 # Accretion v0.2 delivery plan
 
-Status: P5 implemented behind opt-in gates; P6 and P7 remain planned. This document translates
-the normative [v0.2 SDD](sdd/Accretion_SDD_v0.2.md) into an implementation and
-review sequence; it does not change the SDD contracts.
+Status: P5 and P6 implemented behind independent opt-in gates; P7 remains
+planned. This document translates the normative
+[v0.2 SDD](sdd/Accretion_SDD_v0.2.md) into an implementation and review sequence;
+it does not change the SDD contracts.
 
 <img src="assets/v02-roadmap.svg" alt="v0.2 roadmap from the completed v0.1 gate through P5 dynamic workflows, P6 bounded routing and search, P7 verified experience, and the final research release gate" width="100%" />
 
@@ -60,6 +61,14 @@ Exit evidence:
 
 ### P6 — Evidence-based routing and bounded search
 
+Implementation status: completed across the
+[contracts/persistence PR #37](https://github.com/santapong/Accretion/pull/37),
+[executor/recovery PR #38](https://github.com/santapong/Accretion/pull/38), and
+[operator/research PR #39](https://github.com/santapong/Accretion/pull/39).
+Operational details and evidence are in the [P6 runbook](P6_RUNBOOK.md),
+[decision record](P6_DECISIONS.md), and
+[P6 acceptance report](P6_ACCEPTANCE_REPORT.md).
+
 Outcome: Accretion can compare a small number of candidates without hiding the
 cost, selection evidence, or losing trajectories.
 
@@ -68,7 +77,9 @@ Deliverables:
 - interpretable runtime-decision records based on health, compatibility, prior
   observed results, and declared constraints;
 - versioned `SearchPlan` and `CandidateTrajectory` contracts;
-- bounded best-of-N, cross-provider, generator-reviewer, and replay-branch modes;
+- bounded best-of-N, hypothesis, cross-provider, and generator-reviewer modes;
+- a reserved `REPLAY_BRANCH` contract that fails closed until P7 compatibility
+  and applicability evidence exists;
 - hard shared budgets across candidates, including wall time and tool calls;
 - independent verifier ranking with explicit ties and inconclusive outcomes;
 - UI views for candidate lineage, spend, evidence, and final selection.
@@ -115,31 +126,32 @@ Exit evidence:
 
 ## Proposed pull-request slices
 
-1. Contracts and database migrations for P5 records.
-2. Pure GraphValidator plus adversarial fixtures.
-3. Proposal persistence and static fallback, with no dynamic execution yet.
-4. Dynamic graph instantiation and revision-safe checkpointing.
-5. P5 operator surfaces and P5 acceptance report.
-6. Runtime evidence and `SearchPlan` contracts.
-7. Bounded candidate executor and shared-budget accounting.
-8. Candidate comparison UI and P6 research report.
-9. Experience records, retrieval, invalidation, and negative knowledge.
-10. Replay integration, P7 UI, and final v0.2 release audit.
+1. P5 contracts and database migrations — complete.
+2. Pure GraphValidator plus adversarial fixtures — complete.
+3. Proposal persistence and static fallback — complete.
+4. Dynamic graph instantiation and revision-safe checkpointing — complete.
+5. P5 operator surfaces and acceptance report — complete.
+6. Runtime evidence and `SearchPlan` contracts — complete.
+7. Bounded candidate executor and shared-budget accounting — complete.
+8. Candidate comparison UI and P6 research report — complete.
+9. Experience records, retrieval, invalidation, and negative knowledge — P7
+   planned.
+10. Replay integration, P7 UI, and final v0.2 release audit — planned.
 
 Each slice must be independently reviewable, retain a disabled or static fallback
 until its release gate passes, and include schema, migration, API, UI, recovery,
 and benchmark evidence where applicable.
 
-## Decisions required before P5
+## Frozen and remaining decisions
 
-- Freeze the allowed v0.2 graph grammar and maximum topology bounds.
-- Define which completed node outputs a revision may reuse.
-- Define the minimum verifier calibration report required before P6 ranking.
-- Freeze shared search-budget semantics and candidate cancellation behavior.
+- P5 graph grammar, topology bounds, reusable state, and fallback behavior are
+  frozen in the [P5 decision record](P5_DECISIONS.md).
+- P6 ranking, shared-budget, cancellation, isolation, promotion, and recovery
+  behavior are frozen in the [P6 decision record](P6_DECISIONS.md).
 - Define experience invalidation keys for code, environment, provider, and policy
-  changes.
+  changes before P7 execution.
 
-These decisions should become ADRs or tracked issues linked back to the open
+Remaining P7 choices should become ADRs or tracked issues linked back to the open
 questions in the v0.2 SDD.
 
 ## Explicit non-goals

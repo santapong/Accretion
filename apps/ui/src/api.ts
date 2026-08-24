@@ -23,6 +23,11 @@ import type {
   RunGraphRevision,
   RuntimeDecision,
   RuntimeHealth,
+  CandidateScore,
+  CandidateTrajectory,
+  SearchBenchmarkSummary,
+  SearchCreate,
+  SearchRecord,
   SessionRef,
   StrategyOverrideCreate,
   StrategyOverrideResult,
@@ -96,9 +101,14 @@ export const api = {
     postJson<Run>(`/api/v1/tasks/${taskId}/runs`, payload),
   projectFeatures: (projectId: string) =>
     getJson<ProjectFeatureSettings>(`/api/v2/projects/${projectId}/features`),
-  updateProjectFeatures: (projectId: string, dynamicWorkflows: boolean, revision: number) =>
+  updateProjectFeatures: (
+    projectId: string,
+    features: { dynamicWorkflows?: boolean; candidateSearch?: boolean },
+    revision: number,
+  ) =>
     patchJson<ProjectFeatureSettings>(`/api/v2/projects/${projectId}/features`, {
-      dynamic_workflows: dynamicWorkflows,
+      dynamic_workflows: features.dynamicWorkflows,
+      candidate_search: features.candidateSearch,
       expected_revision: revision,
     }),
   proposeWorkflow: (taskId: string, provider: string) =>
@@ -137,6 +147,16 @@ export const api = {
       reason,
       evidence_refs: evidenceRefs,
     }),
+  createSearch: (runId: string, payload: SearchCreate) =>
+    postJson<SearchRecord>(`/api/v2/runs/${runId}/search`, payload),
+  searches: (runId: string) =>
+    getJson<SearchRecord[]>(`/api/v2/runs/${runId}/searches`),
+  searchCandidates: (searchId: string) =>
+    getJson<CandidateTrajectory[]>(`/api/v2/search/${searchId}/candidates`),
+  searchScores: (searchId: string) =>
+    getJson<CandidateScore[]>(`/api/v2/search/${searchId}/scores`),
+  cancelSearch: (searchId: string) =>
+    postJson<SearchRecord>(`/api/v2/search/${searchId}/cancel`, {}),
   loop: (runId: string) => getJson<LoopExecution>(`/api/v1/runs/${runId}/loop`),
   graph: (runId: string) => getJson<GraphProjection>(`/api/v1/runs/${runId}/graph`),
   trace: (runId: string) => getJson<ExecutionTrace>(`/api/v1/runs/${runId}/trace`),
@@ -166,6 +186,13 @@ export const api = {
   ),
   acrArchTask: (taskId: string) =>
     getJson<BenchmarkTaskDetail>(`/api/v1/benchmarks/acr-arch/tasks/${taskId}`),
+  searchBenchmark: () =>
+    getJson<SearchBenchmarkSummary>("/api/v2/benchmarks/search"),
+  runSearchBenchmark: () =>
+    postJson<SearchBenchmarkSummary>(
+      "/api/v2/benchmarks/search/run",
+      { execution_source: "REPLAY" },
+    ),
   eventUrl: (runId: string, after = 0) =>
     `${API_ROOT}/api/v1/runs/${runId}/events?after=${after}`,
 };
