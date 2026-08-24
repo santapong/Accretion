@@ -17,6 +17,7 @@ from accretion.checkpoints import (
 )
 from accretion.concurrency import ConcurrencyLimiter
 from accretion.contracts import (
+    LIVE_PROVIDERS,
     RISK_RANK,
     TERMINAL_RUN_STATES,
     AcceptancePolicy,
@@ -641,7 +642,7 @@ class RunManager:
     def _require_runtime(self, provider: Provider) -> None:
         if provider not in self.runtimes:
             raise ValueError(f"runtime {provider.value} is not configured")
-        if provider in {Provider.CODEX, Provider.CLAUDE} and not self.live_providers_enabled:
+        if provider in LIVE_PROVIDERS and not self.live_providers_enabled:
             raise PermissionError(
                 "live providers are disabled; set ACCRETION_ENABLE_LIVE_PROVIDERS=true"
             )
@@ -3675,7 +3676,7 @@ class RunManager:
     def _runtime_available(self, provider: Provider) -> bool:
         if provider not in self.runtimes:
             return False
-        if provider in {Provider.CODEX, Provider.CLAUDE} and not self.live_providers_enabled:
+        if provider in LIVE_PROVIDERS and not self.live_providers_enabled:
             return False
         return True
 

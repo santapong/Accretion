@@ -4,6 +4,7 @@ import asyncio
 from datetime import UTC, datetime
 
 from accretion.contracts import (
+    LIVE_PROVIDERS,
     RISK_RANK,
     CapabilityResolutionOutcome,
     EventType,
@@ -474,7 +475,7 @@ class DynamicWorkflowService:
             for item in health
             if item.status in {RuntimeStatus.READY, RuntimeStatus.BUSY}
             and (
-                item.provider not in {Provider.CODEX, Provider.CLAUDE}
+                item.provider not in LIVE_PROVIDERS
                 or self.manager.live_providers_enabled
             )
         }

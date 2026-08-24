@@ -21,6 +21,10 @@ class Provider(StrEnum):
     HUMAN = "HUMAN"
 
 
+LIVE_PROVIDERS: frozenset[Provider] = frozenset({Provider.CLAUDE, Provider.CODEX})
+"""Providers backed by a signed-in agent CLI, gated by the live-provider policy."""
+
+
 class RuntimeStatus(StrEnum):
     READY = "READY"
     BUSY = "BUSY"
