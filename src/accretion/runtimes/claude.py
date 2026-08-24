@@ -53,9 +53,11 @@ class ClaudeRuntime:
         self,
         command: str = "claude",
         gateway_environment: Mapping[str, str] | None = None,
+        model: str | None = None,
     ) -> None:
         self.command = command
         self.gateway_environment = dict(gateway_environment or {})
+        self.model = model
         self.sessions: dict[str, SessionRef] = {}
         self.run_refs: dict[str, RunRef] = {}
         self.queues: dict[str, asyncio.Queue[AgentEvent | None]] = {}
@@ -160,6 +162,7 @@ class ClaudeRuntime:
         session: SessionRef,
         request: RuntimeSubmission,
     ) -> None:
+        config = self.session_configs[session.session_id]
         command = [
             self.command,
             "-p",
@@ -169,8 +172,8 @@ class ClaudeRuntime:
             "--verbose",
             "--permission-mode",
             "dontAsk",
+            "--safe-mode",
         ]
-        config = self.session_configs[session.session_id]
         gateway_env = {
             **self.gateway_environment,
             "ACCRETION_GATEWAY_RUN_ID": session.run_id,
@@ -213,6 +216,9 @@ class ClaudeRuntime:
                 "--no-chrome",
             ]
         )
+        selected_model = config.model or self.model
+        if selected_model:
+            command.extend(["--model", selected_model])
         if session.session_id in self.started_sessions and session.native_session_id:
             command.extend(["--resume", session.native_session_id])
         elif session.native_session_id:

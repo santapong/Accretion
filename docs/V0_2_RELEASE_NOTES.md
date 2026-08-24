@@ -47,6 +47,8 @@ the frozen metrics.
   `/api/v2` and independent project/deployment feature flags.
 - Validated live CLI ranges are Codex CLI `>=0.148,<0.149` and Claude Code
   `>=2.1.231,<2.2`.
+- Claude runs use safe mode to exclude ambient hooks/plugins and honor an
+  explicit typed model selection; the release calibration records `sonnet`.
 
 ## Install after release
 

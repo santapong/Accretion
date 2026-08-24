@@ -42,6 +42,10 @@ def harmless_task() -> TaskEnvelope:
     )
 
 
+def claude_runtime() -> ClaudeRuntime:
+    return ClaudeRuntime(model=os.getenv("ACCRETION_CLAUDE_LIVE_MODEL"))
+
+
 async def collect(runtime: AgentRuntime, run: RunRef) -> list[AgentEvent]:
     return [event async for event in runtime.events(run)]
 
@@ -77,7 +81,7 @@ async def test_live_codex_runs_two_independent_threads_on_one_server(tmp_path: P
 async def test_live_claude_emits_normalized_start_progress_terminal(tmp_path: Path) -> None:
     workspace = tmp_path / "claude"
     initialize_repository(workspace)
-    runtime = ClaudeRuntime()
+    runtime = claude_runtime()
     assert (await runtime.health()).status is RuntimeStatus.READY
     session = await runtime.create_session(SessionConfig(run_id=new_id("run"), workspace=workspace))
     run = await runtime.submit(session, harmless_task())
@@ -94,7 +98,7 @@ async def test_live_claude_and_codex_run_in_separate_worktrees(tmp_path: Path) -
     initialize_repository(codex_workspace)
     initialize_repository(claude_workspace)
     codex = CodexRuntime()
-    claude = ClaudeRuntime()
+    claude = claude_runtime()
     try:
         codex_session, claude_session = await asyncio.gather(
             codex.create_session(SessionConfig(run_id=new_id("run"), workspace=codex_workspace)),
