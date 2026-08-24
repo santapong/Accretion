@@ -61,9 +61,12 @@ Exit evidence:
 
 ### P6 — Evidence-based routing and bounded search
 
-Implementation status: completed across the P6 contracts/persistence,
-executor/recovery, and operator/research slices. Operational details and evidence
-are in the [P6 runbook](P6_RUNBOOK.md), [decision record](P6_DECISIONS.md), and
+Implementation status: completed across the
+[contracts/persistence PR #37](https://github.com/santapong/Accretion/pull/37),
+[executor/recovery PR #38](https://github.com/santapong/Accretion/pull/38), and
+[operator/research PR #39](https://github.com/santapong/Accretion/pull/39).
+Operational details and evidence are in the [P6 runbook](P6_RUNBOOK.md),
+[decision record](P6_DECISIONS.md), and
 [P6 acceptance report](P6_ACCEPTANCE_REPORT.md).
 
 Outcome: Accretion can compare a small number of candidates without hiding the
