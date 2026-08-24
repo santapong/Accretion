@@ -4,7 +4,14 @@ import hashlib
 import json
 from collections import defaultdict, deque
 
-from accretion.contracts import RISK_RANK, GraphEdgeKind, GraphNodeKind, Provider, TaskBudgets
+from accretion.contracts import (
+    LIVE_PROVIDERS,
+    RISK_RANK,
+    GraphEdgeKind,
+    GraphNodeKind,
+    Provider,
+    TaskBudgets,
+)
 from accretion.ids import new_id
 from accretion.orchestration.condition_dsl import validate_condition
 from accretion.orchestration.models import (
@@ -365,7 +372,7 @@ class GraphValidator:
         ):
             report("RUNTIME_UNAVAILABLE", f"runtime {required_provider.value} is unavailable", path)
         if (
-            required_provider in {Provider.CLAUDE, Provider.CODEX}
+            required_provider in LIVE_PROVIDERS
             and policy.execution_runtime is not None
             and required_provider is not policy.execution_runtime
         ):

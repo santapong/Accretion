@@ -3737,7 +3737,7 @@ export interface components {
          * Provider
          * @enum {string}
          */
-        Provider: "CLAUDE" | "CODEX" | "FAKE" | "DETERMINISTIC" | "HUMAN";
+        Provider: "CLAUDE" | "CODEX" | "OPENCODE" | "FAKE" | "DETERMINISTIC" | "HUMAN";
         /** ProviderSearchBenchmark */
         ProviderSearchBenchmark: {
             /** Acceptance Rate */

@@ -4,7 +4,7 @@
 
 ### Observable, deterministic orchestration for local AI coding agents
 
-Accretion supervises Codex and Claude Code through one provider-neutral control
+Accretion supervises Codex, Claude Code, and opencode through one provider-neutral control
 plane, with deterministic planning, bounded verifier-gated feedback loops,
 isolated workspaces, and a durable normalized execution trace.
 
@@ -90,7 +90,7 @@ operator can answer five questions before and during every run:
 
 | Area | Included today |
 |---|---|
-| Runtime control | Structured Codex App Server and Claude Code adapters, plus a deterministic fake runtime |
+| Runtime control | Structured Codex App Server, Claude Code, and opencode server adapters, plus a deterministic fake runtime |
 | Task planning | Versioned prompt/context contracts, deterministic profiling, static strategy selection, and explicit unknown handling |
 | Feedback execution | Bounded multi-turn loops, structured repair directives, one reusable provider session, and durable pause/resume/cancel controls |
 | Independent acceptance | Output-contract, Git-diff, trajectory-policy, and bounded command verifiers with fail-closed policy evaluation |
@@ -291,10 +291,10 @@ and browser exception; the
 - Node.js 22+ and npm
 - Git
 - Docker with Compose
-- Optional: supported, signed-in Codex and Claude Code CLIs for live providers
+- Optional: supported, signed-in Codex, Claude Code, and opencode CLIs for live providers
 
-The validated v0.2 live-provider range is Codex CLI `>=0.148,<0.149` and Claude
-Code `>=2.1.231,<2.2`.
+The validated v0.2 live-provider range is Codex CLI `>=0.148,<0.149`, Claude
+Code `>=2.1.231,<2.2`, and opencode `>=1.18,<1.19`.
 
 ### Choose and clone a version
 
@@ -362,7 +362,7 @@ All settings use the `ACCRETION_` prefix and can be placed in `.env`.
 |---|---|---|
 | `ACCRETION_DATABASE_URL` | Local PostgreSQL | Authoritative state and event store |
 | `ACCRETION_DATA_DIR` | `.accretion` | Worktrees and captured artifacts |
-| `ACCRETION_ENABLE_LIVE_PROVIDERS` | `false` | Allows Codex and Claude executions |
+| `ACCRETION_ENABLE_LIVE_PROVIDERS` | `false` | Allows Codex, Claude, and opencode executions |
 | `ACCRETION_ENABLE_DYNAMIC_WORKFLOWS` | `false` | Enables P5 proposal and graph-revision services globally |
 | `ACCRETION_ENABLE_CANDIDATE_SEARCH` | `false` | Enables P6 search globally; project opt-in is still required |
 | `ACCRETION_ENABLE_EXPERIENCE_RETRIEVAL` | `false` | Enables P7 materialization, retrieval, selection, and replay integration globally |
@@ -405,7 +405,7 @@ The validated CLI range and recorded acceptance evidence are documented in the
 ```text
 apps/ui/                  React operator interface
 src/accretion/api/        FastAPI routes and schemas
-src/accretion/runtimes/   Codex, Claude, and fake runtime adapters
+src/accretion/runtimes/   Codex, Claude, opencode, and fake runtime adapters
 src/accretion/persistence Durable state, planning history, and side effects
 src/accretion/planning.py Deterministic profiler and selector policy
 src/accretion/looping.py  Loop policy, budgets, and terminal outcomes

@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import Any, cast
 from uuid import uuid4
 
@@ -135,7 +135,7 @@ from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore
 from accretion.resolver import CapabilityResolver
-from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime
+from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime, OpencodeRuntime
 from accretion.search_benchmark import SearchBenchmarkRunner, SearchBenchmarkSummary
 from accretion.services.run_manager import (
     ProjectionUnavailableError,
@@ -178,6 +178,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         Provider.FAKE: FakeRuntime(),
         Provider.CODEX: CodexRuntime(settings.codex_command, gateway_environment),
         Provider.CLAUDE: ClaudeRuntime(settings.claude_command, gateway_environment),
+        Provider.OPENCODE: OpencodeRuntime(
+            settings.opencode_command,
+            gateway_environment,
+            model=settings.opencode_model,
+        ),
     }
     manager = RunManager(
         store=store,
@@ -223,9 +228,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     for task in manager.background.values():
         if not task.done():
             task.cancel()
-    codex = runtimes[Provider.CODEX]
-    if isinstance(codex, CodexRuntime):
-        await codex.close()
+    for runtime in runtimes.values():
+        closer = getattr(runtime, "close", None)
+        if callable(closer):
+            # One adapter failing to shut down must not orphan another's server process.
+            with suppress(Exception):
+                await closer()
     await engine.dispose()
 
 

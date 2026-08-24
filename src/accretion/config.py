@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     project_max_runs: int = 2
     codex_command: str = "codex"
     claude_command: str = "claude"
+    opencode_command: str = "opencode"
+    opencode_model: str = "opencode/x-preview-f-free"
     enable_live_providers: bool = False
     auto_resume_on_reconcile: bool = True
     operator_identity: str = "local-operator"

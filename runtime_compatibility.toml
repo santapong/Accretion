@@ -10,3 +10,10 @@ command = "claude"
 validated_min = "2.1.231"
 validated_max_exclusive = "2.2.0"
 protocol = "print-stream-json"
+
+[opencode]
+command = "opencode"
+validated_min = "1.18.0"
+validated_max_exclusive = "1.19.0"
+transport = "http+sse"
+protocol = "serve-global-event"
