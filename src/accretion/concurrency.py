@@ -10,6 +10,7 @@ from accretion.contracts import Provider
 
 class ConcurrencyLimiter:
     def __init__(self, *, global_limit: int, provider_limit: int, project_limit: int) -> None:
+        self.global_limit = global_limit
         self.global_semaphore = asyncio.Semaphore(global_limit)
         self.provider_limit = provider_limit
         self.project_limit = project_limit

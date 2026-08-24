@@ -1413,6 +1413,8 @@ export interface components {
             schema_version: "2.0";
             /** Search Id */
             search_id: string;
+            /** Session Id */
+            session_id?: string | null;
             /** Started At */
             started_at?: string | null;
             /** @default PENDING */
