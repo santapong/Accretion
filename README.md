@@ -15,7 +15,8 @@ isolated workspaces, and a durable normalized execution trace.
 [![Status](https://img.shields.io/badge/status-v0.1.0-2ea44f)](#project-status)
 
 [Documentation](docs/README.md) · [Developer guide](docs/DEVELOPER_GUIDE.md) ·
-[Showcase](docs/SHOWCASE.md) · [v0.2 plan](docs/V0_2_PLAN.md)
+[Showcase](docs/SHOWCASE.md) · [P6 runbook](docs/P6_RUNBOOK.md) ·
+[v0.2 plan](docs/V0_2_PLAN.md)
 
 <br />
 
@@ -24,9 +25,12 @@ isolated workspaces, and a durable normalized execution trace.
 </div>
 
 > [!IMPORTANT]
-> Accretion v0.1 is local-first software. P0 runtime feasibility, P1 deterministic
-> planning, P2 verifier-gated feedback loops, P3 static graph execution, and the P4
-> governed harness/operator release gate are implemented. All five validated
+> `v0.1.0` remains the current stable release. On `develop`, the opt-in P5 dynamic
+> workflow and P6 bounded candidate-search milestones are complete; P7 experience
+> retrieval/replay and the final v0.2 release gate are not complete. No v0.2 tag
+> has been created. The stable v0.1 release includes P0 runtime feasibility, P1
+> deterministic planning, P2 verifier-gated feedback loops, P3 static graph
+> execution, and the P4 governed harness/operator release gate. Its five validated
 > templates can execute:
 > `direct-v1`, `feedback-loop-v1`, `fixed-graph-v1` (with human approval gates),
 > `hybrid-rd-v1`, and the bounded `safe-unknown-v1` fallback.
@@ -147,6 +151,24 @@ runtime, verification, graph, trace, and audit records.
 | P4 — Harness and release gate | Complete | Governed capabilities/MCP, credential boundary, side-effect evidence, complete operator surfaces, resumable SSE, and ACR-ARCH |
 | P5 — Dynamic workflows | Implemented (opt-in) | Typed proposals, deterministic graph validation, static fallback, immutable revisions, safe replan, and operator inspection |
 | P6 — Bounded candidate search | Implemented (opt-in) | Evidence-based routing, isolated branches, shared budgets, fail-closed ranking, promotion recovery, operator lineage, and frozen N=1/2/4 replay research |
+
+### P6 completion summary
+
+P6 was delivered as three independently reviewed slices into `develop`:
+
+| Slice | Merged evidence | Result |
+|---|---|---|
+| Contracts and persistence | [PR #37](https://github.com/santapong/Accretion/pull/37) | Versioned search plans, runtime decisions, candidate trajectories/scores, promotion records, feature gates, PostgreSQL migration `0008`, and API contracts |
+| Executor and recovery | [PR #38](https://github.com/santapong/Accretion/pull/38) | Best-of-N, hypothesis, cross-provider, and generator-reviewer execution; isolated worktrees; shared budgets; independent selection; cancellation; and crash reconciliation |
+| Operator and research surfaces | [PR #39](https://github.com/santapong/Accretion/pull/39) | Search planning and lineage UI, provider/model/version and spend evidence, frozen 12-task N=1/2/4 benchmark, runbook, showcase, acceptance report, and accessible diagrams |
+
+All nine P6 acceptance criteria (`V02-P6-001` through `V02-P6-009`) are mapped
+to automated evidence in the [P6 acceptance report](docs/P6_ACCEPTANCE_REPORT.md).
+The final P6 gate recorded 200 passing PostgreSQL-backed backend tests with three
+opt-in live-provider tests skipped, 19 passing UI tests, a successful production
+build, and a complete PostgreSQL upgrade/downgrade/upgrade cycle. P6 remains off
+by default and `REPLAY_BRANCH` fails closed until P7 supplies verified experience
+compatibility and applicability rules.
 
 See the [v0.1 system design](docs/sdd/Accretion_SDD_v0.1.md) and the
 [multi-release SDD index](docs/sdd/Accretion_SDD_INDEX_v0.3.md) for the full
