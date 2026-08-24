@@ -30,7 +30,9 @@ isolated workspaces, and a durable normalized execution trace.
 > The `v0.2.0` release adds opt-in P5 validated dynamic workflows,
 > P6 bounded candidate search, P7 verified-experience replay, and frozen research
 > gates while retaining the immutable `v0.1.0` release as the static control.
-> The [v0.2 release audit](docs/releases/v0.2/audit.md) records all evidence and
+> The [frozen v0.2 baseline](docs/releases/v0.2/baseline.md) identifies the exact
+> tag, release commit, tree, and evidence fingerprints. The
+> [v0.2 release audit](docs/releases/v0.2/audit.md) records all gate evidence and
 > the documented browser/accessibility exception tracked in
 > [issue #52](https://github.com/santapong/Accretion/issues/52).
 > The inherited v0.1 foundation includes P0 runtime feasibility, P1
@@ -56,7 +58,7 @@ fixtures, examples, and operational documentation in one workspace.
 
 | I want to… | Use | Release position |
 |---|---|---|
-| Evaluate the current release | Clone the `v0.2.0` tag and follow [Quick start](#quick-start) | Released and immutable |
+| Evaluate the current release | Clone the `v0.2.0` tag, check the [frozen baseline](docs/releases/v0.2/baseline.md), and follow [Quick start](#quick-start) | Released and immutable |
 | Follow ongoing development | Check out `develop` | Post-v0.2 integration work |
 | Reproduce the static control | Clone `v0.1.0` and read the [frozen baseline](docs/releases/v0.1/baseline.md) | Preserved v0.1 evidence |
 | Understand the safety model | Read [Architecture](#architecture), the [trust boundary](docs/assets/trust-boundary.svg), and [SECURITY.md](SECURITY.md) | Applies across releases |
@@ -274,7 +276,10 @@ describe its shipped scope, compatibility, and reproducibility hashes.
 The v0.2 release includes the opt-in P5 dynamic-workflow, P6 bounded-search, and P7
 verified-experience slices. Start with the [P5 dynamic benchmark](docs/research/p5/benchmark.md), [P7 runbook](docs/runbooks/p7-verified-experience.md),
 [developer showcase](docs/research/p7/showcase.md), [acceptance report](docs/research/p7/acceptance.md),
-and [delivery plan](docs/releases/v0.2/plan.md). The [v0.2 release audit](docs/releases/v0.2/audit.md) records the release authorization and browser exception; the
+and [delivery plan](docs/releases/v0.2/plan.md). The [frozen v0.2 baseline](docs/releases/v0.2/baseline.md)
+records the exact release identifiers and evidence fingerprints. The
+[v0.2 release audit](docs/releases/v0.2/audit.md) records the release authorization
+and browser exception; the
 [v0.2 SDD](docs/sdd/Accretion_SDD_v0.2.md) remains the normative contract.
 
 ## Quick start

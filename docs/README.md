@@ -24,7 +24,7 @@ folder root stays uncluttered.
 | Reuse verified experience | [P7 runbook](runbooks/p7-verified-experience.md) | [Developer showcase](research/p7/showcase.md), [decisions](research/p7/decisions.md), [acceptance](research/p7/acceptance.md) |
 | Review or reproduce experiments | [Experiments and results](research/README.md) | [ACR-ARCH](research/acr-arch-v0.1.md), [P5](research/p5/benchmark.md), [P6](research/p6/acceptance.md), [P7](research/p7/acceptance.md) |
 | Review security | [Security policy](../SECURITY.md) | [Trust-boundary diagram](assets/trust-boundary.svg) |
-| Review the current release | [v0.2 release audit](releases/v0.2/audit.md) | [v0.2 release notes](releases/v0.2/notes.md), [delivery plan](releases/v0.2/plan.md) |
+| Review the current release | [Frozen v0.2 baseline](releases/v0.2/baseline.md) | [release audit](releases/v0.2/audit.md), [release notes](releases/v0.2/notes.md), [delivery plan](releases/v0.2/plan.md) |
 | Plan post-v0.2 work | [v0.3 backlog](releases/v0.3/backlog.md) | [v0.3 SDD](sdd/Accretion_SDD_v0.3.md) |
 
 ## Folder map
@@ -70,8 +70,9 @@ bitmap in the showcase is illustrative and never defines behavior.
 
 ## Version authority
 
-- The immutable `v0.2.0` tag defines the current release. The immutable `v0.1.0`
-  tag remains the [frozen static control](releases/v0.1/baseline.md).
+- The immutable `v0.2.0` tag and [frozen v0.2 baseline](releases/v0.2/baseline.md)
+  define the current release. The immutable `v0.1.0` tag remains the
+  [frozen static control](releases/v0.1/baseline.md).
 - `main` is the stable branch; `develop` integrates the next release.
 - `codex/v0.1-local-control-plane` is an unmerged historical prototype, not a
   release branch or source of current contracts.
