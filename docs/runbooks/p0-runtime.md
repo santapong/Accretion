@@ -1,10 +1,10 @@
 # Accretion P0 runbook
 
-<img src="assets/accretion-architecture.svg" alt="Accretion runtime architecture from the operator interface through the authoritative control plane to provider adapters, isolated worktrees, durable state, events, and independent verification" width="100%" />
+<img src="../assets/accretion-architecture.svg" alt="Accretion runtime architecture from the operator interface through the authoritative control plane to provider adapters, isolated worktrees, durable state, events, and independent verification" width="100%" />
 
-For a first local run, follow the [developer guide](DEVELOPER_GUIDE.md) and
-[deterministic showcase](SHOWCASE.md) before enabling signed-in providers. The
-[frontend guide](FRONTEND_GUIDE.md) maps runtime health, session, live-run, and
+For a first local run, follow the [developer guide](../guides/developer.md) and
+[deterministic showcase](../guides/showcase.md) before enabling signed-in providers. The
+[frontend guide](../guides/frontend.md) maps runtime health, session, live-run, and
 history evidence to the current operator routes.
 
 ## Runtime compatibility

@@ -24,5 +24,5 @@ The script registers the checkout, creates a bounded read-only review task, show
 the deterministic strategy choice, executes it with the fake provider, waits for
 a terminal state, and prints a compact summary from the durable audit endpoint.
 
-See the [showcase walkthrough](../docs/SHOWCASE.md) for the visual flow and ways
+See the [showcase walkthrough](../docs/guides/showcase.md) for the visual flow and ways
 to inspect the run.

@@ -58,6 +58,9 @@ All notable changes to Accretion are documented in this file.
 
 ### Changed
 
+- Reorganized documentation into purpose-owned guides, runbooks, research,
+  releases, and governance folders; added an authoritative experiment/results
+  index, maintenance rules, and an accessible research-evidence diagram.
 - Reworked the project README and active documentation hub, developer guide,
   showcases, and P0–P7 runbooks around the v0.2 candidate scope and immutable
   v0.1 static-control evidence.

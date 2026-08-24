@@ -4,7 +4,7 @@ This example adds bounded candidate comparison to an accepted P5 code-review
 node. It is intended for a disposable local repository and the deterministic
 fake runtime; it does not consume a signed-in provider session.
 
-<img src="assets/p6-search-lifecycle.svg" alt="P6 developer flow from an accepted P5 node to two isolated candidates, independent verification, unique selection, and policy-checked promotion" width="100%" />
+<img src="../../assets/p6-search-lifecycle.svg" alt="P6 developer flow from an accepted P5 node to two isolated candidates, independent verification, unique selection, and policy-checked promotion" width="100%" />
 
 ## Scenario
 
@@ -26,10 +26,10 @@ Use the Planning Review UI for the shortest walkthrough:
    spend, independent score evidence, terminal reasons, and the selected branch.
 
 The exact API plan body and inspection endpoints are in the
-[P6 runbook](P6_RUNBOOK.md). Start with `FAKE`; live provider execution is a
+[P6 runbook](../../runbooks/p6-candidate-search.md). Start with `FAKE`; live provider execution is a
 separate, explicit opt-in.
 
-Use the [frontend guide](FRONTEND_GUIDE.md) to orient the Planning Review, Live
+Use the [frontend guide](../../guides/frontend.md) to orient the Planning Review, Live
 Run, and P6 Search pages before walking through the scenario.
 
 ## Read the result
@@ -48,7 +48,7 @@ stops for a human and preserves both candidates instead of inventing a winner.
 
 ## Reproduce the research view
 
-<img src="assets/p6-quality-compute.svg" alt="P6 frozen replay result showing quality and verified acceptance at candidate counts one, two, and four" width="100%" />
+<img src="../../assets/p6-quality-compute.svg" alt="P6 frozen replay result showing quality and verified acceptance at candidate counts one, two, and four" width="100%" />
 
 Open `http://localhost:5173/benchmarks/search` and choose **Run frozen replay**,
 or call:
@@ -64,5 +64,5 @@ hashes into one deterministic report. Re-running it produces the same report ID
 and metrics. Use this showcase to understand the evidence path; do not generalize
 the fixture values into a live-provider performance claim.
 
-Continue with the [P6 acceptance report](P6_ACCEPTANCE_REPORT.md) for the exact
-criteria and the [P6 decision record](P6_DECISIONS.md) for frozen safety choices.
+Continue with the [P6 acceptance report](acceptance.md) for the exact
+criteria and the [P6 decision record](decisions.md) for frozen safety choices.

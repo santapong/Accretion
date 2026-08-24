@@ -10,7 +10,7 @@ prerequisite: "Accretion v0.1 release gate passed"
 
 # Accretion v0.2 — System Design Specification
 
-Planning companions: [v0.2 delivery plan](../V0_2_PLAN.md) and
+Planning companions: [v0.2 delivery plan](../releases/v0.2/plan.md) and
 [P5–P7 roadmap](../assets/v02-roadmap.svg). They sequence implementation; this
 SDD remains authoritative.
 

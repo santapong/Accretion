@@ -1,6 +1,6 @@
 # Accretion P5 validated dynamic workflow runbook
 
-<img src="assets/p5-dynamic-workflow.svg" alt="P5 lifecycle from frozen task inputs through inert proposal, deterministic graph validation, immutable revision activation, verifier-gated execution, bounded repair/static fallback, and safe replan" width="100%" />
+<img src="../assets/p5-dynamic-workflow.svg" alt="P5 lifecycle from frozen task inputs through inert proposal, deterministic graph validation, immutable revision activation, verifier-gated execution, bounded repair/static fallback, and safe replan" width="100%" />
 
 ## Scope
 
@@ -11,7 +11,7 @@ proposal is compiled into the existing P3 checkpoint, verifier, approval, and
 side-effect scheduler. P6 candidate search and P7 experience retrieval are
 separate opt-in extensions and grant no authority when only P5 is enabled.
 
-The [frontend guide](FRONTEND_GUIDE.md) maps proposal review, deterministic
+The [frontend guide](../guides/frontend.md) maps proposal review, deterministic
 validation, activation, revision evidence, and fallback state to the Planning
 Review and Live Run surfaces.
 
@@ -79,7 +79,7 @@ curl -X POST http://localhost:8000/api/v2/benchmarks/dynamic/run \
   -d '{"execution_source":"REPLAY"}'
 ```
 
-The [benchmark report](P5_DYNAMIC_BENCHMARK.md) records cohort utility,
+The [benchmark report](../research/p5/benchmark.md) records cohort utility,
 success, structural variation, invalid proposals, replans, human intervention,
 architecture regret, and exact fixture hashes. The API rejects `LIVE`; signed-in
 provider calibration remains separate from frozen research evidence.

@@ -1,6 +1,6 @@
 # Accretion P7 verified-experience runbook
 
-<img src="assets/p7-experience-replay.svg" alt="P7 lifecycle from explicit terminal evidence materialization through repository-scoped retrieval, compatibility scoring, operator-frozen context, fresh-control replay search, and repeated fail-closed revalidation" width="100%" />
+<img src="../assets/p7-experience-replay.svg" alt="P7 lifecycle from explicit terminal evidence materialization through repository-scoped retrieval, compatibility scoring, operator-frozen context, fresh-control replay search, and repeated fail-closed revalidation" width="100%" />
 
 ## Scope
 
@@ -16,7 +16,7 @@ P7 never reuses a patch, transcript, runtime/native session, credentials,
 capability arguments or results, permissions, approvals, verifier acceptance,
 side-effect identifiers, or mutable workspace state.
 
-The [frontend guide](FRONTEND_GUIDE.md) maps retrieval, frozen selection,
+The [frontend guide](../guides/frontend.md) maps retrieval, frozen selection,
 materialization, fresh/replay treatment labels, experience lineage, repeated
 revalidation, and the benchmark gate to their implemented operator routes.
 
@@ -169,7 +169,7 @@ reused segment IDs, controlled guidance, assumptions, and revalidation state.
 
 ## Frozen benchmark gate
 
-<img src="assets/p7-transfer-gate.svg" alt="P7 frozen benchmark showing quality uplift, tool-call reduction, stale rejection, negative transfer, false-accept safety, and the passing preregistered gate" width="100%" />
+<img src="../assets/p7-transfer-gate.svg" alt="P7 frozen benchmark showing quality uplift, tool-call reduction, stale rejection, negative transfer, false-accept safety, and the passing preregistered gate" width="100%" />
 
 Open **P7 Experience** in the operator UI, or run:
 
