@@ -1,6 +1,6 @@
 # Accretion showcase
 
-This walkthrough demonstrates the v0.2 release-candidate control-plane path without
+This walkthrough demonstrates the v0.2 release control-plane path without
 consuming a signed-in provider session. On `develop`, the same path opens in the
 completed P0–P7 operator frontend; P5–P7 remain explicit opt-ins and do not
 change this deterministic example. It uses the fake runtime and the same public

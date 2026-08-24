@@ -1,10 +1,9 @@
 # Accretion v0.2 delivery plan
 
-Status: implementation complete for the v0.2.0 candidate. P5, P6, P7, their
+Status: implementation complete and release authorized for v0.2.0. P5, P6, P7, their
 four frozen research suites, and the eleven-route operator frontend pass the
-automated candidate checks. Promotion remains blocked by the browser/accessibility
-gate and one-time branch-ancestry reconciliation recorded in the
-[release audit](audit.md).
+automated candidate checks. The [release audit](audit.md) records the protected
+promotion path and the maintainer-authorized browser/accessibility exception.
 This document translates the normative
 [v0.2 SDD](../../sdd/Accretion_SDD_v0.2.md) into an implementation and review sequence;
 it does not change the SDD contracts.
@@ -144,13 +143,13 @@ Exit evidence:
 
 <img src="../../assets/operator-ui-map.svg" alt="Completed v0.2 frontend with eleven routes for planning, live operation, governance, and ACR-ARCH and P5 through P7 research, backed by typed snapshots and resumable events" width="100%" />
 
-The frontend work planned for P5–P7 is complete in the release candidate. Planning Review
+The frontend work planned for P5–P7 is complete in the release. Planning Review
 supports experience selection, dynamic proposal validation, and bounded search
 attachment; Live Run explains graph state, controls, verifier evidence, P6
 candidate lineage, and P7 materialization/replay provenance; dedicated pages
 reproduce all four frozen research suites. The generated OpenAPI contract,
 ESLint, TypeScript, 22 component tests, and production build pass for the v0.2
-release candidate.
+release.
 
 No additional feature surface is required to close P7. The remaining frontend
 release work is reproducibility: rebuild and retest from the final clean checkout
@@ -169,8 +168,8 @@ remain visible; signed-in live-provider calibration stays opt-in.
 8. Candidate comparison UI and P6 research report — complete.
 9. Experience records, retrieval, invalidation, and negative knowledge — complete.
 10. Replay integration and P7 UI/benchmark evidence — complete.
-11. P5 research benchmark and v0.2 release audit — candidate complete; external
-    promotion gates remain open.
+11. P5 research benchmark and v0.2 release audit — complete; the browser
+    exception remains visible as post-release issue #52.
 
 Each slice must be independently reviewable, retain a disabled or static fallback
 until its release gate passes, and include schema, migration, API, UI, recovery,

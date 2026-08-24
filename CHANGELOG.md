@@ -4,7 +4,7 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
-## [0.2.0] - Unreleased
+## [0.2.0] - 2026-08-24
 
 ### Added
 
@@ -62,7 +62,7 @@ All notable changes to Accretion are documented in this file.
   releases, and governance folders; added an authoritative experiment/results
   index, maintenance rules, and an accessible research-evidence diagram.
 - Reworked the project README and active documentation hub, developer guide,
-  showcases, and P0–P7 runbooks around the v0.2 candidate scope and immutable
+  showcases, and P0–P7 runbooks around the v0.2 release scope and immutable
   v0.1 static-control evidence.
 - Updated the Python, frontend, and GitHub Actions toolchains to their current
   compatible releases.
@@ -78,6 +78,13 @@ All notable changes to Accretion are documented in this file.
 - Made Claude execution independent of user hooks and plugins through safe mode,
   honored the typed session model override, and recorded the selected live
   calibration model alongside provider versions.
+
+### Known limitations
+
+- The supported browser-control surface had no connected browser during release
+  finalization. No rendered route, responsive, keyboard, focus, or automated
+  accessibility PASS is claimed; post-release evidence is tracked in
+  [issue #52](https://github.com/santapong/Accretion/issues/52).
 
 ### Security
 
