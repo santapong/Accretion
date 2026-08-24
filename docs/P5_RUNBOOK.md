@@ -67,6 +67,23 @@ revision and event evidence does not.
 Replan is rejected when a node cannot settle, the run is terminal, a revision
 is missing, the proposal changes protected history, or validation fails.
 
+## Frozen static-versus-dynamic benchmark
+
+Open **P5 Dynamic** in the operator UI, or reproduce the 12-task, 24-trace
+release suite with:
+
+```bash
+curl http://localhost:8000/api/v2/benchmarks/dynamic
+curl -X POST http://localhost:8000/api/v2/benchmarks/dynamic/run \
+  -H 'Content-Type: application/json' \
+  -d '{"execution_source":"REPLAY"}'
+```
+
+The [benchmark report](P5_DYNAMIC_BENCHMARK.md) records cohort utility,
+success, structural variation, invalid proposals, replans, human intervention,
+architecture regret, and exact fixture hashes. The API rejects `LIVE`; signed-in
+provider calibration remains separate from frozen research evidence.
+
 ## Conservative graph grammar
 
 | Bound | P5 value |

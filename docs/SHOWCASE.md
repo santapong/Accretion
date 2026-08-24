@@ -1,6 +1,6 @@
 # Accretion showcase
 
-This walkthrough demonstrates the stable v0.1 control-plane path without
+This walkthrough demonstrates the v0.2 release-candidate control-plane path without
 consuming a signed-in provider session. On `develop`, the same path opens in the
 completed P0–P7 operator frontend; P5–P7 remain explicit opt-ins and do not
 change this deterministic example. It uses the fake runtime and the same public
@@ -82,11 +82,11 @@ The dashboard exposes:
 - verifier findings and acceptance status;
 - checkpoint, approval, capability, and audit provenance when present.
 
-<img src="assets/operator-ui-map.svg" alt="Operator UI route map showing where a developer creates a task, opens a live run, inspects governance, and reproduces the ACR-ARCH, P6, and P7 research views" width="100%" />
+<img src="assets/operator-ui-map.svg" alt="Operator UI route map showing where a developer creates a task, opens a live run, inspects governance, and reproduces the ACR-ARCH and P5 through P7 research views" width="100%" />
 
-The [frontend guide](FRONTEND_GUIDE.md) lists all ten implemented routes. The
+The [frontend guide](FRONTEND_GUIDE.md) lists all eleven implemented routes. The
 most useful path for this showcase is **Dashboard → New task → Live run →
-History**; the three benchmark pages reproduce frozen evidence independently of
+History**; the four benchmark pages reproduce frozen evidence independently of
 this example run.
 
 The equivalent read-only API views are:

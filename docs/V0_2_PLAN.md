@@ -1,7 +1,10 @@
 # Accretion v0.2 delivery plan
 
-Status: P5, P6, P7, and their operator frontend surfaces are implemented behind
-independent opt-in gates; the final v0.2 clean-checkout release audit remains.
+Status: implementation complete for the v0.2.0 candidate. P5, P6, P7, their
+four frozen research suites, and the eleven-route operator frontend pass the
+automated candidate checks. Promotion remains blocked by the browser/accessibility
+gate and one-time branch-ancestry reconciliation recorded in the
+[release audit](V0_2_RELEASE_AUDIT.md).
 This document translates the normative
 [v0.2 SDD](sdd/Accretion_SDD_v0.2.md) into an implementation and review sequence;
 it does not change the SDD contracts.
@@ -39,7 +42,9 @@ floor; the moving `develop` branch is not the v0.1 baseline.
 Implementation status: merged into `develop` by
 [PR #35](https://github.com/santapong/Accretion/pull/35) behind opt-in gates.
 Operational details and evidence are in the [P5 runbook](P5_RUNBOOK.md) and
-[P5 acceptance report](P5_ACCEPTANCE_REPORT.md).
+[P5 acceptance report](P5_ACCEPTANCE_REPORT.md). The missing release-level
+static-versus-dynamic research condition is now closed by the
+[frozen P5 benchmark](P5_DYNAMIC_BENCHMARK.md).
 
 Outcome: a model may propose graph structure, but deterministic code decides
 whether that structure is admissible and executable.
@@ -52,6 +57,8 @@ Deliverables:
 - replan triggers that preserve completed work and never replay side effects;
 - operator UI for proposal, validation findings, revisions, and replan reason;
 - static-template fallback for every proposal or revision failure.
+- frozen dynamic-versus-static cohort benchmark with preregistered utility and
+  non-inferiority thresholds.
 
 Exit evidence:
 
@@ -135,14 +142,15 @@ Exit evidence:
 
 ## Frontend delivery status
 
-<img src="assets/operator-ui-map.svg" alt="Completed v0.2 candidate frontend with ten routes for planning, live operation, governance, and ACR-ARCH, P6, and P7 research, backed by typed snapshots and resumable events" width="100%" />
+<img src="assets/operator-ui-map.svg" alt="Completed v0.2 frontend with eleven routes for planning, live operation, governance, and ACR-ARCH and P5 through P7 research, backed by typed snapshots and resumable events" width="100%" />
 
-The frontend work planned for P5–P7 is complete on `develop`. Planning Review
+The frontend work planned for P5–P7 is complete in the release candidate. Planning Review
 supports experience selection, dynamic proposal validation, and bounded search
 attachment; Live Run explains graph state, controls, verifier evidence, P6
 candidate lineage, and P7 materialization/replay provenance; dedicated pages
-reproduce all three frozen research suites. The generated OpenAPI contract,
-ESLint, TypeScript, 21 component tests, and production build passed at P7 close.
+reproduce all four frozen research suites. The generated OpenAPI contract,
+ESLint, TypeScript, 22 component tests, and production build pass for the v0.2
+release candidate.
 
 No additional feature surface is required to close P7. The remaining frontend
 release work is reproducibility: rebuild and retest from the final clean checkout
@@ -160,8 +168,9 @@ remain visible; signed-in live-provider calibration stays opt-in.
 7. Bounded candidate executor and shared-budget accounting — complete.
 8. Candidate comparison UI and P6 research report — complete.
 9. Experience records, retrieval, invalidation, and negative knowledge — complete.
-10. Replay integration and P7 UI/benchmark evidence — complete; final v0.2
-    release audit remains.
+10. Replay integration and P7 UI/benchmark evidence — complete.
+11. P5 research benchmark and v0.2 release audit — candidate complete; external
+    promotion gates remain open.
 
 Each slice must be independently reviewable, retain a disabled or static fallback
 until its release gate passes, and include schema, migration, API, UI, recovery,

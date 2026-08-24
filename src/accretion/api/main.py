@@ -70,6 +70,10 @@ from accretion.contracts import (
     TemplateStatus,
     VerificationResult,
 )
+from accretion.dynamic_benchmark import (
+    DynamicWorkflowBenchmarkRunner,
+    DynamicWorkflowBenchmarkSummary,
+)
 from accretion.experience.models import (
     Experience,
     ExperienceDetail,
@@ -990,6 +994,26 @@ async def run_search_benchmark(payload: BenchmarkRunCreate) -> SearchBenchmarkSu
     if payload.execution_source is not BenchmarkExecutionSource.REPLAY:
         raise ValueError("live search calibration requires the explicit local release gate")
     return SearchBenchmarkRunner().run()
+
+
+@app.get(
+    "/api/v2/benchmarks/dynamic",
+    response_model=DynamicWorkflowBenchmarkSummary,
+)
+async def get_dynamic_workflow_benchmark() -> DynamicWorkflowBenchmarkSummary:
+    return DynamicWorkflowBenchmarkRunner().run()
+
+
+@app.post(
+    "/api/v2/benchmarks/dynamic/run",
+    response_model=DynamicWorkflowBenchmarkSummary,
+)
+async def run_dynamic_workflow_benchmark(
+    payload: BenchmarkRunCreate,
+) -> DynamicWorkflowBenchmarkSummary:
+    if payload.execution_source is not BenchmarkExecutionSource.REPLAY:
+        raise ValueError("live dynamic calibration requires the explicit local release gate")
+    return DynamicWorkflowBenchmarkRunner().run()
 
 
 @app.get(

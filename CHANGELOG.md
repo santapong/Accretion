@@ -4,10 +4,12 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
+## [0.2.0] - Unreleased
+
 ### Added
 
 - Added a newcomer-focused project overview, a complete operator frontend guide,
-  and accessible repository-native SVGs for release orientation and the ten-route
+  and accessible repository-native SVGs for release orientation and the eleven-route
   UI/data-flow map.
 - Added a developer documentation hub, accessible architecture and lifecycle
   diagrams, and a deterministic public-API showcase using the fake runtime.
@@ -50,21 +52,26 @@ All notable changes to Accretion are documented in this file.
   false-accept and negative-transfer accounting, stale rejection, quality/compute
   uplift, use/rejection/null rates, negative cases, replay-only API endpoints,
   and exact fixture fingerprints.
+- Added the missing frozen 12-task, 24-trace P5 static-versus-dynamic benchmark,
+  replay-only API, operator route, cohort utility/non-inferiority gate, explicit
+  invalid-proposal fallback evidence, and accessible release diagram.
 
 ### Changed
 
 - Reworked the project README and active documentation hub, developer guide,
-  showcases, and P0–P7 runbooks to explain stable versus `develop` scope, the
-  completed frontend, and the remaining v0.2 release audit consistently.
+  showcases, and P0–P7 runbooks around the v0.2 candidate scope and immutable
+  v0.1 static-control evidence.
 - Updated the Python, frontend, and GitHub Actions toolchains to their current
   compatible releases.
 - Reworked UI project defaults and event-stream state to comply with the current
   React Hooks correctness rules without duplicating query-backed state.
-- Updated the operator shell and project documentation to describe the completed
-  P5/P6 `develop` scope while retaining `v0.1.0` as the current stable release.
+- Updated the operator shell and project documentation to describe implemented
+  P5/P6/P7 scope while retaining `v0.1.0` as the immutable static control.
 - Activated `REPLAY_BRANCH` only when P7 is independently enabled and selected
   experience passes current compatibility and applicability checks; P6-only
   deployments retain the original fail-closed reservation behavior.
+- Bumped every public package and runtime version marker to `0.2.0` and aligned
+  release-facing documentation with the audited eleven-route frontend.
 
 ### Security
 
