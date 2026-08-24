@@ -179,7 +179,9 @@ P7 adds explicit procedural reuse without automatic learning or authority
 expansion. Its immutable experience contracts and pgvector persistence landed in
 [PR #41](https://github.com/santapong/Accretion/pull/41); deterministic retrieval,
 compatibility, invalidation, selection, and `ContextBundle` v2 landed in
-[PR #42](https://github.com/santapong/Accretion/pull/42). Replay execution keeps a
+[PR #42](https://github.com/santapong/Accretion/pull/42); and replay execution,
+operator explainability, and the frozen transfer gate landed in
+[PR #43](https://github.com/santapong/Accretion/pull/43). Replay execution keeps a
 fresh control, creates a new isolated worktree/session per positive seed, uses
 negative experience only as avoidance guidance, and revalidates before launch,
 selection, promotion, and recovery.

@@ -39,7 +39,8 @@ All notable changes to Accretion are documented in this file.
 - Added P7 `REPLAY_BRANCH` execution with one fresh control, one new isolated
   candidate per selected positive seed, revalidated negative avoidance guidance,
   durable seed/start/rejection evidence, repeated launch/selection/promotion/
-  recovery checks, and fail-closed stale-seed pruning without substitution.
+  recovery checks, and fail-closed stale-seed pruning without substitution
+  ([PR #43](https://github.com/santapong/Accretion/pull/43)).
 - Added P7 planning, provenance, replay-lineage, and benchmark operator views;
   runbook, showcase, acceptance report, and accessible lifecycle/gate diagrams.
 - Added a frozen 20-task, 50-source, 80-trace P7 benchmark with four treatments,

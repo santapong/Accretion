@@ -96,7 +96,8 @@ Exit evidence:
 Implementation status: experience contracts/persistence merged in
 [PR #41](https://github.com/santapong/Accretion/pull/41), deterministic retrieval
 and context selection merged in [PR #42](https://github.com/santapong/Accretion/pull/42),
-and replay/operator/benchmark evidence implemented behind the independent P7
+and replay/operator/benchmark evidence completed in
+[PR #43](https://github.com/santapong/Accretion/pull/43) behind the independent P7
 gate. Operational details are in the [P7 runbook](P7_RUNBOOK.md),
 [decision record](P7_DECISIONS.md), and [acceptance report](P7_ACCEPTANCE_REPORT.md).
 
