@@ -2,7 +2,7 @@
 
 Status: frozen v0.2 release evidence, recorded 2026-08-24.
 
-<img src="assets/p5-dynamic-gate.svg" alt="P5 frozen static versus dynamic benchmark across predictable, heterogeneous, and uncertain held-out tasks, with positive research uplift and passing safety and fallback gates" width="100%" />
+<img src="../../assets/p5-dynamic-gate.svg" alt="P5 frozen static versus dynamic benchmark across predictable, heterogeneous, and uncertain held-out tasks, with positive research uplift and passing safety and fallback gates" width="100%" />
 
 This benchmark closes `RQ-DYN` and the research condition in v0.2 SDD §18.1
 and §19.5. It compares the best v0.1 static-template treatment with the v0.2

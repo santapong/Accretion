@@ -17,7 +17,7 @@ Accretion releases must preserve and compare against. It is not a freeze on the
 | P5 integration base | `bb249f5b2b2a273606ba81d61be5a8f20010f9a4` | `develop` snapshot from which the P5 implementation branch started |
 
 The audited candidate and release commit differ because the promotion included
-release documentation. The [release audit](V0_1_RELEASE_AUDIT.md) records that no
+release documentation. The [release audit](audit.md) records that no
 code change was allowed between the audited candidate and release promotion.
 
 ## What is frozen
@@ -59,5 +59,5 @@ git rev-parse 'v0.1.0^{}'
 
 The commands must resolve to the annotated tag object and release commit shown
 above. To reproduce the shipped system, create a detached checkout from the tag
-and follow the [v0.1 release notes](V0_1_RELEASE_NOTES.md) and
-[release audit](V0_1_RELEASE_AUDIT.md).
+and follow the [v0.1 release notes](notes.md) and
+[release audit](audit.md).

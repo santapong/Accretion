@@ -4,10 +4,10 @@ Status: implementation evidence prepared on 2026-08-24. P7 experience retrieval
 and replay are not part of this report.
 
 > This is the frozen P6 milestone report. Current `develop` also includes the P7
-> frontend surfaces documented in the [frontend guide](FRONTEND_GUIDE.md); the
+> frontend surfaces documented in the [frontend guide](../../guides/frontend.md); the
 > historical counts here are intentionally unchanged.
 
-<img src="assets/p6-search-lifecycle.svg" alt="P6 bounded candidate-search authority, selection, promotion, and recovery lifecycle" width="100%" />
+<img src="../../assets/p6-search-lifecycle.svg" alt="P6 bounded candidate-search authority, selection, promotion, and recovery lifecycle" width="100%" />
 
 ## Acceptance mapping
 
@@ -25,7 +25,7 @@ and replay are not part of this report.
 
 ## Frozen benchmark result
 
-<img src="assets/p6-quality-compute.svg" alt="Frozen replay P6 quality versus compute result for one, two, and four candidates" width="100%" />
+<img src="../../assets/p6-quality-compute.svg" alt="Frozen replay P6 quality versus compute result for one, two, and four candidates" width="100%" />
 
 | Candidates | Verified accepts | Acceptance rate | Mean quality | Mean turns | Mean tool calls | Mean latency (ms) |
 |---:|---:|---:|---:|---:|---:|---:|

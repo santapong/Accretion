@@ -1,6 +1,6 @@
 # Accretion P6 bounded candidate-search runbook
 
-<img src="assets/p6-search-lifecycle.svg" alt="P6 lifecycle from an accepted P5 agent node through shared-budget reservation, isolated candidate execution, independent verification and scoring, fail-closed selection, policy re-evaluation, and crash-safe promotion" width="100%" />
+<img src="../assets/p6-search-lifecycle.svg" alt="P6 lifecycle from an accepted P5 agent node through shared-budget reservation, isolated candidate execution, independent verification and scoring, fail-closed selection, policy re-evaluation, and crash-safe promotion" width="100%" />
 
 ## Scope
 
@@ -15,7 +15,7 @@ P6 implements `BEST_OF_N`, `HYPOTHESIS_BRANCH`, `CROSS_PROVIDER`, and
 `REPLAY_BRANCH_REQUIRES_P7`; the independently gated P7 service activates it only
 for explicitly selected, currently compatible verified experience.
 
-The [frontend guide](FRONTEND_GUIDE.md) maps search-plan inputs and the complete
+The [frontend guide](../guides/frontend.md) maps search-plan inputs and the complete
 candidate lineage, score, spend, selection, and promotion views. These frontend
 surfaces are implemented and gate-passing on `develop`.
 
@@ -140,7 +140,7 @@ Candidate completion order and provider order never break a tie.
 
 ## Frozen replay benchmark
 
-<img src="assets/p6-quality-compute.svg" alt="Frozen P6 replay curve with mean verified quality 0.4725 at one candidate, 0.608333 at two, and 0.768333 at four; verified accepts rise from 8 to 10 to 12 of 12 tasks" width="100%" />
+<img src="../assets/p6-quality-compute.svg" alt="Frozen P6 replay curve with mean verified quality 0.4725 at one candidate, 0.608333 at two, and 0.768333 at four; verified accepts rise from 8 to 10 to 12 of 12 tasks" width="100%" />
 
 Open **P6 Search** in the operator UI, or run:
 

@@ -7,7 +7,7 @@ deterministically governed dynamic orchestration. Dynamic features remain
 disabled by default and cannot expand permissions, bypass approvals or
 verifiers, expose credentials, or erase durable execution history.
 
-<img src="assets/v02-release-gate.svg" alt="v0.2 release evidence flowing from the immutable v0.1 control through P5 dynamic, P6 search, P7 transfer, and the full clean-checkout gate before promotion to main" width="100%" />
+<img src="../../assets/v02-release-gate.svg" alt="v0.2 release evidence flowing from the immutable v0.1 control through P5 dynamic, P6 search, P7 transfer, and the full clean-checkout gate before promotion to main" width="100%" />
 
 ## Highlights
 
@@ -63,16 +63,16 @@ uv run alembic upgrade head
 ```
 
 Run `make api` and `make ui`, then open `http://localhost:5173`. Start with the
-deterministic fake runtime. See the [frontend guide](FRONTEND_GUIDE.md),
-[developer guide](DEVELOPER_GUIDE.md), and [showcase](SHOWCASE.md).
+deterministic fake runtime. See the [frontend guide](../../guides/frontend.md),
+[developer guide](../../guides/developer.md), and [showcase](../../guides/showcase.md).
 
 ## Evidence and limitations
 
-The [release audit](V0_2_RELEASE_AUDIT.md) identifies the exact candidate,
+The [release audit](audit.md) identifies the exact candidate,
 checks, tool versions, provider calibration, browser evidence, and current
 GO/NO-GO decision. Do not use the install command above until that audit records
 GO and the tag exists. The v0.1 tag remains immutable and reproducible through its
-[baseline record](V0_1_BASELINE.md).
+[baseline record](../v0.1/baseline.md).
 
 v0.2 does not include learned routing, self-modifying policy, automatic
 experience promotion, unrestricted production deployment, or the v0.3

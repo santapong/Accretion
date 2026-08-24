@@ -6,7 +6,7 @@ P0–P7 scope currently on `develop`: project and task setup, deterministic
 planning, live run control, graph and verifier evidence, governance, bounded
 candidate search, verified-experience replay, and reproducible benchmark views.
 
-<img src="assets/operator-ui-map.svg" alt="Map of the eleven implemented Accretion frontend routes, the central live-run surface, and the authoritative FastAPI snapshot, React Query, and resumable event data flow" width="100%" />
+<img src="../assets/operator-ui-map.svg" alt="Map of the eleven implemented Accretion frontend routes, the central live-run surface, and the authoritative FastAPI snapshot, React Query, and resumable event data flow" width="100%" />
 
 > [!IMPORTANT]
 > The frontend is feature-complete for the v0.2 candidate. Its generated
@@ -126,6 +126,6 @@ assistive technology.
 | `apps/ui/src/styles.css` | Responsive visual system and state styling |
 | `apps/ui/src/*.test.tsx` | Component, event recovery, lineage, benchmark, and layout evidence |
 
-For end-to-end system behavior, continue with the [developer showcase](SHOWCASE.md).
-For release status, see the [v0.2 release audit](V0_2_RELEASE_AUDIT.md) and
-[delivery plan](V0_2_PLAN.md).
+For end-to-end system behavior, continue with the [developer showcase](showcase.md).
+For release status, see the [v0.2 release audit](../releases/v0.2/audit.md) and
+[delivery plan](../releases/v0.2/plan.md).

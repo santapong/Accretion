@@ -6,15 +6,15 @@ repository's MIT license.
 
 <img src="docs/assets/delivery-workflow.svg" alt="Contribution flow from a short-lived branch through local checks, a pull request into protected develop, required CI, squash merge, and release promotion to main" width="100%" />
 
-New contributors should begin with the [developer guide](docs/DEVELOPER_GUIDE.md)
+New contributors should begin with the [developer guide](docs/guides/developer.md)
 and use the [documentation hub](docs/README.md) to find the relevant runbook.
 Frontend contributors should also read the
-[operator frontend guide](docs/FRONTEND_GUIDE.md).
+[operator frontend guide](docs/guides/frontend.md).
 
 ## Development workflow
 
 1. Branch from the latest `develop` using one of the prefixes documented in
-   [the branch policy](docs/BRANCH_POLICY.md).
+   [the branch policy](docs/governance/branch-policy.md).
 2. Keep the change focused and add or update tests with the implementation.
 3. Run the relevant checks locally:
 
@@ -49,8 +49,11 @@ use a `hotfix/` branch from `main` and must be merged back into `develop`.
 - Verify every relative link and command from the document's intended checkout.
 - Update the [visual reference](docs/README.md#visual-reference) when adding a
   diagram that explains a system boundary, workflow, or release plan.
+- Follow the [documentation maintenance guide](docs/governance/documentation.md)
+  when adding a document or changing experiment results, and run `make
+  docs-check` before opening the pull request.
 - Keep frontend route/status claims synchronized with
-  [the frontend guide](docs/FRONTEND_GUIDE.md) and generated OpenAPI contract.
+  [the frontend guide](docs/guides/frontend.md) and generated OpenAPI contract.
 
 The project currently permits pull requests without an outside approval so a
 solo maintainer is not blocked. Once a second active maintainer is added, the

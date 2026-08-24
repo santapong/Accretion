@@ -1,6 +1,6 @@
 # Accretion P3 static graphs, checkpoints, and replay runbook
 
-<img src="assets/checkpoint-replay.svg" alt="Checkpoint and replay lifecycle showing atomic checkpoint evidence, restart classification, safe resume, fail-closed escalation, and event-log-derived projections" width="100%" />
+<img src="../assets/checkpoint-replay.svg" alt="Checkpoint and replay lifecycle showing atomic checkpoint evidence, restart classification, safe resume, fail-closed escalation, and event-log-derived projections" width="100%" />
 
 ## Scope
 
@@ -12,7 +12,7 @@ and delegates bounded loop regions to the P2 engine. The v0.1 P3 API remains
 static and unchanged; opt-in P5 proposals now compile into this same scheduler
 only after deterministic validation. Learned routing remains out of scope.
 
-The current [frontend guide](FRONTEND_GUIDE.md) shows where the graph projection,
+The current [frontend guide](../guides/frontend.md) shows where the graph projection,
 controls, approval state, verifier evidence, and normalized trace appear in the
 completed operator UI. Historical counts below remain the P3 milestone snapshot.
 

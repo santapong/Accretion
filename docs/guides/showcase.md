@@ -6,14 +6,14 @@ completed P0–P7 operator frontend; P5–P7 remain explicit opt-ins and do not
 change this deterministic example. It uses the fake runtime and the same public
 API used by the operator interface.
 
-<img src="assets/accretion-showcase.png" alt="Illustrative dark developer workspace with a central workflow graph, normalized event trace, governed runtime streams, verification gates, and isolated Git workspaces" width="100%" />
+<img src="../assets/accretion-showcase.png" alt="Illustrative dark developer workspace with a central workflow graph, normalized event trace, governed runtime streams, verification gates, and isolated Git workspaces" width="100%" />
 
 > The banner is an illustrative product visualization. The diagrams and API
 > responses below describe the implemented behavior.
 
 ## What the example proves
 
-<img src="assets/accretion-architecture.svg" alt="Implemented Accretion flow from operator task through deterministic planning, runtime adapters, durable state, isolated worktrees, and live trace" width="100%" />
+<img src="../assets/accretion-architecture.svg" alt="Implemented Accretion flow from operator task through deterministic planning, runtime adapters, durable state, isolated worktrees, and live trace" width="100%" />
 
 The example exercises these real boundaries:
 
@@ -82,9 +82,9 @@ The dashboard exposes:
 - verifier findings and acceptance status;
 - checkpoint, approval, capability, and audit provenance when present.
 
-<img src="assets/operator-ui-map.svg" alt="Operator UI route map showing where a developer creates a task, opens a live run, inspects governance, and reproduces the ACR-ARCH and P5 through P7 research views" width="100%" />
+<img src="../assets/operator-ui-map.svg" alt="Operator UI route map showing where a developer creates a task, opens a live run, inspects governance, and reproduces the ACR-ARCH and P5 through P7 research views" width="100%" />
 
-The [frontend guide](FRONTEND_GUIDE.md) lists all eleven implemented routes. The
+The [frontend guide](frontend.md) lists all eleven implemented routes. The
 most useful path for this showcase is **Dashboard → New task → Live run →
 History**; the four benchmark pages reproduce frozen evidence independently of
 this example run.
@@ -111,6 +111,6 @@ The equivalent read-only API views are:
 - Never turn a showcase task into an unbounded deployment, publishing, deletion,
   payment, or messaging action.
 
-For architecture details, continue with the [developer guide](DEVELOPER_GUIDE.md)
-and [v0.1 SDD](sdd/Accretion_SDD_v0.1.md). To extend the tour with opt-in,
-shared-budget candidate comparison, use the [P6 developer showcase](P6_SHOWCASE.md).
+For architecture details, continue with the [developer guide](developer.md)
+and [v0.1 SDD](../sdd/Accretion_SDD_v0.1.md). To extend the tour with opt-in,
+shared-budget candidate comparison, use the [P6 developer showcase](../research/p6/showcase.md).
