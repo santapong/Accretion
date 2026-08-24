@@ -17,6 +17,8 @@ from accretion.contracts import (
     ApprovalStatus,
     ArchitectureMetric,
     ArtifactRef,
+    AuthSession,
+    AuthTransaction,
     BenchmarkRun,
     BenchmarkTask,
     Capability,
@@ -37,6 +39,7 @@ from accretion.contracts import (
     LoopStopReason,
     MetaPlugin,
     MetaSkill,
+    Principal,
     Project,
     PromptContract,
     Provider,
@@ -55,7 +58,9 @@ from accretion.contracts import (
     TemplateStatus,
     VerificationResult,
     WorkflowTemplate,
+    WorkspaceEntity,
     WorkspaceLease,
+    WorkspaceMembership,
 )
 from accretion.experience.models import (
     Experience,
@@ -85,6 +90,8 @@ from accretion.persistence.models import (
     AgentEventRow,
     ApprovalRow,
     ArchitectureMetricRow,
+    AuthSessionRow,
+    AuthTransactionRow,
     BenchmarkRunRow,
     BenchmarkTaskRow,
     CandidateScoreRow,
@@ -106,6 +113,7 @@ from accretion.persistence.models import (
     LoopExecutionRow,
     LoopIterationRow,
     PluginRow,
+    PrincipalRow,
     ProjectFeatureSettingsRow,
     ProjectRow,
     PromptContractRow,
@@ -131,6 +139,8 @@ from accretion.persistence.models import (
     WorkflowProposalRow,
     WorkflowTemplateRow,
     WorkspaceLeaseRow,
+    WorkspaceMembershipRow,
+    WorkspaceRow,
 )
 
 _TERMINAL_LOOP_EXECUTION_STATUSES = {
@@ -312,6 +322,31 @@ class StateStore(Protocol):
     async def list_skills(self) -> list[MetaSkill]: ...
     async def upsert_plugin(self, plugin: MetaPlugin) -> MetaPlugin: ...
     async def list_plugins(self, allowlisted_only: bool = True) -> list[MetaPlugin]: ...
+    async def upsert_principal(self, principal: Principal) -> Principal: ...
+    async def get_principal(self, principal_id: str) -> Principal | None: ...
+    async def get_principal_by_identity(
+        self, issuer: str, subject: str
+    ) -> Principal | None: ...
+    async def list_principals(self) -> list[Principal]: ...
+    async def upsert_workspace(self, workspace: WorkspaceEntity) -> WorkspaceEntity: ...
+    async def list_workspaces_for_principal(
+        self, principal_id: str
+    ) -> list[WorkspaceEntity]: ...
+    async def upsert_workspace_membership(
+        self, membership: WorkspaceMembership
+    ) -> WorkspaceMembership: ...
+    async def list_workspace_memberships(
+        self,
+        workspace_id: str | None = None,
+        principal_id: str | None = None,
+    ) -> list[WorkspaceMembership]: ...
+    async def create_auth_session(self, session: AuthSession) -> AuthSession: ...
+    async def get_auth_session(self, auth_session_id: str) -> AuthSession | None: ...
+    async def revoke_auth_session(self, auth_session_id: str) -> None: ...
+    async def create_auth_transaction(
+        self, transaction: AuthTransaction
+    ) -> AuthTransaction: ...
+    async def consume_auth_transaction(self, state: str) -> AuthTransaction | None: ...
     async def upsert_connector_definition(
         self, connector: ConnectorDefinition
     ) -> ConnectorDefinition: ...
@@ -464,6 +499,11 @@ class MemoryStore:
         self.skills: dict[tuple[str, str], MetaSkill] = {}
         self.plugins: dict[tuple[str, str], MetaPlugin] = {}
         self.capability_policies: dict[tuple[str, str], CapabilityPolicy] = {}
+        self.principals: dict[str, Principal] = {}
+        self.workspaces: dict[str, WorkspaceEntity] = {}
+        self.workspace_memberships: dict[tuple[str, str], WorkspaceMembership] = {}
+        self.auth_sessions: dict[str, AuthSession] = {}
+        self.auth_transactions: dict[str, AuthTransaction] = {}
         self.connector_definitions: dict[str, ConnectorDefinition] = {}
         self.connections: dict[str, Connection] = {}
         self.capability_bindings: dict[str, CapabilityBinding] = {}
@@ -1277,6 +1317,104 @@ class MemoryStore:
             (item for item in self.plugins.values() if item.allowlisted or not allowlisted_only),
             key=lambda item: (item.plugin_id, item.version),
         )
+
+    async def upsert_principal(self, principal: Principal) -> Principal:
+        existing = await self.get_principal_by_identity(principal.issuer, principal.subject)
+        if existing is not None:
+            principal = principal.model_copy(
+                update={
+                    "principal_id": existing.principal_id,
+                    "created_at": existing.created_at,
+                }
+            )
+        self.principals[principal.principal_id] = principal
+        return principal
+
+    async def get_principal(self, principal_id: str) -> Principal | None:
+        return self.principals.get(principal_id)
+
+    async def get_principal_by_identity(self, issuer: str, subject: str) -> Principal | None:
+        for item in self.principals.values():
+            if item.issuer == issuer and item.subject == subject:
+                return item
+        return None
+
+    async def list_principals(self) -> list[Principal]:
+        return sorted(self.principals.values(), key=lambda item: item.principal_id)
+
+    async def upsert_workspace(self, workspace: WorkspaceEntity) -> WorkspaceEntity:
+        self.workspaces[workspace.workspace_id] = workspace
+        return workspace
+
+    async def list_workspaces_for_principal(self, principal_id: str) -> list[WorkspaceEntity]:
+        member_of = {
+            item.workspace_id
+            for item in self.workspace_memberships.values()
+            if item.principal_id == principal_id
+        }
+        return sorted(
+            (item for item in self.workspaces.values() if item.workspace_id in member_of),
+            key=lambda item: item.workspace_id,
+        )
+
+    async def upsert_workspace_membership(
+        self, membership: WorkspaceMembership
+    ) -> WorkspaceMembership:
+        key = (membership.workspace_id, membership.principal_id)
+        existing = self.workspace_memberships.get(key)
+        if existing is not None:
+            membership = membership.model_copy(
+                update={
+                    "membership_id": existing.membership_id,
+                    "created_at": existing.created_at,
+                    "revision": existing.revision
+                    + (1 if existing.role != membership.role else 0),
+                }
+            )
+        self.workspace_memberships[key] = membership
+        return membership
+
+    async def list_workspace_memberships(
+        self,
+        workspace_id: str | None = None,
+        principal_id: str | None = None,
+    ) -> list[WorkspaceMembership]:
+        return sorted(
+            (
+                item
+                for item in self.workspace_memberships.values()
+                if (workspace_id is None or item.workspace_id == workspace_id)
+                and (principal_id is None or item.principal_id == principal_id)
+            ),
+            key=lambda item: item.membership_id,
+        )
+
+    async def create_auth_session(self, session: AuthSession) -> AuthSession:
+        self.auth_sessions[session.auth_session_id] = session
+        return session
+
+    async def get_auth_session(self, auth_session_id: str) -> AuthSession | None:
+        session = self.auth_sessions.get(auth_session_id)
+        if session is None or session.revoked or session.expires_at <= datetime.now(UTC):
+            return None
+        return session
+
+    async def revoke_auth_session(self, auth_session_id: str) -> None:
+        session = self.auth_sessions.get(auth_session_id)
+        if session is not None:
+            self.auth_sessions[auth_session_id] = session.model_copy(
+                update={"revoked": True}
+            )
+
+    async def create_auth_transaction(self, transaction: AuthTransaction) -> AuthTransaction:
+        self.auth_transactions[transaction.state] = transaction
+        return transaction
+
+    async def consume_auth_transaction(self, state: str) -> AuthTransaction | None:
+        transaction = self.auth_transactions.pop(state, None)
+        if transaction is None or transaction.expires_at <= datetime.now(UTC):
+            return None
+        return transaction
 
     async def upsert_connector_definition(
         self, connector: ConnectorDefinition
@@ -3068,6 +3206,218 @@ class PostgresStore:
         async with self.sessions() as session:
             rows = (await session.scalars(query)).all()
         return [MetaPlugin.model_validate(row.definition) for row in rows]
+
+    async def upsert_principal(self, principal: Principal) -> Principal:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(PrincipalRow).where(
+                    PrincipalRow.issuer == principal.issuer,
+                    PrincipalRow.subject == principal.subject,
+                )
+            )
+            if row is not None:
+                existing = Principal.model_validate(row.definition)
+                principal = principal.model_copy(
+                    update={
+                        "principal_id": existing.principal_id,
+                        "created_at": existing.created_at,
+                    }
+                )
+                row.status = principal.status.value
+                row.definition = principal.model_dump(mode="json")
+            else:
+                session.add(
+                    PrincipalRow(
+                        id=new_id("principal"),
+                        principal_id=principal.principal_id,
+                        issuer=principal.issuer,
+                        subject=principal.subject,
+                        status=principal.status.value,
+                        definition=principal.model_dump(mode="json"),
+                        created_at=principal.created_at,
+                    )
+                )
+        return principal
+
+    async def get_principal(self, principal_id: str) -> Principal | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(PrincipalRow).where(PrincipalRow.principal_id == principal_id)
+            )
+        return Principal.model_validate(row.definition) if row else None
+
+    async def get_principal_by_identity(self, issuer: str, subject: str) -> Principal | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(PrincipalRow).where(
+                    PrincipalRow.issuer == issuer, PrincipalRow.subject == subject
+                )
+            )
+        return Principal.model_validate(row.definition) if row else None
+
+    async def list_principals(self) -> list[Principal]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(select(PrincipalRow).order_by(PrincipalRow.principal_id))
+            ).all()
+        return [Principal.model_validate(row.definition) for row in rows]
+
+    async def upsert_workspace(self, workspace: WorkspaceEntity) -> WorkspaceEntity:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(WorkspaceRow).where(WorkspaceRow.workspace_id == workspace.workspace_id)
+            )
+            if row is not None:
+                row.definition = workspace.model_dump(mode="json")
+            else:
+                session.add(
+                    WorkspaceRow(
+                        id=new_id("workspace_entity"),
+                        workspace_id=workspace.workspace_id,
+                        definition=workspace.model_dump(mode="json"),
+                        created_at=workspace.created_at,
+                    )
+                )
+        return workspace
+
+    async def list_workspaces_for_principal(self, principal_id: str) -> list[WorkspaceEntity]:
+        async with self.sessions() as session:
+            member_rows = (
+                await session.scalars(
+                    select(WorkspaceMembershipRow).where(
+                        WorkspaceMembershipRow.principal_id == principal_id
+                    )
+                )
+            ).all()
+            workspace_ids = {row.workspace_id for row in member_rows}
+            if not workspace_ids:
+                return []
+            rows = (
+                await session.scalars(
+                    select(WorkspaceRow)
+                    .where(WorkspaceRow.workspace_id.in_(workspace_ids))
+                    .order_by(WorkspaceRow.workspace_id)
+                )
+            ).all()
+        return [WorkspaceEntity.model_validate(row.definition) for row in rows]
+
+    async def upsert_workspace_membership(
+        self, membership: WorkspaceMembership
+    ) -> WorkspaceMembership:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(WorkspaceMembershipRow).where(
+                    WorkspaceMembershipRow.workspace_id == membership.workspace_id,
+                    WorkspaceMembershipRow.principal_id == membership.principal_id,
+                )
+            )
+            if row is not None:
+                existing = WorkspaceMembership.model_validate(row.definition)
+                membership = membership.model_copy(
+                    update={
+                        "membership_id": existing.membership_id,
+                        "created_at": existing.created_at,
+                        "revision": existing.revision
+                        + (1 if existing.role != membership.role else 0),
+                    }
+                )
+                row.role = membership.role.value
+                row.definition = membership.model_dump(mode="json")
+            else:
+                session.add(
+                    WorkspaceMembershipRow(
+                        id=new_id("workspace_membership"),
+                        membership_id=membership.membership_id,
+                        workspace_id=membership.workspace_id,
+                        principal_id=membership.principal_id,
+                        role=membership.role.value,
+                        definition=membership.model_dump(mode="json"),
+                        created_at=membership.created_at,
+                    )
+                )
+        return membership
+
+    async def list_workspace_memberships(
+        self,
+        workspace_id: str | None = None,
+        principal_id: str | None = None,
+    ) -> list[WorkspaceMembership]:
+        query = select(WorkspaceMembershipRow).order_by(WorkspaceMembershipRow.membership_id)
+        if workspace_id is not None:
+            query = query.where(WorkspaceMembershipRow.workspace_id == workspace_id)
+        if principal_id is not None:
+            query = query.where(WorkspaceMembershipRow.principal_id == principal_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [WorkspaceMembership.model_validate(row.definition) for row in rows]
+
+    async def create_auth_session(self, auth_session: AuthSession) -> AuthSession:
+        async with self.sessions.begin() as session:
+            session.add(
+                AuthSessionRow(
+                    id=new_id("auth_session"),
+                    auth_session_id=auth_session.auth_session_id,
+                    principal_id=auth_session.principal_id,
+                    expires_at=auth_session.expires_at,
+                    revoked=auth_session.revoked,
+                    definition=auth_session.model_dump(mode="json"),
+                    created_at=auth_session.issued_at,
+                )
+            )
+        return auth_session
+
+    async def get_auth_session(self, auth_session_id: str) -> AuthSession | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(AuthSessionRow).where(
+                    AuthSessionRow.auth_session_id == auth_session_id,
+                    AuthSessionRow.revoked.is_(False),
+                    AuthSessionRow.expires_at > datetime.now(UTC),
+                )
+            )
+        return AuthSession.model_validate(row.definition) if row else None
+
+    async def revoke_auth_session(self, auth_session_id: str) -> None:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(AuthSessionRow).where(
+                    AuthSessionRow.auth_session_id == auth_session_id
+                )
+            )
+            if row is not None:
+                revoked = AuthSession.model_validate(row.definition).model_copy(
+                    update={"revoked": True}
+                )
+                row.revoked = True
+                row.definition = revoked.model_dump(mode="json")
+
+    async def create_auth_transaction(self, transaction: AuthTransaction) -> AuthTransaction:
+        async with self.sessions.begin() as session:
+            session.add(
+                AuthTransactionRow(
+                    id=new_id("auth_transaction"),
+                    state=transaction.state,
+                    expires_at=transaction.expires_at,
+                    definition=transaction.model_dump(mode="json"),
+                    created_at=transaction.created_at,
+                )
+            )
+        return transaction
+
+    async def consume_auth_transaction(self, state: str) -> AuthTransaction | None:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(AuthTransactionRow)
+                .where(AuthTransactionRow.state == state)
+                .with_for_update()
+            )
+            if row is None:
+                return None
+            transaction = AuthTransaction.model_validate(row.definition)
+            await session.delete(row)
+            if transaction.expires_at <= datetime.now(UTC):
+                return None
+        return transaction
 
     async def upsert_connector_definition(
         self, connector: ConnectorDefinition

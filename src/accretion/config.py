@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -25,6 +26,14 @@ class Settings(BaseSettings):
     capability_policy_id: str = "local-capability-policy"
     granted_permissions: list[str] = Field(default_factory=list)
     credential_env_map: dict[str, str] = Field(default_factory=dict)
+    auth_mode: Literal["LOCAL_PRINCIPAL", "OIDC"] = "LOCAL_PRINCIPAL"
+    oidc_issuer: str = ""
+    oidc_client_id: str = ""
+    oidc_client_secret: str = ""
+    oidc_redirect_url: str = "http://localhost:8000/api/v1/auth/callback"
+    oidc_scopes: str = "openid profile email"
+    session_cookie_name: str = "accretion_session"
+    session_ttl_seconds: int = 28_800
     enable_dynamic_workflows: bool = False
     enable_candidate_search: bool = False
     enable_experience_retrieval: bool = False

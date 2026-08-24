@@ -388,6 +388,81 @@ class CapabilityExecutionResult(StrictModel):
     completed_at: datetime | None = None
 
 
+class PrincipalType(StrEnum):
+    HUMAN = "HUMAN"
+    SERVICE = "SERVICE"
+
+
+class PrincipalStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    DISABLED = "DISABLED"
+
+
+class WorkspaceRole(StrEnum):
+    OWNER = "OWNER"
+    ADMIN = "ADMIN"
+    DEVELOPER = "DEVELOPER"
+    RESEARCHER = "RESEARCHER"
+    VIEWER = "VIEWER"
+    SERVICE = "SERVICE"
+
+
+class Principal(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    principal_id: str
+    type: PrincipalType = PrincipalType.HUMAN
+    # Identity uniqueness derives from (issuer, subject), never email alone.
+    issuer: str
+    subject: str
+    email: str | None = None
+    display_name: str | None = None
+    status: PrincipalStatus = PrincipalStatus.ACTIVE
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class PrincipalRef(StrictModel):
+    principal_id: str
+    display_name: str | None = None
+    status: PrincipalStatus
+
+
+class WorkspaceEntity(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    workspace_id: str
+    name: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class WorkspaceMembership(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    membership_id: str
+    workspace_id: str
+    principal_id: str
+    role: WorkspaceRole
+    revision: int = 1
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class AuthSession(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    auth_session_id: str
+    principal_id: str
+    issued_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime
+    revoked: bool = False
+
+
+class AuthTransaction(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    transaction_id: str
+    state: str
+    nonce: str
+    code_verifier: str
+    redirect_target: str = "/"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime
+
+
 class ConnectorKind(StrEnum):
     MCP = "MCP"
     REST = "REST"

@@ -529,7 +529,7 @@ export function EventStream({ run }: { run: Run | undefined }) {
     if (!runId || !auditQuery.data) return;
     let recovering = false;
     let expected = auditQuery.data.run.last_sequence + 1;
-    const source = new EventSource(api.eventUrl(runId, auditQuery.data.run.last_sequence));
+    const source = new EventSource(api.eventUrl(runId, auditQuery.data.run.last_sequence), { withCredentials: true });
     source.addEventListener("open", () => setConnectionState({ runId, value: "live" }));
     source.addEventListener("agent_event", (message) => {
       const event = JSON.parse((message as MessageEvent).data) as AgentEvent;
@@ -1023,12 +1023,17 @@ const navigation = [
 ] as const;
 
 function OperatorShell() {
+  const meQuery = useQuery({ queryKey: ["me"], queryFn: api.me, retry: false });
+  const me = meQuery.data;
+  const identity = me?.principal
+    ? `${me.principal.display_name ?? me.principal.subject}${me.memberships?.[0] ? " · " + me.memberships[0].role : ""}`
+    : "Control plane";
   return (
     <main>
       <nav>
         <Link className="brand-link" to="/"><span className="brand-mark">A</span><span><strong>Accretion</strong><small>Operator / v0.2</small></span></Link>
         <div className="nav-links">{navigation.map(([path, label]) => <NavLink end={path === "/"} key={path} to={path}>{label}</NavLink>)}</div>
-        <div className="nav-status"><i />Control plane</div>
+        <div className="nav-status"><i />{identity}</div>
       </nav>
       <div className="shell">
         <Routes>

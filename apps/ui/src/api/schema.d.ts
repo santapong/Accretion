@@ -38,6 +38,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Auth Callback */
+        get: operations["auth_callback_api_v1_auth_callback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Auth Login */
+        get: operations["auth_login_api_v1_auth_login_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Auth Logout */
+        post: operations["auth_logout_api_v1_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Auth Providers */
+        get: operations["auth_providers_api_v1_auth_providers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/benchmarks/acr-arch": {
         parameters: {
             query?: never;
@@ -149,6 +217,23 @@ export interface paths {
         };
         /** List Connectors */
         get: operations["list_connectors_api_v1_connectors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Me */
+        get: operations["get_me_api_v1_me_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -626,6 +711,23 @@ export interface paths {
         };
         /** Get Verification */
         get: operations["get_verification_api_v1_verifications__verification_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Workspaces */
+        get: operations["list_workspaces_api_v1_workspaces_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1475,6 +1577,13 @@ export interface components {
          * @enum {string}
          */
         AuthMode: "SUBSCRIPTION" | "API" | "LOCAL";
+        /** AuthProviderInfo */
+        AuthProviderInfo: {
+            /** Issuer */
+            issuer?: string | null;
+            /** Mode */
+            mode: string;
+        };
         /**
          * AuthorizationOutcome
          * @enum {string}
@@ -3302,6 +3411,14 @@ export interface components {
          * @enum {string}
          */
         MatchDisposition: "ACCEPTED" | "DOWNRANKED" | "REJECTED";
+        /** MeResponse */
+        MeResponse: {
+            /** Auth Mode */
+            auth_mode: string;
+            /** Memberships */
+            memberships: components["schemas"]["WorkspaceMembership"][];
+            principal: components["schemas"]["Principal"];
+        };
         /** MetaPlugin */
         MetaPlugin: {
             /**
@@ -3456,6 +3573,44 @@ export interface components {
          * @enum {string}
          */
         PlannerRuntime: "AUTO" | "CLAUDE" | "CODEX" | "DETERMINISTIC";
+        /** Principal */
+        Principal: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Display Name */
+            display_name?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Issuer */
+            issuer: string;
+            /** Principal Id */
+            principal_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** @default ACTIVE */
+            status: components["schemas"]["PrincipalStatus"];
+            /** Subject */
+            subject: string;
+            /** @default HUMAN */
+            type: components["schemas"]["PrincipalType"];
+        };
+        /**
+         * PrincipalStatus
+         * @enum {string}
+         */
+        PrincipalStatus: "ACTIVE" | "DISABLED";
+        /**
+         * PrincipalType
+         * @enum {string}
+         */
+        PrincipalType: "HUMAN" | "SERVICE";
         /** Project */
         Project: {
             /**
@@ -4961,6 +5116,55 @@ export interface components {
             schema_version: "2.0";
             validation: components["schemas"]["GraphValidationResult"];
         };
+        /** WorkspaceEntity */
+        WorkspaceEntity: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Name */
+            name: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /** WorkspaceMembership */
+        WorkspaceMembership: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Membership Id */
+            membership_id: string;
+            /** Principal Id */
+            principal_id: string;
+            /**
+             * Revision
+             * @default 1
+             */
+            revision: number;
+            role: components["schemas"]["WorkspaceRole"];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * WorkspaceRole
+         * @enum {string}
+         */
+        WorkspaceRole: "OWNER" | "ADMIN" | "DEVELOPER" | "RESEARCHER" | "VIEWER" | "SERVICE";
     };
     responses: never;
     parameters: never;
@@ -5033,6 +5237,96 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    auth_callback_api_v1_auth_callback_get: {
+        parameters: {
+            query: {
+                state: string;
+                code: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    auth_login_api_v1_auth_login_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    auth_logout_api_v1_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_providers_api_v1_auth_providers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthProviderInfo"][];
                 };
             };
         };
@@ -5225,6 +5519,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ConnectorDefinition"][];
+                };
+            };
+        };
+    };
+    get_me_api_v1_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeResponse"];
                 };
             };
         };
@@ -6100,6 +6414,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_workspaces_api_v1_workspaces_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceEntity"][];
                 };
             };
         };

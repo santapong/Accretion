@@ -379,6 +379,73 @@ class PluginRow(Base):
     )
 
 
+class PrincipalRow(Base):
+    __tablename__ = "principals"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    principal_id: Mapped[str] = mapped_column(String(255), unique=True)
+    issuer: Mapped[str] = mapped_column(String(512))
+    subject: Mapped[str] = mapped_column(String(512))
+    status: Mapped[str] = mapped_column(String(32))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("issuer", "subject", name="uq_principals_issuer_subject"),
+    )
+
+
+class WorkspaceRow(Base):
+    __tablename__ = "workspaces"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(255), unique=True)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class WorkspaceMembershipRow(Base):
+    __tablename__ = "workspace_memberships"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    membership_id: Mapped[str] = mapped_column(String(255), unique=True)
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    principal_id: Mapped[str] = mapped_column(String(255))
+    role: Mapped[str] = mapped_column(String(32))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "principal_id", name="uq_workspace_memberships_pair"
+        ),
+    )
+
+
+class AuthSessionRow(Base):
+    __tablename__ = "auth_sessions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    auth_session_id: Mapped[str] = mapped_column(String(255), unique=True)
+    principal_id: Mapped[str] = mapped_column(String(255))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_auth_sessions_principal", "principal_id", "revoked"),)
+
+
+class AuthTransactionRow(Base):
+    __tablename__ = "auth_transactions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    state: Mapped[str] = mapped_column(String(255), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class ConnectorDefinitionRow(Base):
     __tablename__ = "connector_definitions"
 

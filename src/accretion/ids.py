@@ -55,6 +55,11 @@ _PREFIXES = {
     "conndef": "cnd",
     "conn": "con",
     "capbind": "cbd",
+    "principal": "usr",
+    "workspace_entity": "wks",
+    "workspace_membership": "wsm",
+    "auth_session": "aus",
+    "auth_transaction": "atx",
 }
 
 

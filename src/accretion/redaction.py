@@ -3,13 +3,19 @@ from __future__ import annotations
 import re
 from typing import Any
 
-_SECRET_KEY = re.compile(r"(token|secret|password|authorization|api[_-]?key|cookie)", re.I)
+_SECRET_KEY = re.compile(
+    r"(token|secret|password|authorization|api[_-]?key|cookie"
+    r"|code[_-]?verifier|code[_-]?challenge|nonce|\bstate\b|session[_-]?id)",
+    re.I,
+)
 _BEARER = re.compile(r"(?i)bearer\s+[A-Za-z0-9._~+/=-]+")
 _LIKELY_KEY = re.compile(r"\b(?:sk|api|key)-[A-Za-z0-9_-]{16,}\b")
+_JWT = re.compile(r"\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\b")
 
 
 def redact_text(value: str) -> str:
     value = _BEARER.sub("Bearer [REDACTED]", value)
+    value = _JWT.sub("[REDACTED]", value)
     return _LIKELY_KEY.sub("[REDACTED]", value)
 
 

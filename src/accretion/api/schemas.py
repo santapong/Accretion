@@ -9,11 +9,13 @@ from accretion.contracts import (
     ApprovalDecisionValue,
     BenchmarkExecutionSource,
     ExecutionMode,
+    Principal,
     Provider,
     RiskLevel,
     TaskBudgets,
     TaskType,
     TemplateStatus,
+    WorkspaceMembership,
 )
 from accretion.orchestration.models import (
     PlannerRuntime,
@@ -21,6 +23,17 @@ from accretion.orchestration.models import (
     SearchBudgetEnvelope,
     SearchMode,
 )
+
+
+class MeResponse(BaseModel):
+    principal: Principal
+    memberships: list[WorkspaceMembership]
+    auth_mode: str
+
+
+class AuthProviderInfo(BaseModel):
+    mode: str
+    issuer: str | None = None
 
 
 class CapabilityResolveRequest(BaseModel):
