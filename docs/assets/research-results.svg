@@ -69,7 +69,7 @@
     <line x1="392" y1="58" x2="392" y2="138" stroke="#425047"/>
     <text x="420" y="74" class="title">Release engineering</text>
     <text x="420" y="102" class="copy">Tests · migrations · contracts · dependencies</text>
-    <text x="420" y="124" class="copy">CI · browser · protected promotion</text>
+    <text x="420" y="124" class="copy">CI · browser exception #52 · protected promotion</text>
     <text x="392" y="156" class="foot" text-anchor="middle">Live output never rewrites frozen replay results</text>
   </g>
   <text x="600" y="588" class="sub" text-anchor="middle">Read design, result, hashes, negative cases, and reproduction commands in docs/research/</text>

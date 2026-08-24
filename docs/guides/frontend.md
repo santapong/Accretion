@@ -9,9 +9,10 @@ candidate search, verified-experience replay, and reproducible benchmark views.
 <img src="../assets/operator-ui-map.svg" alt="Map of the eleven implemented Accretion frontend routes, the central live-run surface, and the authoritative FastAPI snapshot, React Query, and resumable event data flow" width="100%" />
 
 > [!IMPORTANT]
-> The frontend is feature-complete for the v0.2 candidate. Its generated
+> The frontend is feature-complete for the v0.2 release. Its generated
 > contract, lint, TypeScript, 22 component tests, and production build pass.
-> Browser/accessibility is still a blocking release item recorded in the v0.2 audit.
+> No rendered browser/accessibility PASS is claimed; the release exception and
+> post-release validation are recorded in the v0.2 audit and issue #52.
 
 ## What an operator can do
 
@@ -103,7 +104,7 @@ npm run test
 npm run build
 ```
 
-The v0.2 candidate gate records 22 component tests plus successful ESLint,
+The v0.2 release gate records 22 component tests plus successful ESLint,
 TypeScript, generated-contract, and production-build checks. The build currently
 reports a non-blocking bundle-size advisory; it is visible technical debt, not a
 failed correctness gate.

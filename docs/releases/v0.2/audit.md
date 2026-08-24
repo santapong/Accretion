@@ -1,33 +1,33 @@
-# v0.2.0 release-candidate audit
+# v0.2.0 release audit
 
 > Audit date: 2026-08-24 (Asia/Bangkok)
 >
-> Integrated candidate: `origin/develop` at
-> `6ed3584fb2a4dea2d1c7add67ce2e68fb230a553`
+> Release-finalization base: `origin/develop` at
+> `e48ea4ef2ff97ecfc8852972ca649b8e9dc7bfd5`
 >
-> Decision: **NO-GO for release — do not promote to `main` or create `v0.2.0`
-> until the remaining browser gate passes.**
+> Decision: **RELEASE AUTHORIZED WITH A DOCUMENTED MAINTAINER EXCEPTION.**
 
 The v0.2 implementation and deterministic research claims are complete. The
 automated code, database, generated-contract, frontend, dependency, frozen
 research, signed-in provider, and protected release-topology checks pass.
-Promotion remains blocked only because the selected release policy also
-requires browser/accessibility evidence and the supported in-app browser has no
-connected browser instance.
+The supported browser-control surface still exposes no connected browser, so no
+rendered visual, responsive, keyboard, focus, or accessibility PASS is claimed.
+After that limitation was explicitly disclosed, the maintainer authorized the
+2026-08-24 release with the exception tracked in
+[#52](https://github.com/santapong/Accretion/issues/52).
 
 <img src="../../assets/v02-release-gate.svg" alt="v0.2 release evidence flowing from the immutable v0.1 control through P5 dynamic, P6 search, P7 transfer, and the full clean-checkout gate before promotion to main" width="100%" />
 
-The candidate is integrated into `develop`. No release tag, GitHub release, or
-v0.2 baseline record is created while this decision is NO-GO. Package metadata
-uses `0.2.0` to identify the candidate, but the immutable `v0.1.0` tag remains
-the current release and static control.
+The candidate is integrated into `develop`; package metadata uses `0.2.0`. The
+immutable `v0.1.0` tag remains the static experimental control and is not moved
+or rewritten by this release.
 
 ## Candidate identity and environment
 
 | Item | Audited value |
 |---|---|
 | Audited code commit | `00220f7713943286b24535549b08ccbeb309637a` |
-| Integrated candidate | `origin/develop@6ed3584fb2a4dea2d1c7add67ce2e68fb230a553` |
+| Release-finalization base | `origin/develop@e48ea4ef2ff97ecfc8852972ca649b8e9dc7bfd5` |
 | Stable branch before release | `origin/main@05ccc38703f3bdc685f324b895c4cd3e2eb1112a` |
 | v0.1 tag object | `3280e117aadf9ee5f431804dd92bffd2fc80229f` |
 | v0.1 peeled release commit | `6324c8fab1776f0bcc1535f6d6c44fe95588f0e2` |
@@ -56,12 +56,12 @@ rewritten during this work.
 | Frontend dependency audit | PASS | `npm audit` reported 0 vulnerabilities across 328 dependencies. |
 | Tracked credential-shape scan | PASS | No tracked file matched the release scan for common token or private-key shapes. |
 | Documentation integrity | PASS | The repository docs check resolved all local links, enforced the managed folder layout, and validated accessible XML metadata across 58 Markdown files and 18 SVGs. |
-| Open critical issue inventory | PASS | Authenticated GitHub searches found no open critical issue and no open Dependabot pull request. |
+| Open critical issue inventory | PASS | Authenticated GitHub searches found no open critical issue and no open Dependabot pull request. Open issues #45, #47, and #52 are respectively release topology, post-v0.2 planning, and the documented browser exception. |
 | v0.1 baseline integrity | PASS | The annotated tag object and peeled release commit match the frozen baseline record. |
 | Codex signed-in runtime | PASS | The live test completed two independent Codex threads on one App Server. |
 | Claude signed-in runtime | PASS | The adapter runs without ambient hooks/plugins, honors the typed `sonnet` model selection, and emitted normalized start, progress, and terminal events. All 3/3 live-runtime cases passed in 20.76 seconds, including mixed-provider isolation. |
 | Balanced ACR-ARCH live sample | PASS | 10/10 exact artifacts passed deterministic verification: five Codex and five Claude, two tasks per category. The redacted report SHA-256 is `f378db0cd06fc1e95cfe5527496ea98e12c216a9ebb2d1d59bebdb389c2fe76c`. |
-| Browser smoke and accessibility | **NOT RUN / BLOCKING** | The supported in-app browser runtime exposed no controllable browser instance. No visual, keyboard, or accessibility PASS is claimed. |
+| Browser smoke and accessibility | **NOT RUN · MAINTAINER EXCEPTION** | The supported browser runtime exposed no controllable browser instance. No visual, responsive, keyboard, focus, or accessibility PASS is claimed. Issue [#52](https://github.com/santapong/Accretion/issues/52) tracks post-release evidence. |
 | Protected release topology | PASS | Release-bridge [PR #46](https://github.com/santapong/Accretion/pull/46) descends from `main`, is refreshed to the exact audited `develop` tree, and uses the normal squash-only linear-history policy. No protection exception or history rewrite is required. Its final head must be re-verified after this audit update before promotion. |
 
 ## Frozen research evidence
@@ -84,11 +84,15 @@ predictable-task non-inferiority, safety, success non-regression, and static
 fallback. A regression test proves a below-threshold treatment cannot report an
 overall PASS.
 
-## Promotion blocker
+## Documented release exception
 
-Connect a supported browser instance and pass route smoke, responsive layout,
-keyboard operation, visible focus, and automated accessibility checks for all
-eleven routes.
+The maintainer explicitly authorized release after the unavailable browser
+surface and missing rendered evidence were disclosed. This authorization does
+not convert the browser row to PASS, weaken any runtime safety invariant, or
+alter a frozen research result. Issue
+[#52](https://github.com/santapong/Accretion/issues/52) retains the exact
+post-release route, responsive, keyboard, visible-focus, console, and automated
+accessibility work.
 
 The earlier two-parent ancestry-repair proposal is superseded by the protected
 release bridge in [PR #46](https://github.com/santapong/Accretion/pull/46). The
@@ -98,18 +102,15 @@ can remain squash-only and linear without changing repository settings. Issue
 Issue [#47](https://github.com/santapong/Accretion/issues/47) holds only post-v0.2
 work; no v0.3 feature belongs in this release.
 
-## Procedure after the blockers clear
+## Promotion procedure
 
-1. After the browser blocker clears, rerun any gate affected by a resulting code
-   change. Any code change creates a new candidate and requires a new audit.
-2. Change this audit to GO only when every blocking row passes.
-3. Refresh release-bridge PR #46 from `main` so its tree exactly equals the
+1. Refresh release-bridge PR #46 from `main` so its tree exactly equals the
    audited `develop` commit, require green CI and resolved conversations, verify
    both commit IDs and tree equality, then squash-merge through the protected
    workflow.
-4. Create annotated tag `v0.2.0` from the resulting `main` commit and publish the
+2. Create annotated tag `v0.2.0` from the resulting `main` commit and publish the
    GitHub release using [the prepared release notes](notes.md).
-5. Create `docs/releases/v0.2/baseline.md` from the actual tag object, peeled commit, release
+3. Create `docs/releases/v0.2/baseline.md` from the actual tag object, peeled commit, release
    URL, fixture hashes, and final audit. Never precompute or invent those values.
 
 ## Reproduction commands

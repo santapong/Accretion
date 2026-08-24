@@ -12,7 +12,7 @@ isolated workspaces, and a durable normalized execution trace.
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-MIT-6f42c1.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-v0.2.0%20candidate-d29922)](#project-status)
+[![Status](https://img.shields.io/badge/status-v0.2.0%20released-2ea44f)](#project-status)
 
 [Author: resume.draveniq.dev](https://resume.draveniq.dev) ·
 [Documentation](docs/README.md) · [Frontend guide](docs/guides/frontend.md) ·
@@ -27,11 +27,12 @@ isolated workspaces, and a durable normalized execution trace.
 </div>
 
 > [!IMPORTANT]
-> The `v0.2.0` release candidate adds opt-in P5 validated dynamic workflows,
+> The `v0.2.0` release adds opt-in P5 validated dynamic workflows,
 > P6 bounded candidate search, P7 verified-experience replay, and frozen research
-> gates while retaining the immutable `v0.1.0` release as the current release and
-> static control. Promotion is blocked until every item in the
-> [v0.2 release audit](docs/releases/v0.2/audit.md) passes.
+> gates while retaining the immutable `v0.1.0` release as the static control.
+> The [v0.2 release audit](docs/releases/v0.2/audit.md) records all evidence and
+> the documented browser/accessibility exception tracked in
+> [issue #52](https://github.com/santapong/Accretion/issues/52).
 > The inherited v0.1 foundation includes P0 runtime feasibility, P1
 > deterministic planning, P2 verifier-gated feedback loops, P3 static graph
 > execution, and the P4 governed harness/operator release gate. Its five validated
@@ -41,7 +42,7 @@ isolated workspaces, and a durable normalized execution trace.
 
 <div align="center">
   <a href="docs/assets/project-overview.svg">
-    <img src="docs/assets/project-overview.svg" alt="Accretion project overview showing operator intent flowing through deterministic control, isolated runtime execution, and independent verification, with the v0.2.0 release candidate and immutable v0.1.0 static-control evidence" width="100%" />
+    <img src="docs/assets/project-overview.svg" alt="Accretion project overview showing operator intent flowing through deterministic control, isolated runtime execution, and independent verification, with the v0.2.0 release and immutable v0.1.0 static-control evidence" width="100%" />
   </a>
 </div>
 
@@ -55,8 +56,8 @@ fixtures, examples, and operational documentation in one workspace.
 
 | I want to… | Use | Release position |
 |---|---|---|
-| Evaluate the current release | Clone the `v0.1.0` tag and follow [Quick start](#quick-start) | Released and immutable |
-| Evaluate the v0.2 candidate | Check out `develop` after the release-candidate PR merges | Not a release until the audit passes and `v0.2.0` is tagged |
+| Evaluate the current release | Clone the `v0.2.0` tag and follow [Quick start](#quick-start) | Released and immutable |
+| Follow ongoing development | Check out `develop` | Post-v0.2 integration work |
 | Reproduce the static control | Clone `v0.1.0` and read the [frozen baseline](docs/releases/v0.1/baseline.md) | Preserved v0.1 evidence |
 | Understand the safety model | Read [Architecture](#architecture), the [trust boundary](docs/assets/trust-boundary.svg), and [SECURITY.md](SECURITY.md) | Applies across releases |
 | Build a contribution | Start with the [developer guide](docs/guides/developer.md) and [CONTRIBUTING.md](CONTRIBUTING.md) | Pull requests target `develop` |
@@ -104,7 +105,7 @@ operator can answer five questions before and during every run:
 
 ## Frontend status
 
-Yes—the frontend is implemented for the P0–P7 v0.2 candidate scope.
+Yes—the frontend is implemented for the P0–P7 v0.2 release scope.
 It is not a mock dashboard: it calls the generated API contract, starts from
 authoritative snapshots, follows active runs through resumable server-sent
 events, and exposes the decision and verifier evidence needed to explain a run.
@@ -120,7 +121,7 @@ events, and exposes the decision and verifier evidence needed to explain a run.
 | User-facing scope | Dashboard, New Task/Planning, Live Run, Runtimes, History, Approvals, Capabilities, ACR-ARCH, P5 Dynamic, P6 Search, and P7 Experience |
 | API safety | Generated OpenAPI TypeScript schema; backend remains the authority for policy and transitions |
 | Live behavior | Snapshot-first state, monotonic SSE, reconnect and sequence-gap recovery |
-| Verification | 22 component tests, ESLint, TypeScript, OpenAPI idempotence, and production build pass; browser/accessibility remains a blocking release-audit item |
+| Verification | 22 component tests, ESLint, TypeScript, OpenAPI idempotence, and production build pass; rendered browser/accessibility follow-up is tracked in [issue #52](https://github.com/santapong/Accretion/issues/52) under the documented release exception |
 
 See the [operator frontend guide](docs/guides/frontend.md) for every route, the
 operator journey, data flow, P5–P7 coverage, source map, and frontend commands.
@@ -205,9 +206,9 @@ runtime, verification, graph, trace, and audit records.
 | P2 — Feedback loops | Complete | Bounded repeat execution, independent verification, recovery, controls, and loop visualization |
 | P3 — Static graphs | Complete | Template registry, GRAPH/HYBRID engines, approval gates, checkpoints, replay, and graph visualization |
 | P4 — Harness and release gate | Complete | Governed capabilities/MCP, credential boundary, side-effect evidence, complete operator surfaces, resumable SSE, and ACR-ARCH |
-| P5 — Dynamic workflows | Implemented (opt-in) | Typed proposals, deterministic graph validation, static fallback, immutable revisions, safe replan, and operator inspection |
-| P6 — Bounded candidate search | Implemented (opt-in) | Evidence-based routing, isolated branches, shared budgets, fail-closed ranking, promotion recovery, operator lineage, and frozen N=1/2/4 replay research |
-| P7 — Verified experience | Implemented (opt-in) | Explicit materialization/selection, exact deterministic retrieval, invalidation, negative guidance, isolated fresh-control replay, operator provenance, and frozen negative-transfer research |
+| P5 — Dynamic workflows | Released (opt-in) | Typed proposals, deterministic graph validation, static fallback, immutable revisions, safe replan, and operator inspection |
+| P6 — Bounded candidate search | Released (opt-in) | Evidence-based routing, isolated branches, shared budgets, fail-closed ranking, promotion recovery, operator lineage, and frozen N=1/2/4 replay research |
+| P7 — Verified experience | Released (opt-in) | Explicit materialization/selection, exact deterministic retrieval, invalidation, negative guidance, isolated fresh-control replay, operator provenance, and frozen negative-transfer research |
 
 ### Research result summary
 
@@ -270,10 +271,10 @@ decision. The [frozen v0.1 baseline](docs/releases/v0.1/baseline.md) identifies 
 release and experimental control; the [v0.1.0 release notes](docs/releases/v0.1/notes.md)
 describe its shipped scope, compatibility, and reproducibility hashes.
 
-The v0.2 candidate includes the opt-in P5 dynamic-workflow, P6 bounded-search, and P7
+The v0.2 release includes the opt-in P5 dynamic-workflow, P6 bounded-search, and P7
 verified-experience slices. Start with the [P5 dynamic benchmark](docs/research/p5/benchmark.md), [P7 runbook](docs/runbooks/p7-verified-experience.md),
 [developer showcase](docs/research/p7/showcase.md), [acceptance report](docs/research/p7/acceptance.md),
-and [delivery plan](docs/releases/v0.2/plan.md). The [v0.2 release audit](docs/releases/v0.2/audit.md) records the current NO-GO gate and remaining blockers; the
+and [delivery plan](docs/releases/v0.2/plan.md). The [v0.2 release audit](docs/releases/v0.2/audit.md) records the release authorization and browser exception; the
 [v0.2 SDD](docs/sdd/Accretion_SDD_v0.2.md) remains the normative contract.
 
 ## Quick start
@@ -295,11 +296,12 @@ Code `>=2.1.231,<2.2`.
 For the current immutable release:
 
 ```bash
-git clone --branch v0.1.0 https://github.com/santapong/Accretion.git
+git clone --branch v0.2.0 https://github.com/santapong/Accretion.git
 cd Accretion
 ```
 
-For the v0.2 release candidate and ongoing development:
+For the immutable v0.1 static control, use `--branch v0.1.0`. For ongoing
+development:
 
 ```bash
 git clone --branch develop https://github.com/santapong/Accretion.git

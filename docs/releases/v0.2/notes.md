@@ -1,6 +1,6 @@
 # Accretion v0.2.0 release notes
 
-Target version: `v0.2.0`. Release date: pending a fully passing release audit.
+Version: `v0.2.0`. Release date: 2026-08-24.
 
 Accretion v0.2.0 extends the immutable v0.1 static control plane with opt-in,
 deterministically governed dynamic orchestration. Dynamic features remain
@@ -50,7 +50,7 @@ the frozen metrics.
 - Claude runs use safe mode to exclude ambient hooks/plugins and honor an
   explicit typed model selection; the release calibration records `sonnet`.
 
-## Install after release
+## Install
 
 ```bash
 git clone --branch v0.2.0 https://github.com/santapong/Accretion.git
@@ -68,11 +68,14 @@ deterministic fake runtime. See the [frontend guide](../../guides/frontend.md),
 
 ## Evidence and limitations
 
-The [release audit](audit.md) identifies the exact candidate,
-checks, tool versions, provider calibration, browser evidence, and current
-GO/NO-GO decision. Do not use the install command above until that audit records
-GO and the tag exists. The v0.1 tag remains immutable and reproducible through its
-[baseline record](../v0.1/baseline.md).
+The [release audit](audit.md) identifies the exact candidate, checks, tool
+versions, provider calibration, protected promotion, and release decision. The
+maintainer authorized this tag with one documented exception: the supported
+browser-control surface exposed no connected browser, so no rendered route,
+responsive, keyboard, focus, or automated accessibility PASS is claimed. That
+post-release validation is tracked in
+[#52](https://github.com/santapong/Accretion/issues/52). The v0.1 tag remains
+immutable and reproducible through its [baseline record](../v0.1/baseline.md).
 
 v0.2 does not include learned routing, self-modifying policy, automatic
 experience promotion, unrestricted production deployment, or the v0.3

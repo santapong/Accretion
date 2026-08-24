@@ -1,7 +1,8 @@
 # v0.3 prioritized backlog
 
-Status: post-release planning handoff only. No v0.3 feature is included in the
-v0.2.0 candidate, and implementation must not begin before v0.2.0 is released.
+Status: post-v0.2 planning handoff only. No v0.3 feature is included in
+v0.2.0; implementation begins from `develop` only after the v0.2.0 tag is
+published.
 
 The normative contract remains [Accretion SDD v0.3](../../sdd/Accretion_SDD_v0.3.md).
 This ledger orders its existing milestones without changing acceptance criteria
