@@ -2,19 +2,18 @@
 
 > Audit date: 2026-08-24 (Asia/Bangkok)
 >
-> Candidate code: `feature/v02-release-closure` at
-> `bbec630cd0a24c66ea30de55351ae5eff3b6e2b8`
+> Candidate code: `fix/v02-release-blockers` at
+> `00220f7713943286b24535549b08ccbeb309637a`
 >
 > Decision: **NO-GO for release — integration into `develop` is allowed, but do
 > not promote to `main` or create `v0.2.0` yet.**
 
 The v0.2 implementation and deterministic research claims are complete. The
 automated code, database, generated-contract, frontend, dependency, and frozen
-research checks pass. Promotion remains blocked because the selected release
-policy also requires signed-in Claude completion, balanced live calibration,
-browser/accessibility evidence, and a one-time repair of the unrelated
-`main`/`develop` histories. Those items did not pass or could not be executed in
-the current environment.
+research and signed-in provider checks pass. Promotion remains blocked because
+the selected release policy also requires browser/accessibility evidence and a
+one-time repair of the unrelated `main`/`develop` histories. Neither operation
+is available through the current browser or repository administration surfaces.
 
 <img src="assets/v02-release-gate.svg" alt="v0.2 release evidence flowing from the immutable v0.1 control through P5 dynamic, P6 search, P7 transfer, and the full clean-checkout gate before promotion to main" width="100%" />
 
@@ -28,8 +27,8 @@ Package metadata uses `0.2.0` to identify the candidate, but the immutable
 
 | Item | Audited value |
 |---|---|
-| Candidate commit | `bbec630cd0a24c66ea30de55351ae5eff3b6e2b8` |
-| Candidate base | `origin/develop@4f249f4a94446ecad8c314224b23349ec2a6a8c7` |
+| Candidate commit | `00220f7713943286b24535549b08ccbeb309637a` |
+| Candidate base | `origin/develop@b7eb6b19280e2a8c29c0d80c27ad2c32f688de86` |
 | Stable branch before reconciliation | `origin/main@05ccc38703f3bdc685f324b895c4cd3e2eb1112a` |
 | v0.1 tag object | `3280e117aadf9ee5f431804dd92bffd2fc80229f` |
 | v0.1 peeled release commit | `6324c8fab1776f0bcc1535f6d6c44fe95588f0e2` |
@@ -60,10 +59,10 @@ rewritten during this work.
 | Open critical issue inventory | PASS | Authenticated GitHub searches found no open critical issue and no open Dependabot pull request. |
 | v0.1 baseline integrity | PASS | The annotated tag object and peeled release commit match the frozen baseline record. |
 | Codex signed-in runtime | PASS | The live test completed two independent Codex threads on one App Server. |
-| Claude signed-in runtime | **BLOCKED** | Authentication and version checks passed, but a minimal prompt produced no terminal response in a separate 20-second probe. The full live suite did not complete and was stopped after its mixed-provider case stalled. |
-| Balanced ACR-ARCH live sample | **NOT RUN / BLOCKING** | The 10-artifact Codex/Claude sample was not started after the prerequisite Claude prompt failed to complete. |
+| Claude signed-in runtime | PASS | The adapter runs without ambient hooks/plugins, honors the typed `sonnet` model selection, and emitted normalized start, progress, and terminal events. All 3/3 live-runtime cases passed in 20.76 seconds, including mixed-provider isolation. |
+| Balanced ACR-ARCH live sample | PASS | 10/10 exact artifacts passed deterministic verification: five Codex and five Claude, two tasks per category. The redacted report SHA-256 is `f378db0cd06fc1e95cfe5527496ea98e12c216a9ebb2d1d59bebdb389c2fe76c`. |
 | Browser smoke and accessibility | **NOT RUN / BLOCKING** | The supported in-app browser runtime exposed no controllable browser instance. No visual, keyboard, or accessibility PASS is claimed. |
-| Branch-ancestry reconciliation | **BLOCKED** | Reconciliation [PR #46](https://github.com/santapong/Accretion/pull/46) is clean and its CI passed, but branch rules reject merge commits while the available credential cannot make the required one-time settings change. |
+| Branch-ancestry reconciliation | **BLOCKED** | Reconciliation [PR #46](https://github.com/santapong/Accretion/pull/46) was refreshed to the exact `develop` tree and CI run 143 passed. GitHub still rejects the required merge because merge commits are disabled and linear history is enforced; the available administrative token cannot edit those settings. |
 
 ## Frozen research evidence
 
@@ -87,19 +86,18 @@ overall PASS.
 
 ## Promotion blockers
 
-All four items below are release-blocking under the selected full gate:
+Both items below are release-blocking under the selected full gate:
 
-1. Restore a responsive signed-in Claude session and rerun all three live-runtime
-   tests to completion.
-2. Run the balanced 10-artifact ACR-ARCH live calibration with five independently
-   verified artifacts per provider.
-3. Connect a supported browser instance and pass route smoke, responsive layout,
+1. Connect a supported browser instance and pass route smoke, responsive layout,
    keyboard operation, visible focus, and automated accessibility checks for all
    eleven routes.
-4. Temporarily allow the two-parent history-reconciliation merge and disable the
+2. Temporarily allow the two-parent history-reconciliation merge and disable the
    linear-history restriction, merge PR #46, then restore the protections. The
-   reconciliation commit `1ad3bce048cfb81362318f3747595f55a5780c81` has the
-   exact `origin/develop` tree and introduces no content change.
+   refreshed reconciliation commit
+   `f6c4d711c9bee200f6d33fedfadb4dca50850c9e` has the exact audited `develop`
+   tree and introduces no content change. The locally verified two-parent commit
+   `d95efbfef717e29f4822b4f922f73a77607185e4` also has that exact tree, but a
+   non-forced update was correctly rejected by the active linear-history rule.
 
 Issue [#45](https://github.com/santapong/Accretion/issues/45) tracks the ancestry
 repair. Issue [#47](https://github.com/santapong/Accretion/issues/47) holds only
@@ -140,9 +138,10 @@ npm run api:generate
 npm run check
 npm run test
 npm run build
-ACCRETION_LIVE_PROVIDERS=1 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
+ACCRETION_LIVE_PROVIDERS=1 ACCRETION_CLAUDE_LIVE_MODEL=sonnet \
+  PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
   uv run --no-sync pytest -p pytest_asyncio.plugin -m live tests/test_live_runtimes.py
-ACCRETION_LIVE_PROVIDERS=1 \
+ACCRETION_LIVE_PROVIDERS=1 ACCRETION_CLAUDE_LIVE_MODEL=sonnet \
   uv run --no-sync python scripts/run_acr_arch_live_sample.py \
     --output artifacts/release/v0.2.0/acr-arch-live-sample.json
 ```

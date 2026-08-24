@@ -15,14 +15,19 @@ protocol fixtures pass.
 
 Accretion checks `codex login status` and `claude auth status`; it never reads or
 copies provider credentials. Codex uses stable App Server JSONL over stdio. Claude
-uses print mode with structured stream JSON.
+uses print mode with structured stream JSON. Claude subprocesses run in safe mode
+so user hooks, plugins, and project customization cannot silently change the
+provider protocol; Accretion's explicit MCP configuration remains authoritative.
+`SessionConfig.model` is passed through when the caller pins a compatible model.
 
 ## Local acceptance
 
 1. Start PostgreSQL and apply migrations.
 2. Confirm both CLIs are signed in.
 3. Run the default fake-runtime suite.
-4. Set `ACCRETION_LIVE_PROVIDERS=1` and run tests marked `live`.
+4. Set `ACCRETION_LIVE_PROVIDERS=1` and run tests marked `live`. To pin the
+   calibration model, also set `ACCRETION_CLAUDE_LIVE_MODEL`, for example
+   `ACCRETION_CLAUDE_LIVE_MODEL=sonnet`.
 5. Confirm two Codex threads and one Claude run produce normalized events.
 6. Interrupt a disposable run and verify it becomes resumable or explicitly
    requires operator reconciliation.

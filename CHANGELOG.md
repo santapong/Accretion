@@ -72,6 +72,9 @@ All notable changes to Accretion are documented in this file.
   deployments retain the original fail-closed reservation behavior.
 - Bumped every public package and runtime version marker to `0.2.0` and aligned
   release-facing documentation with the audited eleven-route frontend.
+- Made Claude execution independent of user hooks and plugins through safe mode,
+  honored the typed session model override, and recorded the selected live
+  calibration model alongside provider versions.
 
 ### Security
 
