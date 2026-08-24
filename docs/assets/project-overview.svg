@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1600" height="820" viewBox="0 0 1600 820" role="img" aria-labelledby="title description">
   <title id="title">Accretion project overview and release status</title>
-  <desc id="description">Accretion is a local control plane for AI coding runtimes. An operator declares bounded work, deterministic policy plans and governs it, Codex Claude or a fake runtime performs it in isolated workspaces, and independent verifiers decide acceptance. Version 0.1.0 is stable. Develop contains completed opt-in P5 dynamic workflows, P6 candidate search, and P7 verified experience. The remaining v0.2 step is a clean-checkout release audit before promotion to main and tagging.</desc>
+  <desc id="description">Accretion is a local control plane for AI coding runtimes. An operator declares bounded work, deterministic policy plans and governs it, Codex Claude or a fake runtime performs it in isolated workspaces, and independent verifiers decide acceptance. Version 0.2.0 is a release candidate with opt-in dynamic workflows, bounded candidate search, verified experience, and four frozen research suites. Version 0.1.0 remains the immutable current release and static control, while v0.3 integration work is planned but not implemented.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07100b"/><stop offset=".58" stop-color="#0b1710"/><stop offset="1" stop-color="#17130d"/></linearGradient>
     <linearGradient id="greenCard" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#153522"/><stop offset="1" stop-color="#0d2116"/></linearGradient>
@@ -53,23 +53,23 @@
   <text x="800" y="498" class="flow-label">CURRENT RELEASE POSITION</text>
   <g filter="url(#shadow)">
     <rect x="64" y="530" width="420" height="188" rx="20" fill="#102218" stroke="#3f8a58" stroke-width="2"/>
-    <circle cx="98" cy="566" r="11" fill="#75db91"/><text x="122" y="573" class="status-title">Stable · v0.1.0</text>
-    <text x="88" y="612" class="status-copy">P0–P4 local control plane, static workflows,</text><text x="88" y="635" class="status-copy">governance, operator UI, and ACR-ARCH.</text>
-    <text x="88" y="683" class="small">Evaluate: git clone --branch v0.1.0 …</text>
+    <circle cx="98" cy="566" r="11" fill="#75db91"/><text x="122" y="573" class="status-title">Control · v0.1.0</text>
+    <text x="88" y="612" class="status-copy">Immutable static workflows, governance,</text><text x="88" y="635" class="status-copy">runtime evidence, operator UI, and ACR-ARCH.</text>
+    <text x="88" y="683" class="small">Reproduce the frozen static baseline</text>
   </g>
   <path d="M492 624H534" stroke="#75db91" stroke-width="4"/><path d="M534 614L548 624 534 634Z" fill="#75db91"/>
   <g filter="url(#shadow)">
     <rect x="548" y="530" width="504" height="188" rx="20" fill="#14251a" stroke="#4c9b65" stroke-width="2"/>
-    <circle cx="582" cy="566" r="11" fill="#75db91"/><text x="606" y="573" class="status-title">Develop · P5 + P6 + P7 implemented</text>
-    <text x="572" y="612" class="status-copy">Dynamic workflows, bounded candidate search,</text><text x="572" y="635" class="status-copy">verified experience, and complete operator surfaces.</text>
-    <text x="572" y="683" class="small">Build next release: git switch develop</text>
+    <circle cx="582" cy="566" r="11" fill="#f1b55e"/><text x="606" y="573" class="status-title">Candidate · v0.2.0</text>
+    <text x="572" y="612" class="status-copy">Validated dynamic workflows, bounded search,</text><text x="572" y="635" class="status-copy">verified experience, and eleven operator routes.</text>
+    <text x="572" y="683" class="small">Promotion waits for every audit gate to pass</text>
   </g>
   <path d="M1060 624H1102" stroke="#f1b55e" stroke-width="4"/><path d="M1102 614L1116 624 1102 634Z" fill="#f1b55e"/>
   <g filter="url(#shadow)">
     <rect x="1116" y="530" width="420" height="188" rx="20" fill="#261c10" stroke="#9b7135" stroke-width="2"/>
-    <circle cx="1150" cy="566" r="11" fill="#f1b55e"/><text x="1174" y="573" class="status-title">Next · v0.2 release audit</text>
-    <text x="1140" y="612" class="status-copy">Reproduce P5–P7 evidence from a clean checkout,</text><text x="1140" y="635" class="status-copy">then promote develop to main and create the tag.</text>
-    <text x="1140" y="683" class="small">No v0.2 tag exists yet</text>
+    <circle cx="1150" cy="566" r="11" fill="#f1b55e"/><text x="1174" y="573" class="status-title">Next · v0.3 backlog</text>
+    <text x="1140" y="612" class="status-copy">Identity, connections, remote MCP, plugins,</text><text x="1140" y="635" class="status-copy">token broker, and admin/operator integration.</text>
+    <text x="1140" y="683" class="small">Planned only · no v0.3 feature shipped</text>
   </g>
   <text x="800" y="776" class="subtitle" text-anchor="middle">Start with the README · Operate through the frontend guide · Verify against the acceptance reports</text>
 </svg>

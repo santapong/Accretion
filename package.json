@@ -1,7 +1,7 @@
 {
   "name": "accretion",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "workspaces": ["apps/*"],
   "devDependencies": {
     "vite": "^8.2.1"

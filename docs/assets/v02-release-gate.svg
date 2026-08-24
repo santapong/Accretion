@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 480" role="img" aria-labelledby="title description">
+  <title id="title">Accretion v0.2 release evidence flow</title>
+  <desc id="description">The immutable v0.1 baseline feeds inherited safety and static fallback checks. P5 dynamic workflow uplift, P6 quality versus compute, and P7 experience transfer gates join deterministic tests, database migrations, security, live providers, and browser accessibility. Only a fully passing audited commit may be promoted to main and tagged v0.2.0.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07131b"/><stop offset="1" stop-color="#142317"/></linearGradient>
+    <style>text{font-family:Arial,Helvetica,sans-serif}.h{font-size:25px;font-weight:700;fill:#f4f8f5}.t{font-size:15px;font-weight:700;fill:#e6f6eb}.c{font-size:13px;fill:#b5c8bd}.b{fill:#11261d;stroke:#467b58;stroke-width:2}.a{stroke:#77df99;stroke-width:3;fill:none;marker-end:url(#m)}.p{font-size:14px;font-weight:700;fill:#07130b}</style>
+    <marker id="m" markerWidth="9" markerHeight="9" refX="8" refY="4.5" orient="auto"><path d="M0 0L9 4.5L0 9Z" fill="#77df99"/></marker>
+  </defs>
+  <rect width="1040" height="480" rx="26" fill="url(#bg)"/><text x="45" y="52" class="h">v0.2.0 · evidence before promotion</text>
+  <g transform="translate(45 88)"><rect class="b" width="190" height="120" rx="16"/><text x="18" y="34" class="t">v0.1 immutable control</text><text x="18" y="64" class="c">tag + release commit</text><text x="18" y="87" class="c">safety invariants</text><text x="18" y="108" class="c">static fallback</text></g>
+  <g transform="translate(285 88)"><rect class="b" width="210" height="120" rx="16"/><text x="18" y="34" class="t">P5 dynamic gate</text><text x="18" y="64" class="c">12 tasks · 24 traces</text><text x="18" y="87" class="c">uplift + non-inferiority</text><text x="18" y="108" class="c">invalid proposal fallback</text></g>
+  <g transform="translate(545 88)"><rect class="b" width="190" height="120" rx="16"/><text x="18" y="34" class="t">P6 search gate</text><text x="18" y="64" class="c">N = 1 · 2 · 4</text><text x="18" y="87" class="c">quality versus compute</text><text x="18" y="108" class="c">isolated promotion</text></g>
+  <g transform="translate(785 88)"><rect class="b" width="210" height="120" rx="16"/><text x="18" y="34" class="t">P7 transfer gate</text><text x="18" y="64" class="c">20 tasks · 80 traces</text><text x="18" y="87" class="c">negative transfer</text><text x="18" y="108" class="c">stale rejection + uplift</text></g>
+  <path class="a" d="M140 225V265H500"/><path class="a" d="M390 225V265H500"/><path class="a" d="M640 225V265H540"/><path class="a" d="M890 225V265H540"/>
+  <g transform="translate(330 275)"><rect class="b" width="380" height="112" rx="18"/><text x="24" y="35" class="t">Clean-checkout full gate</text><text x="24" y="65" class="c">lint · types · PostgreSQL · OpenAPI · tests · build</text><text x="24" y="88" class="c">dependency/secret scan · Codex/Claude · browser/a11y</text></g>
+  <path class="a" d="M520 393V420H802"/><g transform="translate(810 400)"><rect width="185" height="44" rx="22" fill="#77df99"/><text x="92" y="23" text-anchor="middle" dominant-baseline="central" class="p">main · tag v0.2.0</text></g>
+</svg>

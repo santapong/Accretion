@@ -29,6 +29,7 @@ import type {
   RuntimeHealth,
   CandidateScore,
   CandidateTrajectory,
+  DynamicWorkflowBenchmarkSummary,
   SearchBenchmarkSummary,
   SearchCreate,
   SearchRecord,
@@ -227,6 +228,13 @@ export const api = {
   runSearchBenchmark: () =>
     postJson<SearchBenchmarkSummary>(
       "/api/v2/benchmarks/search/run",
+      { execution_source: "REPLAY" },
+    ),
+  dynamicBenchmark: () =>
+    getJson<DynamicWorkflowBenchmarkSummary>("/api/v2/benchmarks/dynamic"),
+  runDynamicBenchmark: () =>
+    postJson<DynamicWorkflowBenchmarkSummary>(
+      "/api/v2/benchmarks/dynamic/run",
       { execution_source: "REPLAY" },
     ),
   experienceBenchmark: () =>

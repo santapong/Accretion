@@ -7,6 +7,9 @@ of this report.
 > and P7 frontend surfaces documented in the [frontend guide](FRONTEND_GUIDE.md);
 > the historical counts here are intentionally unchanged.
 
+The later [P5 dynamic benchmark](P5_DYNAMIC_BENCHMARK.md) supplies the separate
+release-level `RQ-DYN` evidence that was not part of this milestone report.
+
 <img src="assets/p5-dynamic-workflow.svg" alt="P5 validated workflow proposal, activation, fallback, and revision lifecycle" width="100%" />
 
 ## Acceptance mapping

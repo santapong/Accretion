@@ -117,6 +117,7 @@ test("renders the v0.2 runtime dashboard and operator navigation", async () => {
   expect(screen.getByRole("link", { name: "Runtimes" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Capabilities" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "ACR-ARCH" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "P5 Dynamic" })).toBeInTheDocument();
   expect(screen.getByText("No runs yet. Create and profile a task.")).toBeInTheDocument();
 });
 
@@ -217,6 +218,54 @@ test("renders and reproduces the frozen P6 N=1/2/4 search curve", async () => {
   expect(screen.getByText(/p6-007 · Add a fail-closed API control/)).toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Reproduce N=1/2/4" }));
   expect(await screen.findByText(/Reproduced 12 held-out tasks/)).toBeInTheDocument();
+});
+
+test("renders and reproduces the frozen P5 dynamic workflow gate", async () => {
+  const report = {
+    schema_version: "2.0", benchmark_run_id: "dbr_fixture",
+    suite_version: "p5-dynamic-workflow-v1", configuration_version: "p5-release-gate-v1",
+    selector_version: "fragment-planner-v2", execution_source: "REPLAY",
+    task_count: 12, trace_count: 24, corpus_sha256: "a".repeat(64),
+    trace_sha256: "b".repeat(64), config_sha256: "c".repeat(64),
+    frozen_at: "2026-08-24T00:00:00Z",
+    gate: {
+      schema_version: "2.0", passed: true, research_classification: "POSITIVE",
+      benefit_passed: true, predictable_non_inferiority_passed: true,
+      success_rate_not_regressed: true, safety_invariants_passed: true,
+      static_fallback_operational: true, heterogeneous_uncertain_uplift: 0.16,
+      predictable_uplift: 0.005, thresholds: {},
+    },
+    treatments: [{
+      schema_version: "2.0", treatment: "DYNAMIC", task_count: 12,
+      successful_tasks: 12, success_rate: 1, mean_quality: 0.724,
+      mean_utility: 0.652, mean_turns: 9.5, mean_tool_calls: 18.3,
+      mean_latency_ms: 2400, invalid_proposal_rate: 0.083333,
+      replan_rate: 0.416667, human_intervention_rate: 0.083333,
+      mean_graph_nodes: 6.6, mean_graph_depth: 4.1, structural_variation_rate: 1,
+    }],
+    cohorts: [{
+      schema_version: "2.0", cohort: "HETEROGENEOUS", task_count: 4,
+      static_mean_utility: 0.45, dynamic_mean_utility: 0.61, utility_uplift: 0.16,
+      static_success_rate: 0.75, dynamic_success_rate: 1,
+    }],
+    tasks: [],
+  };
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url === "/api/v2/benchmarks/dynamic") return response(report);
+    if (url.endsWith("/api/v2/benchmarks/dynamic/run") && init?.method === "POST") {
+      return response(report);
+    }
+    return response([]);
+  });
+
+  renderApp("/benchmarks/dynamic");
+  expect(await screen.findByRole("heading", { name: "Dynamic workflow gate" })).toBeInTheDocument();
+  expect(await screen.findByText("POSITIVE")).toBeInTheDocument();
+  expect(screen.getByText("+0.160 utility")).toBeInTheDocument();
+  expect(screen.getByText(/Invalid proposals degrade safely/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Reproduce static vs dynamic" }));
+  expect(await screen.findByText(/Reproduced 24 traces; gate passed/)).toBeInTheDocument();
 });
 
 test("renders and reproduces the frozen P7 experience transfer gate", async () => {

@@ -9,8 +9,8 @@ implemented route map and React data model, use the
 
 ## 1. Choose a baseline
 
-- Evaluate the shipped release from `v0.1.0`.
-- Build the next release from the latest `develop`.
+- Evaluate the current release and frozen static control from `v0.1.0`.
+- Evaluate the v0.2 candidate or build the next release from the latest `develop`.
 - Do not base work on the historical `codex/v0.1-local-control-plane` prototype.
 
 ```bash
@@ -49,9 +49,9 @@ Claude sessions remain opt-in and are not required for local development.
 
 <img src="assets/operator-ui-map.svg" alt="Implemented Accretion operator frontend routes and their authoritative FastAPI snapshot, React Query, and resumable event flow" width="100%" />
 
-The UI is complete for the current P0–P7 `develop` scope. It renders API-backed
-evidence across ten routes; it does not own run state or acceptance. The final
-v0.2 clean-checkout audit remains separate release work.
+The UI is complete for the P0–P7 v0.2 candidate scope. It renders API-backed
+evidence across eleven routes; it does not own run state or acceptance. The
+v0.2 clean-checkout evidence is recorded in the release audit.
 
 ## 4. Run the deterministic showcase
 
@@ -80,7 +80,7 @@ curl http://localhost:8000/api/v1/runs/<run-id>/trace
 | Verification | `src/accretion/verifiers/` | fail-closed verifier tests |
 | Capability governance | `src/accretion/governance.py` | policy and side-effect-ledger tests |
 | Operator UI | `apps/ui/src/` | generated API contract + component tests + production build |
-| Benchmark | `src/accretion/benchmark.py`, `src/accretion/search_benchmark.py`, `src/accretion/experience_benchmark.py` + `evals/` | fixture hashes + deterministic replay metrics |
+| Benchmark | `src/accretion/*_benchmark.py` + `evals/` | fixture hashes + deterministic ACR-ARCH/P5/P6/P7 replay metrics |
 | Verified experience | `src/accretion/experience/` | compatibility, redaction, retrieval, replay, and PostgreSQL tests |
 
 ## 6. Preserve the authority boundary

@@ -583,6 +583,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/benchmarks/dynamic": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Dynamic Workflow Benchmark */
+        get: operations["get_dynamic_workflow_benchmark_api_v2_benchmarks_dynamic_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/benchmarks/dynamic/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Dynamic Workflow Benchmark */
+        post: operations["run_dynamic_workflow_benchmark_api_v2_benchmarks_dynamic_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v2/benchmarks/experience": {
         parameters: {
             query?: never;
@@ -1907,6 +1941,102 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /** DynamicBenchmarkGate */
+        DynamicBenchmarkGate: {
+            /** Benefit Passed */
+            benefit_passed: boolean;
+            /** Heterogeneous Uncertain Uplift */
+            heterogeneous_uncertain_uplift: number;
+            /** Passed */
+            passed: boolean;
+            /** Predictable Non Inferiority Passed */
+            predictable_non_inferiority_passed: boolean;
+            /** Predictable Uplift */
+            predictable_uplift: number;
+            /**
+             * Research Classification
+             * @enum {string}
+             */
+            research_classification: "POSITIVE" | "EXPERIMENTAL_NULL_OR_NEGATIVE";
+            /** Safety Invariants Passed */
+            safety_invariants_passed: boolean;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Static Fallback Operational */
+            static_fallback_operational: boolean;
+            /** Success Rate Not Regressed */
+            success_rate_not_regressed: boolean;
+            /** Thresholds */
+            thresholds: {
+                [key: string]: number;
+            };
+        };
+        /** DynamicBenchmarkTaskResult */
+        DynamicBenchmarkTaskResult: {
+            /** Architecture Regret By Treatment */
+            architecture_regret_by_treatment: {
+                [key: string]: number;
+            };
+            cohort: components["schemas"]["DynamicCohort"];
+            /** Dynamic Fallback Used */
+            dynamic_fallback_used: boolean;
+            /** Dynamic Invalid Proposal */
+            dynamic_invalid_proposal: boolean;
+            /** Dynamic Replan Count */
+            dynamic_replan_count: number;
+            /** Family */
+            family: string;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Success By Treatment */
+            success_by_treatment: {
+                [key: string]: boolean;
+            };
+            /** Task Id */
+            task_id: string;
+            task_type: components["schemas"]["TaskType"];
+            /** Title */
+            title: string;
+            /** Utility By Treatment */
+            utility_by_treatment: {
+                [key: string]: number;
+            };
+        };
+        /**
+         * DynamicCohort
+         * @enum {string}
+         */
+        DynamicCohort: "PREDICTABLE" | "HETEROGENEOUS" | "UNCERTAIN";
+        /** DynamicCohortComparison */
+        DynamicCohortComparison: {
+            cohort: components["schemas"]["DynamicCohort"];
+            /** Dynamic Mean Utility */
+            dynamic_mean_utility: number;
+            /** Dynamic Success Rate */
+            dynamic_success_rate: number;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Static Mean Utility */
+            static_mean_utility: number;
+            /** Static Success Rate */
+            static_success_rate: number;
+            /** Task Count */
+            task_count: number;
+            /** Utility Uplift */
+            utility_uplift: number;
+        };
         /** DynamicLoopSpec */
         DynamicLoopSpec: {
             /** Max Iterations */
@@ -1917,6 +2047,94 @@ export interface components {
              * @constant
              */
             schema_version: "2.0";
+        };
+        /**
+         * DynamicTreatment
+         * @enum {string}
+         */
+        DynamicTreatment: "STATIC" | "DYNAMIC";
+        /** DynamicTreatmentSummary */
+        DynamicTreatmentSummary: {
+            /** Human Intervention Rate */
+            human_intervention_rate: number;
+            /** Invalid Proposal Rate */
+            invalid_proposal_rate: number;
+            /** Mean Graph Depth */
+            mean_graph_depth: number;
+            /** Mean Graph Nodes */
+            mean_graph_nodes: number;
+            /** Mean Latency Ms */
+            mean_latency_ms: number;
+            /** Mean Quality */
+            mean_quality: number;
+            /** Mean Tool Calls */
+            mean_tool_calls: number;
+            /** Mean Turns */
+            mean_turns: number;
+            /** Mean Utility */
+            mean_utility: number;
+            /** Replan Rate */
+            replan_rate: number;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Structural Variation Rate */
+            structural_variation_rate: number;
+            /** Success Rate */
+            success_rate: number;
+            /** Successful Tasks */
+            successful_tasks: number;
+            /** Task Count */
+            task_count: number;
+            treatment: components["schemas"]["DynamicTreatment"];
+        };
+        /** DynamicWorkflowBenchmarkSummary */
+        DynamicWorkflowBenchmarkSummary: {
+            /** Benchmark Run Id */
+            benchmark_run_id: string;
+            /** Cohorts */
+            cohorts: components["schemas"]["DynamicCohortComparison"][];
+            /** Config Sha256 */
+            config_sha256: string;
+            /** Configuration Version */
+            configuration_version: string;
+            /** Corpus Sha256 */
+            corpus_sha256: string;
+            /**
+             * Execution Source
+             * @default REPLAY
+             * @constant
+             */
+            execution_source: "REPLAY";
+            /**
+             * Frozen At
+             * Format: date-time
+             */
+            frozen_at: string;
+            gate: components["schemas"]["DynamicBenchmarkGate"];
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Selector Version */
+            selector_version: string;
+            /** Suite Version */
+            suite_version: string;
+            /** Task Count */
+            task_count: number;
+            /** Tasks */
+            tasks: components["schemas"]["DynamicBenchmarkTaskResult"][];
+            /** Trace Count */
+            trace_count: number;
+            /** Trace Sha256 */
+            trace_sha256: string;
+            /** Treatments */
+            treatments: components["schemas"]["DynamicTreatmentSummary"][];
         };
         /** DynamicWorkflowEdgeSpec */
         DynamicWorkflowEdgeSpec: {
@@ -5575,6 +5793,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VerificationResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_dynamic_workflow_benchmark_api_v2_benchmarks_dynamic_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DynamicWorkflowBenchmarkSummary"];
+                };
+            };
+        };
+    };
+    run_dynamic_workflow_benchmark_api_v2_benchmarks_dynamic_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BenchmarkRunCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DynamicWorkflowBenchmarkSummary"];
                 };
             };
             /** @description Validation Error */
