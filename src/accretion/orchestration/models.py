@@ -386,6 +386,11 @@ class CandidateStatus(StrEnum):
     INTERRUPTED = "INTERRUPTED"
 
 
+class CandidateSourceKind(StrEnum):
+    FRESH = "FRESH"
+    REPLAY = "REPLAY"
+
+
 class SearchBudgetEnvelope(StrictModel):
     schema_version: Literal["2.0"] = "2.0"
     wall_time_seconds: int = Field(gt=0, le=7_200)
@@ -414,6 +419,8 @@ class SearchPlan(StrictModel):
     per_branch_budget: SearchBudgetEnvelope
     total_budget: SearchBudgetEnvelope
     candidate_directives: list[str] = Field(default_factory=list, max_length=4)
+    replay_seed_match_ids: list[str] = Field(default_factory=list, max_length=3)
+    negative_guidance_match_ids: list[str] = Field(default_factory=list, max_length=3)
     verifier_policy_ref: str
     router_policy_version: str = "performance-router-v2"
     stop_policy: SearchStopPolicy = Field(default_factory=SearchStopPolicy)
@@ -435,6 +442,19 @@ class SearchPlan(StrictModel):
                 raise ValueError("hypothesis search requires one directive per branch")
         elif self.candidate_directives:
             raise ValueError("candidate directives are allowed only for hypothesis search")
+        if self.mode is SearchMode.REPLAY_BRANCH:
+            if not self.replay_seed_match_ids:
+                raise ValueError("replay search requires at least one positive seed")
+            if self.branch_count != 1 + len(self.replay_seed_match_ids):
+                raise ValueError("replay branch count must include one fresh control")
+            if len(set(self.replay_seed_match_ids)) != len(self.replay_seed_match_ids):
+                raise ValueError("replay seed matches must be unique")
+            if len(set(self.negative_guidance_match_ids)) != len(
+                self.negative_guidance_match_ids
+            ):
+                raise ValueError("negative guidance matches must be unique")
+        elif self.replay_seed_match_ids or self.negative_guidance_match_ids:
+            raise ValueError("experience match fields are allowed only for replay search")
         return self
 
 
@@ -470,6 +490,13 @@ class CandidateTrajectory(StrictModel):
     runtime_model: str
     runtime_version: str
     reviewer_provider: Provider | None = None
+    source_kind: CandidateSourceKind = CandidateSourceKind.FRESH
+    replay_seed_id: str | None = None
+    source_experience_id: str | None = None
+    source_match_id: str | None = None
+    trajectory_segment_refs: list[str] = Field(default_factory=list, max_length=64)
+    seed_revalidation_status: str | None = None
+    seed_revalidation_reasons: list[str] = Field(default_factory=list)
     session_id: str | None = None
     workspace_lease_id: str | None = None
     workspace_path: str | None = None
@@ -484,6 +511,23 @@ class CandidateTrajectory(StrictModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     started_at: datetime | None = None
     completed_at: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_replay_source(self) -> CandidateTrajectory:
+        replay_refs = (
+            self.replay_seed_id,
+            self.source_experience_id,
+            self.source_match_id,
+        )
+        if self.source_kind is CandidateSourceKind.REPLAY and any(
+            value is None for value in replay_refs
+        ):
+            raise ValueError("replay candidates require seed, experience, and match references")
+        if self.source_kind is CandidateSourceKind.FRESH and any(
+            value is not None for value in replay_refs
+        ):
+            raise ValueError("fresh candidates cannot reference replay evidence")
+        return self
 
 
 class CandidateScore(StrictModel):

@@ -1402,6 +1402,11 @@ export interface components {
             verifier_status: string;
         };
         /**
+         * CandidateSourceKind
+         * @enum {string}
+         */
+        CandidateSourceKind: "FRESH" | "REPLAY";
+        /**
          * CandidateStatus
          * @enum {string}
          */
@@ -1430,6 +1435,8 @@ export interface components {
             /** Patch Sha256 */
             patch_sha256?: string | null;
             provider: components["schemas"]["Provider"];
+            /** Replay Seed Id */
+            replay_seed_id?: string | null;
             reviewer_provider?: components["schemas"]["Provider"] | null;
             /** Run Id */
             run_id: string;
@@ -1447,8 +1454,18 @@ export interface components {
             schema_version: "2.0";
             /** Search Id */
             search_id: string;
+            /** Seed Revalidation Reasons */
+            seed_revalidation_reasons?: string[];
+            /** Seed Revalidation Status */
+            seed_revalidation_status?: string | null;
             /** Session Id */
             session_id?: string | null;
+            /** Source Experience Id */
+            source_experience_id?: string | null;
+            /** @default FRESH */
+            source_kind: components["schemas"]["CandidateSourceKind"];
+            /** Source Match Id */
+            source_match_id?: string | null;
             /** Started At */
             started_at?: string | null;
             /** @default PENDING */
@@ -1457,6 +1474,8 @@ export interface components {
             terminal_reason?: string | null;
             /** Trajectory Ref */
             trajectory_ref?: string | null;
+            /** Trajectory Segment Refs */
+            trajectory_segment_refs?: string[];
             /** Verifier Result Refs */
             verifier_result_refs?: string[];
             /** Workspace Lease Id */
@@ -1779,7 +1798,7 @@ export interface components {
          * EventType
          * @enum {string}
          */
-        EventType: "RUN_CREATED" | "WORKFLOW_PROPOSAL_CREATED" | "WORKFLOW_PROPOSAL_REPAIRED" | "GRAPH_VALIDATION_STARTED" | "GRAPH_VALIDATION_RESULT" | "GRAPH_REVISION_ACTIVATED" | "REPLAN_REQUESTED" | "REPLAN_STARTED" | "REPLAN_COMPLETED" | "RUNTIME_DECISION" | "SEARCH_STARTED" | "SEARCH_CANDIDATE_STARTED" | "SEARCH_CANDIDATE_COMPLETED" | "SEARCH_CANDIDATE_PRUNED" | "SEARCH_SELECTION" | "SEARCH_PROMOTION_STARTED" | "SEARCH_PROMOTION_COMPLETED" | "SEARCH_STOPPED" | "RUN_STARTED" | "RUN_PROGRESS" | "NODE_ENTERED" | "NODE_EXITED" | "TOOL_REQUESTED" | "TOOL_STARTED" | "TOOL_COMPLETED" | "TOOL_FAILED" | "FILE_CHANGED" | "DIFF_AVAILABLE" | "APPROVAL_REQUIRED" | "APPROVAL_RESOLVED" | "ARTIFACT_CREATED" | "CHECKPOINT_SAVED" | "RUNTIME_CALL_STARTED" | "RUNTIME_CALL_COMPLETED" | "RUNTIME_CALL_FAILED" | "RUNTIME_CALL_CANCELLED" | "LOOP_ITERATION_STARTED" | "LOOP_ITERATION_COMPLETED" | "VERIFICATION_STARTED" | "VERIFICATION_RESULT" | "RUN_PAUSED" | "RUN_RESUMED" | "RUN_COMPLETED" | "RUN_FAILED" | "RUN_CANCELLED";
+        EventType: "RUN_CREATED" | "WORKFLOW_PROPOSAL_CREATED" | "WORKFLOW_PROPOSAL_REPAIRED" | "GRAPH_VALIDATION_STARTED" | "GRAPH_VALIDATION_RESULT" | "GRAPH_REVISION_ACTIVATED" | "REPLAN_REQUESTED" | "REPLAN_STARTED" | "REPLAN_COMPLETED" | "RUNTIME_DECISION" | "SEARCH_STARTED" | "SEARCH_CANDIDATE_STARTED" | "SEARCH_CANDIDATE_COMPLETED" | "SEARCH_CANDIDATE_PRUNED" | "SEARCH_SELECTION" | "SEARCH_PROMOTION_STARTED" | "SEARCH_PROMOTION_COMPLETED" | "SEARCH_STOPPED" | "EXPERIENCE_QUERY" | "EXPERIENCE_RETRIEVED" | "TRAJECTORY_REPLAY_STARTED" | "TRAJECTORY_REPLAY_REJECTED" | "RUN_STARTED" | "RUN_PROGRESS" | "NODE_ENTERED" | "NODE_EXITED" | "TOOL_REQUESTED" | "TOOL_STARTED" | "TOOL_COMPLETED" | "TOOL_FAILED" | "FILE_CHANGED" | "DIFF_AVAILABLE" | "APPROVAL_REQUIRED" | "APPROVAL_RESOLVED" | "ARTIFACT_CREATED" | "CHECKPOINT_SAVED" | "RUNTIME_CALL_STARTED" | "RUNTIME_CALL_COMPLETED" | "RUNTIME_CALL_FAILED" | "RUNTIME_CALL_CANCELLED" | "LOOP_ITERATION_STARTED" | "LOOP_ITERATION_COMPLETED" | "VERIFICATION_STARTED" | "VERIFICATION_RESULT" | "RUN_PAUSED" | "RUN_RESUMED" | "RUN_COMPLETED" | "RUN_FAILED" | "RUN_CANCELLED";
         /**
          * ExecutionMode
          * @enum {string}
@@ -3089,9 +3108,13 @@ export interface components {
             /** Max Parallel */
             max_parallel: number;
             mode: components["schemas"]["SearchMode"];
+            /** Negative Guidance Match Ids */
+            negative_guidance_match_ids?: string[];
             /** Parent Node Id */
             parent_node_id: string;
             per_branch_budget: components["schemas"]["SearchBudgetEnvelope"];
+            /** Replay Seed Match Ids */
+            replay_seed_match_ids?: string[];
             /** Requested By */
             requested_by: string;
             /**

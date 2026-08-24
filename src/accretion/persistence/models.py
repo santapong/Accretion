@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from pgvector.sqlalchemy import VECTOR
 from sqlalchemy import (
     JSON,
     Boolean,
@@ -427,6 +428,161 @@ class ProjectVersionRow(Base):
     __table_args__ = (
         UniqueConstraint("project_id", "version", name="uq_project_versions_project_version"),
     )
+
+
+class ExperienceRow(Base):
+    __tablename__ = "experiences"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="RESTRICT"))
+    source_run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="RESTRICT"))
+    source_candidate_id: Mapped[str | None] = mapped_column(
+        ForeignKey("search_candidates.id", ondelete="RESTRICT"), nullable=True
+    )
+    source_key: Mapped[str] = mapped_column(String(96), unique=True)
+    repository_identity: Mapped[str] = mapped_column(String(64))
+    trust: Mapped[str] = mapped_column(String(16))
+    polarity: Mapped[str] = mapped_column(String(16))
+    retracted: Mapped[bool] = mapped_column(Boolean, default=False)
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_experiences_project_created", "project_id", "created_at"),
+        Index("ix_experiences_repository_trust", "repository_identity", "trust"),
+    )
+
+
+class TrajectorySegmentRow(Base):
+    __tablename__ = "trajectory_segments"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    experience_id: Mapped[str] = mapped_column(
+        ForeignKey("experiences.id", ondelete="CASCADE")
+    )
+    ordinal: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(32))
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("experience_id", "ordinal", name="uq_trajectory_segment_ordinal"),
+        Index("ix_trajectory_segments_experience", "experience_id", "ordinal"),
+    )
+
+
+class ExperienceEmbeddingRow(Base):
+    __tablename__ = "experience_embeddings"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    experience_id: Mapped[str] = mapped_column(
+        ForeignKey("experiences.id", ondelete="CASCADE"), unique=True
+    )
+    version: Mapped[str] = mapped_column(String(64))
+    input_digest: Mapped[str] = mapped_column(String(64))
+    embedding: Mapped[Any] = mapped_column(VECTOR(384))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ExperienceQueryRow(Base):
+    __tablename__ = "experience_queries"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+    repository_identity: Mapped[str] = mapped_column(String(64))
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    embedding: Mapped[Any] = mapped_column(VECTOR(384))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_experience_queries_task_created", "task_id", "created_at"),)
+
+
+class ExperienceMatchRow(Base):
+    __tablename__ = "experience_matches"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    query_id: Mapped[str] = mapped_column(
+        ForeignKey("experience_queries.id", ondelete="CASCADE")
+    )
+    experience_id: Mapped[str] = mapped_column(
+        ForeignKey("experiences.id", ondelete="RESTRICT")
+    )
+    rank: Mapped[int] = mapped_column(Integer)
+    disposition: Mapped[str] = mapped_column(String(16))
+    final_score: Mapped[float] = mapped_column(Float)
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("query_id", "experience_id", name="uq_experience_match_query_source"),
+        UniqueConstraint("query_id", "rank", name="uq_experience_match_query_rank"),
+        Index("ix_experience_matches_query_rank", "query_id", "rank"),
+    )
+
+
+class ExperienceSelectionRow(Base):
+    __tablename__ = "experience_selections"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+    query_id: Mapped[str] = mapped_column(
+        ForeignKey("experience_queries.id", ondelete="RESTRICT")
+    )
+    expected_context_bundle_id: Mapped[str] = mapped_column(
+        ForeignKey("context_bundles.id", ondelete="RESTRICT")
+    )
+    resulting_context_bundle_id: Mapped[str] = mapped_column(
+        ForeignKey("context_bundles.id", ondelete="RESTRICT")
+    )
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_experience_selections_task", "task_id", "created_at"),)
+
+
+class ExperienceModerationActionRow(Base):
+    __tablename__ = "experience_moderation_actions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    experience_id: Mapped[str] = mapped_column(
+        ForeignKey("experiences.id", ondelete="RESTRICT")
+    )
+    action: Mapped[str] = mapped_column(String(16))
+    expected_revision: Mapped[int] = mapped_column(Integer)
+    resulting_revision: Mapped[int] = mapped_column(Integer)
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "experience_id", "resulting_revision", name="uq_experience_moderation_revision"
+        ),
+        Index("ix_experience_moderation_experience", "experience_id", "created_at"),
+    )
+
+
+class TrajectoryReplaySeedRow(Base):
+    __tablename__ = "trajectory_replay_seeds"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    search_id: Mapped[str] = mapped_column(ForeignKey("search_plans.id", ondelete="CASCADE"))
+    candidate_id: Mapped[str] = mapped_column(
+        ForeignKey("search_candidates.id", ondelete="CASCADE"), unique=True
+    )
+    match_id: Mapped[str] = mapped_column(
+        ForeignKey("experience_matches.id", ondelete="RESTRICT")
+    )
+    experience_id: Mapped[str] = mapped_column(
+        ForeignKey("experiences.id", ondelete="RESTRICT")
+    )
+    validation_status: Mapped[str] = mapped_column(String(16))
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_trajectory_replay_seeds_search", "search_id", "created_at"),)
 
 
 class EvidenceRow(Base):

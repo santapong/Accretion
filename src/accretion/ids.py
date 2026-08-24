@@ -44,6 +44,14 @@ _PREFIXES = {
     "search_candidate": "scn",
     "candidate_score": "scr",
     "search_promotion": "spr",
+    "experience": "exp",
+    "trajectory_segment": "tgs",
+    "experience_embedding": "emb",
+    "experience_query": "exq",
+    "experience_match": "exm",
+    "experience_selection": "exs",
+    "moderation_action": "mod",
+    "trajectory_seed": "tsd",
 }
 
 
