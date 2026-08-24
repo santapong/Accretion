@@ -49,6 +49,9 @@ def positive_experience(*, experience_id: str | None = None) -> Experience:
         manifest_paths=["pyproject.toml"],
         policy_digest=digest("policy"),
         verifier_digest=digest("verifier"),
+        prompt_digest=digest("prompt"),
+        context_digest=digest("context"),
+        tool_profile_digest=digest("tools"),
         provider=Provider.FAKE,
         runtime_model="fake",
         runtime_version="test",
@@ -137,6 +140,9 @@ async def test_memory_store_keeps_experience_immutable_and_moderation_append_onl
         manifest_paths=experience.manifest_paths,
         policy_digest=experience.policy_digest,
         verifier_digest=experience.verifier_digest,
+        prompt_digest=experience.prompt_digest,
+        context_digest=experience.context_digest,
+        tool_profile_digest=experience.tool_profile_digest,
         embedding_input_digest=digest("query-input"),
     )
     await store.save_experience_query(query, embedding.vector)

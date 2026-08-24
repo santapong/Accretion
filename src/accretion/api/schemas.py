@@ -53,13 +53,40 @@ class RunCreate(BaseModel):
 class ProjectFeatureUpdate(BaseModel):
     dynamic_workflows: bool | None = None
     candidate_search: bool | None = None
+    experience_retrieval: bool | None = None
     expected_revision: int = Field(ge=1)
 
     @model_validator(mode="after")
     def require_feature(self) -> ProjectFeatureUpdate:
-        if self.dynamic_workflows is None and self.candidate_search is None:
+        if (
+            self.dynamic_workflows is None
+            and self.candidate_search is None
+            and self.experience_retrieval is None
+        ):
             raise ValueError("at least one feature setting is required")
         return self
+
+
+class ExperienceMaterializeCreate(BaseModel):
+    candidate_id: str | None = None
+
+
+class ExperienceQueryCreate(BaseModel):
+    task_id: str
+    include_failures: bool = True
+    top_k: int = Field(default=5, ge=1, le=10)
+    max_age_days: int | None = Field(default=None, ge=1, le=3650)
+
+
+class ExperienceSelectionCreate(BaseModel):
+    query_id: str
+    match_ids: list[str] = Field(min_length=1, max_length=3)
+    expected_context_bundle_id: str
+
+
+class ExperienceRetractCreate(BaseModel):
+    reason: str = Field(min_length=1, max_length=2_000)
+    expected_revision: int = Field(ge=1)
 
 
 class WorkflowProposeCreate(BaseModel):

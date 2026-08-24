@@ -143,6 +143,32 @@ _APPROVAL_DECISION_STATUS = {
 }
 
 
+def _ordered_context_history(contexts: Sequence[ContextBundle]) -> list[ContextBundle]:
+    """Order immutable context revisions by lineage, not timestamp coincidence."""
+
+    by_parent: dict[str | None, list[ContextBundle]] = {}
+    for context in contexts:
+        by_parent.setdefault(context.supersedes_context_bundle_id, []).append(context)
+    for children in by_parent.values():
+        children.sort(key=lambda item: (item.created_at, item.context_bundle_id))
+    ordered: list[ContextBundle] = []
+    visited: set[str] = set()
+
+    def visit(context: ContextBundle) -> None:
+        if context.context_bundle_id in visited:
+            return
+        visited.add(context.context_bundle_id)
+        ordered.append(context)
+        for child in by_parent.get(context.context_bundle_id, []):
+            visit(child)
+
+    for root in by_parent.get(None, []):
+        visit(root)
+    for context in sorted(contexts, key=lambda item: (item.created_at, item.context_bundle_id)):
+        visit(context)
+    return ordered
+
+
 class StateStore(Protocol):
     async def create_project(self, project: Project) -> Project: ...
     async def get_project(self, project_id: str) -> Project | None: ...
@@ -166,6 +192,9 @@ class StateStore(Protocol):
         decision: StrategyDecision,
     ) -> TaskPlanning: ...
     async def get_task_planning(self, task_id: str) -> TaskPlanning | None: ...
+    async def revise_context_with_experience(
+        self, selection: ExperienceSelection, context: ContextBundle
+    ) -> ExperienceSelection: ...
     async def append_strategy_override(
         self, override: StrategyOverride, decision: StrategyDecision | None
     ) -> None: ...
@@ -353,6 +382,9 @@ class StateStore(Protocol):
     async def get_experience_embedding(
         self, experience_id: str
     ) -> ExperienceEmbedding | None: ...
+    async def nearest_experience_embeddings(
+        self, repository_identity: str, vector: Sequence[float], *, limit: int
+    ) -> list[tuple[str, float]]: ...
     async def save_experience_query(
         self, query: ExperienceQuery, vector: Sequence[float]
     ) -> ExperienceQuery: ...
@@ -528,10 +560,39 @@ class MemoryStore:
             context_bundle=self.contexts[task.context_bundle_id],
             current_profile=current_profile,
             current_decision=current_decision,
+            context_history=_ordered_context_history(
+                [
+                    context
+                    for context in self.contexts.values()
+                    if context.task_ref == task_id
+                ]
+            ),
             profile_history=profiles,
             decision_history=decisions,
             override_history=self.overrides.get(task_id, []),
         )
+
+    async def revise_context_with_experience(
+        self, selection: ExperienceSelection, context: ContextBundle
+    ) -> ExperienceSelection:
+        async with self._lock:
+            task = self.tasks.get(selection.task_id)
+            if task is None:
+                raise KeyError(selection.task_id)
+            if await self.list_workflow_proposals(task_id=selection.task_id):
+                raise ValueError("experience selection is frozen after workflow proposal")
+            if task.context_bundle_id != selection.expected_context_bundle_id:
+                raise ValueError("context bundle revision conflict")
+            if context.context_bundle_id != selection.resulting_context_bundle_id:
+                raise ValueError("selection resulting context does not match context revision")
+            if context.task_ref != selection.task_id:
+                raise ValueError("context revision belongs to another task")
+            self.contexts[context.context_bundle_id] = context
+            self.tasks[selection.task_id] = task.model_copy(
+                update={"context_bundle_id": context.context_bundle_id}
+            )
+            self.experience_selections.setdefault(selection.task_id, []).append(selection)
+        return selection
 
     async def append_strategy_override(
         self, override: StrategyOverride, decision: StrategyDecision | None
@@ -1534,6 +1595,29 @@ class MemoryStore:
     ) -> ExperienceEmbedding | None:
         return self.experience_embeddings.get(experience_id)
 
+    async def nearest_experience_embeddings(
+        self, repository_identity: str, vector: Sequence[float], *, limit: int
+    ) -> list[tuple[str, float]]:
+        values = [float(value) for value in vector]
+        if len(values) != 384:
+            raise ValueError("experience query vector must contain 384 dimensions")
+        query_norm = sum(value * value for value in values) ** 0.5
+        ranked: list[tuple[str, float]] = []
+        for experience_id, embedding in self.experience_embeddings.items():
+            experience = self.experiences[experience_id]
+            if experience.repository_identity != repository_identity:
+                continue
+            source_norm = sum(value * value for value in embedding.vector) ** 0.5
+            denominator = query_norm * source_norm
+            similarity = (
+                sum(left * right for left, right in zip(values, embedding.vector, strict=True))
+                / denominator
+                if denominator
+                else 0.0
+            )
+            ranked.append((experience_id, 1 - similarity))
+        return sorted(ranked, key=lambda item: (item[1], item[0]))[:limit]
+
     async def save_experience_query(
         self, query: ExperienceQuery, vector: Sequence[float]
     ) -> ExperienceQuery:
@@ -1764,6 +1848,13 @@ class PostgresStore:
                 return None
             prompt = await session.get(PromptContractRow, task.prompt_contract_id)
             context = await session.get(ContextBundleRow, task.context_bundle_id)
+            context_rows = (
+                await session.scalars(
+                    select(ContextBundleRow)
+                    .where(ContextBundleRow.task_id == task_id)
+                    .order_by(ContextBundleRow.created_at, ContextBundleRow.id)
+                )
+            ).all()
             current_profile = await session.get(TaskProfileRow, task.current_profile_id)
             current_decision = await session.get(
                 StrategyDecisionRow, task.current_strategy_decision_id
@@ -1797,6 +1888,9 @@ class PostgresStore:
             context_bundle=ContextBundle.model_validate(context.bundle),
             current_profile=TaskProfile.model_validate(current_profile.profile),
             current_decision=StrategyDecision.model_validate(current_decision.decision),
+            context_history=_ordered_context_history(
+                [ContextBundle.model_validate(row.bundle) for row in context_rows]
+            ),
             profile_history=[TaskProfile.model_validate(row.profile) for row in profile_rows],
             decision_history=[
                 StrategyDecision.model_validate(row.decision) for row in decision_rows
@@ -1805,6 +1899,54 @@ class PostgresStore:
                 StrategyOverride.model_validate(row.override) for row in override_rows
             ],
         )
+
+    async def revise_context_with_experience(
+        self, selection: ExperienceSelection, context: ContextBundle
+    ) -> ExperienceSelection:
+        async with self.sessions.begin() as session:
+            task = await session.scalar(
+                select(TaskRow)
+                .where(TaskRow.id == selection.task_id)
+                .with_for_update()
+            )
+            if task is None:
+                raise KeyError(selection.task_id)
+            proposal = await session.scalar(
+                select(WorkflowProposalRow.id)
+                .where(WorkflowProposalRow.task_id == selection.task_id)
+                .limit(1)
+            )
+            if proposal is not None:
+                raise ValueError("experience selection is frozen after workflow proposal")
+            if task.context_bundle_id != selection.expected_context_bundle_id:
+                raise ValueError("context bundle revision conflict")
+            if context.context_bundle_id != selection.resulting_context_bundle_id:
+                raise ValueError("selection resulting context does not match context revision")
+            if context.task_ref != selection.task_id:
+                raise ValueError("context revision belongs to another task")
+            session.add(
+                ContextBundleRow(
+                    id=context.context_bundle_id,
+                    task_id=context.task_ref,
+                    version=context.version,
+                    bundle=context.model_dump(mode="json"),
+                    created_at=context.created_at,
+                )
+            )
+            await session.flush()
+            session.add(
+                ExperienceSelectionRow(
+                    id=selection.selection_id,
+                    task_id=selection.task_id,
+                    query_id=selection.query_id,
+                    expected_context_bundle_id=selection.expected_context_bundle_id,
+                    resulting_context_bundle_id=selection.resulting_context_bundle_id,
+                    record=selection.model_dump(mode="json"),
+                    created_at=selection.created_at,
+                )
+            )
+            task.context_bundle_id = context.context_bundle_id
+        return selection
 
     async def append_strategy_override(
         self, override: StrategyOverride, decision: StrategyDecision | None
@@ -3634,6 +3776,30 @@ class PostgresStore:
             vector=[float(value) for value in row.embedding],
             created_at=row.created_at,
         )
+
+    async def nearest_experience_embeddings(
+        self, repository_identity: str, vector: Sequence[float], *, limit: int
+    ) -> list[tuple[str, float]]:
+        values = [float(value) for value in vector]
+        if len(values) != 384:
+            raise ValueError("experience query vector must contain 384 dimensions")
+        distance = ExperienceEmbeddingRow.embedding.cosine_distance(values).label(
+            "cosine_distance"
+        )
+        async with self.sessions() as session:
+            rows = (
+                await session.execute(
+                    select(ExperienceEmbeddingRow.experience_id, distance)
+                    .join(
+                        ExperienceRow,
+                        ExperienceRow.id == ExperienceEmbeddingRow.experience_id,
+                    )
+                    .where(ExperienceRow.repository_identity == repository_identity)
+                    .order_by(distance, ExperienceEmbeddingRow.experience_id)
+                    .limit(limit)
+                )
+            ).all()
+        return [(str(experience_id), float(value)) for experience_id, value in rows]
 
     async def save_experience_query(
         self, query: ExperienceQuery, vector: Sequence[float]

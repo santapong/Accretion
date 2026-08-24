@@ -3,6 +3,7 @@
 from accretion.experience.models import (
     CompatibilityAssessment,
     Experience,
+    ExperienceDetail,
     ExperienceEmbedding,
     ExperienceMatch,
     ExperiencePolarity,
@@ -23,6 +24,7 @@ __all__ = [
     "CompatibilityAssessment",
     "Experience",
     "ExperienceEmbedding",
+    "ExperienceDetail",
     "ExperienceMatch",
     "ExperiencePolarity",
     "ExperienceQuery",
