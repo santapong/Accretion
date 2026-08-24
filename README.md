@@ -366,11 +366,11 @@ PostgreSQL integration tests use `ACCRETION_TEST_POSTGRES_URL`. Signed-in live
 provider tests are deliberately opt-in:
 
 ```bash
-ACCRETION_LIVE_PROVIDERS=1 \
+ACCRETION_LIVE_PROVIDERS=1 ACCRETION_CLAUDE_LIVE_MODEL=sonnet \
   PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
   uv run --no-sync pytest -p pytest_asyncio.plugin -m live
 
-ACCRETION_LIVE_PROVIDERS=1 \
+ACCRETION_LIVE_PROVIDERS=1 ACCRETION_CLAUDE_LIVE_MODEL=sonnet \
   uv run --no-sync python scripts/run_acr_arch_live_sample.py
 ```
 

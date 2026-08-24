@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import os
 import time
 from collections.abc import Sequence
 from datetime import UTC, datetime
@@ -66,6 +67,7 @@ class LiveSampleReport(StrictModel):
     started_at: datetime
     completed_at: datetime
     provider_versions: dict[str, str]
+    provider_models: dict[str, str]
     results: list[LiveSampleResult]
 
     @property
@@ -220,7 +222,8 @@ async def run_live_sample(output_path: Path) -> LiveSampleReport:
     started_at = datetime.now(UTC)
     assignments = select_live_sample(AcrArchRunner().tasks())
     codex = CodexRuntime()
-    claude = ClaudeRuntime()
+    claude_model = os.getenv("ACCRETION_CLAUDE_LIVE_MODEL") or None
+    claude = ClaudeRuntime(model=claude_model)
     codex_health, claude_health = await asyncio.gather(codex.health(), claude.health())
     for health in (codex_health, claude_health):
         if health.status is not RuntimeStatus.READY:
@@ -258,6 +261,10 @@ async def run_live_sample(output_path: Path) -> LiveSampleReport:
         started_at=started_at,
         completed_at=datetime.now(UTC),
         provider_versions=versions,
+        provider_models={
+            Provider.CODEX.value: "default",
+            Provider.CLAUDE.value: claude_model or "default",
+        },
         results=results,
     )
     output_path.parent.mkdir(parents=True, exist_ok=True)
