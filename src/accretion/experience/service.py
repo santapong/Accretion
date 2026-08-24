@@ -15,6 +15,7 @@ from accretion.contracts import (
     CapabilityExecutionStatus,
     ContextBundle,
     EventType,
+    Provider,
     RunState,
     Task,
     VerificationResult,
@@ -477,6 +478,92 @@ class ExperienceService:
         if await self.store.get_task(task_id) is None:
             raise KeyError(task_id)
         return await self.store.list_experience_selections(task_id)
+
+    async def selected_matches(self, task_id: str) -> list[ExperienceMatch]:
+        task = await self.store.get_task(task_id)
+        if task is None:
+            raise KeyError(task_id)
+        await self._require_enabled(task.envelope.project_id)
+        planning = await self.manager.get_task_planning(task_id)
+        query_id = planning.context_bundle.experience_query_id
+        if query_id is None:
+            return []
+        selected = set(planning.context_bundle.experience_match_refs)
+        return [
+            item
+            for item in await self.store.list_experience_matches(query_id)
+            if item.match_id in selected
+        ]
+
+    async def revalidate_match(
+        self,
+        task_id: str,
+        match_id: str,
+        *,
+        runtime_provider: Provider | None = None,
+    ) -> tuple[ExperienceMatch, Experience, CompatibilityAssessment]:
+        """Rebuild compatibility from current repository and authority state."""
+
+        task = await self.store.get_task(task_id)
+        if task is None:
+            raise KeyError(task_id)
+        await self._require_enabled(task.envelope.project_id)
+        project = await self.store.get_project(task.envelope.project_id)
+        if project is None:
+            raise KeyError(task.envelope.project_id)
+        planning = await self.manager.get_task_planning(task_id)
+        query_id = planning.context_bundle.experience_query_id
+        if query_id is None:
+            raise ExperienceConflictError("task has no selected experience query")
+        stored_query = await self.store.get_experience_query(query_id)
+        if stored_query is None:
+            raise ExperienceConflictError("selected experience query is unavailable")
+        match = next(
+            (
+                item
+                for item in await self.store.list_experience_matches(query_id)
+                if item.match_id == match_id
+            ),
+            None,
+        )
+        if match is None:
+            raise ExperienceConflictError("experience match is outside the selected query")
+        experience = await self.store.get_experience(match.experience_id)
+        if experience is None:
+            raise ExperienceConflictError("experience source is unavailable")
+        manifests = repository_manifests(project.repository_path)
+        verifier_ids = sorted(set(self.manager._verifier_ids(task)))
+        current_query = stored_query[0].model_copy(
+            update={
+                "repository_identity": await self.repository_identity(
+                    project.repository_path, project.project_id
+                ),
+                "source_commit": await self._git_output(
+                    project.repository_path, "rev-parse", "HEAD"
+                ),
+                "architecture_version": "2.0",
+                "manifest_digest": manifest_digest(project.repository_path, manifests),
+                "manifest_paths": manifests,
+                "policy_digest": self._policy_digest(task),
+                "verifier_digest": self._verifier_digest(task, verifier_ids),
+                "context_digest": self._context_shape_digest(planning.context_bundle),
+                "tool_profile_digest": self._tool_profile_digest(task),
+                "requested_skills": sorted(set(task.envelope.requested_skills)),
+                "allowed_capabilities": sorted(
+                    set(task.envelope.allowed_capabilities)
+                ),
+                "denied_capabilities": sorted(set(task.envelope.denied_capabilities)),
+                "verifier_ids": verifier_ids,
+                "runtime_provider": runtime_provider,
+            }
+        )
+        assessment = await self.assess(
+            current_query,
+            experience,
+            semantic_score=match.assessment.semantic_score,
+            repository=project.repository_path,
+        )
+        return match, experience, assessment
 
     async def assess(
         self,

@@ -219,6 +219,51 @@ test("renders and reproduces the frozen P6 N=1/2/4 search curve", async () => {
   expect(await screen.findByText(/Reproduced 12 held-out tasks/)).toBeInTheDocument();
 });
 
+test("renders and reproduces the frozen P7 experience transfer gate", async () => {
+  const report = {
+    schema_version: "2.0", benchmark_run_id: "ebr_fixture", suite_version: "p7-experience-v1",
+    configuration_version: "p7-gate-v1", selector_version: "verified-experience-selector-v1",
+    execution_source: "REPLAY", task_count: 20, source_count: 50, trace_count: 80,
+    source_counts: { POSITIVE: 20, NEGATIVE: 10, STALE_INCOMPATIBLE: 20 },
+    corpus_sha256: "a".repeat(64), source_sha256: "b".repeat(64),
+    trace_sha256: "c".repeat(64), config_sha256: "d".repeat(64),
+    frozen_at: "2026-08-24T00:00:00Z",
+    gate: {
+      schema_version: "2.0", passed: true, false_accepts_not_increased: true,
+      stale_rejection_passed: true, negative_transfer_passed: true, benefit_passed: true,
+      success_rate_not_regressed: true, stale_rejection_rate: 0.95,
+      negative_transfer_rate: 0.033333, replay_quality_uplift: 0.0705,
+      replay_tool_call_reduction: 0.2, thresholds: {},
+    },
+    treatments: [{
+      schema_version: "2.0", treatment: "REPLAY", task_count: 20, successful_tasks: 19,
+      success_rate: 0.95, mean_quality: 0.7815, mean_turns: 4, mean_tool_calls: 8,
+      mean_latency_ms: 945, mean_compute: 12, quality_uplift: 0.0705,
+      tool_call_reduction: 0.2, false_accepts: 1, negative_transfers: 1,
+      experience_use_rate: 1, experience_rejection_rate: 1, experience_null_rate: 0,
+    }],
+    tasks: [{ schema_version: "2.0", task_id: "p7-020", task_type: "RESEARCH",
+      family: "transfer", title: "Measure a negative transfer case",
+      quality_by_treatment: { FRESH: 0.79, REPLAY: 0.73 },
+      success_by_treatment: { FRESH: true, REPLAY: true },
+      negative_transfer_treatments: ["REPLAY"] }],
+  };
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url === "/api/v2/benchmarks/experience") return response(report);
+    if (url.endsWith("/api/v2/benchmarks/experience/run") && init?.method === "POST") return response(report);
+    return response([]);
+  });
+
+  renderApp("/benchmarks/experience");
+  expect(await screen.findByRole("heading", { name: "Experience transfer gate" })).toBeInTheDocument();
+  expect((await screen.findAllByText("95%")).length).toBeGreaterThan(0);
+  expect(screen.getByText("3.33%")).toBeInTheDocument();
+  expect(screen.getByText(/p7-020/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Reproduce P7 gate" }));
+  expect(await screen.findByText(/Reproduced 80 traces; gate passed/)).toBeInTheDocument();
+});
+
 test.each([
   ["DIRECT", "direct-v1"],
   ["LOOP", "feedback-loop-v1"],

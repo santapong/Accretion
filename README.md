@@ -15,7 +15,7 @@ isolated workspaces, and a durable normalized execution trace.
 [![Status](https://img.shields.io/badge/status-v0.1.0-2ea44f)](#project-status)
 
 [Documentation](docs/README.md) · [Developer guide](docs/DEVELOPER_GUIDE.md) ·
-[Showcase](docs/SHOWCASE.md) · [P6 runbook](docs/P6_RUNBOOK.md) ·
+[Showcase](docs/SHOWCASE.md) · [P7 runbook](docs/P7_RUNBOOK.md) ·
 [v0.2 plan](docs/V0_2_PLAN.md)
 
 <br />
@@ -26,8 +26,8 @@ isolated workspaces, and a durable normalized execution trace.
 
 > [!IMPORTANT]
 > `v0.1.0` remains the current stable release. On `develop`, the opt-in P5 dynamic
-> workflow and P6 bounded candidate-search milestones are complete; P7 experience
-> retrieval/replay and the final v0.2 release gate are not complete. No v0.2 tag
+> workflow, P6 bounded candidate-search, and P7 verified-experience milestones
+> are implemented; the final clean-checkout v0.2 release audit is not complete. No v0.2 tag
 > has been created. The stable v0.1 release includes P0 runtime feasibility, P1
 > deterministic planning, P2 verifier-gated feedback loops, P3 static graph
 > execution, and the P4 governed harness/operator release gate. Its five validated
@@ -68,6 +68,7 @@ operator can answer five questions before and during every run:
 | Governed capabilities | Immutable capability/skill/plugin/policy registries, task-scoped MCP exposure, approval-bound idempotent side effects, and executor-boundary credential injection |
 | Architecture benchmark | Frozen 30-task ACR-ARCH corpus, 68 balanced replay scenarios, raw dimensions, utility/regret, filterable operator UI, and opt-in live provider calibration |
 | Candidate search | Opt-in P6 best-of-N, hypothesis, cross-provider, and generator-reviewer execution with shared budgets, isolated trajectories, independent ranking, and crash-safe promotion |
+| Verified experience | Opt-in P7 immutable terminal evidence, repository-scoped deterministic retrieval, compatibility and transfer-risk scoring, explicit negative knowledge, fresh-control trajectory replay, repeated revalidation, and a frozen transfer benchmark |
 
 ## Architecture
 
@@ -151,6 +152,7 @@ runtime, verification, graph, trace, and audit records.
 | P4 — Harness and release gate | Complete | Governed capabilities/MCP, credential boundary, side-effect evidence, complete operator surfaces, resumable SSE, and ACR-ARCH |
 | P5 — Dynamic workflows | Implemented (opt-in) | Typed proposals, deterministic graph validation, static fallback, immutable revisions, safe replan, and operator inspection |
 | P6 — Bounded candidate search | Implemented (opt-in) | Evidence-based routing, isolated branches, shared budgets, fail-closed ranking, promotion recovery, operator lineage, and frozen N=1/2/4 replay research |
+| P7 — Verified experience | Implemented (opt-in) | Explicit materialization/selection, exact deterministic retrieval, invalidation, negative guidance, isolated fresh-control replay, operator provenance, and frozen negative-transfer research |
 
 ### P6 completion summary
 
@@ -167,8 +169,27 @@ to automated evidence in the [P6 acceptance report](docs/P6_ACCEPTANCE_REPORT.md
 The final P6 gate recorded 200 passing PostgreSQL-backed backend tests with three
 opt-in live-provider tests skipped, 19 passing UI tests, a successful production
 build, and a complete PostgreSQL upgrade/downgrade/upgrade cycle. P6 remains off
-by default and `REPLAY_BRANCH` fails closed until P7 supplies verified experience
-compatibility and applicability rules.
+by default. `REPLAY_BRANCH` continues to fail closed unless the independent P7
+deployment/project gates are enabled and the operator has frozen compatible
+matches into task context.
+
+### P7 completion summary
+
+P7 adds explicit procedural reuse without automatic learning or authority
+expansion. Its immutable experience contracts and pgvector persistence landed in
+[PR #41](https://github.com/santapong/Accretion/pull/41); deterministic retrieval,
+compatibility, invalidation, selection, and `ContextBundle` v2 landed in
+[PR #42](https://github.com/santapong/Accretion/pull/42). Replay execution keeps a
+fresh control, creates a new isolated worktree/session per positive seed, uses
+negative experience only as avoidance guidance, and revalidates before launch,
+selection, promotion, and recovery.
+
+All eight P7 criteria (`V02-P7-001` through `V02-P7-008`) are mapped in the
+[P7 acceptance report](docs/P7_ACCEPTANCE_REPORT.md). The frozen P7 gate contains
+20 tasks, 50 sources, and 80 traces; it records 95% stale rejection, 3.33%
+negative transfer, +0.0705 replay quality, 20% fewer replay tool calls, and no
+false-accept or success-rate regression. These are fixture results, not live
+provider claims.
 
 See the [v0.1 system design](docs/sdd/Accretion_SDD_v0.1.md) and the
 [multi-release SDD index](docs/sdd/Accretion_SDD_INDEX_v0.3.md) for the full
@@ -178,10 +199,10 @@ decision. The [frozen v0.1 baseline](docs/V0_1_BASELINE.md) identifies the exact
 release and experimental control; the [v0.1.0 release notes](docs/V0_1_RELEASE_NOTES.md)
 describe its shipped scope, compatibility, and reproducibility hashes.
 
-v0.2 now includes the opt-in P5 dynamic-workflow and P6 bounded-search slices.
-See the [P6 runbook](docs/P6_RUNBOOK.md), [developer showcase](docs/P6_SHOWCASE.md),
-[acceptance report](docs/P6_ACCEPTANCE_REPORT.md), and [delivery plan](docs/V0_2_PLAN.md).
-P7 experience retrieval and replay remain planned; the
+v0.2 now includes the opt-in P5 dynamic-workflow, P6 bounded-search, and P7
+verified-experience slices. See the [P7 runbook](docs/P7_RUNBOOK.md),
+[developer showcase](docs/P7_SHOWCASE.md), [acceptance report](docs/P7_ACCEPTANCE_REPORT.md),
+and [delivery plan](docs/V0_2_PLAN.md). The final v0.2 release audit remains; the
 [v0.2 SDD](docs/sdd/Accretion_SDD_v0.2.md) remains the normative contract.
 
 ## Quick start

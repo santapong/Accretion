@@ -28,9 +28,21 @@ from accretion.contracts import (
     VerificationStatus,
     WorkspaceLease,
 )
+from accretion.experience.embedding import canonical_digest
+from accretion.experience.models import (
+    CompatibilityAssessment,
+    ExperiencePolarity,
+    MatchDisposition,
+    SeedValidationStatus,
+    TrajectorySeed,
+    TrajectorySegment,
+    TrajectorySegmentKind,
+)
+from accretion.experience.service import ExperienceConflictError, ExperienceService
 from accretion.ids import new_id
 from accretion.orchestration.models import (
     CandidateScore,
+    CandidateSourceKind,
     CandidateStatus,
     CandidateTrajectory,
     ProjectFeatureSettings,
@@ -44,6 +56,7 @@ from accretion.orchestration.models import (
     SearchStopReason,
 )
 from accretion.orchestration.router import PerformanceAwareRuntimeRouter
+from accretion.redaction import redact_text
 from accretion.runtimes.common import submission_call_id
 from accretion.services.run_manager import RunManager
 from accretion.verifiers.policy import evaluate_acceptance
@@ -66,11 +79,13 @@ class SearchService:
         *,
         globally_enabled: bool,
         operator_identity: str,
+        experience_service: ExperienceService | None = None,
     ) -> None:
         self.manager = manager
         self.store = manager.store
         self.globally_enabled = globally_enabled
         self.operator_identity = operator_identity
+        self.experience_service = experience_service
         self.router = PerformanceAwareRuntimeRouter()
         self.active_refs: dict[str, list[tuple[AgentRuntime, RunRef]]] = {}
         self.search_locks: dict[str, asyncio.Lock] = {}
@@ -87,11 +102,15 @@ class SearchService:
         per_branch_budget: SearchBudgetEnvelope,
         total_budget: SearchBudgetEnvelope,
         candidate_directives: list[str],
+        replay_seed_match_ids: list[str] | None = None,
+        negative_guidance_match_ids: list[str] | None = None,
     ) -> SearchRecord:
         run = await self.manager._require_run(run_id)
         await self._require_enabled(run.project_id)
-        if mode is SearchMode.REPLAY_BRANCH:
+        if mode is SearchMode.REPLAY_BRANCH and self.experience_service is None:
             raise CandidateSearchConflictError("REPLAY_BRANCH_REQUIRES_P7")
+        replay_seed_match_ids = replay_seed_match_ids or []
+        negative_guidance_match_ids = negative_guidance_match_ids or []
         if run.state not in {RunState.PENDING, RunState.PAUSED}:
             raise CandidateSearchConflictError(
                 "search plans attach only while a run is PENDING or safely PAUSED"
@@ -134,6 +153,13 @@ class SearchService:
         if mode is SearchMode.CROSS_PROVIDER and branch_count not in {2, 4}:
             raise ValueError("cross-provider search requires two or four branches")
         task = await self.manager._require_task(run.task_id)
+        if mode is SearchMode.REPLAY_BRANCH:
+            await self._validate_replay_plan(
+                task,
+                run,
+                replay_seed_match_ids,
+                negative_guidance_match_ids,
+            )
         budgets = task.envelope.budgets
         if max_parallel > budgets.max_parallel_runs:
             raise ValueError("search parallelism exceeds the task ceiling")
@@ -160,18 +186,96 @@ class SearchService:
             per_branch_budget=per_branch_budget,
             total_budget=total_budget,
             candidate_directives=candidate_directives,
+            replay_seed_match_ids=replay_seed_match_ids,
+            negative_guidance_match_ids=negative_guidance_match_ids,
             verifier_policy_ref=(
                 run.acceptance_policy_id or "search-verifier:" + ",".join(sorted(verifier_refs))
             ),
             requested_by=self.operator_identity,
         )
-        return await self.store.create_search(SearchRecord(plan=plan))
+        record = await self.store.create_search(SearchRecord(plan=plan))
+        if mode is SearchMode.REPLAY_BRANCH:
+            planning = await self.manager.get_task_planning(task.envelope.task_id)
+            query_event = await self._emit(
+                run.run_id,
+                EventType.EXPERIENCE_QUERY,
+                "accretion/experience-query-attached",
+                {
+                    "search_id": plan.search_id,
+                    "query_id": planning.context_bundle.experience_query_id,
+                },
+            )
+            await self._emit(
+                run.run_id,
+                EventType.EXPERIENCE_RETRIEVED,
+                "accretion/experience-retrieved",
+                {
+                    "search_id": plan.search_id,
+                    "replay_seed_match_ids": replay_seed_match_ids,
+                    "negative_guidance_match_ids": negative_guidance_match_ids,
+                },
+                causation_id=query_event.event_id,
+            )
+        return record
 
     async def get(self, search_id: str) -> SearchRecord:
         record = await self.store.get_search(search_id)
         if record is None:
             raise KeyError(search_id)
         return record
+
+    async def _validate_replay_plan(
+        self,
+        task: Task,
+        run: Run,
+        replay_seed_match_ids: list[str],
+        negative_guidance_match_ids: list[str],
+    ) -> None:
+        if self.experience_service is None:
+            raise CandidateSearchConflictError("REPLAY_BRANCH_REQUIRES_P7")
+        if not 1 <= len(replay_seed_match_ids) <= 3:
+            raise ValueError("replay search requires one to three positive seeds")
+        if len(set(replay_seed_match_ids)) != len(replay_seed_match_ids):
+            raise ValueError("replay seed matches must be unique")
+        if len(set(negative_guidance_match_ids)) != len(negative_guidance_match_ids):
+            raise ValueError("negative guidance matches must be unique")
+        if set(replay_seed_match_ids) & set(negative_guidance_match_ids):
+            raise ValueError("a match cannot be both replay seed and negative guidance")
+        planning = await self.manager.get_task_planning(task.envelope.task_id)
+        selected = set(planning.context_bundle.experience_match_refs)
+        attached = set(replay_seed_match_ids) | set(negative_guidance_match_ids)
+        if planning.context_bundle.version != "context-bundle-v2" or not attached <= selected:
+            raise CandidateSearchConflictError(
+                "replay uses only experience matches explicitly selected into task context"
+            )
+        for match_id in replay_seed_match_ids:
+            _, experience, assessment = await self.experience_service.revalidate_match(
+                task.envelope.task_id,
+                match_id,
+                runtime_provider=run.provider,
+            )
+            if (
+                experience.polarity is not ExperiencePolarity.POSITIVE
+                or not assessment.replay_eligible
+                or assessment.disposition is not MatchDisposition.ACCEPTED
+            ):
+                raise CandidateSearchConflictError(
+                    f"positive replay seed {match_id} failed compatibility revalidation"
+                )
+        for match_id in negative_guidance_match_ids:
+            _, experience, assessment = await self.experience_service.revalidate_match(
+                task.envelope.task_id,
+                match_id,
+                runtime_provider=run.provider,
+            )
+            if (
+                experience.polarity is not ExperiencePolarity.NEGATIVE
+                or not assessment.negative_guidance_eligible
+                or assessment.disposition is not MatchDisposition.ACCEPTED
+            ):
+                raise CandidateSearchConflictError(
+                    f"negative guidance {match_id} failed compatibility revalidation"
+                )
 
     async def cancel(self, search_id: str) -> SearchRecord:
         async with self._search_lock(search_id):
@@ -252,6 +356,21 @@ class SearchService:
             (item for item in candidates if item.candidate_id == promotion.candidate_id),
             None,
         )
+        if winner is not None and winner.source_kind is CandidateSourceKind.REPLAY:
+            task = await self.manager._require_task(run.task_id)
+            valid, reasons = await self._revalidate_replay_candidate(
+                record, task, winner
+            )
+            if not valid:
+                await self.store.save_search_promotion(
+                    promotion.model_copy(
+                        update={"status": "CONFLICT", "completed_at": datetime.now(UTC)}
+                    )
+                )
+                await self._reject_replay_candidate(
+                    winner, phase="RECOVERY", reasons=reasons
+                )
+                return False
         artifacts = await self.store.list_artifacts(run.run_id)
         artifact = (
             next(
@@ -442,8 +561,10 @@ class SearchService:
                 completed.extend(await asyncio.gather(*jobs))
             await self._persist_spend(current.plan.search_id, completed)
             scores = await self.store.list_candidate_scores(current.plan.search_id)
-            if current.plan.stop_policy.stop_on_acceptance and any(
-                item.eligible for item in scores
+            if (
+                current.plan.mode is not SearchMode.REPLAY_BRANCH
+                and current.plan.stop_policy.stop_on_acceptance
+                and any(item.eligible for item in scores)
             ):
                 for candidate in candidates[offset + len(wave) :]:
                     pruned = candidate.model_copy(
@@ -561,23 +682,321 @@ class SearchService:
         run: Run,
         assignments: list[tuple[Provider, Provider | None, str, str, str]],
     ) -> list[CandidateTrajectory]:
-        candidates = [
-            CandidateTrajectory(
+        candidates: list[CandidateTrajectory] = []
+        task = await self.manager._require_task(run.task_id)
+        for index, (provider, reviewer, runtime_id, model, version) in enumerate(assignments):
+            ordinal = index + 1
+            replay_match_id = (
+                record.plan.replay_seed_match_ids[index - 1]
+                if record.plan.mode is SearchMode.REPLAY_BRANCH and index > 0
+                else None
+            )
+            seed_id = new_id("trajectory_seed") if replay_match_id is not None else None
+            source_experience_id = None
+            segment_refs: list[str] = []
+            assessment: CompatibilityAssessment | None = None
+            if replay_match_id is not None:
+                assert self.experience_service is not None
+                planning = await self.manager.get_task_planning(task.envelope.task_id)
+                query_id = planning.context_bundle.experience_query_id
+                matched = next(
+                    (
+                        item
+                        for item in await self.store.list_experience_matches(query_id or "")
+                        if item.match_id == replay_match_id
+                    ),
+                    None,
+                )
+                if matched is None:
+                    raise CandidateSearchConflictError(
+                        "selected replay match disappeared before candidate creation"
+                    )
+                source_experience_id = matched.experience_id
+                try:
+                    _, _, assessment = await self.experience_service.revalidate_match(
+                        task.envelope.task_id,
+                        replay_match_id,
+                        runtime_provider=provider,
+                    )
+                except (ExperienceConflictError, KeyError, ValueError):
+                    assessment = None
+                segment_refs = [
+                    item.segment_id
+                    for item in await self.store.list_trajectory_segments(
+                        source_experience_id
+                    )
+                ]
+            candidate = CandidateTrajectory(
                 candidate_id=new_id("search_candidate"),
                 search_id=record.plan.search_id,
                 run_id=run.run_id,
-                ordinal=index + 1,
+                ordinal=ordinal,
                 provider=provider,
                 reviewer_provider=reviewer,
                 runtime_id=runtime_id,
                 runtime_model=model,
                 runtime_version=version,
+                source_kind=(
+                    CandidateSourceKind.REPLAY
+                    if replay_match_id is not None
+                    else CandidateSourceKind.FRESH
+                ),
+                replay_seed_id=seed_id,
+                source_experience_id=source_experience_id,
+                source_match_id=replay_match_id,
+                trajectory_segment_refs=segment_refs,
+                seed_revalidation_status=(
+                    SeedValidationStatus.ELIGIBLE.value
+                    if replay_match_id is not None
+                    and assessment is not None
+                    and assessment.replay_eligible
+                    else None
+                ),
+                seed_revalidation_reasons=(assessment.reasons if assessment else []),
             )
-            for index, (provider, reviewer, runtime_id, model, version) in enumerate(assignments)
-        ]
-        for candidate in candidates:
             await self.store.save_search_candidate(candidate)
+            if replay_match_id is not None:
+                assert seed_id is not None and source_experience_id is not None
+                try:
+                    seed = await self._build_seed(
+                        record,
+                        candidate,
+                        replay_match_id,
+                        source_experience_id,
+                    )
+                except CandidateSearchConflictError:
+                    seed = None
+                if seed is not None:
+                    await self.store.save_trajectory_seed(seed)
+            candidates.append(candidate)
         return candidates
+
+    async def _build_seed(
+        self,
+        record: SearchRecord,
+        candidate: CandidateTrajectory,
+        match_id: str,
+        experience_id: str,
+    ) -> TrajectorySeed:
+        assert candidate.replay_seed_id is not None
+        segments = await self.store.list_trajectory_segments(experience_id)
+        if not segments or any(
+            canonical_digest(segment.content) != segment.content_digest
+            for segment in segments
+        ):
+            raise CandidateSearchConflictError("replay source segment digest is invalid")
+        guidance = self._procedural_guidance(segments)
+        if not guidance:
+            raise CandidateSearchConflictError("replay source has no procedural guidance")
+        return TrajectorySeed(
+            seed_id=candidate.replay_seed_id,
+            search_id=record.plan.search_id,
+            candidate_id=candidate.candidate_id,
+            match_id=match_id,
+            experience_id=experience_id,
+            segment_ids=[item.segment_id for item in segments],
+            procedural_guidance=guidance,
+            assumptions=[
+                "The source repository identity matches the target repository.",
+                "The source commit remains an ancestor of the target commit.",
+                "Current policy, verifier, and capability authority remains controlling.",
+            ],
+            required_revalidations=[
+                "Revalidate repository, commit, manifests, and architecture.",
+                "Revalidate policy, verifiers, skills, plugins, and capabilities.",
+                "Revalidate the seed before launch, selection, and promotion.",
+            ],
+            validation_status=SeedValidationStatus.ELIGIBLE,
+            revalidated_at=datetime.now(UTC),
+        )
+
+    @staticmethod
+    def _procedural_guidance(segments: list[TrajectorySegment]) -> list[str]:
+        """Translate redacted evidence into instructions, never provider-native state."""
+
+        guidance: list[str] = []
+        for segment in sorted(segments, key=lambda item: item.ordinal):
+            content = segment.content
+            if segment.kind is TrajectorySegmentKind.WORKFLOW_PATH:
+                nodes = content.get("nodes", [])
+                safe_nodes = [
+                    redact_text(str(item))[:160]
+                    for item in nodes
+                    if isinstance(item, (str, int))
+                ]
+                guidance.append(
+                    "Follow the verified workflow stages in order: "
+                    + (" -> ".join(safe_nodes) if safe_nodes else "revalidate, execute, verify")
+                    + "."
+                )
+            elif segment.kind is TrajectorySegmentKind.TOOL_SEQUENCE:
+                capabilities = content.get("capabilities", [])
+                safe_capabilities = [
+                    redact_text(str(item))[:160]
+                    for item in capabilities
+                    if isinstance(item, (str, int))
+                ]
+                if safe_capabilities:
+                    guidance.append(
+                        "Preserve this verified capability ordering only where current "
+                        "authority permits it: "
+                        + " -> ".join(safe_capabilities)
+                        + "."
+                    )
+            elif segment.kind is TrajectorySegmentKind.VERIFIER_FINDINGS:
+                results = content.get("results", [])
+                summaries: list[str] = []
+                for item in results if isinstance(results, list) else []:
+                    if not isinstance(item, dict):
+                        continue
+                    verifier = redact_text(str(item.get("verifier", "verifier")))[:160]
+                    finding_codes = item.get("finding_codes", [])
+                    codes = [
+                        redact_text(str(code))[:160]
+                        for code in finding_codes
+                        if isinstance(code, (str, int))
+                    ]
+                    suffix = f" ({', '.join(codes)})" if codes else ""
+                    summaries.append(f"{verifier}{suffix}")
+                if summaries:
+                    guidance.append(
+                        "Run the current verifier contracts and resolve these finding classes: "
+                        + "; ".join(summaries)
+                        + "."
+                    )
+            elif segment.kind is TrajectorySegmentKind.REPAIR_PATTERN:
+                iterations = content.get("completed_iterations")
+                if isinstance(iterations, int) and iterations > 0:
+                    guidance.append(
+                        f"Allow for {iterations} verified repair iteration(s), while treating "
+                        "current verifier output as authoritative."
+                    )
+            elif segment.kind is TrajectorySegmentKind.ARTIFACT_SHAPE:
+                artifacts = content.get("artifacts", [])
+                shapes: list[str] = []
+                for item in artifacts if isinstance(artifacts, list) else []:
+                    if not isinstance(item, dict):
+                        continue
+                    kind = redact_text(str(item.get("kind", "artifact")))[:160]
+                    suffix = redact_text(str(item.get("suffix", "")))[:32]
+                    shapes.append(f"{kind}{suffix}")
+                guidance.append(
+                    "Preserve the verified artifact shape under current output contracts"
+                    + (": " + ", ".join(shapes) if shapes else "")
+                    + "."
+                )
+        return guidance
+
+    async def _revalidate_replay_candidate(
+        self,
+        record: SearchRecord,
+        task: Task,
+        candidate: CandidateTrajectory,
+    ) -> tuple[bool, list[str]]:
+        if candidate.source_kind is not CandidateSourceKind.REPLAY:
+            return True, []
+        if self.experience_service is None:
+            return False, ["EXPERIENCE_SERVICE_UNAVAILABLE"]
+        if candidate.source_match_id not in record.plan.replay_seed_match_ids:
+            return False, ["MATCH_OUTSIDE_REPLAY_PLAN"]
+        try:
+            match, experience, assessment = await self.experience_service.revalidate_match(
+                task.envelope.task_id,
+                candidate.source_match_id or "",
+                runtime_provider=candidate.provider,
+            )
+            seeds = await self.store.list_trajectory_seeds(record.plan.search_id)
+            seed = next(
+                (item for item in seeds if item.seed_id == candidate.replay_seed_id),
+                None,
+            )
+            if seed is None:
+                return False, ["TRAJECTORY_SEED_MISSING"]
+            reasons = list(assessment.reasons)
+            if match.experience_id != candidate.source_experience_id:
+                reasons.append("EXPERIENCE_REFERENCE_CHANGED")
+            if seed.candidate_id != candidate.candidate_id:
+                reasons.append("SEED_CANDIDATE_MISMATCH")
+            if seed.match_id != candidate.source_match_id:
+                reasons.append("SEED_MATCH_MISMATCH")
+            if seed.experience_id != candidate.source_experience_id:
+                reasons.append("SEED_EXPERIENCE_MISMATCH")
+            if seed.segment_ids != candidate.trajectory_segment_refs:
+                reasons.append("SEED_SEGMENT_SET_CHANGED")
+            if seed.validation_status is not SeedValidationStatus.ELIGIBLE:
+                reasons.append("SEED_NOT_ELIGIBLE")
+            if not seed.procedural_guidance:
+                reasons.append("SEED_GUIDANCE_EMPTY")
+            segments = await self.store.list_trajectory_segments(experience.experience_id)
+            if [item.segment_id for item in segments] != seed.segment_ids:
+                reasons.append("SOURCE_SEGMENT_SET_CHANGED")
+            if any(
+                canonical_digest(item.content) != item.content_digest for item in segments
+            ):
+                reasons.append("SOURCE_SEGMENT_DIGEST_INVALID")
+            eligible = (
+                experience.polarity is ExperiencePolarity.POSITIVE
+                and assessment.disposition is MatchDisposition.ACCEPTED
+                and assessment.replay_eligible
+            )
+            if not eligible:
+                reasons.append("REPLAY_COMPATIBILITY_REJECTED")
+            hard_failures = {
+                "EXPERIENCE_REFERENCE_CHANGED",
+                "SEED_CANDIDATE_MISMATCH",
+                "SEED_MATCH_MISMATCH",
+                "SEED_EXPERIENCE_MISMATCH",
+                "SEED_SEGMENT_SET_CHANGED",
+                "SEED_NOT_ELIGIBLE",
+                "SEED_GUIDANCE_EMPTY",
+                "SOURCE_SEGMENT_SET_CHANGED",
+                "SOURCE_SEGMENT_DIGEST_INVALID",
+                "REPLAY_COMPATIBILITY_REJECTED",
+            }
+            return not any(item in hard_failures for item in reasons), sorted(set(reasons))
+        except (ExperienceConflictError, KeyError, ValueError) as exc:
+            return False, [f"SEED_REVALIDATION_ERROR:{type(exc).__name__}"]
+
+    async def _reject_replay_candidate(
+        self,
+        candidate: CandidateTrajectory,
+        *,
+        phase: str,
+        reasons: list[str],
+    ) -> CandidateTrajectory:
+        rejected = candidate.model_copy(
+            update={
+                "status": CandidateStatus.PRUNED,
+                "seed_revalidation_status": SeedValidationStatus.REJECTED.value,
+                "seed_revalidation_reasons": sorted(set(reasons)),
+                "terminal_reason": (
+                    f"replay seed rejected during {phase.lower()}: "
+                    + ", ".join(sorted(set(reasons)))
+                )[:2_000],
+                "completed_at": datetime.now(UTC),
+            }
+        )
+        await self.store.save_search_candidate(rejected)
+        causation_id = await self._replay_causation_id(
+            candidate.run_id, candidate.search_id, candidate.candidate_id
+        )
+        await self._emit(
+            candidate.run_id,
+            EventType.TRAJECTORY_REPLAY_REJECTED,
+            "accretion/trajectory-replay-rejected",
+            {
+                "search_id": candidate.search_id,
+                "candidate_id": candidate.candidate_id,
+                "seed_id": candidate.replay_seed_id,
+                "match_id": candidate.source_match_id,
+                "experience_id": candidate.source_experience_id,
+                "phase": phase,
+                "reasons": sorted(set(reasons)),
+            },
+            causation_id=causation_id,
+        )
+        await self._emit_candidate_pruned(rejected)
+        return rejected
 
     async def _execute_candidate(
         self,
@@ -599,6 +1018,38 @@ class SearchService:
         project = await self.store.get_project(run.project_id)
         if project is None:
             raise KeyError(run.project_id)
+        if candidate.source_kind is CandidateSourceKind.REPLAY:
+            valid, reasons = await self._revalidate_replay_candidate(
+                record, task, candidate
+            )
+            if not valid:
+                return await self._reject_replay_candidate(
+                    candidate, phase="LAUNCH", reasons=reasons
+                )
+            candidate = candidate.model_copy(
+                update={
+                    "seed_revalidation_status": SeedValidationStatus.ELIGIBLE.value,
+                    "seed_revalidation_reasons": reasons,
+                }
+            )
+            await self.store.save_search_candidate(candidate)
+            causation_id = await self._replay_causation_id(
+                run.run_id, record.plan.search_id, candidate.candidate_id
+            )
+            await self._emit(
+                run.run_id,
+                EventType.TRAJECTORY_REPLAY_STARTED,
+                "accretion/trajectory-replay-started",
+                {
+                    "search_id": record.plan.search_id,
+                    "candidate_id": candidate.candidate_id,
+                    "seed_id": candidate.replay_seed_id,
+                    "match_id": candidate.source_match_id,
+                    "experience_id": candidate.source_experience_id,
+                    "phase": "LAUNCH",
+                },
+                causation_id=causation_id,
+            )
         lease: WorkspaceLease | None = None
         session_id: str | None = None
         candidate_events: list[AgentEvent] = []
@@ -643,7 +1094,7 @@ class SearchService:
                     "accretion/search-candidate-started",
                     self._candidate_payload(candidate),
                 )
-                directive = self._candidate_directive(record, candidate, task)
+                directive = await self._candidate_directive(record, candidate, task)
                 deadline = min(
                     search_deadline,
                     started_at.timestamp() + record.plan.per_branch_budget.wall_time_seconds,
@@ -939,6 +1390,19 @@ class SearchService:
         policy: AcceptancePolicy,
     ) -> SearchRecord:
         candidates = await self.store.list_search_candidates(record.plan.search_id)
+        for candidate in candidates:
+            if (
+                candidate.source_kind is CandidateSourceKind.REPLAY
+                and candidate.status is CandidateStatus.COMPLETED
+            ):
+                valid, reasons = await self._revalidate_replay_candidate(
+                    record, task, candidate
+                )
+                if not valid:
+                    await self._reject_replay_candidate(
+                        candidate, phase="SELECTION", reasons=reasons
+                    )
+        candidates = await self.store.list_search_candidates(record.plan.search_id)
         scores = await self.store.list_candidate_scores(record.plan.search_id)
         by_candidate = {item.candidate_id: item for item in candidates}
         eligible = [
@@ -1031,6 +1495,19 @@ class SearchService:
             current = await self.get(record.plan.search_id)
             if current.status is SearchStatus.CANCELLED:
                 return current
+            if winner.source_kind is CandidateSourceKind.REPLAY:
+                valid, reasons = await self._revalidate_replay_candidate(
+                    current, task, winner
+                )
+                if not valid:
+                    await self._reject_replay_candidate(
+                        winner, phase="PROMOTION", reasons=reasons
+                    )
+                    return await self._stop(
+                        record.plan.search_id,
+                        SearchStatus.REQUIRES_HUMAN,
+                        SearchStopReason.VERIFIER_UNCERTAIN,
+                    )
             verifications = await self.store.list_verifications(run.run_id)
             result_by_id = {item.verification_id: item for item in verifications}
             winner_results = [
@@ -1222,6 +1699,28 @@ class SearchService:
             self._candidate_payload(candidate),
         )
 
+    async def _replay_causation_id(
+        self,
+        run_id: str,
+        search_id: str,
+        candidate_id: str,
+    ) -> str | None:
+        events = await self.store.list_events(run_id)
+        for event in reversed(events):
+            if (
+                event.normalized_type is EventType.TRAJECTORY_REPLAY_STARTED
+                and event.payload.get("search_id") == search_id
+                and event.payload.get("candidate_id") == candidate_id
+            ):
+                return event.event_id
+        for event in reversed(events):
+            if (
+                event.normalized_type is EventType.EXPERIENCE_RETRIEVED
+                and event.payload.get("search_id") == search_id
+            ):
+                return event.event_id
+        return None
+
     def _search_lock(self, search_id: str) -> asyncio.Lock:
         return self.search_locks.setdefault(search_id, asyncio.Lock())
 
@@ -1245,12 +1744,15 @@ class SearchService:
         event_type: EventType,
         native_type: str,
         payload: dict[str, object],
-    ) -> None:
-        await self.manager.emit_dynamic_event(
+        *,
+        causation_id: str | None = None,
+    ) -> AgentEvent:
+        return await self.manager.emit_dynamic_event(
             run_id,
             native_type=native_type,
             event_type=event_type,
             payload=payload,
+            causation_id=causation_id,
         )
 
     @staticmethod
@@ -1263,23 +1765,86 @@ class SearchService:
             "runtime_id": candidate.runtime_id,
             "runtime_model": candidate.runtime_model,
             "runtime_version": candidate.runtime_version,
+            "source_kind": candidate.source_kind.value,
+            "replay_seed_id": candidate.replay_seed_id,
+            "source_experience_id": candidate.source_experience_id,
+            "source_match_id": candidate.source_match_id,
+            "trajectory_segment_refs": candidate.trajectory_segment_refs,
+            "seed_revalidation_status": candidate.seed_revalidation_status,
+            "seed_revalidation_reasons": candidate.seed_revalidation_reasons,
             "status": candidate.status.value,
             "terminal_reason": candidate.terminal_reason,
         }
 
-    @staticmethod
-    def _candidate_directive(
-        record: SearchRecord, candidate: CandidateTrajectory, task: Task
+    async def _candidate_directive(
+        self,
+        record: SearchRecord,
+        candidate: CandidateTrajectory,
+        task: Task,
     ) -> str:
         if record.plan.mode is SearchMode.HYPOTHESIS_BRANCH:
             suffix = record.plan.candidate_directives[candidate.ordinal - 1]
         else:
             suffix = f"Independent candidate {candidate.ordinal} of {record.plan.branch_count}."
-        return (
+        directive = (
             f"{task.envelope.objective}\n\n{suffix}\n"
             "Work only in the isolated local workspace. Do not execute protected external "
             "side effects or request credentials."
         )
+        if candidate.source_kind is CandidateSourceKind.FRESH:
+            return directive
+        seeds = await self.store.list_trajectory_seeds(record.plan.search_id)
+        seed = next(
+            (item for item in seeds if item.seed_id == candidate.replay_seed_id),
+            None,
+        )
+        if seed is None:
+            raise CandidateSearchConflictError("replay candidate has no frozen seed")
+        negative_guidance = await self._negative_guidance(
+            record, candidate.provider, task
+        )
+        replay_lines = [
+            "Verified procedural seed (guidance only; current repository, policy, and "
+            "verifiers remain authoritative):",
+            *(f"- {item}" for item in seed.procedural_guidance),
+        ]
+        if negative_guidance:
+            replay_lines.extend(
+                [
+                    "Previously observed failure classes to avoid (guidance only):",
+                    *(f"- {item}" for item in negative_guidance),
+                ]
+            )
+        return directive + "\n\n" + "\n".join(replay_lines)
+
+    async def _negative_guidance(
+        self,
+        record: SearchRecord,
+        provider: Provider,
+        task: Task,
+    ) -> list[str]:
+        if self.experience_service is None:
+            return []
+        guidance: list[str] = []
+        for match_id in record.plan.negative_guidance_match_ids:
+            try:
+                _, experience, assessment = await self.experience_service.revalidate_match(
+                    task.envelope.task_id,
+                    match_id,
+                    runtime_provider=provider,
+                )
+            except (ExperienceConflictError, KeyError, ValueError):
+                continue
+            if (
+                experience.polarity is not ExperiencePolarity.NEGATIVE
+                or assessment.disposition is not MatchDisposition.ACCEPTED
+                or not assessment.negative_guidance_eligible
+            ):
+                continue
+            codes = [redact_text(item)[:160] for item in experience.failure_taxonomy]
+            if codes:
+                guidance.append("Avoid failure taxonomy: " + ", ".join(codes) + ".")
+        return guidance
 
     @staticmethod
     def _spent(latency_ms: int, tool_calls: int, turns: int) -> SearchBudgetSpent:

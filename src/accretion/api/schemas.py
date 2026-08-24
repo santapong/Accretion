@@ -107,6 +107,8 @@ class SearchCreate(BaseModel):
     per_branch_budget: SearchBudgetEnvelope
     total_budget: SearchBudgetEnvelope
     candidate_directives: list[str] = Field(default_factory=list, max_length=4)
+    replay_seed_match_ids: list[str] = Field(default_factory=list, max_length=3)
+    negative_guidance_match_ids: list[str] = Field(default_factory=list, max_length=3)
 
 
 class StrategyOverrideCreate(BaseModel):

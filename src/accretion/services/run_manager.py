@@ -618,11 +618,13 @@ class RunManager:
         native_type: str,
         event_type: EventType,
         payload: dict[str, object],
+        causation_id: str | None = None,
     ) -> AgentEvent:
         run = await self._require_run(run_id)
-        return await self._append(
-            self._control_event(run, native_type, event_type, payload=payload)
-        )
+        event = self._control_event(run, native_type, event_type, payload=payload)
+        if causation_id is not None:
+            event = event.model_copy(update={"causation_id": causation_id})
+        return await self._append(event)
 
     async def fallback_dynamic_run(self, run_id: str, *, reason: str) -> Run:
         run = await self._require_run(run_id)

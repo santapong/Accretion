@@ -1,0 +1,14 @@
+{
+  "suite_version": "p7-experience-v1",
+  "configuration_version": "p7-gate-v1",
+  "selector_version": "verified-experience-selector-v1",
+  "held_out_task_count": 20,
+  "source_counts": {"POSITIVE": 20, "NEGATIVE": 10, "STALE_INCOMPATIBLE": 20},
+  "treatments": ["FRESH", "SUCCESS_ONLY", "SUCCESS_FAILURE", "REPLAY"],
+  "minimum_stale_rejection_rate": 0.95,
+  "maximum_negative_transfer_rate": 0.05,
+  "minimum_quality_uplift": 0.03,
+  "minimum_tool_call_reduction": 0.10,
+  "negative_transfer_quality_delta": 0.05,
+  "quality_precision": 6
+}

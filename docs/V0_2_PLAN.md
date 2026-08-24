@@ -1,7 +1,7 @@
 # Accretion v0.2 delivery plan
 
-Status: P5 and P6 implemented behind independent opt-in gates; P7 remains
-planned. This document translates the normative
+Status: P5, P6, and P7 implemented behind independent opt-in gates; the final
+v0.2 clean-checkout release audit remains. This document translates the normative
 [v0.2 SDD](sdd/Accretion_SDD_v0.2.md) into an implementation and review sequence;
 it does not change the SDD contracts.
 
@@ -78,8 +78,8 @@ Deliverables:
   observed results, and declared constraints;
 - versioned `SearchPlan` and `CandidateTrajectory` contracts;
 - bounded best-of-N, hypothesis, cross-provider, and generator-reviewer modes;
-- a reserved `REPLAY_BRANCH` contract that fails closed until P7 compatibility
-  and applicability evidence exists;
+- a `REPLAY_BRANCH` contract that remains fail closed in P6-only deployments and
+  activates only through P7 compatibility/applicability evidence;
 - hard shared budgets across candidates, including wall time and tool calls;
 - independent verifier ranking with explicit ties and inconclusive outcomes;
 - UI views for candidate lineage, spend, evidence, and final selection.
@@ -92,6 +92,13 @@ Exit evidence:
 - routing and search reports preserve negative and null results.
 
 ### P7 — Verified experience retrieval and replay
+
+Implementation status: experience contracts/persistence merged in
+[PR #41](https://github.com/santapong/Accretion/pull/41), deterministic retrieval
+and context selection merged in [PR #42](https://github.com/santapong/Accretion/pull/42),
+and replay/operator/benchmark evidence implemented behind the independent P7
+gate. Operational details are in the [P7 runbook](P7_RUNBOOK.md),
+[decision record](P7_DECISIONS.md), and [acceptance report](P7_ACCEPTANCE_REPORT.md).
 
 Outcome: prior evidence can inform a new run without becoming unreviewed policy.
 
@@ -134,9 +141,9 @@ Exit evidence:
 6. Runtime evidence and `SearchPlan` contracts — complete.
 7. Bounded candidate executor and shared-budget accounting — complete.
 8. Candidate comparison UI and P6 research report — complete.
-9. Experience records, retrieval, invalidation, and negative knowledge — P7
-   planned.
-10. Replay integration, P7 UI, and final v0.2 release audit — planned.
+9. Experience records, retrieval, invalidation, and negative knowledge — complete.
+10. Replay integration and P7 UI/benchmark evidence — complete; final v0.2
+    release audit remains.
 
 Each slice must be independently reviewable, retain a disabled or static fallback
 until its release gate passes, and include schema, migration, API, UI, recovery,
@@ -148,11 +155,9 @@ and benchmark evidence where applicable.
   frozen in the [P5 decision record](P5_DECISIONS.md).
 - P6 ranking, shared-budget, cancellation, isolation, promotion, and recovery
   behavior are frozen in the [P6 decision record](P6_DECISIONS.md).
-- Define experience invalidation keys for code, environment, provider, and policy
-  changes before P7 execution.
-
-Remaining P7 choices should become ADRs or tracked issues linked back to the open
-questions in the v0.2 SDD.
+- P7 representation, invalidation, replay/recovery, and benchmark behavior are
+  frozen in the [P7 decision record](P7_DECISIONS.md). Expansion requires a new
+  ADR and cannot rewrite the preregistered v0.2 evidence after the fact.
 
 ## Explicit non-goals
 

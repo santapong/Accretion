@@ -12,6 +12,8 @@ import { api, type AcrArchFilters } from "./api";
 import { RunExecution } from "./RunExecution";
 import type {
   AgentEvent,
+  ExperienceDetail,
+  ExperienceMatch,
   Project,
   Run,
   SearchMode,
@@ -160,12 +162,91 @@ function PlanningReview({ planning, onUpdate }: {
   const [dynamicTask, setDynamicTask] = useState<Task>();
   const [searchMode, setSearchMode] = useState<SearchMode>("BEST_OF_N");
   const [searchRecord, setSearchRecord] = useState<SearchRecord>();
+  const [experienceMatches, setExperienceMatches] = useState<ExperienceMatch[]>([]);
+  const [experienceDetails, setExperienceDetails] = useState<Record<string, ExperienceDetail>>({});
+  const [selectedMatchIds, setSelectedMatchIds] = useState<string[]>(
+    planning.context_bundle.experience_match_refs ?? [],
+  );
   const modeTemplates = (templatesQuery.data ?? []).filter(
     (template) => template.mode === mode,
   );
   const selectedTemplate = modeTemplates.some((template) => template.template_id === templateId)
     ? templateId
     : modeTemplates[0]?.template_id ?? "";
+
+  useEffect(() => {
+    if (planning.context_bundle.version !== "context-bundle-v2") return;
+    let active = true;
+    void api.selectedExperienceMatches(planning.task_id).then(async (matches) => {
+      const details = await Promise.all(
+        matches.map((match) => api.experience(match.experience_id)),
+      );
+      if (!active) return;
+      setExperienceMatches(matches);
+      setExperienceDetails(Object.fromEntries(
+        details.map((detail) => [detail.experience.experience_id, detail]),
+      ));
+      setSelectedMatchIds(matches.map((match) => match.match_id));
+    }).catch(() => undefined);
+    return () => { active = false; };
+  }, [planning.context_bundle.version, planning.task_id]);
+
+  async function retrieveExperiences() {
+    setFeedback("Retrieving compatible verified experience…");
+    try {
+      const task = await api.task(planning.task_id);
+      const features = await api.projectFeatures(task.envelope.project_id);
+      if (!features.experience_retrieval) {
+        await api.updateProjectFeatures(
+          task.envelope.project_id,
+          {
+            dynamicWorkflows: true,
+            candidateSearch: true,
+            experienceRetrieval: true,
+          },
+          features.revision,
+        );
+      }
+      const matches = await api.queryExperiences(planning.task_id);
+      const details = await Promise.all(
+        matches.map((match) => api.experience(match.experience_id)),
+      );
+      setExperienceMatches(matches);
+      setExperienceDetails(Object.fromEntries(
+        details.map((detail) => [detail.experience.experience_id, detail]),
+      ));
+      setSelectedMatchIds([]);
+      setFeedback(
+        matches.length
+          ? `Retrieved ${matches.length} ranked experience match(es).`
+          : "No repository-compatible experience matched this task.",
+      );
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Experience retrieval failed.");
+    }
+  }
+
+  function toggleExperience(matchId: string) {
+    setSelectedMatchIds((current) => current.includes(matchId)
+      ? current.filter((item) => item !== matchId)
+      : current.length < 3 ? [...current, matchId] : current);
+  }
+
+  async function selectExperiences() {
+    if (!selectedMatchIds.length || !experienceMatches.length) return;
+    setFeedback("Freezing selected experience into ContextBundle v2…");
+    try {
+      await api.selectExperiences(planning.task_id, {
+        query_id: experienceMatches[0].query_id,
+        match_ids: selectedMatchIds,
+        expected_context_bundle_id: planning.context_bundle.context_bundle_id,
+      });
+      onUpdate(await api.planning(planning.task_id));
+      setFeedback("Experience selection frozen. A P5 proposal can now reference it.");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Experience selection failed.");
+    }
+  }
 
   async function override(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -226,9 +307,24 @@ function PlanningReview({ planning, onUpdate }: {
     event.preventDefault();
     if (!dynamicProposal?.run_id || !dynamicTask) return;
     const data = new FormData(event.currentTarget);
+    const replayMatches = experienceMatches.filter((match) =>
+      (planning.context_bundle.experience_match_refs ?? []).includes(match.match_id)
+    );
+    const positiveReplayIds = replayMatches
+      .filter((match) => match.polarity === "POSITIVE" && match.assessment.replay_eligible)
+      .map((match) => match.match_id);
+    const negativeGuidanceIds = replayMatches
+      .filter((match) => match.polarity === "NEGATIVE" && match.assessment.negative_guidance_eligible)
+      .map((match) => match.match_id);
+    if (searchMode === "REPLAY_BRANCH" && !positiveReplayIds.length) {
+      setFeedback("Replay requires at least one selected, currently eligible positive match.");
+      return;
+    }
     const branchCount = searchMode === "GENERATOR_REVIEWER"
       ? 2
-      : Number(data.get("branch_count"));
+      : searchMode === "REPLAY_BRANCH"
+        ? 1 + positiveReplayIds.length
+        : Number(data.get("branch_count"));
     const directives = searchMode === "HYPOTHESIS_BRANCH"
       ? lines(data.get("candidate_directives"))
       : [];
@@ -260,6 +356,8 @@ function PlanningReview({ planning, onUpdate }: {
           max_tool_calls: Number(data.get("total_tools")),
         },
         candidate_directives: directives,
+        replay_seed_match_ids: searchMode === "REPLAY_BRANCH" ? positiveReplayIds : [],
+        negative_guidance_match_ids: searchMode === "REPLAY_BRANCH" ? negativeGuidanceIds : [],
       });
       setSearchRecord(record);
       setFeedback(`P6 ${record.plan.mode} plan attached to ${record.plan.parent_node_id}.`);
@@ -313,6 +411,34 @@ function PlanningReview({ planning, onUpdate }: {
           <div><p className="eyebrow">Safety requirements</p><p>Approval: {decision.requires_approval ? "required" : "not required"}<br />Independent verifier: {decision.requires_independent_verifier ? "required" : "not required"}</p></div>
         </div>
         <details><summary>Feature evidence ({observedFeatures.length})</summary><div className="evidence-list">{observedFeatures.map((item) => <article key={`${item.feature}-${item.source}`}><strong>{item.feature}</strong><span>{item.available ? JSON.stringify(item.value) : "UNKNOWN"}</span><p>{item.rationale}</p></article>)}</div></details>
+        <section className="experience-planner" aria-label="Verified experience retrieval">
+          <header>
+            <div><p className="eyebrow">P7 operator selection</p><h3>Verified experience</h3></div>
+            <StatePill state={planning.context_bundle.version === "context-bundle-v2" ? "FROZEN" : "OPTIONAL"} />
+          </header>
+          <p>Retrieve only from this repository, inspect compatibility, then freeze up to three matches before proposing a workflow.</p>
+          <div className="experience-actions">
+            <button className="secondary-button" type="button" onClick={retrieveExperiences} disabled={planning.context_bundle.version === "context-bundle-v2"}>Retrieve matches</button>
+            <button className="primary-button" type="button" onClick={selectExperiences} disabled={!selectedMatchIds.length || planning.context_bundle.version === "context-bundle-v2"}>Freeze {selectedMatchIds.length || "selected"}</button>
+          </div>
+          <div className="experience-match-grid">
+            {experienceMatches.map((match) => {
+              const detail = experienceDetails[match.experience_id];
+              const eligible = match.assessment.disposition === "ACCEPTED"
+                && (match.assessment.replay_eligible || match.assessment.negative_guidance_eligible);
+              return (
+                <article className={`experience-match experience-${match.assessment.disposition.toLowerCase()}`} key={match.match_id}>
+                  <header><label><input type="checkbox" checked={selectedMatchIds.includes(match.match_id)} disabled={!eligible || planning.context_bundle.version === "context-bundle-v2"} onChange={() => toggleExperience(match.match_id)} />Rank {match.rank} · {match.polarity}</label><StatePill state={match.assessment.disposition} /></header>
+                  <div className="experience-score-row"><span>{match.assessment.final_score.toFixed(3)} match</span><span>{match.assessment.transfer_risk.toFixed(3)} transfer risk</span><span>{match.trust} trust</span></div>
+                  {detail ? <p>{detail.experience.source_kind} {shortId(detail.experience.source_run_id)} · {detail.experience.provider}/{detail.experience.runtime_version} · commit {detail.experience.source_commit.slice(0, 12)}</p> : null}
+                  <small>{detail?.segments.map((segment) => segment.kind).join(" → ") ?? "Loading procedural segments…"}</small>
+                  {(match.assessment.reasons ?? []).length ? <p className="experience-reasons">{match.assessment.reasons?.join(" · ")}</p> : null}
+                </article>
+              );
+            })}
+            {!experienceMatches.length ? <p className="quiet">No experience query has been run for this task.</p> : null}
+          </div>
+        </section>
         <div className="planning-actions">
           <form className="override-form" onSubmit={override}>
             <label>Override mode<select value={mode} onChange={(event) => setMode(event.target.value as StrategyMode)}><option>DIRECT</option><option>LOOP</option><option>GRAPH</option><option>HYBRID</option></select></label>
@@ -346,8 +472,8 @@ function PlanningReview({ planning, onUpdate }: {
               {searchRecord ? <StatePill state={searchRecord.status} /> : null}
             </div>
             <label>Agent node<select name="parent_node_id">{eligibleSearchNodes.map((node) => <option key={node.local_id} value={node.local_id}>{node.local_id} · {node.objective}</option>)}</select></label>
-            <label>Mode<select value={searchMode} onChange={(event) => setSearchMode(event.target.value as SearchMode)}><option value="BEST_OF_N">Best of N</option><option value="HYPOTHESIS_BRANCH">Hypothesis branches</option><option value="CROSS_PROVIDER">Cross provider</option><option value="GENERATOR_REVIEWER">Generator + reviewer</option></select></label>
-            <label>Branches<input name="branch_count" type="number" min="1" max="4" defaultValue="2" disabled={searchMode === "GENERATOR_REVIEWER"} /></label>
+            <label>Mode<select value={searchMode} onChange={(event) => setSearchMode(event.target.value as SearchMode)}><option value="BEST_OF_N">Best of N</option><option value="HYPOTHESIS_BRANCH">Hypothesis branches</option><option value="CROSS_PROVIDER">Cross provider</option><option value="GENERATOR_REVIEWER">Generator + reviewer</option>{planning.context_bundle.version === "context-bundle-v2" ? <option value="REPLAY_BRANCH">Fresh + verified replay</option> : null}</select></label>
+            <label>Branches<input name="branch_count" type="number" min="1" max="4" defaultValue="2" disabled={searchMode === "GENERATOR_REVIEWER" || searchMode === "REPLAY_BRANCH"} /></label>
             <label>Parallel<input name="max_parallel" type="number" min="1" max="4" defaultValue={Math.min(taskBudgets?.max_parallel_runs ?? 1, 2)} /></label>
             <label>Branch seconds<input name="branch_wall" type="number" min="1" defaultValue={Math.min(defaultTotalWall, 120)} /></label>
             <label>Branch turns<input name="branch_turns" type="number" min="1" defaultValue={Math.min(defaultTotalTurns, 4)} /></label>
@@ -357,7 +483,7 @@ function PlanningReview({ planning, onUpdate }: {
             <label>Total tools<input name="total_tools" type="number" min="1" defaultValue={defaultTotalTools} /></label>
             {searchMode === "HYPOTHESIS_BRANCH" ? <label className="search-directives">Hypotheses <small>one per branch</small><textarea name="candidate_directives" required rows={3} /></label> : null}
             <button className="secondary-button" type="submit" disabled={Boolean(searchRecord)}>Attach search plan</button>
-            <p className="quiet">Candidates receive no protected capabilities. Replay branches remain reserved for P7.</p>
+            <p className="quiet">Candidates receive no protected capabilities. Replay always retains candidate 1 as a fresh control and revalidates every selected seed.</p>
           </form>
         ) : null}
         {feedback ? <p className="form-status" role="status">{feedback}</p> : null}
@@ -788,10 +914,61 @@ function SearchBenchmarkPage() {
   );
 }
 
+function ExperienceBenchmarkPage() {
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState<string>();
+  const summary = useQuery({
+    queryKey: ["experience-benchmark"],
+    queryFn: api.experienceBenchmark,
+  });
+
+  async function replay() {
+    setStatus("Replaying frozen P7 experience treatments…");
+    try {
+      const report = await api.runExperienceBenchmark();
+      setStatus(`Reproduced ${report.trace_count} traces; gate ${report.gate.passed ? "passed" : "failed"}.`);
+      await queryClient.invalidateQueries({ queryKey: ["experience-benchmark"] });
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Experience benchmark replay failed.");
+    }
+  }
+
+  const gate = summary.data?.gate;
+  return (
+    <section className="page-panel experience-benchmark-page">
+      <header className="section-heading"><div><p className="eyebrow">P7 preregistered evidence</p><h2>Experience transfer gate</h2></div><button className="primary-button" onClick={replay}>Reproduce P7 gate</button></header>
+      <div className="benchmark-summary">
+        <div><strong>{summary.data?.task_count ?? 0}</strong><span>held-out tasks</span></div>
+        <div><strong>{summary.data?.source_count ?? 0}</strong><span>frozen sources</span></div>
+        <div><strong>{summary.data?.trace_count ?? 0}</strong><span>treatment traces</span></div>
+        <div><strong>{gate ? (gate.passed ? "PASS" : "FAIL") : "—"}</strong><span>release gate</span></div>
+      </div>
+      {status ? <p className="form-status benchmark-status" role="status">{status}</p> : null}
+      {gate ? <div className="experience-gate-grid" aria-label="P7 gate checks">
+        <article><StatePill state={gate.false_accepts_not_increased ? "PASS" : "FAIL"} /><strong>False accepts</strong><span>No increase</span></article>
+        <article><StatePill state={gate.stale_rejection_passed ? "PASS" : "FAIL"} /><strong>Stale rejection</strong><span>{Math.round(gate.stale_rejection_rate * 100)}%</span></article>
+        <article><StatePill state={gate.negative_transfer_passed ? "PASS" : "FAIL"} /><strong>Negative transfer</strong><span>{(gate.negative_transfer_rate * 100).toFixed(2)}%</span></article>
+        <article><StatePill state={gate.benefit_passed ? "PASS" : "FAIL"} /><strong>Replay benefit</strong><span>+{gate.replay_quality_uplift.toFixed(3)} quality · {Math.round(gate.replay_tool_call_reduction * 100)}% fewer tools</span></article>
+      </div> : null}
+      <div className="benchmark-table-wrap">
+        <table className="benchmark-table">
+          <thead><tr><th>Treatment</th><th>Success</th><th>Quality</th><th>Uplift</th><th>Turns</th><th>Tools</th><th>Tool reduction</th><th>Negative transfer</th><th>False accepts</th><th>Use / reject / null</th></tr></thead>
+          <tbody>{(summary.data?.treatments ?? []).map((treatment) => <tr key={treatment.treatment}><td>{treatment.treatment.replaceAll("_", " ")}</td><td>{Math.round(treatment.success_rate * 100)}%</td><td>{treatment.mean_quality.toFixed(3)}</td><td>{treatment.quality_uplift.toFixed(3)}</td><td>{treatment.mean_turns.toFixed(1)}</td><td>{treatment.mean_tool_calls.toFixed(1)}</td><td>{Math.round(treatment.tool_call_reduction * 100)}%</td><td>{treatment.negative_transfers}</td><td>{treatment.false_accepts}</td><td>{Math.round(treatment.experience_use_rate * 100)} / {Math.round(treatment.experience_rejection_rate * 100)} / {Math.round(treatment.experience_null_rate * 100)}%</td></tr>)}</tbody>
+        </table>
+      </div>
+      <div className="experience-benchmark-evidence">
+        <div><h3>Reported negative results</h3><ul>{(summary.data?.tasks ?? []).filter((task) => task.negative_transfer_treatments.length).map((task) => <li key={task.task_id}><strong>{task.task_id}</strong> · {task.title} · {task.negative_transfer_treatments.join(", ")}</li>)}</ul></div>
+        <div><h3>Frozen fixture hashes</h3><code>{summary.data?.corpus_sha256 ?? "loading corpus…"}</code><code>{summary.data?.source_sha256 ?? "loading sources…"}</code><code>{summary.data?.trace_sha256 ?? "loading traces…"}</code><code>{summary.data?.config_sha256 ?? "loading config…"}</code></div>
+      </div>
+    </section>
+  );
+}
+
 const navigation = [
   ["/", "Dashboard"], ["/tasks/new", "New task"], ["/runtimes", "Runtimes"],
   ["/history", "History"], ["/approvals", "Approvals"], ["/capabilities", "Capabilities"],
   ["/benchmarks/acr-arch", "ACR-ARCH"], ["/benchmarks/search", "P6 Search"],
+  ["/benchmarks/experience", "P7 Experience"],
 ] as const;
 
 function OperatorShell() {
@@ -813,6 +990,7 @@ function OperatorShell() {
           <Route path="/capabilities" element={<CapabilitiesPage />} />
           <Route path="/benchmarks/acr-arch" element={<BenchmarkPage />} />
           <Route path="/benchmarks/search" element={<SearchBenchmarkPage />} />
+          <Route path="/benchmarks/experience" element={<ExperienceBenchmarkPage />} />
           <Route path="*" element={<section className="page-panel"><h2>Page not found</h2><Link to="/">Return to dashboard</Link></section>} />
         </Routes>
       </div>

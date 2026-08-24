@@ -75,11 +75,16 @@ from accretion.experience.models import (
     ExperienceDetail,
     ExperienceMatch,
     ExperienceSelection,
+    TrajectorySeed,
 )
 from accretion.experience.service import (
     ExperienceConflictError,
     ExperienceDisabledError,
     ExperienceService,
+)
+from accretion.experience_benchmark import (
+    ExperienceBenchmarkRunner,
+    ExperienceBenchmarkSummary,
 )
 from accretion.governance import seed_governance
 from accretion.orchestration.models import (
@@ -175,17 +180,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         globally_enabled=settings.enable_dynamic_workflows,
         operator_identity=settings.operator_identity,
     )
-    search_service = SearchService(
-        manager,
-        globally_enabled=settings.enable_candidate_search,
-        operator_identity=settings.operator_identity,
-    )
-    app.state.candidate_search = search_service
-    app.state.experience = ExperienceService(
+    experience = ExperienceService(
         manager,
         globally_enabled=settings.enable_experience_retrieval,
         operator_identity=settings.operator_identity,
     )
+    app.state.experience = experience
+    search_service = SearchService(
+        manager,
+        globally_enabled=settings.enable_candidate_search,
+        operator_identity=settings.operator_identity,
+        experience_service=experience,
+    )
+    app.state.candidate_search = search_service
     await seed_templates(store)
     await seed_governance(store)
     await seed_acr_arch(store)
@@ -540,6 +547,16 @@ async def list_experience_selections(
 
 
 @app.get(
+    "/api/v2/tasks/{task_id}/experience-matches",
+    response_model=list[ExperienceMatch],
+)
+async def list_selected_experience_matches(
+    task_id: str, request: Request
+) -> list[ExperienceMatch]:
+    return await experience_service(request).selected_matches(task_id)
+
+
+@app.get(
     "/api/v2/runs/{run_id}/workflow/proposals",
     response_model=list[WorkflowProposal],
 )
@@ -690,6 +707,8 @@ async def create_candidate_search(
         per_branch_budget=payload.per_branch_budget,
         total_budget=payload.total_budget,
         candidate_directives=payload.candidate_directives,
+        replay_seed_match_ids=payload.replay_seed_match_ids,
+        negative_guidance_match_ids=payload.negative_guidance_match_ids,
     )
 
 
@@ -726,6 +745,15 @@ async def list_search_candidates(
 async def list_search_scores(search_id: str, request: Request) -> list[CandidateScore]:
     await candidate_search(request).get(search_id)
     return await manager(request).store.list_candidate_scores(search_id)
+
+
+@app.get(
+    "/api/v2/search/{search_id}/replay-seeds",
+    response_model=list[TrajectorySeed],
+)
+async def list_replay_seeds(search_id: str, request: Request) -> list[TrajectorySeed]:
+    await candidate_search(request).get(search_id)
+    return await manager(request).store.list_trajectory_seeds(search_id)
 
 
 @app.post("/api/v2/search/{search_id}/cancel", response_model=SearchRecord)
@@ -962,6 +990,26 @@ async def run_search_benchmark(payload: BenchmarkRunCreate) -> SearchBenchmarkSu
     if payload.execution_source is not BenchmarkExecutionSource.REPLAY:
         raise ValueError("live search calibration requires the explicit local release gate")
     return SearchBenchmarkRunner().run()
+
+
+@app.get(
+    "/api/v2/benchmarks/experience",
+    response_model=ExperienceBenchmarkSummary,
+)
+async def get_experience_benchmark() -> ExperienceBenchmarkSummary:
+    return ExperienceBenchmarkRunner().run()
+
+
+@app.post(
+    "/api/v2/benchmarks/experience/run",
+    response_model=ExperienceBenchmarkSummary,
+)
+async def run_experience_benchmark(
+    payload: BenchmarkRunCreate,
+) -> ExperienceBenchmarkSummary:
+    if payload.execution_source is not BenchmarkExecutionSource.REPLAY:
+        raise ValueError("live experience calibration requires the explicit local release gate")
+    return ExperienceBenchmarkRunner().run()
 
 
 @app.get("/api/v1/runs/{run_id}/events")

@@ -6,6 +6,10 @@ import type {
   BenchmarkTaskDetail,
   Capability,
   ExecutionTrace,
+  ExperienceBenchmarkSummary,
+  ExperienceDetail,
+  ExperienceMatch,
+  ExperienceSelection,
   GraphProjection,
   GraphRevisionDiff,
   GraphValidationResult,
@@ -39,6 +43,7 @@ import type {
   WorkflowProposal,
   WorkflowTemplateSummary,
   WorkflowValidationOutcome,
+  TrajectorySeed,
 } from "./types";
 
 export interface AcrArchFilters {
@@ -103,12 +108,17 @@ export const api = {
     getJson<ProjectFeatureSettings>(`/api/v2/projects/${projectId}/features`),
   updateProjectFeatures: (
     projectId: string,
-    features: { dynamicWorkflows?: boolean; candidateSearch?: boolean },
+    features: {
+      dynamicWorkflows?: boolean;
+      candidateSearch?: boolean;
+      experienceRetrieval?: boolean;
+    },
     revision: number,
   ) =>
     patchJson<ProjectFeatureSettings>(`/api/v2/projects/${projectId}/features`, {
       dynamic_workflows: features.dynamicWorkflows,
       candidate_search: features.candidateSearch,
+      experience_retrieval: features.experienceRetrieval,
       expected_revision: revision,
     }),
   proposeWorkflow: (taskId: string, provider: string) =>
@@ -155,8 +165,34 @@ export const api = {
     getJson<CandidateTrajectory[]>(`/api/v2/search/${searchId}/candidates`),
   searchScores: (searchId: string) =>
     getJson<CandidateScore[]>(`/api/v2/search/${searchId}/scores`),
+  replaySeeds: (searchId: string) =>
+    getJson<TrajectorySeed[]>(`/api/v2/search/${searchId}/replay-seeds`),
   cancelSearch: (searchId: string) =>
     postJson<SearchRecord>(`/api/v2/search/${searchId}/cancel`, {}),
+  materializeExperience: (runId: string, candidateId?: string) =>
+    postJson<ExperienceDetail>(`/api/v2/runs/${runId}/experiences`, {
+      candidate_id: candidateId,
+    }),
+  queryExperiences: (taskId: string) =>
+    postJson<ExperienceMatch[]>("/api/v2/experiences/query", {
+      task_id: taskId,
+      include_failures: true,
+      top_k: 5,
+    }),
+  experience: (experienceId: string) =>
+    getJson<ExperienceDetail>(`/api/v2/experiences/${experienceId}`),
+  selectedExperienceMatches: (taskId: string) =>
+    getJson<ExperienceMatch[]>(`/api/v2/tasks/${taskId}/experience-matches`),
+  selectExperiences: (
+    taskId: string,
+    payload: {
+      query_id: string;
+      match_ids: string[];
+      expected_context_bundle_id: string;
+    },
+  ) => postJson<ExperienceSelection>(
+    `/api/v2/tasks/${taskId}/experience-selections`, payload,
+  ),
   loop: (runId: string) => getJson<LoopExecution>(`/api/v1/runs/${runId}/loop`),
   graph: (runId: string) => getJson<GraphProjection>(`/api/v1/runs/${runId}/graph`),
   trace: (runId: string) => getJson<ExecutionTrace>(`/api/v1/runs/${runId}/trace`),
@@ -191,6 +227,13 @@ export const api = {
   runSearchBenchmark: () =>
     postJson<SearchBenchmarkSummary>(
       "/api/v2/benchmarks/search/run",
+      { execution_source: "REPLAY" },
+    ),
+  experienceBenchmark: () =>
+    getJson<ExperienceBenchmarkSummary>("/api/v2/benchmarks/experience"),
+  runExperienceBenchmark: () =>
+    postJson<ExperienceBenchmarkSummary>(
+      "/api/v2/benchmarks/experience/run",
       { execution_source: "REPLAY" },
     ),
   eventUrl: (runId: string, after = 0) =>
