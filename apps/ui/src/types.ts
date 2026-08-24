@@ -56,6 +56,7 @@ export type SearchMode = components["schemas"]["SearchMode"];
 export type CandidateTrajectory = components["schemas"]["CandidateTrajectory"];
 export type CandidateScore = components["schemas"]["CandidateScore"];
 export type SearchBenchmarkSummary = components["schemas"]["SearchBenchmarkSummary"];
+export type DynamicWorkflowBenchmarkSummary = components["schemas"]["DynamicWorkflowBenchmarkSummary"];
 export type Experience = components["schemas"]["Experience"];
 export type ExperienceDetail = components["schemas"]["ExperienceDetail"];
 export type ExperienceMatch = components["schemas"]["ExperienceMatch"];

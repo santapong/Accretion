@@ -12,7 +12,7 @@ isolated workspaces, and a durable normalized execution trace.
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-MIT-6f42c1.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-v0.1.0-2ea44f)](#project-status)
+[![Status](https://img.shields.io/badge/status-v0.2.0%20candidate-d29922)](#project-status)
 
 [Author: resume.draveniq.dev](https://resume.draveniq.dev) ·
 [Documentation](docs/README.md) · [Frontend guide](docs/FRONTEND_GUIDE.md) ·
@@ -26,10 +26,12 @@ isolated workspaces, and a durable normalized execution trace.
 </div>
 
 > [!IMPORTANT]
-> `v0.1.0` remains the current stable release. On `develop`, the opt-in P5 dynamic
-> workflow, P6 bounded candidate-search, and P7 verified-experience milestones
-> are implemented; the final clean-checkout v0.2 release audit is not complete.
-> No v0.2 tag has been created. The stable v0.1 release includes P0 runtime feasibility, P1
+> The `v0.2.0` release candidate adds opt-in P5 validated dynamic workflows,
+> P6 bounded candidate search, P7 verified-experience replay, and frozen research
+> gates while retaining the immutable `v0.1.0` release as the current release and
+> static control. Promotion is blocked until every item in the
+> [v0.2 release audit](docs/V0_2_RELEASE_AUDIT.md) passes.
+> The inherited v0.1 foundation includes P0 runtime feasibility, P1
 > deterministic planning, P2 verifier-gated feedback loops, P3 static graph
 > execution, and the P4 governed harness/operator release gate. Its five validated
 > templates can execute:
@@ -38,7 +40,7 @@ isolated workspaces, and a durable normalized execution trace.
 
 <div align="center">
   <a href="docs/assets/project-overview.svg">
-    <img src="docs/assets/project-overview.svg" alt="Accretion project overview showing operator intent flowing through deterministic control, isolated runtime execution, and independent verification, plus stable v0.1.0, completed P5 through P7 on develop, and the remaining v0.2 release audit" width="100%" />
+    <img src="docs/assets/project-overview.svg" alt="Accretion project overview showing operator intent flowing through deterministic control, isolated runtime execution, and independent verification, with the v0.2.0 release candidate and immutable v0.1.0 static-control evidence" width="100%" />
   </a>
 </div>
 
@@ -52,11 +54,12 @@ fixtures, examples, and operational documentation in one workspace.
 
 | I want to… | Use | Release position |
 |---|---|---|
-| Evaluate the stable product | Clone the `v0.1.0` tag and follow [Quick start](#quick-start) | Released and immutable |
-| Explore dynamic workflows, candidate search, verified experience, and the completed frontend | Use `develop`, then read the [frontend guide](docs/FRONTEND_GUIDE.md) | Implemented and CI-gated; awaiting the final v0.2 audit |
+| Evaluate the current release | Clone the `v0.1.0` tag and follow [Quick start](#quick-start) | Released and immutable |
+| Evaluate the v0.2 candidate | Check out `develop` after the release-candidate PR merges | Not a release until the audit passes and `v0.2.0` is tagged |
+| Reproduce the static control | Clone `v0.1.0` and read the [frozen baseline](docs/V0_1_BASELINE.md) | Preserved v0.1 evidence |
 | Understand the safety model | Read [Architecture](#architecture), the [trust boundary](docs/assets/trust-boundary.svg), and [SECURITY.md](SECURITY.md) | Applies across releases |
 | Build a contribution | Start with the [developer guide](docs/DEVELOPER_GUIDE.md) and [CONTRIBUTING.md](CONTRIBUTING.md) | Pull requests target `develop` |
-| Reproduce the evidence | Use the [documentation hub](docs/README.md) to choose the P4, P6, or P7 benchmark and acceptance report | Frozen replay is deterministic; live-provider tests are opt-in |
+| Reproduce the evidence | Use the [documentation hub](docs/README.md) to choose ACR-ARCH or the P5, P6, and P7 benchmark reports | Frozen replay is deterministic; release live-provider evidence is separate |
 
 This is a local orchestration and research system, not an unrestricted deployment
 agent. It deliberately fails closed when evidence, authority, budgets, or recovery
@@ -91,32 +94,32 @@ operator can answer five questions before and during every run:
 | Isolation | One Git worktree lease per mutable run with captured diff artifacts |
 | Recovery | Atomic iteration commits, optimistic revisions, session continuation, and restart reconciliation without replaying committed work |
 | Observability | Durable PostgreSQL state, immutable verifier evidence, monotonic normalized events, resumable SSE, runtime health, and usage pressure |
-| Operator frontend | Ten implemented routes for dashboard, task/planning, live graph and controls, runtime monitor, history/audit, approvals, capability registries, ACR-ARCH, P6 research, and P7 research |
+| Operator frontend | Eleven implemented routes for dashboard, task/planning, live graph and controls, runtime monitor, history/audit, approvals, capability registries, ACR-ARCH, and P5–P7 research |
 | Governed capabilities | Immutable capability/skill/plugin/policy registries, task-scoped MCP exposure, approval-bound idempotent side effects, and executor-boundary credential injection |
 | Architecture benchmark | Frozen 30-task ACR-ARCH corpus, 68 balanced replay scenarios, raw dimensions, utility/regret, filterable operator UI, and opt-in live provider calibration |
+| Dynamic workflow research | Frozen 12-task P5 static-versus-dynamic suite with cohort uplift, architecture regret, structural variation, invalid-proposal fallback, and a release-gate UI |
 | Candidate search | Opt-in P6 best-of-N, hypothesis, cross-provider, and generator-reviewer execution with shared budgets, isolated trajectories, independent ranking, and crash-safe promotion |
 | Verified experience | Opt-in P7 immutable terminal evidence, repository-scoped deterministic retrieval, compatibility and transfer-risk scoring, explicit negative knowledge, fresh-control trajectory replay, repeated revalidation, and a frozen transfer benchmark |
 
 ## Frontend status
 
-Yes—the frontend is implemented for the current P0–P7 scope on `develop`.
+Yes—the frontend is implemented for the P0–P7 v0.2 candidate scope.
 It is not a mock dashboard: it calls the generated API contract, starts from
 authoritative snapshots, follows active runs through resumable server-sent
 events, and exposes the decision and verifier evidence needed to explain a run.
 
 <div align="center">
   <a href="docs/assets/operator-ui-map.svg">
-    <img src="docs/assets/operator-ui-map.svg" alt="Accretion frontend route map covering dashboard, task planning, live run operation, runtime and governance pages, and the ACR-ARCH, P6, and P7 research pages, all backed by typed FastAPI snapshots and resumable events" width="100%" />
+    <img src="docs/assets/operator-ui-map.svg" alt="Accretion frontend route map covering dashboard, task planning, live run operation, runtime and governance pages, and the ACR-ARCH and P5 through P7 research pages, all backed by typed FastAPI snapshots and resumable events" width="100%" />
   </a>
 </div>
 
 | Frontend gate | Current evidence |
 |---|---|
-| User-facing scope | Dashboard, New Task/Planning, Live Run, Runtimes, History, Approvals, Capabilities, ACR-ARCH, P6 Search, and P7 Experience |
+| User-facing scope | Dashboard, New Task/Planning, Live Run, Runtimes, History, Approvals, Capabilities, ACR-ARCH, P5 Dynamic, P6 Search, and P7 Experience |
 | API safety | Generated OpenAPI TypeScript schema; backend remains the authority for policy and transitions |
 | Live behavior | Snapshot-first state, monotonic SSE, reconnect and sequence-gap recovery |
-| Verification | 21 component tests, ESLint, TypeScript, OpenAPI idempotence, and production build passed at the P7 completion gate |
-| Remaining release work | Final clean-checkout v0.2 audit and release promotion; signed-in provider calibration remains opt-in |
+| Verification | 22 component tests, ESLint, TypeScript, OpenAPI idempotence, and production build pass; browser/accessibility remains a blocking release-audit item |
 
 See the [operator frontend guide](docs/FRONTEND_GUIDE.md) for every route, the
 operator journey, data flow, P5–P7 coverage, source map, and frontend commands.
@@ -252,10 +255,10 @@ decision. The [frozen v0.1 baseline](docs/V0_1_BASELINE.md) identifies the exact
 release and experimental control; the [v0.1.0 release notes](docs/V0_1_RELEASE_NOTES.md)
 describe its shipped scope, compatibility, and reproducibility hashes.
 
-v0.2 now includes the opt-in P5 dynamic-workflow, P6 bounded-search, and P7
-verified-experience slices. See the [P7 runbook](docs/P7_RUNBOOK.md),
+The v0.2 candidate includes the opt-in P5 dynamic-workflow, P6 bounded-search, and P7
+verified-experience slices. Start with the [P5 dynamic benchmark](docs/P5_DYNAMIC_BENCHMARK.md), [P7 runbook](docs/P7_RUNBOOK.md),
 [developer showcase](docs/P7_SHOWCASE.md), [acceptance report](docs/P7_ACCEPTANCE_REPORT.md),
-and [delivery plan](docs/V0_2_PLAN.md). The final v0.2 release audit remains; the
+and [delivery plan](docs/V0_2_PLAN.md). The [v0.2 release audit](docs/V0_2_RELEASE_AUDIT.md) records the current NO-GO gate and remaining blockers; the
 [v0.2 SDD](docs/sdd/Accretion_SDD_v0.2.md) remains the normative contract.
 
 ## Quick start
@@ -269,19 +272,19 @@ and [delivery plan](docs/V0_2_PLAN.md). The final v0.2 release audit remains; th
 - Docker with Compose
 - Optional: supported, signed-in Codex and Claude Code CLIs for live providers
 
-The validated v0.1 live-provider range is Codex CLI `>=0.148,<0.149` and Claude
+The validated v0.2 live-provider range is Codex CLI `>=0.148,<0.149` and Claude
 Code `>=2.1.231,<2.2`.
 
 ### Choose and clone a version
 
-For the stable v0.1 product:
+For the current immutable release:
 
 ```bash
 git clone --branch v0.1.0 https://github.com/santapong/Accretion.git
 cd Accretion
 ```
 
-For the implemented P5–P7 and frontend scope that will become v0.2:
+For the v0.2 release candidate and ongoing development:
 
 ```bash
 git clone --branch develop https://github.com/santapong/Accretion.git

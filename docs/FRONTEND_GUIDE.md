@@ -6,13 +6,12 @@ P0–P7 scope currently on `develop`: project and task setup, deterministic
 planning, live run control, graph and verifier evidence, governance, bounded
 candidate search, verified-experience replay, and reproducible benchmark views.
 
-<img src="assets/operator-ui-map.svg" alt="Map of the ten implemented Accretion frontend routes, the central live-run surface, and the authoritative FastAPI snapshot, React Query, and resumable event data flow" width="100%" />
+<img src="assets/operator-ui-map.svg" alt="Map of the eleven implemented Accretion frontend routes, the central live-run surface, and the authoritative FastAPI snapshot, React Query, and resumable event data flow" width="100%" />
 
 > [!IMPORTANT]
-> The frontend is feature-complete for the implemented v0.2 P5–P7 scope and its
-> lint, TypeScript, component-test, OpenAPI-generation, and production-build gates
-> pass. That does not make v0.2 a stable release: the repository still requires
-> the final clean-checkout release audit, promotion to `main`, and a v0.2 tag.
+> The frontend is feature-complete for the v0.2 candidate. Its generated
+> contract, lint, TypeScript, 22 component tests, and production build pass.
+> Browser/accessibility is still a blocking release item recorded in the v0.2 audit.
 
 ## What an operator can do
 
@@ -26,6 +25,7 @@ candidate search, verified-experience replay, and reproducible benchmark views.
 | Approvals | `/approvals` | Pending human gates and explicit approve/deny decisions |
 | Capabilities | `/capabilities` | Capability, skill, plugin, and policy registry inspection |
 | ACR-ARCH | `/benchmarks/acr-arch` | Frozen v0.1 architecture benchmark filters, task details, utility, regret, and replay evidence |
+| P5 Dynamic | `/benchmarks/dynamic` | Frozen static/dynamic cohort comparison, structure/replan metrics, safety, fallback, and release classification |
 | P6 Search | `/benchmarks/search` | Frozen N=1/2/4 quality-versus-compute results and provider/null-result comparison |
 | P7 Experience | `/benchmarks/experience` | Frozen fresh/success/failure/replay treatments, transfer-safety metrics, task results, and gate reproduction |
 
@@ -68,7 +68,7 @@ The UI is intentionally a projection, not an execution authority:
 
 | Milestone | Planning surface | Run/research surface |
 |---|---|---|
-| P5 dynamic workflows | Propose, validate, inspect findings, attach only to accepted graph nodes, activate | Graph revision and runtime-decision evidence, static fallback and replan visibility |
+| P5 dynamic workflows | Propose, validate, inspect findings, attach only to accepted graph nodes, activate | Graph revision/runtime decisions plus frozen static-versus-dynamic cohort evidence |
 | P6 candidate search | Choose mode, node, branch/parallel limits, and branch/total budgets | Candidate tree with runtime/model/version, reviewer, spend, score, terminal reason, selection, and promotion state |
 | P7 verified experience | Retrieve same-repository matches, inspect provenance/compatibility/risk, freeze up to three, choose replay | Explicit terminal materialization, fresh/replay labels, source lineage, safe segment IDs/guidance, revalidation, and frozen transfer gate |
 
@@ -103,7 +103,7 @@ npm run test
 npm run build
 ```
 
-The P7 completion gate recorded 21 component tests plus successful ESLint,
+The v0.2 candidate gate records 22 component tests plus successful ESLint,
 TypeScript, generated-contract, and production-build checks. The build currently
 reports a non-blocking bundle-size advisory; it is visible technical debt, not a
 failed correctness gate.
@@ -127,5 +127,5 @@ assistive technology.
 | `apps/ui/src/*.test.tsx` | Component, event recovery, lineage, benchmark, and layout evidence |
 
 For end-to-end system behavior, continue with the [developer showcase](SHOWCASE.md).
-For release status and what remains before v0.2, see the
-[v0.2 delivery plan](V0_2_PLAN.md).
+For release status, see the [v0.2 release audit](V0_2_RELEASE_AUDIT.md) and
+[delivery plan](V0_2_PLAN.md).
