@@ -25,6 +25,9 @@ class Settings(BaseSettings):
     capability_policy_id: str = "local-capability-policy"
     granted_permissions: list[str] = Field(default_factory=list)
     credential_env_map: dict[str, str] = Field(default_factory=dict)
+    enable_dynamic_workflows: bool = False
+    enable_candidate_search: bool = False
+    enable_experience_retrieval: bool = False
 
     @property
     def worktree_dir(self) -> Path:

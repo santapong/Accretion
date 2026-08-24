@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 650" role="img" aria-labelledby="title description">
+  <title id="title">P7 frozen experience-transfer benchmark result</title>
+  <desc id="description">The frozen P7 benchmark contains 20 held-out tasks, 50 sources, and 80 traces. Replay mean quality is 0.7815 versus 0.711 fresh, an uplift of 0.0705. Replay uses 8 mean tool calls versus 10 fresh, a 20 percent reduction. Stale rejection is 95 percent, negative transfer is 3.33 percent, and false accepts do not increase, so every preregistered gate passes.</desc>
+  <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0b120e"/><stop offset="1" stop-color="#182119"/></linearGradient><style>.ey{font:700 18px 'DM Mono',monospace;letter-spacing:3px;fill:#75db91}.h{font:700 31px Inter,sans-serif;fill:#edf6ef}.t{font:16px Inter,sans-serif;fill:#9eaca2}.n{font:700 34px 'DM Mono',monospace;fill:#dff6e4}.s{font:13px 'DM Mono',monospace;fill:#839188}.card{fill:#101713;stroke:#35463b;stroke-width:2}.bar{fill:#29392e}.fresh{fill:#718079}.replay{fill:#75db91}.gold{fill:#d4b66d}</style></defs>
+  <rect width="1500" height="650" rx="30" fill="url(#bg)"/>
+  <text x="58" y="60" class="ey">P7 · FROZEN TRANSFER GATE</text><text x="58" y="105" class="h">Measured benefit, visible negative transfer</text>
+  <text x="58" y="138" class="t">20 tasks · 50 sources · 80 replay traces · deterministic fixture hashes</text>
+  <rect x="58" y="185" width="300" height="168" rx="20" class="card"/><text x="84" y="224" class="s">MEAN QUALITY</text><text x="84" y="278" class="n">+0.0705</text><text x="84" y="318" class="t">0.711 fresh → 0.7815 replay</text>
+  <rect x="388" y="185" width="300" height="168" rx="20" class="card"/><text x="414" y="224" class="s">TOOL CALLS</text><text x="414" y="278" class="n">−20%</text><text x="414" y="318" class="t">10.0 fresh → 8.0 replay</text>
+  <rect x="718" y="185" width="300" height="168" rx="20" class="card"/><text x="744" y="224" class="s">STALE REJECTION</text><text x="744" y="278" class="n">95%</text><text x="744" y="318" class="t">threshold ≥ 95%</text>
+  <rect x="1048" y="185" width="394" height="168" rx="20" class="card"/><text x="1074" y="224" class="s">NEGATIVE TRANSFER</text><text x="1074" y="278" class="n">3.33%</text><text x="1074" y="318" class="t">2 / 60 treatments · threshold ≤ 5%</text>
+  <text x="58" y="405" class="ey">TREATMENT QUALITY</text>
+  <text x="58" y="451" class="s">FRESH</text><rect x="190" y="431" width="890" height="30" rx="8" class="bar"/><rect x="190" y="431" width="711" height="30" rx="8" class="fresh"/><text x="1100" y="454" class="s">0.7110</text>
+  <text x="58" y="503" class="s">SUCCESS ONLY</text><rect x="190" y="483" width="890" height="30" rx="8" class="bar"/><rect x="190" y="483" width="741" height="30" rx="8" class="gold"/><text x="1100" y="506" class="s">0.7410</text>
+  <text x="58" y="555" class="s">SUCCESS + FAILURE</text><rect x="190" y="535" width="890" height="30" rx="8" class="bar"/><rect x="190" y="535" width="776" height="30" rx="8" class="gold"/><text x="1100" y="558" class="s">0.7760</text>
+  <text x="58" y="607" class="s">REPLAY</text><rect x="190" y="587" width="890" height="30" rx="8" class="bar"/><rect x="190" y="587" width="782" height="30" rx="8" class="replay"/><text x="1100" y="610" class="s">0.7815</text>
+  <rect x="1242" y="430" width="200" height="187" rx="20" fill="#14251a" stroke="#75db91" stroke-width="2"/><text x="1342" y="479" text-anchor="middle" class="ey">GATE</text><text x="1342" y="543" text-anchor="middle" class="n">PASS</text><text x="1342" y="580" text-anchor="middle" class="s">false accepts +0</text>
+</svg>

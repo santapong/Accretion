@@ -4,6 +4,13 @@ Accretion uses a protected integration branch and small, reviewable pull
 requests. By contributing, you agree that your work is provided under the
 repository's MIT license.
 
+<img src="docs/assets/delivery-workflow.svg" alt="Contribution flow from a short-lived branch through local checks, a pull request into protected develop, required CI, squash merge, and release promotion to main" width="100%" />
+
+New contributors should begin with the [developer guide](docs/DEVELOPER_GUIDE.md)
+and use the [documentation hub](docs/README.md) to find the relevant runbook.
+Frontend contributors should also read the
+[operator frontend guide](docs/FRONTEND_GUIDE.md).
+
 ## Development workflow
 
 1. Branch from the latest `develop` using one of the prefixes documented in
@@ -32,6 +39,18 @@ use a `hotfix/` branch from `main` and must be merged back into `develop`.
   outputs.
 - Keep live provider tests opt-in; document any signed-in CLI requirement.
 - Update the SDD or runbook when a contract or operational assumption changes.
+
+## Documentation and visual changes
+
+- Keep technical diagrams as reviewable SVG when practical; include a `<title>`,
+  `<desc>`, and meaningful alternative text where the asset is embedded.
+- Label illustrative images as illustrations so they cannot be mistaken for an
+  executable contract or an acceptance artifact.
+- Verify every relative link and command from the document's intended checkout.
+- Update the [visual reference](docs/README.md#visual-reference) when adding a
+  diagram that explains a system boundary, workflow, or release plan.
+- Keep frontend route/status claims synchronized with
+  [the frontend guide](docs/FRONTEND_GUIDE.md) and generated OpenAPI contract.
 
 The project currently permits pull requests without an outside approval so a
 solo maintainer is not blocked. Once a second active maintainer is added, the

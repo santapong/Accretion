@@ -6,24 +6,44 @@ import type {
   BenchmarkTaskDetail,
   Capability,
   ExecutionTrace,
+  ExperienceBenchmarkSummary,
+  ExperienceDetail,
+  ExperienceMatch,
+  ExperienceSelection,
+  GraphProjection,
+  GraphRevisionDiff,
+  GraphValidationResult,
+  LoopExecution,
+  MetaPlugin,
+  MetaSkill,
   Project,
   ProjectCreate,
-  GraphProjection,
-  LoopExecution,
+  ProjectFeatureSettings,
+  ReplanOutcome,
+  ReplanRequest,
   Run,
   RunAudit,
   RunCreate,
+  RunGraphRevision,
+  RuntimeDecision,
   RuntimeHealth,
+  CandidateScore,
+  CandidateTrajectory,
+  SearchBenchmarkSummary,
+  SearchCreate,
+  SearchRecord,
   SessionRef,
-  MetaPlugin,
-  MetaSkill,
   StrategyOverrideCreate,
   StrategyOverrideResult,
   Task,
   TaskCreate,
   TaskPlanning,
   VerificationResult,
+  WorkflowActivationOutcome,
+  WorkflowProposal,
   WorkflowTemplateSummary,
+  WorkflowValidationOutcome,
+  TrajectorySeed,
 } from "./types";
 
 export interface AcrArchFilters {
@@ -55,6 +75,19 @@ async function postJson<T>(path: string, payload: unknown): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function patchJson<T>(path: string, payload: unknown): Promise<T> {
+  const response = await fetch(`${API_ROOT}${path}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { message?: string } | null;
+    throw new Error(body?.message ?? `Request failed (${response.status})`);
+  }
+  return response.json() as Promise<T>;
+}
+
 export const api = {
   runtimes: () => getJson<RuntimeHealth[]>("/api/v1/runtimes"),
   runtimeSessions: (runtimeId: string) =>
@@ -65,11 +98,101 @@ export const api = {
   projects: () => getJson<Project[]>("/api/v1/projects"),
   createProject: (payload: ProjectCreate) => postJson<Project>("/api/v1/projects", payload),
   createTask: (payload: TaskCreate) => postJson<Task>("/api/v1/tasks", payload),
+  task: (taskId: string) => getJson<Task>(`/api/v1/tasks/${taskId}`),
   planning: (taskId: string) => getJson<TaskPlanning>(`/api/v1/tasks/${taskId}/planning`),
   overrideStrategy: (taskId: string, payload: StrategyOverrideCreate) =>
     postJson<StrategyOverrideResult>(`/api/v1/tasks/${taskId}/strategy/override`, payload),
   startRun: (taskId: string, payload: RunCreate) =>
     postJson<Run>(`/api/v1/tasks/${taskId}/runs`, payload),
+  projectFeatures: (projectId: string) =>
+    getJson<ProjectFeatureSettings>(`/api/v2/projects/${projectId}/features`),
+  updateProjectFeatures: (
+    projectId: string,
+    features: {
+      dynamicWorkflows?: boolean;
+      candidateSearch?: boolean;
+      experienceRetrieval?: boolean;
+    },
+    revision: number,
+  ) =>
+    patchJson<ProjectFeatureSettings>(`/api/v2/projects/${projectId}/features`, {
+      dynamic_workflows: features.dynamicWorkflows,
+      candidate_search: features.candidateSearch,
+      experience_retrieval: features.experienceRetrieval,
+      expected_revision: revision,
+    }),
+  proposeWorkflow: (taskId: string, provider: string) =>
+    postJson<WorkflowProposal>(`/api/v2/tasks/${taskId}/workflow/propose`, {
+      execution_provider: provider,
+      planner_runtime: "DETERMINISTIC",
+    }),
+  workflowProposals: (runId: string) =>
+    getJson<WorkflowProposal[]>(`/api/v2/runs/${runId}/workflow/proposals`),
+  workflowValidations: (runId: string, proposalId: string) =>
+    getJson<GraphValidationResult[]>(
+      `/api/v2/runs/${runId}/workflow/proposals/${proposalId}/validations`,
+    ),
+  validateWorkflow: (runId: string, proposalId: string) =>
+    postJson<WorkflowValidationOutcome>(
+      `/api/v2/runs/${runId}/workflow/proposals/${proposalId}/validate`,
+      {},
+    ),
+  activateWorkflow: (runId: string, proposalId: string) =>
+    postJson<WorkflowActivationOutcome>(
+      `/api/v2/runs/${runId}/workflow/proposals/${proposalId}/activate`,
+      {},
+    ),
+  graphRevisions: (runId: string) =>
+    getJson<RunGraphRevision[]>(`/api/v2/runs/${runId}/graph/revisions`),
+  graphDiff: (runId: string, from: number, to: number) =>
+    getJson<GraphRevisionDiff>(
+      `/api/v2/runs/${runId}/graph/diff?from=${from}&to=${to}`,
+    ),
+  runtimeDecisions: (runId: string) =>
+    getJson<RuntimeDecision[]>(`/api/v2/runs/${runId}/runtime-decisions`),
+  replans: (runId: string) =>
+    getJson<ReplanRequest[]>(`/api/v2/runs/${runId}/replans`),
+  replan: (runId: string, reason: string, evidenceRefs: string[]) =>
+    postJson<ReplanOutcome>(`/api/v2/runs/${runId}/replan`, {
+      reason,
+      evidence_refs: evidenceRefs,
+    }),
+  createSearch: (runId: string, payload: SearchCreate) =>
+    postJson<SearchRecord>(`/api/v2/runs/${runId}/search`, payload),
+  searches: (runId: string) =>
+    getJson<SearchRecord[]>(`/api/v2/runs/${runId}/searches`),
+  searchCandidates: (searchId: string) =>
+    getJson<CandidateTrajectory[]>(`/api/v2/search/${searchId}/candidates`),
+  searchScores: (searchId: string) =>
+    getJson<CandidateScore[]>(`/api/v2/search/${searchId}/scores`),
+  replaySeeds: (searchId: string) =>
+    getJson<TrajectorySeed[]>(`/api/v2/search/${searchId}/replay-seeds`),
+  cancelSearch: (searchId: string) =>
+    postJson<SearchRecord>(`/api/v2/search/${searchId}/cancel`, {}),
+  materializeExperience: (runId: string, candidateId?: string) =>
+    postJson<ExperienceDetail>(`/api/v2/runs/${runId}/experiences`, {
+      candidate_id: candidateId,
+    }),
+  queryExperiences: (taskId: string) =>
+    postJson<ExperienceMatch[]>("/api/v2/experiences/query", {
+      task_id: taskId,
+      include_failures: true,
+      top_k: 5,
+    }),
+  experience: (experienceId: string) =>
+    getJson<ExperienceDetail>(`/api/v2/experiences/${experienceId}`),
+  selectedExperienceMatches: (taskId: string) =>
+    getJson<ExperienceMatch[]>(`/api/v2/tasks/${taskId}/experience-matches`),
+  selectExperiences: (
+    taskId: string,
+    payload: {
+      query_id: string;
+      match_ids: string[];
+      expected_context_bundle_id: string;
+    },
+  ) => postJson<ExperienceSelection>(
+    `/api/v2/tasks/${taskId}/experience-selections`, payload,
+  ),
   loop: (runId: string) => getJson<LoopExecution>(`/api/v1/runs/${runId}/loop`),
   graph: (runId: string) => getJson<GraphProjection>(`/api/v1/runs/${runId}/graph`),
   trace: (runId: string) => getJson<ExecutionTrace>(`/api/v1/runs/${runId}/trace`),
@@ -99,6 +222,20 @@ export const api = {
   ),
   acrArchTask: (taskId: string) =>
     getJson<BenchmarkTaskDetail>(`/api/v1/benchmarks/acr-arch/tasks/${taskId}`),
+  searchBenchmark: () =>
+    getJson<SearchBenchmarkSummary>("/api/v2/benchmarks/search"),
+  runSearchBenchmark: () =>
+    postJson<SearchBenchmarkSummary>(
+      "/api/v2/benchmarks/search/run",
+      { execution_source: "REPLAY" },
+    ),
+  experienceBenchmark: () =>
+    getJson<ExperienceBenchmarkSummary>("/api/v2/benchmarks/experience"),
+  runExperienceBenchmark: () =>
+    postJson<ExperienceBenchmarkSummary>(
+      "/api/v2/benchmarks/experience/run",
+      { execution_source: "REPLAY" },
+    ),
   eventUrl: (runId: string, after = 0) =>
     `${API_ROOT}/api/v1/runs/${runId}/events?after=${after}`,
 };

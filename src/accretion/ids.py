@@ -35,6 +35,23 @@ _PREFIXES = {
     "capability_request": "cpr",
     "benchmark_run": "bnr",
     "architecture_metric": "acm",
+    "workflow_proposal": "wfp",
+    "graph_validation": "gvl",
+    "graph_revision": "grv",
+    "replan_request": "rpl",
+    "runtime_decision": "rtd",
+    "search": "src",
+    "search_candidate": "scn",
+    "candidate_score": "scr",
+    "search_promotion": "spr",
+    "experience": "exp",
+    "trajectory_segment": "tgs",
+    "experience_embedding": "emb",
+    "experience_query": "exq",
+    "experience_match": "exm",
+    "experience_selection": "exs",
+    "moderation_action": "mod",
+    "trajectory_seed": "tsd",
 }
 
 

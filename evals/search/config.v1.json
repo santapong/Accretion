@@ -1,0 +1,9 @@
+{
+  "suite_version": "1.0.0",
+  "configuration_version": "1.0.0",
+  "candidate_counts": [1, 2, 4],
+  "held_out_task_count": 12,
+  "quality_precision": 6,
+  "minimum_expected_gain": 0.01,
+  "selector_version": "verified-best-candidate-v2"
+}

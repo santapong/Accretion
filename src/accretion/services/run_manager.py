@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
+from typing import Protocol
 
 from accretion.checkpoints import (
     ReconcileClassification,
@@ -80,6 +81,7 @@ from accretion.looping import (
     build_loop_spec,
     terminal_outcome,
 )
+from accretion.orchestration.models import SearchRecord, SearchStatus
 from accretion.persistence.side_effects import SideEffectLedger
 from accretion.persistence.store import StateStore
 from accretion.planning import (
@@ -113,6 +115,18 @@ class RuntimeCallOutcome:
     tool_calls: int
     error: ErrorSummary | None = None
     stop_reason: LoopStopReason | None = None
+
+
+class SearchNodeExecutor(Protocol):
+    async def __call__(
+        self,
+        record: SearchRecord,
+        run: Run,
+        task: Task,
+        lease: WorkspaceLease,
+        node: RunNode,
+        policy: AcceptancePolicy,
+    ) -> SearchRecord: ...
 
 
 class NodeOutcome(StrEnum):
@@ -200,6 +214,7 @@ class RunManager:
         self.pause_requested: set[str] = set()
         self.terminal_locks: dict[str, asyncio.Lock] = {}
         self.approval_conditions: dict[str, asyncio.Condition] = {}
+        self.search_executor: SearchNodeExecutor | None = None
 
     async def create_project(self, name: str, repository_path: Path) -> Project:
         repository_path = repository_path.resolve(strict=True)
@@ -395,6 +410,233 @@ class RunManager:
         )
         self.background[run.run_id] = asyncio.create_task(self._execute_new(run.run_id))
         return (await self.store.get_run(run.run_id)) or run
+
+    async def prepare_dynamic_run(
+        self,
+        task_id: str,
+        provider: Provider,
+        *,
+        required_verifiers: list[str],
+        has_approval_gates: bool,
+    ) -> Run:
+        """Create a durable P5 run without making an unvalidated graph executable."""
+
+        task = await self._require_task(task_id)
+        planning = await self.get_task_planning(task_id)
+        self._require_runtime(provider)
+        verifier_ids = list(dict.fromkeys(required_verifiers))
+        self.verifiers.resolve(verifier_ids)
+        policy = AcceptancePolicy(
+            policy_id=new_id("acceptance_policy"),
+            required_verifiers=verifier_ids,
+            require_human_if_risk_gte=None if has_approval_gates else RiskLevel.HIGH,
+            outcome_check="all dynamic-workflow verifiers must pass",
+        )
+        await self.store.save_acceptance_policy(policy)
+        run = Run(
+            run_id=new_id("run"),
+            task_id=task_id,
+            project_id=task.envelope.project_id,
+            provider=provider,
+            state=RunState.PENDING,
+            strategy_decision_id=planning.current_decision.decision_id,
+            execution_mode=ExecutionMode.GRAPH,
+            acceptance_policy_id=policy.policy_id,
+        )
+        await self.store.create_run(run)
+        await self._append(
+            self._control_event(
+                run,
+                "accretion/dynamic-run-created",
+                EventType.RUN_CREATED,
+                payload={
+                    "strategy_decision_id": planning.current_decision.decision_id,
+                    "execution_mode": ExecutionMode.GRAPH.value,
+                    "acceptance_policy_id": policy.policy_id,
+                    "orchestration_version": "dynamic-v2",
+                    "awaiting_graph_validation": True,
+                },
+            )
+        )
+        return (await self.store.get_run(run.run_id)) or run
+
+    async def install_dynamic_graph(
+        self, run_id: str, template: WorkflowTemplate
+    ) -> tuple[Run, RunGraph, WorkflowTemplate]:
+        """Install a validated P5 graph, but do not start it before revision evidence exists."""
+
+        run = await self._require_run(run_id)
+        if run.state is not RunState.PENDING:
+            raise ValueError(f"dynamic graph activation requires PENDING, got {run.state.value}")
+        if await self.store.get_run_graph(run_id) is not None:
+            raise ValueError(f"run {run_id} already has an active graph")
+        task = await self._require_task(run.task_id)
+        stored_template = await self.store.upsert_workflow_template(template)
+        run = await self.store.update_run(
+            run_id,
+            RunState.PENDING,
+            execution_mode=ExecutionMode.GRAPH,
+            workflow_template_id=stored_template.template_id,
+        )
+        graph = instantiate_run_graph(
+            stored_template,
+            run_id=run_id,
+            task_id=run.task_id,
+            budgets=task.envelope.budgets,
+        )
+        graph = await self.store.create_run_graph(graph)
+        return run, graph, stored_template
+
+    async def launch_dynamic_run(self, run_id: str) -> Run:
+        """Start a previously installed graph after its immutable revision is durable."""
+
+        run = await self._require_run(run_id)
+        if run.state is not RunState.PENDING:
+            raise ValueError(f"dynamic launch requires PENDING, got {run.state.value}")
+        if await self.store.get_run_graph(run_id) is None:
+            raise ValueError(f"run {run_id} has no validated graph")
+        active = self.background.get(run_id)
+        if active is None or active.done():
+            self.background[run_id] = asyncio.create_task(self._execute_new(run_id))
+        return (await self.store.get_run(run_id)) or run
+
+    async def install_dynamic_replan(
+        self, run_id: str, template: WorkflowTemplate
+    ) -> tuple[Run, RunGraph, WorkflowTemplate]:
+        """Replace only the active projection; immutable semantic revisions stay separate."""
+
+        run = await self._require_run(run_id)
+        if run.state is not RunState.PAUSED:
+            raise ValueError(f"dynamic replan requires PAUSED, got {run.state.value}")
+        current = await self.store.get_run_graph(run_id)
+        if current is None:
+            raise ValueError(f"run {run_id} has no active graph")
+        prior_checkpoint = await self.store.get_latest_checkpoint(run_id)
+        prior_statuses = (
+            prior_checkpoint.node_statuses
+            if prior_checkpoint is not None
+            and prior_checkpoint.run_graph_id == current.run_graph_id
+            else {node.key: node.status for node in current.nodes}
+        )
+        if any(status is GraphNodeStatus.RUNNING for status in prior_statuses.values()):
+            raise ValueError("a running node must settle before graph revision activation")
+        task = await self._require_task(run.task_id)
+        stored_template = await self.store.upsert_workflow_template(template)
+        replacement = instantiate_run_graph(
+            stored_template,
+            run_id=run_id,
+            task_id=run.task_id,
+            budgets=task.envelope.budgets,
+        )
+        prior_nodes = {node.key: node for node in current.nodes}
+        prior_edges = {edge.key: edge for edge in current.edges}
+        replacement = replacement.model_copy(
+            update={
+                "run_graph_id": current.run_graph_id,
+                "nodes": [
+                    node.model_copy(
+                        update={
+                            "status": prior_statuses[node.key],
+                            "iteration": prior_nodes[node.key].iteration,
+                            "loop_execution_id": prior_nodes[node.key].loop_execution_id,
+                            "approval_id": prior_nodes[node.key].approval_id,
+                            "verifier_state": prior_nodes[node.key].verifier_state,
+                            "terminal_outcome": prior_nodes[node.key].terminal_outcome,
+                        }
+                    )
+                    if node.key in prior_nodes
+                    and prior_statuses.get(node.key)
+                    in {
+                        GraphNodeStatus.SUCCEEDED,
+                        GraphNodeStatus.FAILED,
+                        GraphNodeStatus.CANCELLED,
+                    }
+                    else node
+                    for node in replacement.nodes
+                ],
+                "edges": [
+                    edge.model_copy(
+                        update={"traversal_count": prior.traversal_count}
+                    )
+                    if (prior := prior_edges.get(edge.key))
+                    else edge
+                    for edge in replacement.edges
+                ],
+            }
+        )
+        graph = await self.store.replace_run_graph(
+            replacement, expected_revision=current.graph_revision
+        )
+        run = await self.store.update_run(
+            run_id,
+            RunState.PAUSED,
+            execution_mode=ExecutionMode.GRAPH,
+            workflow_template_id=stored_template.template_id,
+        )
+        root = next(
+            node
+            for node in graph.nodes
+            if node.node_id not in {edge.target for edge in graph.edges}
+        )
+        checkpoint = Checkpoint(
+            checkpoint_id=new_id("checkpoint"),
+            run_id=run_id,
+            kind=CheckpointKind.NODE_BOUNDARY,
+            sequence=0,
+            run_state=RunState.PAUSED,
+            run_revision=run.revision,
+            active_node_ids=[root.node_id],
+            node_statuses={node.key: node.status for node in graph.nodes},
+            run_graph_id=graph.run_graph_id,
+            graph_revision=graph.graph_revision,
+            workspace_lease_id=run.workspace_lease_id,
+        )
+        await self.store.append_checkpoint(
+            checkpoint,
+            events=[
+                self._control_event(
+                    run,
+                    "accretion/replan-checkpoint-saved",
+                    EventType.CHECKPOINT_SAVED,
+                    payload={
+                        "checkpoint_id": checkpoint.checkpoint_id,
+                        "kind": checkpoint.kind.value,
+                        "active_node_ids": checkpoint.active_node_ids,
+                        "run_graph_id": graph.run_graph_id,
+                        "replan": True,
+                    },
+                )
+            ],
+        )
+        await self._notify(run_id)
+        return run, graph, stored_template
+
+    async def emit_dynamic_event(
+        self,
+        run_id: str,
+        *,
+        native_type: str,
+        event_type: EventType,
+        payload: dict[str, object],
+        causation_id: str | None = None,
+    ) -> AgentEvent:
+        run = await self._require_run(run_id)
+        event = self._control_event(run, native_type, event_type, payload=payload)
+        if causation_id is not None:
+            event = event.model_copy(update={"causation_id": causation_id})
+        return await self._append(event)
+
+    async def fallback_dynamic_run(self, run_id: str, *, reason: str) -> Run:
+        run = await self._require_run(run_id)
+        if await self.store.get_run_graph(run_id) is not None:
+            raise ValueError("an installed dynamic graph cannot fall back in place")
+        return await self._commit_run_terminal(
+            run,
+            state=RunState.CANCELLED,
+            event_type=EventType.RUN_CANCELLED,
+            native_type="accretion/dynamic-static-fallback",
+            payload={"reason": reason, "fallback": "validated-v1-static-template"},
+        )
 
     def _require_runtime(self, provider: Provider) -> None:
         if provider not in self.runtimes:
@@ -859,6 +1101,7 @@ class RunManager:
             return await self._graph_agent(
                 run,
                 task,
+                lease,
                 session,
                 node=node,
                 instruction=spec.instruction if spec else None,
@@ -927,6 +1170,7 @@ class RunManager:
         self,
         run: Run,
         task: Task,
+        lease: WorkspaceLease,
         session: SessionRef,
         *,
         node: RunNode,
@@ -935,6 +1179,78 @@ class RunManager:
         cursor: _GraphCursor,
         entered_via: str | None,
     ) -> tuple[NodeOutcome, SessionRef]:
+        revisions = await self.store.list_graph_revisions(run.run_id)
+        graph_revision = revisions[-1].revision if revisions else 1
+        searches = [
+            item
+            for item in await self.store.list_searches(run.run_id)
+            if item.plan.parent_node_id == node.key
+            and item.plan.graph_revision == graph_revision
+        ]
+        if searches:
+            if len(searches) != 1 or self.search_executor is None:
+                cursor.last_error = ErrorSummary(
+                    code="SEARCH_EXECUTOR_UNAVAILABLE",
+                    message="the pending search plan has no unique executor",
+                )
+                return NodeOutcome.FAIL, session
+            await self._node_transition(
+                run,
+                session.session_id,
+                node.key,
+                entered=True,
+                entered_via=entered_via,
+            )
+            record = searches[0]
+            if record.status is SearchStatus.PLANNED:
+                record = await self.search_executor(
+                    record,
+                    run,
+                    task,
+                    lease,
+                    node,
+                    await self._require_policy(run.acceptance_policy_id),
+                )
+            successful = record.status is SearchStatus.SUCCEEDED
+            waiting = record.status in {
+                SearchStatus.REQUIRES_HUMAN,
+                SearchStatus.RUNNING,
+                SearchStatus.SELECTING,
+            }
+            await self._node_transition(
+                run,
+                session.session_id,
+                node.key,
+                entered=False,
+                status=(
+                    "SUCCEEDED"
+                    if successful
+                    else "WAITING"
+                    if waiting
+                    else "CANCELLED"
+                    if record.status is SearchStatus.CANCELLED
+                    else "FAILED"
+                ),
+            )
+            if successful:
+                cursor.statuses[node.key] = GraphNodeStatus.SUCCEEDED
+                selected = (
+                    await self.store.get_search_candidate(record.selected_candidate_id)
+                    if record.selected_candidate_id
+                    else None
+                )
+                if selected and selected.artifact_refs:
+                    cursor.last_artifact_id = selected.artifact_refs[-1]
+                    cursor.last_artifact_sha256 = selected.patch_sha256
+                return NodeOutcome.SUCCESS, session
+            if record.status is SearchStatus.CANCELLED:
+                cursor.statuses[node.key] = GraphNodeStatus.CANCELLED
+                return NodeOutcome.CANCELLED, session
+            if waiting:
+                cursor.statuses[node.key] = GraphNodeStatus.WAITING
+                return NodeOutcome.INCONCLUSIVE, session
+            cursor.statuses[node.key] = GraphNodeStatus.FAILED
+            return NodeOutcome.FAIL, session
         objective = task.envelope.objective
         if instruction:
             objective = f"{objective}\n\n{instruction}"
@@ -2153,8 +2469,13 @@ class RunManager:
         iteration_id: str | None = None,
         persist: bool = True,
         emit_result: bool = True,
+        trajectory_events: list[AgentEvent] | None = None,
     ) -> list[VerificationResult]:
-        events = await self.store.list_events(run.run_id)
+        events = (
+            await self.store.list_events(run.run_id)
+            if trajectory_events is None
+            else trajectory_events
+        )
         context = VerificationContext(
             task_id=task.envelope.task_id,
             project_id=task.envelope.project_id,

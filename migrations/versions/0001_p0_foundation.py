@@ -18,6 +18,10 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
+    # This legacy bootstrap revision creates current metadata on a fresh database.
+    # Install shared types needed by later metadata before that create_all call;
+    # the owning P7 revision repeats this idempotently for existing databases.
+    op.execute("CREATE EXTENSION IF NOT EXISTS vector")
     Base.metadata.create_all(bind=op.get_bind())
 
 

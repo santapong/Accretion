@@ -10,6 +10,10 @@ prerequisite: "Accretion v0.1 release gate passed"
 
 # Accretion v0.2 — System Design Specification
 
+Planning companions: [v0.2 delivery plan](../V0_2_PLAN.md) and
+[P5–P7 roadmap](../assets/v02-roadmap.svg). They sequence implementation; this
+SDD remains authoritative.
+
 **Release thesis:** v0.2 extends the proven v0.1 control plane so Accretion can **construct and revise run-specific workflows**, choose providers/actions using runtime evidence, spend bounded test-time compute on multiple Claude/Codex trajectories, and retrieve verified prior experiences — while keeping permissions, graph admissibility, verifier authority, budgets, and durable state deterministic.
 
 > **Codex implementation rule:** Do not start this release until all v0.1 MUST acceptance criteria pass. Preserve v0.1 APIs/contracts unless this document explicitly adds a versioned extension/migration. v0.2 still does **not** include RL-based policy learning, self-evolving architecture, or unrestricted production deployment.

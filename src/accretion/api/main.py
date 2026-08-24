@@ -16,10 +16,18 @@ from accretion.api.schemas import (
     ApprovalDecisionCreate,
     BenchmarkRunCreate,
     ErrorEnvelope,
+    ExperienceMaterializeCreate,
+    ExperienceQueryCreate,
+    ExperienceRetractCreate,
+    ExperienceSelectionCreate,
     ProjectCreate,
+    ProjectFeatureUpdate,
+    ReplanCreate,
     RunCreate,
+    SearchCreate,
     StrategyOverrideCreate,
     TaskCreate,
+    WorkflowProposeCreate,
     WorkflowTemplateSummary,
 )
 from accretion.benchmark import (
@@ -62,11 +70,53 @@ from accretion.contracts import (
     TemplateStatus,
     VerificationResult,
 )
+from accretion.experience.models import (
+    Experience,
+    ExperienceDetail,
+    ExperienceMatch,
+    ExperienceSelection,
+    TrajectorySeed,
+)
+from accretion.experience.service import (
+    ExperienceConflictError,
+    ExperienceDisabledError,
+    ExperienceService,
+)
+from accretion.experience_benchmark import (
+    ExperienceBenchmarkRunner,
+    ExperienceBenchmarkSummary,
+)
 from accretion.governance import seed_governance
+from accretion.orchestration.models import (
+    CandidateScore,
+    CandidateTrajectory,
+    GraphRevisionDiff,
+    GraphValidationResult,
+    ProjectFeatureSettings,
+    ReplanOutcome,
+    ReplanRequest,
+    RunGraphRevision,
+    RuntimeDecision,
+    SearchRecord,
+    WorkflowActivationOutcome,
+    WorkflowProposal,
+    WorkflowValidationOutcome,
+)
+from accretion.orchestration.search import (
+    CandidateSearchConflictError,
+    CandidateSearchDisabledError,
+    SearchService,
+)
+from accretion.orchestration.service import (
+    DynamicWorkflowConflictError,
+    DynamicWorkflowDisabledError,
+    DynamicWorkflowService,
+)
 from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore
 from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime
+from accretion.search_benchmark import SearchBenchmarkRunner, SearchBenchmarkSummary
 from accretion.services.run_manager import (
     ProjectionUnavailableError,
     RunManager,
@@ -125,9 +175,28 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     app.state.engine = engine
     app.state.manager = manager
+    app.state.dynamic_workflows = DynamicWorkflowService(
+        manager,
+        globally_enabled=settings.enable_dynamic_workflows,
+        operator_identity=settings.operator_identity,
+    )
+    experience = ExperienceService(
+        manager,
+        globally_enabled=settings.enable_experience_retrieval,
+        operator_identity=settings.operator_identity,
+    )
+    app.state.experience = experience
+    search_service = SearchService(
+        manager,
+        globally_enabled=settings.enable_candidate_search,
+        operator_identity=settings.operator_identity,
+        experience_service=experience,
+    )
+    app.state.candidate_search = search_service
     await seed_templates(store)
     await seed_governance(store)
     await seed_acr_arch(store)
+    await search_service.reconcile()
     await manager.reconcile()
     yield
     for task in manager.background.values():
@@ -145,13 +214,25 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=False,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PATCH"],
     allow_headers=["Content-Type", "Last-Event-ID"],
 )
 
 
 def manager(request: Request) -> RunManager:
     return cast(RunManager, request.app.state.manager)
+
+
+def dynamic_workflows(request: Request) -> DynamicWorkflowService:
+    return cast(DynamicWorkflowService, request.app.state.dynamic_workflows)
+
+
+def candidate_search(request: Request) -> SearchService:
+    return cast(SearchService, request.app.state.candidate_search)
+
+
+def experience_service(request: Request) -> ExperienceService:
+    return cast(ExperienceService, request.app.state.experience)
 
 
 @app.exception_handler(KeyError)
@@ -197,6 +278,53 @@ async def execution_mode_mismatch_handler(
     return _error(409, "EXECUTION_MODE_MISMATCH", str(exc))
 
 
+@app.exception_handler(DynamicWorkflowDisabledError)
+async def dynamic_workflow_disabled_handler(
+    request: Request, exc: DynamicWorkflowDisabledError
+) -> JSONResponse:
+    return _error(403, "DYNAMIC_WORKFLOWS_DISABLED", str(exc))
+
+
+@app.exception_handler(DynamicWorkflowConflictError)
+async def dynamic_workflow_conflict_handler(
+    request: Request, exc: DynamicWorkflowConflictError
+) -> JSONResponse:
+    return _error(409, "DYNAMIC_WORKFLOW_CONFLICT", str(exc))
+
+
+@app.exception_handler(CandidateSearchDisabledError)
+async def candidate_search_disabled_handler(
+    request: Request, exc: CandidateSearchDisabledError
+) -> JSONResponse:
+    return _error(403, "CANDIDATE_SEARCH_DISABLED", str(exc))
+
+
+@app.exception_handler(CandidateSearchConflictError)
+async def candidate_search_conflict_handler(
+    request: Request, exc: CandidateSearchConflictError
+) -> JSONResponse:
+    code = (
+        "REPLAY_BRANCH_REQUIRES_P7"
+        if str(exc) == "REPLAY_BRANCH_REQUIRES_P7"
+        else "CANDIDATE_SEARCH_CONFLICT"
+    )
+    return _error(409, code, str(exc))
+
+
+@app.exception_handler(ExperienceDisabledError)
+async def experience_disabled_handler(
+    request: Request, exc: ExperienceDisabledError
+) -> JSONResponse:
+    return _error(403, "EXPERIENCE_RETRIEVAL_DISABLED", str(exc))
+
+
+@app.exception_handler(ExperienceConflictError)
+async def experience_conflict_handler(
+    request: Request, exc: ExperienceConflictError
+) -> JSONResponse:
+    return _error(409, "EXPERIENCE_CONFLICT", str(exc))
+
+
 def _error(status: int, code: str, message: str, retryable: bool = False) -> JSONResponse:
     body = ErrorEnvelope(
         code=code,
@@ -230,6 +358,32 @@ async def get_project(project_id: str, request: Request) -> Project:
     return project
 
 
+@app.get(
+    "/api/v2/projects/{project_id}/features",
+    response_model=ProjectFeatureSettings,
+)
+async def get_project_features(
+    project_id: str, request: Request
+) -> ProjectFeatureSettings:
+    return await dynamic_workflows(request).get_project_features(project_id)
+
+
+@app.patch(
+    "/api/v2/projects/{project_id}/features",
+    response_model=ProjectFeatureSettings,
+)
+async def update_project_features(
+    project_id: str, payload: ProjectFeatureUpdate, request: Request
+) -> ProjectFeatureSettings:
+    return await dynamic_workflows(request).update_project_features(
+        project_id,
+        dynamic_workflows=payload.dynamic_workflows,
+        candidate_search=payload.candidate_search,
+        experience_retrieval=payload.experience_retrieval,
+        expected_revision=payload.expected_revision,
+    )
+
+
 @app.post("/api/v1/tasks", response_model=Task, status_code=201)
 async def create_task(payload: TaskCreate, request: Request) -> Task:
     return await manager(request).create_task(
@@ -255,6 +409,21 @@ async def get_task_planning(task_id: str, request: Request) -> TaskPlanning:
 @app.get("/api/v1/tasks/{task_id}/profile", response_model=TaskProfile)
 async def get_task_profile(task_id: str, request: Request) -> TaskProfile:
     return (await manager(request).get_task_planning(task_id)).current_profile
+
+
+@app.post(
+    "/api/v2/tasks/{task_id}/workflow/propose",
+    response_model=WorkflowProposal,
+    status_code=201,
+)
+async def propose_dynamic_workflow(
+    task_id: str, payload: WorkflowProposeCreate, request: Request
+) -> WorkflowProposal:
+    return await dynamic_workflows(request).propose(
+        task_id,
+        execution_provider=payload.execution_provider,
+        planner_runtime=payload.planner_runtime,
+    )
 
 
 @app.post(
@@ -294,6 +463,302 @@ async def get_run(run_id: str, request: Request) -> Run:
     if run is None:
         raise KeyError(run_id)
     return run
+
+
+@app.post(
+    "/api/v2/runs/{run_id}/experiences",
+    response_model=ExperienceDetail,
+    status_code=201,
+)
+async def materialize_experience(
+    run_id: str, payload: ExperienceMaterializeCreate, request: Request
+) -> ExperienceDetail:
+    return await experience_service(request).materialize(
+        run_id, candidate_id=payload.candidate_id
+    )
+
+
+@app.get("/api/v2/experiences", response_model=list[Experience])
+async def list_experiences(
+    request: Request,
+    project_id: str | None = None,
+    repository_identity: str | None = None,
+    include_retracted: bool = False,
+) -> list[Experience]:
+    return await experience_service(request).list_experiences(
+        project_id=project_id,
+        repository_identity=repository_identity,
+        include_retracted=include_retracted,
+    )
+
+
+@app.get("/api/v2/experiences/{experience_id}", response_model=ExperienceDetail)
+async def get_experience(experience_id: str, request: Request) -> ExperienceDetail:
+    return await experience_service(request).detail(experience_id)
+
+
+@app.post("/api/v2/experiences/{experience_id}/retract", response_model=Experience)
+async def retract_experience(
+    experience_id: str, payload: ExperienceRetractCreate, request: Request
+) -> Experience:
+    return await experience_service(request).retract(
+        experience_id,
+        reason=payload.reason,
+        expected_revision=payload.expected_revision,
+    )
+
+
+@app.post("/api/v2/experiences/query", response_model=list[ExperienceMatch])
+async def query_experience(
+    payload: ExperienceQueryCreate, request: Request
+) -> list[ExperienceMatch]:
+    return await experience_service(request).query(
+        payload.task_id,
+        include_failures=payload.include_failures,
+        top_k=payload.top_k,
+        max_age_days=payload.max_age_days,
+    )
+
+
+@app.post(
+    "/api/v2/tasks/{task_id}/experience-selections",
+    response_model=ExperienceSelection,
+    status_code=201,
+)
+async def create_experience_selection(
+    task_id: str, payload: ExperienceSelectionCreate, request: Request
+) -> ExperienceSelection:
+    return await experience_service(request).select(
+        task_id,
+        query_id=payload.query_id,
+        match_ids=payload.match_ids,
+        expected_context_bundle_id=payload.expected_context_bundle_id,
+    )
+
+
+@app.get(
+    "/api/v2/tasks/{task_id}/experience-selections",
+    response_model=list[ExperienceSelection],
+)
+async def list_experience_selections(
+    task_id: str, request: Request
+) -> list[ExperienceSelection]:
+    return await experience_service(request).selections(task_id)
+
+
+@app.get(
+    "/api/v2/tasks/{task_id}/experience-matches",
+    response_model=list[ExperienceMatch],
+)
+async def list_selected_experience_matches(
+    task_id: str, request: Request
+) -> list[ExperienceMatch]:
+    return await experience_service(request).selected_matches(task_id)
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/workflow/proposals",
+    response_model=list[WorkflowProposal],
+)
+async def list_dynamic_workflow_proposals(
+    run_id: str, request: Request
+) -> list[WorkflowProposal]:
+    if await manager(request).store.get_run(run_id) is None:
+        raise KeyError(run_id)
+    return await manager(request).store.list_workflow_proposals(run_id=run_id)
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/workflow/proposals/{proposal_id}",
+    response_model=WorkflowProposal,
+)
+async def get_dynamic_workflow_proposal(
+    run_id: str, proposal_id: str, request: Request
+) -> WorkflowProposal:
+    proposal = await manager(request).store.get_workflow_proposal(proposal_id)
+    if proposal is None:
+        raise KeyError(proposal_id)
+    if proposal.run_id != run_id:
+        raise DynamicWorkflowConflictError(
+            f"proposal {proposal_id} does not belong to run {run_id}"
+        )
+    return proposal
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/workflow/proposals/{proposal_id}/validations",
+    response_model=list[GraphValidationResult],
+)
+async def list_dynamic_workflow_validations(
+    run_id: str, proposal_id: str, request: Request
+) -> list[GraphValidationResult]:
+    await get_dynamic_workflow_proposal(run_id, proposal_id, request)
+    return await manager(request).store.list_graph_validations(proposal_id)
+
+
+@app.post(
+    "/api/v2/runs/{run_id}/workflow/proposals/{proposal_id}/validate",
+    response_model=WorkflowValidationOutcome,
+)
+async def validate_dynamic_workflow(
+    run_id: str, proposal_id: str, request: Request
+) -> WorkflowValidationOutcome:
+    return await dynamic_workflows(request).validate(run_id, proposal_id)
+
+
+@app.post(
+    "/api/v2/runs/{run_id}/workflow/proposals/{proposal_id}/activate",
+    response_model=WorkflowActivationOutcome,
+    status_code=202,
+)
+async def activate_dynamic_workflow(
+    run_id: str, proposal_id: str, request: Request
+) -> WorkflowActivationOutcome:
+    return await dynamic_workflows(request).activate(run_id, proposal_id)
+
+
+@app.post(
+    "/api/v2/runs/{run_id}/replan",
+    response_model=ReplanOutcome,
+    status_code=202,
+)
+async def replan_dynamic_workflow(
+    run_id: str, payload: ReplanCreate, request: Request
+) -> ReplanOutcome:
+    return await dynamic_workflows(request).replan(
+        run_id,
+        reason=payload.reason,
+        evidence_refs=payload.evidence_refs,
+    )
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/replans",
+    response_model=list[ReplanRequest],
+)
+async def list_replan_requests(run_id: str, request: Request) -> list[ReplanRequest]:
+    if await manager(request).store.get_run(run_id) is None:
+        raise KeyError(run_id)
+    return await manager(request).store.list_replan_requests(run_id)
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/graph/revisions",
+    response_model=list[RunGraphRevision],
+)
+async def list_graph_revisions(run_id: str, request: Request) -> list[RunGraphRevision]:
+    if await manager(request).store.get_run(run_id) is None:
+        raise KeyError(run_id)
+    return await manager(request).store.list_graph_revisions(run_id)
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/graph/revisions/{revision}",
+    response_model=RunGraphRevision,
+)
+async def get_graph_revision(
+    run_id: str, revision: int, request: Request
+) -> RunGraphRevision:
+    result = await manager(request).store.get_graph_revision(run_id, revision)
+    if result is None:
+        raise KeyError(f"{run_id}/revision/{revision}")
+    return result
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/graph/diff",
+    response_model=GraphRevisionDiff,
+)
+async def get_graph_revision_diff(
+    run_id: str,
+    request: Request,
+    from_revision: int = Query(alias="from", ge=1),
+    to_revision: int = Query(alias="to", ge=1),
+) -> GraphRevisionDiff:
+    return await dynamic_workflows(request).graph_diff(
+        run_id, from_revision, to_revision
+    )
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/runtime-decisions",
+    response_model=list[RuntimeDecision],
+)
+async def list_runtime_decisions(run_id: str, request: Request) -> list[RuntimeDecision]:
+    if await manager(request).store.get_run(run_id) is None:
+        raise KeyError(run_id)
+    return await manager(request).store.list_runtime_decisions(run_id)
+
+
+@app.post(
+    "/api/v2/runs/{run_id}/search",
+    response_model=SearchRecord,
+    status_code=201,
+)
+async def create_candidate_search(
+    run_id: str, payload: SearchCreate, request: Request
+) -> SearchRecord:
+    return await candidate_search(request).create_plan(
+        run_id,
+        parent_node_id=payload.parent_node_id,
+        mode=payload.mode,
+        branch_count=payload.branch_count,
+        max_parallel=payload.max_parallel,
+        per_branch_budget=payload.per_branch_budget,
+        total_budget=payload.total_budget,
+        candidate_directives=payload.candidate_directives,
+        replay_seed_match_ids=payload.replay_seed_match_ids,
+        negative_guidance_match_ids=payload.negative_guidance_match_ids,
+    )
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/searches",
+    response_model=list[SearchRecord],
+)
+async def list_candidate_searches(run_id: str, request: Request) -> list[SearchRecord]:
+    if await manager(request).store.get_run(run_id) is None:
+        raise KeyError(run_id)
+    return await manager(request).store.list_searches(run_id)
+
+
+@app.get("/api/v2/search/{search_id}", response_model=SearchRecord)
+async def get_candidate_search(search_id: str, request: Request) -> SearchRecord:
+    return await candidate_search(request).get(search_id)
+
+
+@app.get(
+    "/api/v2/search/{search_id}/candidates",
+    response_model=list[CandidateTrajectory],
+)
+async def list_search_candidates(
+    search_id: str, request: Request
+) -> list[CandidateTrajectory]:
+    await candidate_search(request).get(search_id)
+    return await manager(request).store.list_search_candidates(search_id)
+
+
+@app.get(
+    "/api/v2/search/{search_id}/scores",
+    response_model=list[CandidateScore],
+)
+async def list_search_scores(search_id: str, request: Request) -> list[CandidateScore]:
+    await candidate_search(request).get(search_id)
+    return await manager(request).store.list_candidate_scores(search_id)
+
+
+@app.get(
+    "/api/v2/search/{search_id}/replay-seeds",
+    response_model=list[TrajectorySeed],
+)
+async def list_replay_seeds(search_id: str, request: Request) -> list[TrajectorySeed]:
+    await candidate_search(request).get(search_id)
+    return await manager(request).store.list_trajectory_seeds(search_id)
+
+
+@app.post("/api/v2/search/{search_id}/cancel", response_model=SearchRecord)
+async def cancel_candidate_search(search_id: str, request: Request) -> SearchRecord:
+    return await candidate_search(request).cancel(search_id)
 
 
 @app.get("/api/v1/runs/{run_id}/artifacts", response_model=list[ArtifactRef])
@@ -510,6 +975,41 @@ async def get_acr_arch_task(task_id: str, request: Request) -> BenchmarkTaskDeta
     if detail is None:
         raise KeyError(task_id)
     return detail
+
+
+@app.get("/api/v2/benchmarks/search", response_model=SearchBenchmarkSummary)
+async def get_search_benchmark() -> SearchBenchmarkSummary:
+    return SearchBenchmarkRunner().run()
+
+
+@app.post(
+    "/api/v2/benchmarks/search/run",
+    response_model=SearchBenchmarkSummary,
+)
+async def run_search_benchmark(payload: BenchmarkRunCreate) -> SearchBenchmarkSummary:
+    if payload.execution_source is not BenchmarkExecutionSource.REPLAY:
+        raise ValueError("live search calibration requires the explicit local release gate")
+    return SearchBenchmarkRunner().run()
+
+
+@app.get(
+    "/api/v2/benchmarks/experience",
+    response_model=ExperienceBenchmarkSummary,
+)
+async def get_experience_benchmark() -> ExperienceBenchmarkSummary:
+    return ExperienceBenchmarkRunner().run()
+
+
+@app.post(
+    "/api/v2/benchmarks/experience/run",
+    response_model=ExperienceBenchmarkSummary,
+)
+async def run_experience_benchmark(
+    payload: BenchmarkRunCreate,
+) -> ExperienceBenchmarkSummary:
+    if payload.execution_source is not BenchmarkExecutionSource.REPLAY:
+        raise ValueError("live experience calibration requires the explicit local release gate")
+    return ExperienceBenchmarkRunner().run()
 
 
 @app.get("/api/v1/runs/{run_id}/events")

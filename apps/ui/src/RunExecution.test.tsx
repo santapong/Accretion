@@ -261,3 +261,222 @@ test("renders hybrid subflows without expanding iterations and offers the gate d
   const routes = screen.getByRole("list", { name: "Projection routes" });
   expect(within(routes).getAllByText("7 traversals").length).toBeGreaterThan(0);
 });
+
+test("shows P5 proposal authority, revision diff, router evidence, and replan control", async () => {
+  const dynamicRun: Run = { ...run, state: "PAUSED" };
+  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/workflow/proposals")) return response([{
+      proposal_id: "wfp_fixture", run_id: run.run_id, planner_version: "fragment-planner-v2",
+      confidence: 0.9, nodes: [{ local_id: "start" }, { local_id: "complete" }], edges: [],
+      fragment_refs: ["single-act-verify@1.0.0"], assumptions: ["Budgets remain authoritative."],
+      rationale_summary: "Composed a reviewed workflow fragment.",
+    }]);
+    if (url.endsWith("/validations")) return response([{
+      validation_id: "gvl_fixture", proposal_id: "wfp_fixture", status: "ACCEPT",
+      errors: [], warnings: [], required_repairs: [], validator_version: "graph-validator-v2",
+    }]);
+    if (url.endsWith("/graph/revisions")) return response([
+      { revision_id: "grv_1", revision: 1, reason: "INITIAL", normalized_graph_hash: "a".repeat(64), protected_state_refs: [] },
+      { revision_id: "grv_2", revision: 2, reason: "HUMAN_REQUEST", normalized_graph_hash: "b".repeat(64), protected_state_refs: ["run:start"] },
+    ]);
+    if (url.includes("/graph/diff")) return response({
+      from_revision: 1, to_revision: 2, added_nodes: ["review"], removed_nodes: [],
+      changed_nodes: [], protected_state_refs: ["run:start"],
+    });
+    if (url.endsWith("/runtime-decisions")) return response([{
+      decision_id: "rtd_fixture", selected_runtime: "FAKE", policy_version: "performance-router-v2",
+      selected_reason: "selected from observable evidence", candidates: [{
+        provider: "FAKE", runtime_version: "fake-p2-v1", score: 0.8, available: true,
+      }],
+    }]);
+    if (url.endsWith("/replans")) return response([]);
+    if (url.endsWith("/graph")) return response(graph);
+    if (url.endsWith("/verifications")) return response(verifications);
+    if (url.includes("/api/v1/approvals")) return response([]);
+    if (url.endsWith("/loop")) return response(loop);
+    return response({});
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}><RunExecution run={dynamicRun} /></QueryClientProvider>,
+  );
+
+  await screen.findByText("single-act-verify@1.0.0");
+  const inspector = screen.getByRole("region", { name: "Dynamic workflow" });
+  expect(within(inspector).getByText("single-act-verify@1.0.0")).toBeInTheDocument();
+  expect(within(inspector).getByText("r2")).toBeInTheDocument();
+  expect(within(inspector).getByText("1 protected state refs")).toBeInTheDocument();
+  expect(within(inspector).getByText("Runtime: FAKE")).toBeInTheDocument();
+  expect(within(inspector).getByRole("button", { name: "Request safe replan" })).toBeInTheDocument();
+});
+
+test("renders P6 candidate lineage, provenance, scores, spend, and selection reason", async () => {
+  const searchRun: Run = { ...run, state: "SUCCEEDED" };
+  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/searches")) return response([{
+      schema_version: "2.0", revision: 5, status: "SUCCEEDED",
+      selected_candidate_id: "candidate_2", stop_reason: "ACCEPTED",
+      budget_spent: { schema_version: "2.0", wall_time_seconds: 2, turns: 2, tool_calls: 3 },
+      plan: {
+        schema_version: "2.0", search_id: "search_fixture", run_id: searchRun.run_id,
+        parent_node_id: "act", graph_revision: 1, mode: "CROSS_PROVIDER",
+        branch_count: 2, max_parallel: 2, candidate_directives: [],
+        per_branch_budget: { schema_version: "2.0", wall_time_seconds: 120, max_turns: 4, max_tool_calls: 12 },
+        total_budget: { schema_version: "2.0", wall_time_seconds: 240, max_turns: 8, max_tool_calls: 24 },
+        verifier_policy_ref: "policy", router_policy_version: "performance-router-v2",
+        requested_by: "operator",
+      },
+    }]);
+    if (url.endsWith("/search_fixture/candidates")) return response([
+      {
+        schema_version: "2.0", candidate_id: "candidate_1", search_id: "search_fixture",
+        run_id: searchRun.run_id, ordinal: 1, provider: "CLAUDE", runtime_id: "claude-cli",
+        runtime_model: "default", runtime_version: "2.1.0", status: "PRUNED", latency_ms: 1100,
+        terminal_reason: "not selected by independent candidate scorer",
+        trajectory_ref: "events:20-25", budget_spent: { schema_version: "2.0", wall_time_seconds: 1, turns: 1, tool_calls: 2 },
+      },
+      {
+        schema_version: "2.0", candidate_id: "candidate_2", search_id: "search_fixture",
+        run_id: searchRun.run_id, ordinal: 2, provider: "CODEX", runtime_id: "codex-cli",
+        runtime_model: "default", runtime_version: "0.149.0", status: "SELECTED", latency_ms: 900,
+        terminal_reason: "selected by independent candidate scorer",
+        trajectory_ref: "events:26-31", budget_spent: { schema_version: "2.0", wall_time_seconds: 1, turns: 1, tool_calls: 1 },
+      },
+    ]);
+    if (url.endsWith("/search_fixture/scores")) return response([
+      { schema_version: "2.0", score_id: "score_1", search_id: "search_fixture", candidate_id: "candidate_1", verifier_policy_ref: "policy", verifier_status: "PASS", eligible: true, quality_score: 0.75, cost_proxy: 0.2, latency_proxy: 0.1, risk_score: 0, total_score: 0.7, explanation: "accepted", scorer_version: "candidate-scorer-v2" },
+      { schema_version: "2.0", score_id: "score_2", search_id: "search_fixture", candidate_id: "candidate_2", verifier_policy_ref: "policy", verifier_status: "PASS", eligible: true, quality_score: 0.9, cost_proxy: 0.1, latency_proxy: 0.08, risk_score: 0, total_score: 0.86, explanation: "accepted", scorer_version: "candidate-scorer-v2" },
+    ]);
+    if (url.endsWith("/graph")) return response(graph);
+    if (url.endsWith("/verifications")) return response(verifications);
+    if (url.includes("/api/v1/approvals")) return response([]);
+    if (url.endsWith("/loop")) return response(loop);
+    return response([]);
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}><RunExecution run={searchRun} /></QueryClientProvider>,
+  );
+
+  const tree = await screen.findByRole("region", { name: "Candidate search tree" });
+  expect(await within(tree).findByText("CROSS PROVIDER")).toBeInTheDocument();
+  expect(within(tree).getByText("codex-cli · default · 0.149.0")).toBeInTheDocument();
+  expect(within(tree).getByText("0.860")).toBeInTheDocument();
+  expect(within(tree).getByText("selected by independent candidate scorer")).toBeInTheDocument();
+  expect(within(tree).getAllByText("SELECTED").length).toBeGreaterThan(0);
+  expect(within(tree).getByText("2/8 turns")).toBeInTheDocument();
+  expect(within(tree).getByText("3/24 tools")).toBeInTheDocument();
+});
+
+test("renders P7 experience provenance, compatibility, transfer risk, and reused segments", async () => {
+  const replayRun: Run = { ...run, task_id: "tsk_replay", state: "SUCCEEDED" };
+  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/searches")) return response([{
+      schema_version: "2.0", revision: 5, status: "SUCCEEDED",
+      selected_candidate_id: "candidate_replay", stop_reason: "ACCEPTED",
+      budget_spent: { schema_version: "2.0", wall_time_seconds: 2, turns: 2, tool_calls: 2 },
+      plan: {
+        schema_version: "2.0", search_id: "search_replay", run_id: replayRun.run_id,
+        parent_node_id: "act", graph_revision: 1, mode: "REPLAY_BRANCH",
+        branch_count: 2, max_parallel: 1, candidate_directives: [],
+        replay_seed_match_ids: ["match_positive"],
+        negative_guidance_match_ids: ["match_negative"],
+        per_branch_budget: { schema_version: "2.0", wall_time_seconds: 60, max_turns: 2, max_tool_calls: 5 },
+        total_budget: { schema_version: "2.0", wall_time_seconds: 120, max_turns: 4, max_tool_calls: 10 },
+        verifier_policy_ref: "policy", router_policy_version: "performance-router-v2",
+        requested_by: "operator",
+      },
+    }]);
+    if (url.endsWith("/search_replay/candidates")) return response([
+      {
+        schema_version: "2.0", candidate_id: "candidate_fresh", search_id: "search_replay",
+        run_id: replayRun.run_id, ordinal: 1, provider: "FAKE", runtime_id: "runtime_fake",
+        runtime_model: "default", runtime_version: "fake-p2-v1", source_kind: "FRESH",
+        status: "PRUNED", latency_ms: 100, terminal_reason: "control not selected",
+        budget_spent: { schema_version: "2.0", wall_time_seconds: 1, turns: 1, tool_calls: 1 },
+      },
+      {
+        schema_version: "2.0", candidate_id: "candidate_replay", search_id: "search_replay",
+        run_id: replayRun.run_id, ordinal: 2, provider: "FAKE", runtime_id: "runtime_fake",
+        runtime_model: "default", runtime_version: "fake-p2-v1", source_kind: "REPLAY",
+        replay_seed_id: "seed_fixture", source_experience_id: "exp_positive",
+        source_match_id: "match_positive", trajectory_segment_refs: ["segment_workflow"],
+        seed_revalidation_status: "ELIGIBLE", seed_revalidation_reasons: [],
+        status: "SELECTED", latency_ms: 90, terminal_reason: "selected by scorer",
+        budget_spent: { schema_version: "2.0", wall_time_seconds: 1, turns: 1, tool_calls: 1 },
+      },
+    ]);
+    if (url.endsWith("/search_replay/scores")) return response([]);
+    if (url.endsWith("/search_replay/replay-seeds")) return response([{
+      schema_version: "2.0", seed_id: "seed_fixture", search_id: "search_replay",
+      candidate_id: "candidate_replay", match_id: "match_positive",
+      experience_id: "exp_positive", segment_ids: ["segment_workflow"],
+      procedural_guidance: ["Follow the verified workflow stages in order."],
+      required_revalidations: ["Revalidate policy and repository."],
+      validation_status: "ELIGIBLE",
+    }]);
+    if (url.endsWith("/tasks/tsk_replay/experience-matches")) return response([
+      {
+        schema_version: "2.0", match_id: "match_positive", query_id: "query_fixture",
+        experience_id: "exp_positive", rank: 1, trust: "HIGH", polarity: "POSITIVE",
+        assessment: { schema_version: "2.0", semantic_score: 0.94, environment_score: 1,
+          version_score: 0.93, freshness_score: 1, final_score: 0.966,
+          transfer_risk: 0.07, disposition: "ACCEPTED", replay_eligible: true,
+          negative_guidance_eligible: false, reasons: [] },
+      },
+      {
+        schema_version: "2.0", match_id: "match_negative", query_id: "query_fixture",
+        experience_id: "exp_negative", rank: 2, trust: "MEDIUM", polarity: "NEGATIVE",
+        assessment: { schema_version: "2.0", semantic_score: 0.8, environment_score: 1,
+          version_score: 0.9, freshness_score: 1, final_score: 0.92,
+          transfer_risk: 0.1, disposition: "ACCEPTED", replay_eligible: false,
+          negative_guidance_eligible: true, reasons: [] },
+      },
+    ]);
+    if (url.includes("/experiences/exp_")) {
+      const positive = url.endsWith("exp_positive");
+      return response({
+        schema_version: "2.0", embedding_version: "deterministic-hybrid-384-v1",
+        embedding_input_digest: "a".repeat(64),
+        experience: {
+          schema_version: "2.0", experience_id: positive ? "exp_positive" : "exp_negative",
+          project_id: "prj_fixture", repository_identity: "b".repeat(64), task_id: "source_task",
+          task_type: "IMPLEMENT", task_family: "api", source_kind: "RUN",
+          source_run_id: positive ? "run_verified_source" : "run_failed_source",
+          source_commit: "1234567890abcdef", architecture_version: "2.0",
+          manifest_digest: "c".repeat(64), policy_digest: "d".repeat(64),
+          verifier_digest: "e".repeat(64), prompt_digest: "f".repeat(64),
+          context_digest: "1".repeat(64), tool_profile_digest: "2".repeat(64),
+          provider: "FAKE", runtime_model: "default", runtime_version: "fake-p2-v1",
+          trust: positive ? "HIGH" : "MEDIUM", polarity: positive ? "POSITIVE" : "NEGATIVE",
+          outcome: positive ? "VERIFIED_SUCCESS" : "FAILED", content_digest: "3".repeat(64),
+          protected_side_effects: false, retracted: false, revision: 1,
+        },
+        segments: positive ? [{ schema_version: "2.0", segment_id: "segment_workflow",
+          experience_id: "exp_positive", ordinal: 1, kind: "WORKFLOW_PATH",
+          content: { nodes: ["act"] }, content_digest: "4".repeat(64) }] : [],
+      });
+    }
+    if (url.endsWith("/graph")) return response(graph);
+    if (url.endsWith("/verifications")) return response(verifications);
+    if (url.includes("/api/v1/approvals")) return response([]);
+    if (url.endsWith("/loop")) return response(loop);
+    return response([]);
+  });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}><RunExecution run={replayRun} /></QueryClientProvider>,
+  );
+
+  const lineage = await screen.findByRole("region", { name: "Experience replay lineage" });
+  expect(within(lineage).getByText("0.966 compatibility")).toBeInTheDocument();
+  expect(within(lineage).getByText("0.070 transfer risk")).toBeInTheDocument();
+  expect(within(lineage).getByText(/run_verified_source/)).toBeInTheDocument();
+  expect(within(lineage).getByText(/segment_workflow/)).toBeInTheDocument();
+  expect(within(lineage).getByText("NEGATIVE GUIDANCE")).toBeInTheDocument();
+  expect(screen.getByText("Fresh control")).toBeInTheDocument();
+  expect(screen.getByText("Verified replay treatment")).toBeInTheDocument();
+});

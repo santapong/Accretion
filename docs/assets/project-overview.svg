@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="820" viewBox="0 0 1600 820" role="img" aria-labelledby="title description">
+  <title id="title">Accretion project overview and release status</title>
+  <desc id="description">Accretion is a local control plane for AI coding runtimes. An operator declares bounded work, deterministic policy plans and governs it, Codex Claude or a fake runtime performs it in isolated workspaces, and independent verifiers decide acceptance. Version 0.1.0 is stable. Develop contains completed opt-in P5 dynamic workflows, P6 candidate search, and P7 verified experience. The remaining v0.2 step is a clean-checkout release audit before promotion to main and tagging.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07100b"/><stop offset=".58" stop-color="#0b1710"/><stop offset="1" stop-color="#17130d"/></linearGradient>
+    <linearGradient id="greenCard" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#153522"/><stop offset="1" stop-color="#0d2116"/></linearGradient>
+    <linearGradient id="amberCard" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#352713"/><stop offset="1" stop-color="#20180e"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="10" stdDeviation="13" flood-color="#000" flood-opacity=".34"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#75db91"/></marker>
+    <style>
+      text{font-family:Arial,Helvetica,sans-serif}.eyebrow{fill:#75db91;font-size:17px;font-weight:700;letter-spacing:3px}.heading{fill:#f4f8f5;font-size:38px;font-weight:700}.subtitle{fill:#a9b9ae;font-size:19px}.card-title{fill:#f7faf8;font-size:23px;font-weight:700}.copy{fill:#c4d1c8;font-size:16px}.small{fill:#9eafa4;font-size:14px}.pill{fill:#07100b;font-size:13px;font-weight:800;text-anchor:middle;dominant-baseline:central}.stage{fill:#f4f8f5;font-size:18px;font-weight:700;text-anchor:middle}.stage-copy{fill:#afbeb5;font-size:14px;text-anchor:middle}.status-title{fill:#f7faf8;font-size:18px;font-weight:700}.status-copy{fill:#b9c7be;font-size:14px}.flow-label{fill:#75db91;font-size:13px;font-weight:700;letter-spacing:1px;text-anchor:middle}
+    </style>
+  </defs>
+  <rect width="1600" height="820" rx="32" fill="url(#bg)"/>
+  <path d="M0 730C310 660 620 790 970 714c278-60 462-14 630-80" fill="none" stroke="#1d3a29" opacity=".45"/>
+  <text x="64" y="66" class="eyebrow">PROJECT AT A GLANCE</text>
+  <text x="64" y="116" class="heading">A governed control plane for local AI coding agents</text>
+  <text x="64" y="151" class="subtitle">The runtime may propose and execute work. Deterministic Accretion policy owns authority, evidence, acceptance, and recovery.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="64" y="200" width="350" height="246" rx="22" fill="#102218" stroke="#3f8a58" stroke-width="2"/>
+    <rect x="88" y="224" width="112" height="28" rx="14" fill="#75db91"/><text x="144" y="238" class="pill">1 · DECLARE</text>
+    <text x="88" y="294" class="card-title">Operator intent</text>
+    <text x="88" y="328" class="copy">Objective, constraints, outputs,</text><text x="88" y="352" class="copy">budgets, capabilities, and risk.</text>
+    <text x="88" y="399" class="small">React UI or versioned HTTP API</text>
+  </g>
+  <path d="M420 323H447" stroke="#75db91" stroke-width="5"/><path d="M447 313L460 323 447 333Z" fill="#75db91"/>
+  <g filter="url(#shadow)">
+    <rect x="456" y="200" width="350" height="246" rx="22" fill="#101d15" stroke="#315d40" stroke-width="2"/>
+    <rect x="480" y="224" width="112" height="28" rx="14" fill="#75db91"/><text x="536" y="238" class="pill">2 · GOVERN</text>
+    <text x="480" y="294" class="card-title">Deterministic control</text>
+    <text x="480" y="328" class="copy">Plan, bound, isolate, approve,</text><text x="480" y="352" class="copy">persist, reconcile, and explain.</text>
+    <text x="480" y="399" class="small">FastAPI + PostgreSQL + policy</text>
+  </g>
+  <path d="M812 323H839" stroke="#75db91" stroke-width="5"/><path d="M839 313L852 323 839 333Z" fill="#75db91"/>
+  <g filter="url(#shadow)">
+    <rect x="848" y="200" width="300" height="246" rx="22" fill="#261c10" stroke="#8a6631" stroke-width="2"/>
+    <rect x="872" y="224" width="112" height="28" rx="14" fill="#f1b55e"/><text x="928" y="238" class="pill">3 · EXECUTE</text>
+    <text x="872" y="294" class="card-title">Runtime adapters</text>
+    <text x="872" y="328" class="copy">Codex · Claude · Fake</text>
+    <text x="872" y="352" class="copy">Disposable Git worktrees</text>
+    <text x="872" y="399" class="small">Provider-neutral event protocol</text>
+  </g>
+  <path d="M1154 323H1181" stroke="#75db91" stroke-width="5"/><path d="M1181 313L1194 323 1181 333Z" fill="#75db91"/>
+  <g filter="url(#shadow)">
+    <rect x="1190" y="200" width="346" height="246" rx="22" fill="#102218" stroke="#3f8a58" stroke-width="2"/>
+    <rect x="1214" y="224" width="112" height="28" rx="14" fill="#75db91"/><text x="1270" y="238" class="pill">4 · VERIFY</text>
+    <text x="1214" y="294" class="card-title">Independent evidence</text>
+    <text x="1214" y="328" class="copy">Immutable snapshots, verifiers,</text><text x="1214" y="352" class="copy">normalized trace, fail-closed gate.</text>
+    <text x="1214" y="399" class="small">Provider “done” is never acceptance</text>
+  </g>
+
+  <text x="800" y="498" class="flow-label">CURRENT RELEASE POSITION</text>
+  <g filter="url(#shadow)">
+    <rect x="64" y="530" width="420" height="188" rx="20" fill="#102218" stroke="#3f8a58" stroke-width="2"/>
+    <circle cx="98" cy="566" r="11" fill="#75db91"/><text x="122" y="573" class="status-title">Stable · v0.1.0</text>
+    <text x="88" y="612" class="status-copy">P0–P4 local control plane, static workflows,</text><text x="88" y="635" class="status-copy">governance, operator UI, and ACR-ARCH.</text>
+    <text x="88" y="683" class="small">Evaluate: git clone --branch v0.1.0 …</text>
+  </g>
+  <path d="M492 624H534" stroke="#75db91" stroke-width="4"/><path d="M534 614L548 624 534 634Z" fill="#75db91"/>
+  <g filter="url(#shadow)">
+    <rect x="548" y="530" width="504" height="188" rx="20" fill="#14251a" stroke="#4c9b65" stroke-width="2"/>
+    <circle cx="582" cy="566" r="11" fill="#75db91"/><text x="606" y="573" class="status-title">Develop · P5 + P6 + P7 implemented</text>
+    <text x="572" y="612" class="status-copy">Dynamic workflows, bounded candidate search,</text><text x="572" y="635" class="status-copy">verified experience, and complete operator surfaces.</text>
+    <text x="572" y="683" class="small">Build next release: git switch develop</text>
+  </g>
+  <path d="M1060 624H1102" stroke="#f1b55e" stroke-width="4"/><path d="M1102 614L1116 624 1102 634Z" fill="#f1b55e"/>
+  <g filter="url(#shadow)">
+    <rect x="1116" y="530" width="420" height="188" rx="20" fill="#261c10" stroke="#9b7135" stroke-width="2"/>
+    <circle cx="1150" cy="566" r="11" fill="#f1b55e"/><text x="1174" y="573" class="status-title">Next · v0.2 release audit</text>
+    <text x="1140" y="612" class="status-copy">Reproduce P5–P7 evidence from a clean checkout,</text><text x="1140" y="635" class="status-copy">then promote develop to main and create the tag.</text>
+    <text x="1140" y="683" class="small">No v0.2 tag exists yet</text>
+  </g>
+  <text x="800" y="776" class="subtitle" text-anchor="middle">Start with the README · Operate through the frontend guide · Verify against the acceptance reports</text>
+</svg>

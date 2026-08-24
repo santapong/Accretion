@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 430" role="img" aria-labelledby="title description">
+  <title id="title">P5 validated dynamic workflow lifecycle</title>
+  <desc id="description">A task and profile enter a reviewed fragment planner. The proposal is inert while a deterministic validator checks topology, permissions, verifiers, approval gates, runtimes, and budgets. Rejected proposals receive one repair and then a static fallback or human escalation. Accepted proposals compile to the existing scheduler, create an immutable graph revision, execute through verification and approval gates, and may create a new revision on a safe replan while preserving completed state.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1"><stop stop-color="#08130d"/><stop offset="1" stop-color="#102319"/></linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto"><path d="M0 0L9 3L0 6Z" fill="#75db91"/></marker>
+    <style>.h{font:700 28px system-ui,sans-serif;fill:#f0f6f1}.t{font:700 18px system-ui,sans-serif;fill:#dbe8de}.c{font:14px system-ui,sans-serif;fill:#a8b8ad}.k{font:700 13px system-ui,sans-serif;fill:#75db91;letter-spacing:1.5px}.a{fill:none;stroke:#75db91;stroke-width:3;marker-end:url(#arrow)}.box{fill:#13271b;stroke:#315d40;stroke-width:2}.gate{fill:#2c2415;stroke:#a77a35;stroke-width:2}.store{fill:#121c2a;stroke:#45668d;stroke-width:2}</style>
+  </defs>
+  <rect width="1600" height="430" rx="24" fill="url(#bg)"/>
+  <text x="55" y="55" class="h">P5 — deterministic authority around dynamic structure</text>
+  <rect x="55" y="105" width="210" height="160" rx="18" class="box"/><text x="80" y="140" class="k">FROZEN INPUT</text><text x="80" y="176" class="t">Task + profile</text><text x="80" y="207" class="c">policy · budget</text><text x="80" y="231" class="c">capability snapshot</text>
+  <path d="M265 185H330" class="a"/>
+  <rect x="340" y="105" width="240" height="160" rx="18" class="box"/><text x="365" y="140" class="k">PROPOSE</text><text x="365" y="176" class="t">Fragment planner</text><text x="365" y="207" class="c">typed nodes + edges</text><text x="365" y="231" class="c">proposal remains inert</text>
+  <path d="M580 185H645" class="a"/>
+  <rect x="655" y="85" width="270" height="200" rx="18" class="gate"/><text x="680" y="122" class="k">AUTHORITY BOUNDARY</text><text x="680" y="158" class="t">GraphValidator</text><text x="680" y="190" class="c">bounds · permissions · DSL</text><text x="680" y="214" class="c">verifiers · gates · runtime</text><text x="680" y="238" class="c">contracts · deterministic hash</text>
+  <path d="M925 185H990" class="a"/>
+  <rect x="1000" y="105" width="250" height="160" rx="18" class="store"/><text x="1025" y="140" class="k">ACCEPT</text><text x="1025" y="176" class="t">Immutable revision</text><text x="1025" y="207" class="c">compile to P3 scheduler</text><text x="1025" y="231" class="c">launch after evidence</text>
+  <path d="M1250 185H1315" class="a"/>
+  <rect x="1325" y="105" width="220" height="160" rx="18" class="box"/><text x="1350" y="140" class="k">EXECUTE</text><text x="1350" y="176" class="t">Verify + gate</text><text x="1350" y="207" class="c">checkpointed run</text><text x="1350" y="231" class="c">fail closed</text>
+  <path d="M790 285V345H515" class="a"/><rect x="205" y="315" width="300" height="80" rx="16" class="gate"/><text x="230" y="348" class="t">Reject → one repair</text><text x="230" y="374" class="c">then static fallback or human</text>
+  <path d="M1435 265V355H1010" class="a"/><rect x="695" y="315" width="305" height="80" rx="16" class="store"/><text x="720" y="348" class="t">Safe replan → revision N+1</text><text x="720" y="374" class="c">completed state remains referenced</text>
+</svg>
