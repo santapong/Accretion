@@ -8,6 +8,9 @@ _SECRET_KEY = re.compile(
     r"|code[_-]?verifier|code[_-]?challenge|nonce|\bstate\b|session[_-]?id)",
     re.I,
 )
+# Opaque indirection handles are not secrets and must stay readable: INV3-011 needs
+# them as the correlation key for connection, refresh, and revocation audit events.
+_SAFE_KEY = re.compile(r"token[_-]?handle", re.I)
 _BEARER = re.compile(r"(?i)bearer\s+[A-Za-z0-9._~+/=-]+")
 _LIKELY_KEY = re.compile(r"\b(?:sk|api|key)-[A-Za-z0-9_-]{16,}\b")
 _JWT = re.compile(r"\beyJ[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\.[A-Za-z0-9_-]{4,}\b")
@@ -26,7 +29,11 @@ def redact(value: Any) -> Any:
         return [redact(item) for item in value]
     if isinstance(value, dict):
         return {
-            key: "[REDACTED]" if _SECRET_KEY.search(str(key)) else redact(item)
+            key: (
+                "[REDACTED]"
+                if _SECRET_KEY.search(str(key)) and not _SAFE_KEY.search(str(key))
+                else redact(item)
+            )
             for key, item in value.items()
         }
     return value

@@ -24,6 +24,7 @@ from accretion.api.schemas import (
     AuthProviderInfo,
     BenchmarkRunCreate,
     CapabilityResolveRequest,
+    ConnectionSummary,
     ErrorEnvelope,
     ExperienceMaterializeCreate,
     ExperienceQueryCreate,
@@ -59,7 +60,7 @@ from accretion.contracts import (
     BenchmarkRun,
     BenchmarkTaskDetail,
     Capability,
-    Connection,
+    ConnectionScope,
     ConnectorDefinition,
     EventType,
     ExecutionMode,
@@ -1050,20 +1051,57 @@ async def list_connectors(request: Request) -> list[ConnectorDefinition]:
     return await manager(request).store.list_connector_definitions()
 
 
-@app.get("/api/v1/connections", response_model=list[Connection])
-async def list_connections(request: Request) -> list[Connection]:
-    return await manager(request).store.list_connections()
+@app.get("/api/v1/connections", response_model=list[ConnectionSummary])
+async def list_connections(request: Request) -> list[ConnectionSummary]:
+    """List only the connections this principal may see.
+
+    Returns a summary rather than the stored model: a Connection carries
+    ``token_handle_ref``, which is broker-internal and never leaves the API (INV3-002).
+    """
+
+    store = manager(request).store
+    who = current_principal(request)
+    memberships = await store.list_workspace_memberships(principal_id=who.principal_id)
+    workspaces = {item.workspace_id for item in memberships}
+    return [
+        ConnectionSummary(
+            connection_id=item.connection_id,
+            connector_id=item.connector_id,
+            workspace_id=item.workspace_id,
+            principal_id=item.principal_id,
+            scope=item.scope,
+            status=item.status,
+            granted_scopes=item.granted_scopes,
+            workspace_shareable=item.workspace_shareable,
+            created_at=item.created_at,
+            last_health_check=item.last_health_check,
+        )
+        for item in await store.list_connections()
+        # A user connection is private to its owner (INV3-008); a workspace
+        # connection is visible only to members of that workspace.
+        if item.principal_id == who.principal_id
+        or (item.scope is ConnectionScope.WORKSPACE and item.workspace_id in workspaces)
+    ]
 
 
 @app.post("/api/v1/capabilities/resolve", response_model=ResolvedCapability)
 async def resolve_capability(
     payload: CapabilityResolveRequest, request: Request
 ) -> ResolvedCapability:
+    store = manager(request).store
     who = current_principal(request)
-    resolved = await CapabilityResolver(manager(request).store).resolve(
+    if payload.principal_id is not None and payload.principal_id != who.principal_id:
+        # Resolving as another principal would disclose whether they hold a
+        # connection, and which one (INV3-008).
+        raise AuthorizationError("cannot resolve capabilities for another principal")
+    if payload.workspace_id is not None:
+        memberships = await store.list_workspace_memberships(principal_id=who.principal_id)
+        if payload.workspace_id not in {item.workspace_id for item in memberships}:
+            raise AuthorizationError("principal is not a member of the requested workspace")
+    resolved = await CapabilityResolver(store).resolve(
         payload.capability_id,
         version=payload.version,
-        principal_id=payload.principal_id or who.principal_id,
+        principal_id=who.principal_id,
         workspace_id=payload.workspace_id,
     )
     if resolved is None:

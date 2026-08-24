@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +9,8 @@ from pydantic import BaseModel, Field, model_validator
 from accretion.contracts import (
     ApprovalDecisionValue,
     BenchmarkExecutionSource,
+    ConnectionScope,
+    ConnectionStatus,
     ExecutionMode,
     Principal,
     Provider,
@@ -153,6 +156,21 @@ class WorkflowTemplateSummary(BaseModel):
     mode: ExecutionMode
     status: TemplateStatus
     checksum: str
+
+
+class ConnectionSummary(BaseModel):
+    """Read-only connection listing; token handles never enter the API (INV3-002)."""
+
+    connection_id: str
+    connector_id: str
+    workspace_id: str
+    principal_id: str | None = None
+    scope: ConnectionScope
+    status: ConnectionStatus
+    granted_scopes: list[str] = Field(default_factory=list)
+    workspace_shareable: bool = False
+    created_at: datetime
+    last_health_check: datetime | None = None
 
 
 class ErrorEnvelope(BaseModel):
