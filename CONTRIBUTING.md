@@ -8,6 +8,8 @@ repository's MIT license.
 
 New contributors should begin with the [developer guide](docs/DEVELOPER_GUIDE.md)
 and use the [documentation hub](docs/README.md) to find the relevant runbook.
+Frontend contributors should also read the
+[operator frontend guide](docs/FRONTEND_GUIDE.md).
 
 ## Development workflow
 
@@ -47,6 +49,8 @@ use a `hotfix/` branch from `main` and must be merged back into `develop`.
 - Verify every relative link and command from the document's intended checkout.
 - Update the [visual reference](docs/README.md#visual-reference) when adding a
   diagram that explains a system boundary, workflow, or release plan.
+- Keep frontend route/status claims synchronized with
+  [the frontend guide](docs/FRONTEND_GUIDE.md) and generated OpenAPI contract.
 
 The project currently permits pull requests without an outside approval so a
 solo maintainer is not blocked. Once a second active maintainer is added, the

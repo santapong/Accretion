@@ -3,6 +3,10 @@
 Status: implementation evidence prepared on 2026-08-23. P6 and P7 are not part
 of this report.
 
+> This is the frozen P5 milestone report. Current `develop` also includes the P6
+> and P7 frontend surfaces documented in the [frontend guide](FRONTEND_GUIDE.md);
+> the historical counts here are intentionally unchanged.
+
 <img src="assets/p5-dynamic-workflow.svg" alt="P5 validated workflow proposal, activation, fallback, and revision lifecycle" width="100%" />
 
 ## Acceptance mapping

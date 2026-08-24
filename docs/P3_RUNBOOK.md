@@ -12,6 +12,10 @@ and delegates bounded loop regions to the P2 engine. The v0.1 P3 API remains
 static and unchanged; opt-in P5 proposals now compile into this same scheduler
 only after deterministic validation. Learned routing remains out of scope.
 
+The current [frontend guide](FRONTEND_GUIDE.md) shows where the graph projection,
+controls, approval state, verifier evidence, and normalized trace appear in the
+completed operator UI. Historical counts below remain the P3 milestone snapshot.
+
 ## Safety and recovery invariants
 
 - Only VALIDATED, checksum-stable templates instantiate run graphs; unknown

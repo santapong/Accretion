@@ -11,6 +11,10 @@ proposal is compiled into the existing P3 checkpoint, verifier, approval, and
 side-effect scheduler. P6 candidate search and P7 experience retrieval are
 separate opt-in extensions and grant no authority when only P5 is enabled.
 
+The [frontend guide](FRONTEND_GUIDE.md) maps proposal review, deterministic
+validation, activation, revision evidence, and fallback state to the Planning
+Review and Live Run surfaces.
+
 ## Enable P5
 
 P5 has two independent gates. The deployment flag defaults off:

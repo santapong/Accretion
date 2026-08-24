@@ -12,6 +12,10 @@ repairs, or escalates according to a versioned acceptance policy.
 `GRAPH/fixed-graph-v1`, `HYBRID/hybrid-rd-v1`, and `safe-unknown-v1` remain blocked
 until P3. P2 does not emulate these modes through direct or loop execution.
 
+For the current operator route and data-flow map, see the
+[frontend guide](FRONTEND_GUIDE.md). The historical counts below remain the P2
+milestone evidence; the P7 completion report records the current aggregate UI gate.
+
 ## Safety and recovery invariants
 
 - Provider-reported completion never accepts its own output.

@@ -3,13 +3,17 @@
 This is the documentation entry point for operators, contributors, integrators,
 and release reviewers. Start with the path that matches what you want to do.
 
+<img src="assets/project-overview.svg" alt="Accretion project overview from bounded operator intent through deterministic control, isolated runtime execution, and independent verification, with stable v0.1, implemented P5 through P7 on develop, and the remaining v0.2 release audit" width="100%" />
+
 <img src="assets/developer-journey.svg" alt="Six-step developer journey from cloning Accretion through running, observing, verifying, and contributing" width="100%" />
 
 ## Choose your path
 
 | Goal | Start here | Continue with |
 |---|---|---|
+| Understand the project and release status | [Project README](../README.md) | [v0.2 delivery plan](V0_2_PLAN.md) |
 | Run Accretion locally | [Developer guide](DEVELOPER_GUIDE.md) | [Showcase](SHOWCASE.md) |
+| Use or extend the React operator UI | [Frontend guide](FRONTEND_GUIDE.md) | [Developer guide](DEVELOPER_GUIDE.md), [showcase](SHOWCASE.md) |
 | Understand the system | [README architecture](../README.md#architecture) | [v0.1 SDD](sdd/Accretion_SDD_v0.1.md) |
 | Build a contribution | [Contributing](../CONTRIBUTING.md) | [Branch policy](BRANCH_POLICY.md) |
 | Operate or recover runs | [P0 runtime runbook](P0_RUNBOOK.md) | [P2 loops](P2_RUNBOOK.md), [P3 replay](P3_RUNBOOK.md) |
@@ -24,7 +28,9 @@ and release reviewers. Start with the path that matches what you want to do.
 
 | Diagram | Explains | Primary document |
 |---|---|---|
+| [Project overview](assets/project-overview.svg) | Product purpose, authority flow, and stable/develop/next release position | [Project README](../README.md) |
 | [System architecture](assets/accretion-architecture.svg) | Task-to-runtime and durable telemetry flow | [Project README](../README.md) |
+| [Operator frontend map](assets/operator-ui-map.svg) | Ten UI routes, central live-run evidence, and snapshot/SSE data flow | [Frontend guide](FRONTEND_GUIDE.md) |
 | [Developer journey](assets/developer-journey.svg) | First checkout through verified PR | [Developer guide](DEVELOPER_GUIDE.md) |
 | [Feedback lifecycle](assets/accretion-feedback-loop.svg) | Bounded act, observe, verify, repair | [P2 runbook](P2_RUNBOOK.md) |
 | [Checkpoint and replay](assets/checkpoint-replay.svg) | Recovery classification and safe replay | [P3 runbook](P3_RUNBOOK.md) |
@@ -50,6 +56,15 @@ bitmap in the showcase is illustrative and never defines behavior.
 - `codex/v0.1-local-control-plane` is an unmerged historical prototype, not a
   release branch or source of current contracts.
 - Versioned SDDs are normative only for their declared release scope.
+
+## Frontend completion
+
+The React frontend is implemented for every P0–P7 surface currently available on
+`develop`, and the P7 completion gate passed its 21 component tests, generated
+OpenAPI check, ESLint, TypeScript, and production build. This means the frontend
+scope is complete for the v0.2 candidate; it does not replace the remaining
+clean-checkout release audit or create a v0.2 tag. The
+[frontend guide](FRONTEND_GUIDE.md) records the exact routes and evidence model.
 
 ## Documentation rules
 

@@ -1,7 +1,8 @@
 # Accretion v0.2 delivery plan
 
-Status: P5, P6, and P7 implemented behind independent opt-in gates; the final
-v0.2 clean-checkout release audit remains. This document translates the normative
+Status: P5, P6, P7, and their operator frontend surfaces are implemented behind
+independent opt-in gates; the final v0.2 clean-checkout release audit remains.
+This document translates the normative
 [v0.2 SDD](sdd/Accretion_SDD_v0.2.md) into an implementation and review sequence;
 it does not change the SDD contracts.
 
@@ -128,9 +129,25 @@ Exit evidence:
 | Persistence | Forward and reverse migrations; immutable proposal/revision/candidate evidence |
 | Security | Deterministic capability ceilings and credential isolation remain authoritative |
 | Verification | Calibrate ranking reliability and false-accept risk before expanding search |
-| UI | Snapshot-first projections; every dynamic decision has provenance and fallback state |
+| UI | Complete for P5–P7 on `develop`; retain snapshot-first projections and provenance for every dynamic decision |
 | Benchmark | Static control, preregistered treatments, negative/null results, fixture hashes |
 | Operations | Recovery classification for proposals, revisions, candidates, and retrieval |
+
+## Frontend delivery status
+
+<img src="assets/operator-ui-map.svg" alt="Completed v0.2 candidate frontend with ten routes for planning, live operation, governance, and ACR-ARCH, P6, and P7 research, backed by typed snapshots and resumable events" width="100%" />
+
+The frontend work planned for P5–P7 is complete on `develop`. Planning Review
+supports experience selection, dynamic proposal validation, and bounded search
+attachment; Live Run explains graph state, controls, verifier evidence, P6
+candidate lineage, and P7 materialization/replay provenance; dedicated pages
+reproduce all three frozen research suites. The generated OpenAPI contract,
+ESLint, TypeScript, 21 component tests, and production build passed at P7 close.
+
+No additional feature surface is required to close P7. The remaining frontend
+release work is reproducibility: rebuild and retest from the final clean checkout
+used by the v0.2 audit. The current bundle-size advisory is non-blocking and must
+remain visible; signed-in live-provider calibration stays opt-in.
 
 ## Proposed pull-request slices
 
@@ -173,4 +190,5 @@ checkout, the dynamic treatment demonstrates preregistered benefit over the v0.1
 static control, verifier safety does not regress, negative-transfer results are
 reported, all inherited v0.1 gates pass, and the operator can explain every
 proposal, revision, candidate, retrieval, and terminal decision from durable
-records.
+records. The [frontend guide](FRONTEND_GUIDE.md) is the route-level checklist for
+that operator explanation gate.

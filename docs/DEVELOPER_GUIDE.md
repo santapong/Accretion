@@ -1,7 +1,9 @@
 # Developer guide
 
 This guide takes a new contributor from a clean checkout to a verified local
-change. For a five-minute product tour, use the [showcase](SHOWCASE.md).
+change. For a five-minute product tour, use the [showcase](SHOWCASE.md). For the
+implemented route map and React data model, use the
+[operator frontend guide](FRONTEND_GUIDE.md).
 
 <img src="assets/developer-journey.svg" alt="Developer journey from clone through a protected contribution" width="100%" />
 
@@ -45,6 +47,12 @@ Open the operator UI at `http://localhost:5173` and API documentation at
 `http://localhost:8000/docs`. Start with the `FAKE` runtime. Signed-in Codex and
 Claude sessions remain opt-in and are not required for local development.
 
+<img src="assets/operator-ui-map.svg" alt="Implemented Accretion operator frontend routes and their authoritative FastAPI snapshot, React Query, and resumable event flow" width="100%" />
+
+The UI is complete for the current P0–P7 `develop` scope. It renders API-backed
+evidence across ten routes; it does not own run state or acceptance. The final
+v0.2 clean-checkout audit remains separate release work.
+
 ## 4. Run the deterministic showcase
 
 ```bash
@@ -71,8 +79,9 @@ curl http://localhost:8000/api/v1/runs/<run-id>/trace
 | Persistence | `src/accretion/persistence/` + `migrations/` | migration round-trip + store tests |
 | Verification | `src/accretion/verifiers/` | fail-closed verifier tests |
 | Capability governance | `src/accretion/governance.py` | policy and side-effect-ledger tests |
-| Operator UI | `apps/ui/src/` | component tests + production build |
-| Benchmark | `src/accretion/benchmark.py`, `src/accretion/search_benchmark.py` + `evals/` | fixture hashes + deterministic replay metrics |
+| Operator UI | `apps/ui/src/` | generated API contract + component tests + production build |
+| Benchmark | `src/accretion/benchmark.py`, `src/accretion/search_benchmark.py`, `src/accretion/experience_benchmark.py` + `evals/` | fixture hashes + deterministic replay metrics |
+| Verified experience | `src/accretion/experience/` | compatibility, redaction, retrieval, replay, and PostgreSQL tests |
 
 ## 6. Preserve the authority boundary
 
