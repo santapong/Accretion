@@ -2,6 +2,8 @@ import asyncio
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from accretion.concurrency import ConcurrencyLimiter
 from accretion.contracts import EventType, Provider, Run, RunState, TaskType
 from accretion.ids import new_id
@@ -77,6 +79,7 @@ async def test_worktrees_are_isolated_and_successful_run_completes(tmp_path: Pat
     assert event_types.count("VERIFICATION_RESULT") == 2
 
 
+@pytest.mark.acceptance("V01-P0-005")
 async def test_startup_reconciles_pending_runs_and_uncertain_side_effects(tmp_path: Path) -> None:
     repository = tmp_path / "repository"
     repository.mkdir()

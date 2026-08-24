@@ -23,6 +23,7 @@ folder root stays uncluttered.
 | Compare P6 candidates | [P6 runbook](runbooks/p6-candidate-search.md) | [Developer showcase](research/p6/showcase.md), [decisions](research/p6/decisions.md), [acceptance](research/p6/acceptance.md) |
 | Reuse verified experience | [P7 runbook](runbooks/p7-verified-experience.md) | [Developer showcase](research/p7/showcase.md), [decisions](research/p7/decisions.md), [acceptance](research/p7/acceptance.md) |
 | Operate the token broker | [Token broker runbook](runbooks/v03-token-broker.md) | [SDD v0.3](sdd/Accretion_SDD_v0.3.md), [v0.3 backlog](releases/v0.3/backlog.md) |
+| Check acceptance criteria | [Acceptance baseline](releases/v0.3/acceptance-baseline.md) | [verification policy](acceptance/criteria.toml) |
 | Review or reproduce experiments | [Experiments and results](research/README.md) | [ACR-ARCH](research/acr-arch-v0.1.md), [P5](research/p5/benchmark.md), [P6](research/p6/acceptance.md), [P7](research/p7/acceptance.md) |
 | Review security | [Security policy](../SECURITY.md) | [Trust-boundary diagram](assets/trust-boundary.svg) |
 | Review the current release | [Frozen v0.2 baseline](releases/v0.2/baseline.md) | [release audit](releases/v0.2/audit.md), [release notes](releases/v0.2/notes.md), [delivery plan](releases/v0.2/plan.md) |

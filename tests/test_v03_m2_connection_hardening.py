@@ -245,6 +245,7 @@ async def api_client(store: MemoryStore, who: Principal) -> AsyncClient:
     return AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
 
 
+@pytest.mark.acceptance("AC3-CON-05")
 async def test_connection_listing_hides_token_handles_and_other_principals() -> None:
     store, alice, bob = await seeded_api_store()
     try:
@@ -262,6 +263,7 @@ async def test_connection_listing_hides_token_handles_and_other_principals() -> 
         del app.state.manager
 
 
+@pytest.mark.acceptance("AC3-CON-05")
 async def test_capability_resolution_cannot_be_run_as_another_principal() -> None:
     store, alice, bob = await seeded_api_store()
     await store.upsert_capability(capability("cap.api"))

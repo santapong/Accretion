@@ -5,6 +5,8 @@ import subprocess
 import time
 from pathlib import Path
 
+import pytest
+
 from accretion.concurrency import ConcurrencyLimiter
 from accretion.contracts import (
     AcceptancePolicy,
@@ -79,6 +81,7 @@ async def create_loop_task(run_manager: RunManager, repository: Path):  # type: 
     return project, task, planning
 
 
+@pytest.mark.acceptance("V01-P2-002")
 async def test_bad_candidate_is_rejected_then_repaired_in_same_session(
     tmp_path: Path,
 ) -> None:
@@ -149,6 +152,7 @@ async def test_bad_candidate_is_rejected_then_repaired_in_same_session(
     assert event_types.count(EventType.RUN_COMPLETED) == 1
 
 
+@pytest.mark.acceptance("V01-P2-004")
 async def test_failed_candidate_stops_at_iteration_ceiling(tmp_path: Path) -> None:
     repository = tmp_path / "repository"
     repository.mkdir()
@@ -233,6 +237,7 @@ async def test_pause_persists_interrupted_attempt_and_consumes_iteration_budget(
     )
 
 
+@pytest.mark.acceptance("V01-P2-001")
 async def test_cancellation_has_one_terminal_and_terminal_controls_are_idempotent(
     tmp_path: Path,
 ) -> None:
@@ -288,6 +293,7 @@ async def test_cancellation_has_one_terminal_and_terminal_controls_are_idempoten
     assert await store.list_events(run.run_id) == before
 
 
+@pytest.mark.acceptance("V01-P2-003")
 async def test_reconcile_and_resume_preserve_committed_iteration_count(
     tmp_path: Path,
 ) -> None:
@@ -565,6 +571,7 @@ async def test_requires_human_run_closes_event_wait_without_poll_delay(
     )
 
 
+@pytest.mark.acceptance("V01-P2-004")
 async def test_loop_wall_deadline_is_enforced_around_an_unbounded_runtime(
     tmp_path: Path,
 ) -> None:
@@ -614,6 +621,7 @@ async def test_loop_wall_deadline_is_enforced_around_an_unbounded_runtime(
     assert sum(event.normalized_type is EventType.RUN_FAILED for event in events) == 1
 
 
+@pytest.mark.acceptance("V01-P2-004")
 async def test_loop_tool_ceiling_interrupts_before_an_extra_tool_starts(
     tmp_path: Path,
 ) -> None:

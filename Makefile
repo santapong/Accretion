@@ -1,4 +1,4 @@
-.PHONY: dev-db migrate api ui check docs-check test
+.PHONY: dev-db migrate api ui check docs-check test acceptance
 
 dev-db:
 	docker compose up -d postgres
@@ -24,3 +24,6 @@ docs-check:
 test:
 	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync pytest -p pytest_asyncio.plugin
 	npm run test
+
+acceptance:
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync python scripts/check_acceptance.py

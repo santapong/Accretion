@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+import pytest
+
 from accretion.contracts import (
     Capability,
     CapabilityBackend,
@@ -132,6 +134,7 @@ async def test_user_connection_takes_precedence_over_workspace_connection() -> N
     assert resolved.connection.connection_id == "conn_user"
 
 
+@pytest.mark.acceptance("AC3-CON-05")
 async def test_other_principals_user_connection_is_never_used() -> None:
     store = MemoryStore()
     await store.upsert_capability(capability("cap.bound"))
@@ -145,6 +148,7 @@ async def test_other_principals_user_connection_is_never_used() -> None:
     assert resolved.outcome is CapabilityResolutionOutcome.NO_CONNECTION
 
 
+@pytest.mark.acceptance("AC3-CON-05")
 async def test_workspace_connection_requires_explicit_share_policy() -> None:
     store = MemoryStore()
     await store.upsert_capability(capability("cap.bound"))
@@ -177,6 +181,7 @@ async def test_revoked_and_reauth_connections_fail_closed() -> None:
         assert resolved.outcome is CapabilityResolutionOutcome.REQUIRE_REAUTH
 
 
+@pytest.mark.acceptance("AC3-CON-03")
 async def test_missing_scopes_require_reauth_instead_of_silent_expansion() -> None:
     store = MemoryStore()
     await store.upsert_capability(capability("cap.bound"))

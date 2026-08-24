@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from accretion.contracts import (
     ApprovalDecisionValue,
     Capability,
@@ -132,6 +134,7 @@ async def test_unknown_and_task_denied_capabilities_fail_closed_without_executio
     assert len(await store.list_capability_results(run.run_id)) == 2
 
 
+@pytest.mark.acceptance("V01-P0-006")
 async def test_low_risk_call_executes_and_protected_call_requires_bound_approval_once() -> None:
     calls = 0
 
@@ -187,6 +190,7 @@ async def test_low_risk_call_executes_and_protected_call_requires_bound_approval
     assert calls == 1
 
 
+@pytest.mark.acceptance("V01-P4-002")
 async def test_credentials_are_injected_only_at_execution_and_redacted_everywhere() -> None:
     secret = "sk-super-secret-value-123456789"
     seen: dict[str, str] = {}
@@ -225,6 +229,7 @@ async def test_credentials_are_injected_only_at_execution_and_redacted_everywher
     )
 
 
+@pytest.mark.acceptance("V01-P0-001")
 def test_provider_environment_drops_secret_bearing_variables() -> None:
     environment = provider_environment(
         {"ACCRETION_GATEWAY_RUN_ID": "run_fixture", "SAFE_METADATA": "ready"}
@@ -234,6 +239,7 @@ def test_provider_environment_drops_secret_bearing_variables() -> None:
     assert not any("TOKEN" in key or "SECRET" in key or "PASSWORD" in key for key in environment)
 
 
+@pytest.mark.acceptance("V01-P4-003")
 async def test_side_effect_without_idempotency_key_is_denied() -> None:
     _, gateway, run = await setup_gateway(allowed=["accretion.protected-write"])
     result = await gateway.execute(

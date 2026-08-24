@@ -60,6 +60,7 @@ def test_acceptance_is_fail_closed_and_requires_every_verifier() -> None:
     ) is VerificationStatus.PASS
 
 
+@pytest.mark.acceptance("V01-P2-005")
 def test_inconclusive_requires_an_explicit_policy_exception() -> None:
     inconclusive = [result("tests", VerificationStatus.INCONCLUSIVE)]
     assert evaluate_acceptance(policy("tests"), inconclusive) is VerificationStatus.INCONCLUSIVE
@@ -213,6 +214,7 @@ def test_inconclusive_escalates_instead_of_accepting() -> None:
         ),
     ],
 )
+@pytest.mark.acceptance("V01-P2-001")
 def test_every_bounded_stop_condition_is_explicit(
     remaining: LoopBudgetRemaining,
     state_patch: dict[str, int],
