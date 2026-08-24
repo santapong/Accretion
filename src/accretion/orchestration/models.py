@@ -123,9 +123,17 @@ class DynamicWorkflowEdgeSpec(StrictModel):
 
 class SearchBudgetRequest(StrictModel):
     schema_version: Literal["2.0"] = "2.0"
-    branch_count: int = Field(default=2, ge=1, le=2)
-    max_parallel: int = Field(default=2, ge=1, le=2)
+    branch_count: int = Field(default=2, ge=1, le=4)
+    max_parallel: int = Field(default=2, ge=1, le=4)
     total: TaskBudgets
+
+    @model_validator(mode="after")
+    def validate_parallelism(self) -> SearchBudgetRequest:
+        if self.max_parallel > self.branch_count:
+            raise ValueError("max_parallel cannot exceed branch_count")
+        if self.max_parallel > self.total.max_parallel_runs:
+            raise ValueError("max_parallel cannot exceed the task budget ceiling")
+        return self
 
 
 class WorkflowProposal(StrictModel):
@@ -212,6 +220,14 @@ class ProjectFeatureSettings(StrictModel):
     experience_retrieval: bool = False
     revision: int = Field(default=1, ge=1)
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @model_validator(mode="after")
+    def validate_dependencies(self) -> ProjectFeatureSettings:
+        if self.candidate_search and not self.dynamic_workflows:
+            raise ValueError("candidate search requires dynamic workflows")
+        if self.experience_retrieval and not self.candidate_search:
+            raise ValueError("experience retrieval requires candidate search")
+        return self
 
 
 class ReplanReason(StrEnum):
@@ -326,3 +342,176 @@ class RuntimeDecision(StrictModel):
     fallback_order: list[Provider] = Field(default_factory=list)
     observed_features: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class SearchMode(StrEnum):
+    BEST_OF_N = "BEST_OF_N"
+    HYPOTHESIS_BRANCH = "HYPOTHESIS_BRANCH"
+    CROSS_PROVIDER = "CROSS_PROVIDER"
+    GENERATOR_REVIEWER = "GENERATOR_REVIEWER"
+    REPLAY_BRANCH = "REPLAY_BRANCH"
+
+
+class SearchStatus(StrEnum):
+    PLANNED = "PLANNED"
+    RUNNING = "RUNNING"
+    SELECTING = "SELECTING"
+    SUCCEEDED = "SUCCEEDED"
+    STOPPED = "STOPPED"
+    CANCELLED = "CANCELLED"
+    FAILED = "FAILED"
+    REQUIRES_HUMAN = "REQUIRES_HUMAN"
+
+
+class SearchStopReason(StrEnum):
+    ACCEPTED = "ACCEPTED"
+    COMPLETED = "COMPLETED"
+    BUDGET_EXHAUSTED = "BUDGET_EXHAUSTED"
+    LOW_EXPECTED_GAIN = "LOW_EXPECTED_GAIN"
+    LOW_DIVERSITY = "LOW_DIVERSITY"
+    VERIFIER_UNCERTAIN = "VERIFIER_UNCERTAIN"
+    PROVIDER_UNAVAILABLE = "PROVIDER_UNAVAILABLE"
+    OPERATOR_CANCELLED = "OPERATOR_CANCELLED"
+    CANDIDATE_FAILURE = "CANDIDATE_FAILURE"
+
+
+class CandidateStatus(StrEnum):
+    PENDING = "PENDING"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"
+    PRUNED = "PRUNED"
+    CANCELLED = "CANCELLED"
+    SELECTED = "SELECTED"
+    INTERRUPTED = "INTERRUPTED"
+
+
+class SearchBudgetEnvelope(StrictModel):
+    schema_version: Literal["2.0"] = "2.0"
+    wall_time_seconds: int = Field(gt=0, le=7_200)
+    max_turns: int = Field(gt=0, le=200)
+    max_tool_calls: int = Field(gt=0, le=1_000)
+
+
+class SearchStopPolicy(StrictModel):
+    schema_version: Literal["2.0"] = "2.0"
+    stop_on_acceptance: bool = True
+    minimum_score_gain: float = Field(default=0.01, ge=0, le=1)
+    require_distinct_artifacts: bool = True
+    score_precision: int = Field(default=6, ge=3, le=9)
+    policy_version: str = "search-stop-policy-v2"
+
+
+class SearchPlan(StrictModel):
+    schema_version: Literal["2.0"] = "2.0"
+    search_id: str
+    run_id: str
+    parent_node_id: str = Field(min_length=1, max_length=96)
+    graph_revision: int = Field(ge=1)
+    mode: SearchMode
+    branch_count: int = Field(ge=1, le=4)
+    max_parallel: int = Field(ge=1, le=4)
+    per_branch_budget: SearchBudgetEnvelope
+    total_budget: SearchBudgetEnvelope
+    candidate_directives: list[str] = Field(default_factory=list, max_length=4)
+    verifier_policy_ref: str
+    router_policy_version: str = "performance-router-v2"
+    stop_policy: SearchStopPolicy = Field(default_factory=SearchStopPolicy)
+    requested_by: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @model_validator(mode="after")
+    def validate_search_bounds(self) -> SearchPlan:
+        if self.max_parallel > self.branch_count:
+            raise ValueError("max_parallel cannot exceed branch_count")
+        if self.per_branch_budget.wall_time_seconds > self.total_budget.wall_time_seconds:
+            raise ValueError("per-branch wall time cannot exceed the total budget")
+        if self.per_branch_budget.max_turns > self.total_budget.max_turns:
+            raise ValueError("per-branch turns cannot exceed the total budget")
+        if self.per_branch_budget.max_tool_calls > self.total_budget.max_tool_calls:
+            raise ValueError("per-branch tool calls cannot exceed the total budget")
+        if self.mode is SearchMode.HYPOTHESIS_BRANCH:
+            if len(self.candidate_directives) != self.branch_count:
+                raise ValueError("hypothesis search requires one directive per branch")
+        elif self.candidate_directives:
+            raise ValueError("candidate directives are allowed only for hypothesis search")
+        return self
+
+
+class SearchBudgetSpent(StrictModel):
+    schema_version: Literal["2.0"] = "2.0"
+    wall_time_seconds: int = Field(default=0, ge=0)
+    turns: int = Field(default=0, ge=0)
+    tool_calls: int = Field(default=0, ge=0)
+
+
+class SearchRecord(StrictModel):
+    schema_version: Literal["2.0"] = "2.0"
+    plan: SearchPlan
+    status: SearchStatus = SearchStatus.PLANNED
+    stop_reason: SearchStopReason | None = None
+    selected_candidate_id: str | None = None
+    budget_spent: SearchBudgetSpent = Field(default_factory=SearchBudgetSpent)
+    source_snapshot_sha256: str | None = None
+    revision: int = Field(default=1, ge=1)
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class CandidateTrajectory(StrictModel):
+    schema_version: Literal["2.0"] = "2.0"
+    candidate_id: str
+    search_id: str
+    run_id: str
+    ordinal: int = Field(ge=1, le=4)
+    provider: Provider
+    runtime_id: str
+    runtime_model: str
+    runtime_version: str
+    reviewer_provider: Provider | None = None
+    workspace_lease_id: str | None = None
+    workspace_path: str | None = None
+    trajectory_ref: str | None = None
+    artifact_refs: list[str] = Field(default_factory=list)
+    verifier_result_refs: list[str] = Field(default_factory=list)
+    status: CandidateStatus = CandidateStatus.PENDING
+    terminal_reason: str | None = None
+    budget_spent: SearchBudgetSpent = Field(default_factory=SearchBudgetSpent)
+    latency_ms: int = Field(default=0, ge=0)
+    patch_sha256: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
+
+
+class CandidateScore(StrictModel):
+    schema_version: Literal["2.0"] = "2.0"
+    score_id: str
+    search_id: str
+    candidate_id: str
+    verifier_policy_ref: str
+    verifier_status: str
+    eligible: bool
+    quality_score: float | None = Field(default=None, ge=0, le=1)
+    cost_proxy: float = Field(ge=0, le=1)
+    latency_proxy: float = Field(ge=0, le=1)
+    risk_score: float = Field(ge=0, le=1)
+    total_score: float | None = None
+    explanation: str
+    scorer_version: str = "candidate-scorer-v2"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class SearchPromotionRecord(StrictModel):
+    schema_version: Literal["2.0"] = "2.0"
+    promotion_id: str
+    search_id: str
+    candidate_id: str
+    run_id: str
+    patch_sha256: str
+    parent_before_sha256: str
+    parent_after_sha256: str | None = None
+    status: Literal["INTENT", "COMPLETED", "CONFLICT"] = "INTENT"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    completed_at: datetime | None = None

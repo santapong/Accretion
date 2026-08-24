@@ -703,6 +703,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/runs/{run_id}/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Candidate Search */
+        post: operations["create_candidate_search_api_v2_runs__run_id__search_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/runs/{run_id}/searches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Candidate Searches */
+        get: operations["list_candidate_searches_api_v2_runs__run_id__searches_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v2/runs/{run_id}/workflow/proposals": {
         parameters: {
             query?: never;
@@ -780,6 +814,74 @@ export interface paths {
         };
         /** List Dynamic Workflow Validations */
         get: operations["list_dynamic_workflow_validations_api_v2_runs__run_id__workflow_proposals__proposal_id__validations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/search/{search_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Candidate Search */
+        get: operations["get_candidate_search_api_v2_search__search_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/search/{search_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Candidate Search */
+        post: operations["cancel_candidate_search_api_v2_search__search_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/search/{search_id}/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Search Candidates */
+        get: operations["list_search_candidates_api_v2_search__search_id__candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/search/{search_id}/scores": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Search Scores */
+        get: operations["list_search_scores_api_v2_search__search_id__scores_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1222,6 +1324,110 @@ export interface components {
              */
             version: "budget-policy-v1";
         };
+        /** CandidateScore */
+        CandidateScore: {
+            /** Candidate Id */
+            candidate_id: string;
+            /** Cost Proxy */
+            cost_proxy: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Eligible */
+            eligible: boolean;
+            /** Explanation */
+            explanation: string;
+            /** Latency Proxy */
+            latency_proxy: number;
+            /** Quality Score */
+            quality_score?: number | null;
+            /** Risk Score */
+            risk_score: number;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Score Id */
+            score_id: string;
+            /**
+             * Scorer Version
+             * @default candidate-scorer-v2
+             */
+            scorer_version: string;
+            /** Search Id */
+            search_id: string;
+            /** Total Score */
+            total_score?: number | null;
+            /** Verifier Policy Ref */
+            verifier_policy_ref: string;
+            /** Verifier Status */
+            verifier_status: string;
+        };
+        /**
+         * CandidateStatus
+         * @enum {string}
+         */
+        CandidateStatus: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED" | "PRUNED" | "CANCELLED" | "SELECTED" | "INTERRUPTED";
+        /** CandidateTrajectory */
+        CandidateTrajectory: {
+            /** Artifact Refs */
+            artifact_refs?: string[];
+            budget_spent?: components["schemas"]["SearchBudgetSpent"];
+            /** Candidate Id */
+            candidate_id: string;
+            /** Completed At */
+            completed_at?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /**
+             * Latency Ms
+             * @default 0
+             */
+            latency_ms: number;
+            /** Ordinal */
+            ordinal: number;
+            /** Patch Sha256 */
+            patch_sha256?: string | null;
+            provider: components["schemas"]["Provider"];
+            reviewer_provider?: components["schemas"]["Provider"] | null;
+            /** Run Id */
+            run_id: string;
+            /** Runtime Id */
+            runtime_id: string;
+            /** Runtime Model */
+            runtime_model: string;
+            /** Runtime Version */
+            runtime_version: string;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Search Id */
+            search_id: string;
+            /** Started At */
+            started_at?: string | null;
+            /** @default PENDING */
+            status: components["schemas"]["CandidateStatus"];
+            /** Terminal Reason */
+            terminal_reason?: string | null;
+            /** Trajectory Ref */
+            trajectory_ref?: string | null;
+            /** Verifier Result Refs */
+            verifier_result_refs?: string[];
+            /** Workspace Lease Id */
+            workspace_lease_id?: string | null;
+            /** Workspace Path */
+            workspace_path?: string | null;
+        };
         /** Capability */
         Capability: {
             backend: components["schemas"]["CapabilityBackend"];
@@ -1537,7 +1743,7 @@ export interface components {
          * EventType
          * @enum {string}
          */
-        EventType: "RUN_CREATED" | "WORKFLOW_PROPOSAL_CREATED" | "WORKFLOW_PROPOSAL_REPAIRED" | "GRAPH_VALIDATION_STARTED" | "GRAPH_VALIDATION_RESULT" | "GRAPH_REVISION_ACTIVATED" | "REPLAN_REQUESTED" | "REPLAN_STARTED" | "REPLAN_COMPLETED" | "RUNTIME_DECISION" | "RUN_STARTED" | "RUN_PROGRESS" | "NODE_ENTERED" | "NODE_EXITED" | "TOOL_REQUESTED" | "TOOL_STARTED" | "TOOL_COMPLETED" | "TOOL_FAILED" | "FILE_CHANGED" | "DIFF_AVAILABLE" | "APPROVAL_REQUIRED" | "APPROVAL_RESOLVED" | "ARTIFACT_CREATED" | "CHECKPOINT_SAVED" | "RUNTIME_CALL_STARTED" | "RUNTIME_CALL_COMPLETED" | "RUNTIME_CALL_FAILED" | "RUNTIME_CALL_CANCELLED" | "LOOP_ITERATION_STARTED" | "LOOP_ITERATION_COMPLETED" | "VERIFICATION_STARTED" | "VERIFICATION_RESULT" | "RUN_PAUSED" | "RUN_RESUMED" | "RUN_COMPLETED" | "RUN_FAILED" | "RUN_CANCELLED";
+        EventType: "RUN_CREATED" | "WORKFLOW_PROPOSAL_CREATED" | "WORKFLOW_PROPOSAL_REPAIRED" | "GRAPH_VALIDATION_STARTED" | "GRAPH_VALIDATION_RESULT" | "GRAPH_REVISION_ACTIVATED" | "REPLAN_REQUESTED" | "REPLAN_STARTED" | "REPLAN_COMPLETED" | "RUNTIME_DECISION" | "SEARCH_STARTED" | "SEARCH_CANDIDATE_STARTED" | "SEARCH_CANDIDATE_COMPLETED" | "SEARCH_CANDIDATE_PRUNED" | "SEARCH_SELECTION" | "SEARCH_PROMOTION_STARTED" | "SEARCH_PROMOTION_COMPLETED" | "SEARCH_STOPPED" | "RUN_STARTED" | "RUN_PROGRESS" | "NODE_ENTERED" | "NODE_EXITED" | "TOOL_REQUESTED" | "TOOL_STARTED" | "TOOL_COMPLETED" | "TOOL_FAILED" | "FILE_CHANGED" | "DIFF_AVAILABLE" | "APPROVAL_REQUIRED" | "APPROVAL_RESOLVED" | "ARTIFACT_CREATED" | "CHECKPOINT_SAVED" | "RUNTIME_CALL_STARTED" | "RUNTIME_CALL_COMPLETED" | "RUNTIME_CALL_FAILED" | "RUNTIME_CALL_CANCELLED" | "LOOP_ITERATION_STARTED" | "LOOP_ITERATION_COMPLETED" | "VERIFICATION_STARTED" | "VERIFICATION_RESULT" | "RUN_PAUSED" | "RUN_RESUMED" | "RUN_COMPLETED" | "RUN_FAILED" | "RUN_CANCELLED";
         /**
          * ExecutionMode
          * @enum {string}
@@ -2249,8 +2455,10 @@ export interface components {
         };
         /** ProjectFeatureUpdate */
         ProjectFeatureUpdate: {
+            /** Candidate Search */
+            candidate_search?: boolean | null;
             /** Dynamic Workflows */
-            dynamic_workflows: boolean;
+            dynamic_workflows?: boolean | null;
             /** Expected Revision */
             expected_revision: number;
         };
@@ -2628,6 +2836,21 @@ export interface components {
          * @enum {string}
          */
         RuntimeStatus: "READY" | "BUSY" | "RATE_LIMITED" | "AUTH_REQUIRED" | "UNAVAILABLE" | "DEGRADED";
+        /** SearchBudgetEnvelope */
+        SearchBudgetEnvelope: {
+            /** Max Tool Calls */
+            max_tool_calls: number;
+            /** Max Turns */
+            max_turns: number;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Wall Time Seconds */
+            wall_time_seconds: number;
+        };
         /** SearchBudgetRequest */
         SearchBudgetRequest: {
             /**
@@ -2648,6 +2871,172 @@ export interface components {
             schema_version: "2.0";
             total: components["schemas"]["TaskBudgets"];
         };
+        /** SearchBudgetSpent */
+        SearchBudgetSpent: {
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /**
+             * Tool Calls
+             * @default 0
+             */
+            tool_calls: number;
+            /**
+             * Turns
+             * @default 0
+             */
+            turns: number;
+            /**
+             * Wall Time Seconds
+             * @default 0
+             */
+            wall_time_seconds: number;
+        };
+        /** SearchCreate */
+        SearchCreate: {
+            /**
+             * Branch Count
+             * @default 2
+             */
+            branch_count: number;
+            /** Candidate Directives */
+            candidate_directives?: string[];
+            /**
+             * Max Parallel
+             * @default 2
+             */
+            max_parallel: number;
+            mode: components["schemas"]["SearchMode"];
+            /** Parent Node Id */
+            parent_node_id: string;
+            per_branch_budget: components["schemas"]["SearchBudgetEnvelope"];
+            total_budget: components["schemas"]["SearchBudgetEnvelope"];
+        };
+        /**
+         * SearchMode
+         * @enum {string}
+         */
+        SearchMode: "BEST_OF_N" | "HYPOTHESIS_BRANCH" | "CROSS_PROVIDER" | "GENERATOR_REVIEWER" | "REPLAY_BRANCH";
+        /** SearchPlan */
+        SearchPlan: {
+            /** Branch Count */
+            branch_count: number;
+            /** Candidate Directives */
+            candidate_directives?: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Graph Revision */
+            graph_revision: number;
+            /** Max Parallel */
+            max_parallel: number;
+            mode: components["schemas"]["SearchMode"];
+            /** Parent Node Id */
+            parent_node_id: string;
+            per_branch_budget: components["schemas"]["SearchBudgetEnvelope"];
+            /** Requested By */
+            requested_by: string;
+            /**
+             * Router Policy Version
+             * @default performance-router-v2
+             */
+            router_policy_version: string;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Search Id */
+            search_id: string;
+            stop_policy?: components["schemas"]["SearchStopPolicy"];
+            total_budget: components["schemas"]["SearchBudgetEnvelope"];
+            /** Verifier Policy Ref */
+            verifier_policy_ref: string;
+        };
+        /** SearchRecord */
+        SearchRecord: {
+            budget_spent?: components["schemas"]["SearchBudgetSpent"];
+            /** Completed At */
+            completed_at?: string | null;
+            plan: components["schemas"]["SearchPlan"];
+            /**
+             * Revision
+             * @default 1
+             */
+            revision: number;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Selected Candidate Id */
+            selected_candidate_id?: string | null;
+            /** Source Snapshot Sha256 */
+            source_snapshot_sha256?: string | null;
+            /** Started At */
+            started_at?: string | null;
+            /** @default PLANNED */
+            status: components["schemas"]["SearchStatus"];
+            stop_reason?: components["schemas"]["SearchStopReason"] | null;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at?: string;
+        };
+        /**
+         * SearchStatus
+         * @enum {string}
+         */
+        SearchStatus: "PLANNED" | "RUNNING" | "SELECTING" | "SUCCEEDED" | "STOPPED" | "CANCELLED" | "FAILED" | "REQUIRES_HUMAN";
+        /** SearchStopPolicy */
+        SearchStopPolicy: {
+            /**
+             * Minimum Score Gain
+             * @default 0.01
+             */
+            minimum_score_gain: number;
+            /**
+             * Policy Version
+             * @default search-stop-policy-v2
+             */
+            policy_version: string;
+            /**
+             * Require Distinct Artifacts
+             * @default true
+             */
+            require_distinct_artifacts: boolean;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /**
+             * Score Precision
+             * @default 6
+             */
+            score_precision: number;
+            /**
+             * Stop On Acceptance
+             * @default true
+             */
+            stop_on_acceptance: boolean;
+        };
+        /**
+         * SearchStopReason
+         * @enum {string}
+         */
+        SearchStopReason: "ACCEPTED" | "COMPLETED" | "BUDGET_EXHAUSTED" | "LOW_EXPECTED_GAIN" | "LOW_DIVERSITY" | "VERIFIER_UNCERTAIN" | "PROVIDER_UNAVAILABLE" | "OPERATOR_CANCELLED" | "CANDIDATE_FAILURE";
         /** SessionRef */
         SessionRef: {
             /** Native Session Id */
@@ -4620,6 +5009,72 @@ export interface operations {
             };
         };
     };
+    create_candidate_search_api_v2_runs__run_id__search_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SearchCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_candidate_searches_api_v2_runs__run_id__searches_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchRecord"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_dynamic_workflow_proposals_api_v2_runs__run_id__workflow_proposals_get: {
         parameters: {
             query?: never;
@@ -4766,6 +5221,130 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["GraphValidationResult"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_candidate_search_api_v2_search__search_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                search_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_candidate_search_api_v2_search__search_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                search_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SearchRecord"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_search_candidates_api_v2_search__search_id__candidates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                search_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateTrajectory"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_search_scores_api_v2_search__search_id__scores_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                search_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CandidateScore"][];
                 };
             };
             /** @description Validation Error */

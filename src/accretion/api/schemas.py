@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from accretion.contracts import (
     ApprovalDecisionValue,
@@ -15,7 +15,12 @@ from accretion.contracts import (
     TaskType,
     TemplateStatus,
 )
-from accretion.orchestration.models import PlannerRuntime, ReplanReason
+from accretion.orchestration.models import (
+    PlannerRuntime,
+    ReplanReason,
+    SearchBudgetEnvelope,
+    SearchMode,
+)
 
 
 class ProjectCreate(BaseModel):
@@ -46,8 +51,15 @@ class RunCreate(BaseModel):
 
 
 class ProjectFeatureUpdate(BaseModel):
-    dynamic_workflows: bool
+    dynamic_workflows: bool | None = None
+    candidate_search: bool | None = None
     expected_revision: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def require_feature(self) -> ProjectFeatureUpdate:
+        if self.dynamic_workflows is None and self.candidate_search is None:
+            raise ValueError("at least one feature setting is required")
+        return self
 
 
 class WorkflowProposeCreate(BaseModel):
@@ -58,6 +70,16 @@ class WorkflowProposeCreate(BaseModel):
 class ReplanCreate(BaseModel):
     reason: ReplanReason
     evidence_refs: list[str] = Field(default_factory=list)
+
+
+class SearchCreate(BaseModel):
+    parent_node_id: str = Field(min_length=1, max_length=96)
+    mode: SearchMode
+    branch_count: int = Field(default=2, ge=1, le=4)
+    max_parallel: int = Field(default=2, ge=1, le=4)
+    per_branch_budget: SearchBudgetEnvelope
+    total_budget: SearchBudgetEnvelope
+    candidate_directives: list[str] = Field(default_factory=list, max_length=4)
 
 
 class StrategyOverrideCreate(BaseModel):

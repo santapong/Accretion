@@ -20,6 +20,7 @@ from accretion.api.schemas import (
     ProjectFeatureUpdate,
     ReplanCreate,
     RunCreate,
+    SearchCreate,
     StrategyOverrideCreate,
     TaskCreate,
     WorkflowProposeCreate,
@@ -67,6 +68,8 @@ from accretion.contracts import (
 )
 from accretion.governance import seed_governance
 from accretion.orchestration.models import (
+    CandidateScore,
+    CandidateTrajectory,
     GraphRevisionDiff,
     GraphValidationResult,
     ProjectFeatureSettings,
@@ -74,9 +77,15 @@ from accretion.orchestration.models import (
     ReplanRequest,
     RunGraphRevision,
     RuntimeDecision,
+    SearchRecord,
     WorkflowActivationOutcome,
     WorkflowProposal,
     WorkflowValidationOutcome,
+)
+from accretion.orchestration.search import (
+    CandidateSearchConflictError,
+    CandidateSearchDisabledError,
+    SearchService,
 )
 from accretion.orchestration.service import (
     DynamicWorkflowConflictError,
@@ -150,6 +159,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         globally_enabled=settings.enable_dynamic_workflows,
         operator_identity=settings.operator_identity,
     )
+    app.state.candidate_search = SearchService(
+        manager,
+        globally_enabled=settings.enable_candidate_search,
+        operator_identity=settings.operator_identity,
+    )
     await seed_templates(store)
     await seed_governance(store)
     await seed_acr_arch(store)
@@ -181,6 +195,10 @@ def manager(request: Request) -> RunManager:
 
 def dynamic_workflows(request: Request) -> DynamicWorkflowService:
     return cast(DynamicWorkflowService, request.app.state.dynamic_workflows)
+
+
+def candidate_search(request: Request) -> SearchService:
+    return cast(SearchService, request.app.state.candidate_search)
 
 
 @app.exception_handler(KeyError)
@@ -240,6 +258,25 @@ async def dynamic_workflow_conflict_handler(
     return _error(409, "DYNAMIC_WORKFLOW_CONFLICT", str(exc))
 
 
+@app.exception_handler(CandidateSearchDisabledError)
+async def candidate_search_disabled_handler(
+    request: Request, exc: CandidateSearchDisabledError
+) -> JSONResponse:
+    return _error(403, "CANDIDATE_SEARCH_DISABLED", str(exc))
+
+
+@app.exception_handler(CandidateSearchConflictError)
+async def candidate_search_conflict_handler(
+    request: Request, exc: CandidateSearchConflictError
+) -> JSONResponse:
+    code = (
+        "REPLAY_BRANCH_REQUIRES_P7"
+        if str(exc) == "REPLAY_BRANCH_REQUIRES_P7"
+        else "CANDIDATE_SEARCH_CONFLICT"
+    )
+    return _error(409, code, str(exc))
+
+
 def _error(status: int, code: str, message: str, retryable: bool = False) -> JSONResponse:
     body = ErrorEnvelope(
         code=code,
@@ -293,6 +330,7 @@ async def update_project_features(
     return await dynamic_workflows(request).update_project_features(
         project_id,
         dynamic_workflows=payload.dynamic_workflows,
+        candidate_search=payload.candidate_search,
         expected_revision=payload.expected_revision,
     )
 
@@ -510,6 +548,66 @@ async def list_runtime_decisions(run_id: str, request: Request) -> list[RuntimeD
     if await manager(request).store.get_run(run_id) is None:
         raise KeyError(run_id)
     return await manager(request).store.list_runtime_decisions(run_id)
+
+
+@app.post(
+    "/api/v2/runs/{run_id}/search",
+    response_model=SearchRecord,
+    status_code=201,
+)
+async def create_candidate_search(
+    run_id: str, payload: SearchCreate, request: Request
+) -> SearchRecord:
+    return await candidate_search(request).create_plan(
+        run_id,
+        parent_node_id=payload.parent_node_id,
+        mode=payload.mode,
+        branch_count=payload.branch_count,
+        max_parallel=payload.max_parallel,
+        per_branch_budget=payload.per_branch_budget,
+        total_budget=payload.total_budget,
+        candidate_directives=payload.candidate_directives,
+    )
+
+
+@app.get(
+    "/api/v2/runs/{run_id}/searches",
+    response_model=list[SearchRecord],
+)
+async def list_candidate_searches(run_id: str, request: Request) -> list[SearchRecord]:
+    if await manager(request).store.get_run(run_id) is None:
+        raise KeyError(run_id)
+    return await manager(request).store.list_searches(run_id)
+
+
+@app.get("/api/v2/search/{search_id}", response_model=SearchRecord)
+async def get_candidate_search(search_id: str, request: Request) -> SearchRecord:
+    return await candidate_search(request).get(search_id)
+
+
+@app.get(
+    "/api/v2/search/{search_id}/candidates",
+    response_model=list[CandidateTrajectory],
+)
+async def list_search_candidates(
+    search_id: str, request: Request
+) -> list[CandidateTrajectory]:
+    await candidate_search(request).get(search_id)
+    return await manager(request).store.list_search_candidates(search_id)
+
+
+@app.get(
+    "/api/v2/search/{search_id}/scores",
+    response_model=list[CandidateScore],
+)
+async def list_search_scores(search_id: str, request: Request) -> list[CandidateScore]:
+    await candidate_search(request).get(search_id)
+    return await manager(request).store.list_candidate_scores(search_id)
+
+
+@app.post("/api/v2/search/{search_id}/cancel", response_model=SearchRecord)
+async def cancel_candidate_search(search_id: str, request: Request) -> SearchRecord:
+    return await candidate_search(request).cancel(search_id)
 
 
 @app.get("/api/v1/runs/{run_id}/artifacts", response_model=list[ArtifactRef])

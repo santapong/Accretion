@@ -40,6 +40,10 @@ _PREFIXES = {
     "graph_revision": "grv",
     "replan_request": "rpl",
     "runtime_decision": "rtd",
+    "search": "src",
+    "search_candidate": "scn",
+    "candidate_score": "scr",
+    "search_promotion": "spr",
 }
 
 

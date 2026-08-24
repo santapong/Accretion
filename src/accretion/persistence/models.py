@@ -7,6 +7,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -727,3 +728,91 @@ class RuntimeDecisionRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (Index("ix_runtime_decisions_run_created", "run_id", "created_at"),)
+
+
+class SearchPlanRow(Base):
+    __tablename__ = "search_plans"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    parent_node_id: Mapped[str] = mapped_column(String(96))
+    graph_revision: Mapped[int] = mapped_column(Integer)
+    mode: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(32))
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id",
+            "graph_revision",
+            "parent_node_id",
+            name="uq_search_plan_run_revision_node",
+        ),
+        Index("ix_search_plans_run_created", "run_id", "created_at"),
+        Index("ix_search_plans_status_updated", "status", "updated_at"),
+    )
+
+
+class SearchCandidateRow(Base):
+    __tablename__ = "search_candidates"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    search_id: Mapped[str] = mapped_column(
+        ForeignKey("search_plans.id", ondelete="CASCADE")
+    )
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    ordinal: Mapped[int] = mapped_column(Integer)
+    provider: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(32))
+    trajectory: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint("search_id", "ordinal", name="uq_search_candidates_ordinal"),
+        Index("ix_search_candidates_search_ordinal", "search_id", "ordinal"),
+    )
+
+
+class CandidateScoreRow(Base):
+    __tablename__ = "candidate_scores"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    search_id: Mapped[str] = mapped_column(
+        ForeignKey("search_plans.id", ondelete="CASCADE")
+    )
+    candidate_id: Mapped[str] = mapped_column(
+        ForeignKey("search_candidates.id", ondelete="CASCADE"), unique=True
+    )
+    eligible: Mapped[bool] = mapped_column(Boolean)
+    total_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    score: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_candidate_scores_search", "search_id", "created_at"),)
+
+
+class SearchPromotionRow(Base):
+    __tablename__ = "search_promotions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    search_id: Mapped[str] = mapped_column(
+        ForeignKey("search_plans.id", ondelete="CASCADE"), unique=True
+    )
+    candidate_id: Mapped[str] = mapped_column(
+        ForeignKey("search_candidates.id", ondelete="RESTRICT")
+    )
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    status: Mapped[str] = mapped_column(String(32))
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (Index("ix_search_promotions_run", "run_id", "created_at"),)

@@ -72,15 +72,26 @@ class DynamicWorkflowService:
         self,
         project_id: str,
         *,
-        dynamic_workflows: bool,
+        dynamic_workflows: bool | None,
+        candidate_search: bool | None = None,
         expected_revision: int,
     ) -> ProjectFeatureSettings:
         current = await self.store.get_project_features(project_id)
+        next_dynamic = (
+            current.dynamic_workflows
+            if dynamic_workflows is None
+            else dynamic_workflows
+        )
+        next_search = (
+            current.candidate_search if candidate_search is None else candidate_search
+        )
+        if not next_dynamic:
+            next_search = False
         requested = current.model_copy(
             update={
-                "dynamic_workflows": dynamic_workflows,
-                # P6/P7 flags cannot be enabled through the P5 surface.
-                "candidate_search": False,
+                "dynamic_workflows": next_dynamic,
+                "candidate_search": next_search,
+                # P7 remains unavailable through the P6 surface.
                 "experience_retrieval": False,
             }
         )
