@@ -22,6 +22,22 @@ or unlocking the hash-manifested v0.4+ designs.
 | 8 | M7 enterprise authorization | Optional EMA integration behind a feature flag after the standard OAuth path is stable |
 | 9 | M8 release hardening | Clean-checkout reproduction of every inherited v0.1, v0.2, and v0.3 MUST criterion |
 
+## M8 inherited UI findings (F1–F4)
+
+Minor findings deferred from the v0.2.0 post-release browser/accessibility
+validation ([evidence](../v0.2/browser-a11y-evidence.md), issue #52 / PR #55).
+Resolve within M8 release hardening:
+
+- **F1** — `/runs/:id` horizontal overflow at 390 px: the "Materialize run
+  experience" action and status chips push past the viewport edge.
+- **F2** — WCAG AA color contrast on status pills (`pill-succeeded`) and dim
+  monospace metadata text across `/history`, `/capabilities`, the three
+  benchmark routes, and `/runs/:id`; adjust ink tokens.
+- **F3** — Missing `h1` on every route except the dashboard; promote route
+  titles to `h1`-level headings.
+- **F4** — The normalized-trace `event-list` scroll region on `/runs/:id` is
+  not keyboard-focusable; add `tabindex="0"` with an appropriate role/label.
+
 ## Carried technical debt
 
 - Split or lazy-load the operator bundle to remove the current Vite chunk-size
