@@ -174,6 +174,7 @@ test("filters and reproduces the versioned ACR-ARCH benchmark", async () => {
   fireEvent.change(screen.getByLabelText("mode"), { target: { value: "LOOP" } });
   await waitFor(() => expect(fetch).toHaveBeenCalledWith(
     expect.stringContaining("mode=LOOP"),
+    expect.anything(),
   ));
   fireEvent.click(await screen.findByRole("button", { name: "acr-001" }));
   expect(await screen.findByRole("heading", { name: "Direct fixture" })).toBeInTheDocument();

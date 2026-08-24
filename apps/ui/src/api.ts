@@ -57,19 +57,30 @@ export interface AcrArchFilters {
 
 const API_ROOT = import.meta.env.VITE_API_URL ?? "";
 
+function redirectToLogin(status: number): void {
+  if (status === 401) {
+    window.location.assign(`${API_ROOT}/api/v1/auth/login`);
+  }
+}
+
 async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_ROOT}${path}`);
-  if (!response.ok) throw new Error(`Request failed (${response.status})`);
+  const response = await fetch(`${API_ROOT}${path}`, { credentials: "include" });
+  if (!response.ok) {
+    redirectToLogin(response.status);
+    throw new Error(`Request failed (${response.status})`);
+  }
   return response.json() as Promise<T>;
 }
 
 async function postJson<T>(path: string, payload: unknown): Promise<T> {
   const response = await fetch(`${API_ROOT}${path}`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
+    redirectToLogin(response.status);
     const body = await response.json().catch(() => null) as { message?: string } | null;
     throw new Error(body?.message ?? `Request failed (${response.status})`);
   }
@@ -79,17 +90,26 @@ async function postJson<T>(path: string, payload: unknown): Promise<T> {
 async function patchJson<T>(path: string, payload: unknown): Promise<T> {
   const response = await fetch(`${API_ROOT}${path}`, {
     method: "PATCH",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
+    redirectToLogin(response.status);
     const body = await response.json().catch(() => null) as { message?: string } | null;
     throw new Error(body?.message ?? `Request failed (${response.status})`);
   }
   return response.json() as Promise<T>;
 }
 
+export interface MeResponse {
+  principal: { principal_id: string; display_name: string | null; subject: string; status: string };
+  memberships: { workspace_id: string; role: string; revision: number }[];
+  auth_mode: string;
+}
+
 export const api = {
+  me: () => getJson<MeResponse>("/api/v1/me"),
   runtimes: () => getJson<RuntimeHealth[]>("/api/v1/runtimes"),
   runtimeSessions: (runtimeId: string) =>
     getJson<SessionRef[]>(`/api/v1/runtimes/${runtimeId}/sessions`),

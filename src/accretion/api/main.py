@@ -4,16 +4,24 @@ import asyncio
 import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import cast
+from typing import Any, cast
 from uuid import uuid4
 
 from fastapi import FastAPI, Header, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 
 from accretion import __version__
+from accretion.api.auth import (
+    auth_runtime,
+    authenticate_request,
+    build_auth_runtime,
+    is_exempt,
+)
+from accretion.api.auth import principal as current_principal
 from accretion.api.schemas import (
     ApprovalDecisionCreate,
+    AuthProviderInfo,
     BenchmarkRunCreate,
     CapabilityResolveRequest,
     ErrorEnvelope,
@@ -21,6 +29,7 @@ from accretion.api.schemas import (
     ExperienceQueryCreate,
     ExperienceRetractCreate,
     ExperienceSelectionCreate,
+    MeResponse,
     ProjectCreate,
     ProjectFeatureUpdate,
     ReplanCreate,
@@ -73,6 +82,7 @@ from accretion.contracts import (
     TaskType,
     TemplateStatus,
     VerificationResult,
+    WorkspaceEntity,
 )
 from accretion.dynamic_benchmark import (
     DynamicWorkflowBenchmarkRunner,
@@ -95,6 +105,7 @@ from accretion.experience_benchmark import (
     ExperienceBenchmarkSummary,
 )
 from accretion.governance import seed_governance
+from accretion.identity import AuthenticationError, AuthorizationError
 from accretion.orchestration.models import (
     CandidateScore,
     CandidateTrajectory,
@@ -202,6 +213,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         experience_service=experience,
     )
     app.state.candidate_search = search_service
+    app.state.auth = build_auth_runtime(store, settings)
     await seed_templates(store)
     await seed_governance(store)
     await seed_acr_arch(store)
@@ -222,10 +234,23 @@ settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "PATCH"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["Content-Type", "Last-Event-ID"],
 )
+
+
+@app.middleware("http")
+async def session_middleware(request: Request, call_next: Any) -> Any:
+    if request.method == "OPTIONS" or is_exempt(request.url.path):
+        return await call_next(request)
+    try:
+        request.state.principal = await authenticate_request(request)
+    except AuthenticationError as exc:
+        return _error(401, "UNAUTHENTICATED", str(exc))
+    except AuthorizationError as exc:
+        return _error(403, "FORBIDDEN", str(exc))
+    return await call_next(request)
 
 
 def manager(request: Request) -> RunManager:
@@ -257,6 +282,20 @@ async def permission_error_handler(request: Request, exc: PermissionError) -> JS
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
     return _error(400, "INVALID_REQUEST", str(exc))
+
+
+@app.exception_handler(AuthenticationError)
+async def authentication_error_handler(
+    request: Request, exc: AuthenticationError
+) -> JSONResponse:
+    return _error(401, "UNAUTHENTICATED", str(exc))
+
+
+@app.exception_handler(AuthorizationError)
+async def authorization_error_handler(
+    request: Request, exc: AuthorizationError
+) -> JSONResponse:
+    return _error(403, "FORBIDDEN", str(exc))
 
 
 @app.exception_handler(WorkflowTemplateError)
@@ -930,6 +969,69 @@ async def runtime_sessions(runtime_id: str, request: Request) -> list[SessionRef
     raise KeyError(runtime_id)
 
 
+@app.get("/api/v1/me", response_model=MeResponse)
+async def get_me(request: Request) -> MeResponse:
+    who = current_principal(request)
+    memberships = await manager(request).store.list_workspace_memberships(
+        principal_id=who.principal_id
+    )
+    return MeResponse(
+        principal=who,
+        memberships=memberships,
+        auth_mode=auth_runtime(request.app).mode,
+    )
+
+
+@app.get("/api/v1/workspaces", response_model=list[WorkspaceEntity])
+async def list_workspaces(request: Request) -> list[WorkspaceEntity]:
+    who = current_principal(request)
+    return await manager(request).store.list_workspaces_for_principal(who.principal_id)
+
+
+@app.get("/api/v1/auth/providers", response_model=list[AuthProviderInfo])
+async def auth_providers(request: Request) -> list[AuthProviderInfo]:
+    runtime = auth_runtime(request.app)
+    if runtime.mode == "OIDC" and runtime.identity.oidc is not None:
+        return [AuthProviderInfo(mode="OIDC", issuer=runtime.identity.oidc.config.issuer)]
+    return [AuthProviderInfo(mode="LOCAL_PRINCIPAL")]
+
+
+@app.get("/api/v1/auth/login")
+async def auth_login(request: Request) -> RedirectResponse:
+    runtime = auth_runtime(request.app)
+    if runtime.mode != "OIDC":
+        raise ValueError("login is not required in LOCAL_PRINCIPAL mode")
+    url = await runtime.identity.begin_login()
+    return RedirectResponse(url, status_code=302)
+
+
+@app.get("/api/v1/auth/callback")
+async def auth_callback(request: Request, state: str, code: str) -> RedirectResponse:
+    runtime = auth_runtime(request.app)
+    _, session = await runtime.identity.complete_login(state=state, code=code)
+    response = RedirectResponse("/", status_code=302)
+    response.set_cookie(
+        runtime.cookie_name,
+        session.auth_session_id,
+        max_age=runtime.session_ttl_seconds,
+        httponly=True,
+        samesite="lax",
+        secure=runtime.cookie_secure,
+    )
+    return response
+
+
+@app.post("/api/v1/auth/logout", status_code=204)
+async def auth_logout(request: Request) -> Response:
+    runtime = auth_runtime(request.app)
+    auth_session_id = request.cookies.get(runtime.cookie_name)
+    if auth_session_id:
+        await runtime.identity.logout(auth_session_id)
+    response = Response(status_code=204)
+    response.delete_cookie(runtime.cookie_name)
+    return response
+
+
 @app.get("/api/v1/capabilities", response_model=list[Capability])
 async def list_capabilities(request: Request) -> list[Capability]:
     return await manager(request).store.list_capabilities()
@@ -949,10 +1051,11 @@ async def list_connections(request: Request) -> list[Connection]:
 async def resolve_capability(
     payload: CapabilityResolveRequest, request: Request
 ) -> ResolvedCapability:
+    who = current_principal(request)
     resolved = await CapabilityResolver(manager(request).store).resolve(
         payload.capability_id,
         version=payload.version,
-        principal_id=payload.principal_id,
+        principal_id=payload.principal_id or who.principal_id,
         workspace_id=payload.workspace_id,
     )
     if resolved is None:
