@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from typing import Any
 
 _SECRET_KEY = re.compile(
@@ -36,4 +37,26 @@ def redact(value: Any) -> Any:
             )
             for key, item in value.items()
         }
+    return value
+
+
+def scrub_values(value: Any, secrets: Iterable[str]) -> Any:
+    """Remove specific known secret values wherever they appear.
+
+    Key-name redaction cannot catch a credential a capability chose to return under a
+    harmless key, so the executor boundary also scrubs by value: it knows exactly what
+    it injected. Short values are ignored to avoid mangling ordinary text.
+    """
+
+    targets = [item for item in secrets if item and len(item) >= 8]
+    if not targets:
+        return value
+    if isinstance(value, str):
+        for secret in targets:
+            value = value.replace(secret, "[REDACTED]")
+        return value
+    if isinstance(value, list):
+        return [scrub_values(item, targets) for item in value]
+    if isinstance(value, dict):
+        return {key: scrub_values(item, targets) for key, item in value.items()}
     return value

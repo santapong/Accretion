@@ -26,6 +26,8 @@ from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore, StateStore
 from accretion.redaction import redact_text
 from accretion.resolver import CapabilityResolver
+from accretion.secrets_store import EnvelopeSecretStore
+from accretion.token_broker import EncryptedTokenBroker
 
 MCP_PROTOCOL_VERSION = "2025-06-18"
 
@@ -43,10 +45,20 @@ def _error(request_id: object, code: int, message: str) -> dict[str, Any]:
 
 
 class StdioMcpGateway:
-    def __init__(self, gateway: CapabilityGateway, store: StateStore, run_id: str) -> None:
+    def __init__(
+        self,
+        gateway: CapabilityGateway,
+        store: StateStore,
+        run_id: str,
+        principal_id: str | None = None,
+    ) -> None:
         self.gateway = gateway
         self.store = store
         self.run_id = run_id
+        # Resolution is per principal: a USER-scoped connection is invisible without
+        # one (INV3-008), so a gateway that resolves anonymously can never spend a
+        # connector credential.
+        self.principal_id = principal_id
         self.resolver = CapabilityResolver(store)
 
     async def dispatch(self, message: dict[str, Any]) -> dict[str, Any] | None:
@@ -107,7 +119,7 @@ class StdioMcpGateway:
                 "_declared_reason", f"Provider requested {name} through Accretion"
             )
             idempotency_key = arguments.pop("_idempotency_key", None)
-            resolved = await self.resolver.resolve(name)
+            resolved = await self.resolver.resolve(name, principal_id=self.principal_id)
             if resolved is not None and resolved.outcome not in {
                 CapabilityResolutionOutcome.OK,
                 CapabilityResolutionOutcome.NO_CONNECTOR_REQUIRED,
@@ -132,7 +144,11 @@ class StdioMcpGateway:
                 idempotency_key=str(idempotency_key) if idempotency_key else None,
             )
             try:
-                result = await self.gateway.execute(request)
+                # The resolver already chose the connection; handing it to the gateway
+                # is what lets a connector-backed capability spend a token at all.
+                result = await self.gateway.execute(
+                    request, resolved.connection if resolved else None
+                )
             except Exception as exc:
                 return _error(request_id, -32000, str(exc))
             serialized = result.model_dump(mode="json")
@@ -172,8 +188,13 @@ async def _serve() -> None:
         executor=CapabilityExecutor(default_capability_handlers()),
         policy_engine=CapabilityPolicyEngine(set(settings.granted_permissions)),
         policy_id=settings.capability_policy_id,
+        token_broker=EncryptedTokenBroker(store, EnvelopeSecretStore())
+        if settings.token_encryption_key
+        else None,
     )
-    server = StdioMcpGateway(gateway, store, run_id)
+    server = StdioMcpGateway(
+        gateway, store, run_id, os.getenv("ACCRETION_GATEWAY_PRINCIPAL_ID") or None
+    )
     try:
         while raw := await asyncio.to_thread(sys.stdin.buffer.readline):
             try:
