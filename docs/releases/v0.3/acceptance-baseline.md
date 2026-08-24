@@ -24,11 +24,19 @@ only *how* each is verified; and a test claims a criterion with
 | Criteria in the three SDDs | 110 |
 | Not yet due (M3–M6) | 22 |
 | **In scope** | **88** |
-| Proven by a passing claiming test | 37 |
-| Uncovered | 51 |
+| Proven by a passing claiming test | 61 |
+| Proven by the frontend suite | 3 |
+| Uncovered | 24 |
 
-Coverage is 42% of in-scope criteria. That is the honest figure; it was previously
-unknown rather than better.
+Coverage is 73% of in-scope criteria (64 of 88). The first computed figure was 37;
+the annotation sweep raised it to 59 without changing any runtime behaviour, because
+the inherited gap was traceability rather than implementation. Putting the token broker
+into the execution path then closed five more.
+
+Three criteria are proven by **vitest** rather than pytest. This gate reads pytest
+markers, so those record a pointer to the test that proves them; `npm run test` runs
+that suite in CI on every pull request. They are reported as `FRONTEND` rather than
+`PROVEN` so a reader can tell which runner actually executed them.
 
 ## What "uncovered" does and does not mean
 

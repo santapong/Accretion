@@ -14,7 +14,7 @@ or unlocking the hash-manifested v0.4+ designs.
 |---:|---|---|
 | 1 | M0 capability/connection refactor | Existing v0.1/v0.2 capabilities resolve unchanged through additive connection-aware contracts |
 | 2 | M1 identity and SSO | Issuer/subject principals, workspace membership, OIDC Authorization Code + PKCE, and multi-user tests |
-| 3 | M2 token broker and OAuth connections | Encrypted refresh/revoke lifecycle with no token values in model, API, UI, events, or logs |
+| 3 | M2 token broker and OAuth connections | Encrypted refresh/revoke lifecycle with no token values in model, API, UI, events, or logs. Partially delivered; see [M2 remainder](#v03-m2-remainder) |
 | 4 | M3 remote MCP manager | Authenticated remote discovery, schema validation, health/circuit breaking, SSRF controls, and canonical capability bindings |
 | 5 | M4 plugin manager | Versioned manifest validation, permission requests without grants, enable/disable/upgrade, and historical provenance |
 | 6 | M5 research intelligence plugin | Provider-neutral research capabilities, normalized evidence, provenance, and citation verification |
@@ -88,6 +88,34 @@ cannot satisfy.
   the workspace lease rather than a per-process environment variable, so a
   runtime that shares one provider server across concurrent runs can carry
   governed capabilities without misattributing side effects.
+
+### v0.3 M2 remainder
+
+M2 delivered the token broker, the encrypted secret store, the connector OAuth client,
+single-use transaction state, and broker-backed capability invocation. Six acceptance
+criteria remain open, so the milestone is **not** closed. Each is verifiable with
+`make acceptance`, which reports them as uncovered rather than assuming them.
+
+- Build the first OAuth connector and the SDD section 17 connection routes
+  (`connect`, `oauth/callback`, `reauthorize`, `revoke`, `health`). Without a callback
+  route the CSRF and replay defences are proven only at the store layer, and no
+  operator can create a connection at all. Closes AC3-CON-01 and AC3-SEC-04.
+- Add an automated secret scan across `AgentEvent`, `TaskEnvelope`, `ContextBundle`,
+  frontend payloads, and OpenTelemetry export. The repository has no OpenTelemetry, so
+  one of the five named surfaces must exist before it can be scanned. Closes
+  AC3-SEC-01.
+- Enforce `WorkspaceRole` somewhere it can change an outcome. It is stored, projected,
+  and displayed today, but no route, resolver, or policy branches on it, so "role
+  changes take effect" is true only of the identity projection. Closes AC3-ID-04.
+- Carry the owning principal into a run so a disabled principal is refused at the
+  capability boundary rather than only at the HTTP boundary. `Run` and `Task` hold no
+  `principal_id`, and the gateway subprocess authenticates nobody, so an in-flight run
+  keeps invoking capabilities after its owner is disabled. Closes AC3-ID-05.
+- Decide whether ciphertext in a dedicated table in the operational database satisfies
+  "encrypted outside normal relational state", or whether the secret store must move to
+  a separate backend. Only the master key is external today, which the token broker
+  runbook already records as a deviation from the preferred OS keyring. Closes
+  AC3-CON-02 either by an accepted rationale or by a new backend.
 
 ### Manifest and release hygiene
 
