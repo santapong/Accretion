@@ -14,9 +14,10 @@ isolated workspaces, and a durable normalized execution trace.
 [![License](https://img.shields.io/badge/License-MIT-6f42c1.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-v0.1.0-2ea44f)](#project-status)
 
-[Documentation](docs/README.md) · [Developer guide](docs/DEVELOPER_GUIDE.md) ·
-[Showcase](docs/SHOWCASE.md) · [P7 runbook](docs/P7_RUNBOOK.md) ·
-[v0.2 plan](docs/V0_2_PLAN.md)
+[Author: resume.draveniq.dev](https://resume.draveniq.dev) ·
+[Documentation](docs/README.md) · [Frontend guide](docs/FRONTEND_GUIDE.md) ·
+[Developer guide](docs/DEVELOPER_GUIDE.md) · [Showcase](docs/SHOWCASE.md) ·
+[Project status](#project-status) · [v0.2 plan](docs/V0_2_PLAN.md)
 
 <br />
 
@@ -27,13 +28,39 @@ isolated workspaces, and a durable normalized execution trace.
 > [!IMPORTANT]
 > `v0.1.0` remains the current stable release. On `develop`, the opt-in P5 dynamic
 > workflow, P6 bounded candidate-search, and P7 verified-experience milestones
-> are implemented; the final clean-checkout v0.2 release audit is not complete. No v0.2 tag
-> has been created. The stable v0.1 release includes P0 runtime feasibility, P1
+> are implemented; the final clean-checkout v0.2 release audit is not complete.
+> No v0.2 tag has been created. The stable v0.1 release includes P0 runtime feasibility, P1
 > deterministic planning, P2 verifier-gated feedback loops, P3 static graph
 > execution, and the P4 governed harness/operator release gate. Its five validated
 > templates can execute:
 > `direct-v1`, `feedback-loop-v1`, `fixed-graph-v1` (with human approval gates),
 > `hybrid-rd-v1`, and the bounded `safe-unknown-v1` fallback.
+
+<div align="center">
+  <a href="docs/assets/project-overview.svg">
+    <img src="docs/assets/project-overview.svg" alt="Accretion project overview showing operator intent flowing through deterministic control, isolated runtime execution, and independent verification, plus stable v0.1.0, completed P5 through P7 on develop, and the remaining v0.2 release audit" width="100%" />
+  </a>
+</div>
+
+## Start here
+
+Accretion is for developers and operators who want to run local AI coding agents
+without making a provider session the authority for permissions, acceptance, or
+recovery. The repository contains the FastAPI control plane, React operator UI,
+PostgreSQL schema, runtime adapters, deterministic verifiers, frozen research
+fixtures, examples, and operational documentation in one workspace.
+
+| I want to… | Use | Release position |
+|---|---|---|
+| Evaluate the stable product | Clone the `v0.1.0` tag and follow [Quick start](#quick-start) | Released and immutable |
+| Explore dynamic workflows, candidate search, verified experience, and the completed frontend | Use `develop`, then read the [frontend guide](docs/FRONTEND_GUIDE.md) | Implemented and CI-gated; awaiting the final v0.2 audit |
+| Understand the safety model | Read [Architecture](#architecture), the [trust boundary](docs/assets/trust-boundary.svg), and [SECURITY.md](SECURITY.md) | Applies across releases |
+| Build a contribution | Start with the [developer guide](docs/DEVELOPER_GUIDE.md) and [CONTRIBUTING.md](CONTRIBUTING.md) | Pull requests target `develop` |
+| Reproduce the evidence | Use the [documentation hub](docs/README.md) to choose the P4, P6, or P7 benchmark and acceptance report | Frozen replay is deterministic; live-provider tests are opt-in |
+
+This is a local orchestration and research system, not an unrestricted deployment
+agent. It deliberately fails closed when evidence, authority, budgets, or recovery
+state are uncertain.
 
 ## Why Accretion
 
@@ -64,11 +91,35 @@ operator can answer five questions before and during every run:
 | Isolation | One Git worktree lease per mutable run with captured diff artifacts |
 | Recovery | Atomic iteration commits, optimistic revisions, session continuation, and restart reconciliation without replaying committed work |
 | Observability | Durable PostgreSQL state, immutable verifier evidence, monotonic normalized events, resumable SSE, runtime health, and usage pressure |
-| Operator experience | Dashboard, task profiler, planning review, live run controls, runtime monitor, trace history, approvals, capability registries, read-only React Flow projections, and ACR-ARCH |
+| Operator frontend | Ten implemented routes for dashboard, task/planning, live graph and controls, runtime monitor, history/audit, approvals, capability registries, ACR-ARCH, P6 research, and P7 research |
 | Governed capabilities | Immutable capability/skill/plugin/policy registries, task-scoped MCP exposure, approval-bound idempotent side effects, and executor-boundary credential injection |
 | Architecture benchmark | Frozen 30-task ACR-ARCH corpus, 68 balanced replay scenarios, raw dimensions, utility/regret, filterable operator UI, and opt-in live provider calibration |
 | Candidate search | Opt-in P6 best-of-N, hypothesis, cross-provider, and generator-reviewer execution with shared budgets, isolated trajectories, independent ranking, and crash-safe promotion |
 | Verified experience | Opt-in P7 immutable terminal evidence, repository-scoped deterministic retrieval, compatibility and transfer-risk scoring, explicit negative knowledge, fresh-control trajectory replay, repeated revalidation, and a frozen transfer benchmark |
+
+## Frontend status
+
+Yes—the frontend is implemented for the current P0–P7 scope on `develop`.
+It is not a mock dashboard: it calls the generated API contract, starts from
+authoritative snapshots, follows active runs through resumable server-sent
+events, and exposes the decision and verifier evidence needed to explain a run.
+
+<div align="center">
+  <a href="docs/assets/operator-ui-map.svg">
+    <img src="docs/assets/operator-ui-map.svg" alt="Accretion frontend route map covering dashboard, task planning, live run operation, runtime and governance pages, and the ACR-ARCH, P6, and P7 research pages, all backed by typed FastAPI snapshots and resumable events" width="100%" />
+  </a>
+</div>
+
+| Frontend gate | Current evidence |
+|---|---|
+| User-facing scope | Dashboard, New Task/Planning, Live Run, Runtimes, History, Approvals, Capabilities, ACR-ARCH, P6 Search, and P7 Experience |
+| API safety | Generated OpenAPI TypeScript schema; backend remains the authority for policy and transitions |
+| Live behavior | Snapshot-first state, monotonic SSE, reconnect and sequence-gap recovery |
+| Verification | 21 component tests, ESLint, TypeScript, OpenAPI idempotence, and production build passed at the P7 completion gate |
+| Remaining release work | Final clean-checkout v0.2 audit and release promotion; signed-in provider calibration remains opt-in |
+
+See the [operator frontend guide](docs/FRONTEND_GUIDE.md) for every route, the
+operator journey, data flow, P5–P7 coverage, source map, and frontend commands.
 
 ## Architecture
 
@@ -221,11 +272,25 @@ and [delivery plan](docs/V0_2_PLAN.md). The final v0.2 release audit remains; th
 The validated v0.1 live-provider range is Codex CLI `>=0.148,<0.149` and Claude
 Code `>=2.1.231,<2.2`.
 
-### Install and migrate
+### Choose and clone a version
+
+For the stable v0.1 product:
 
 ```bash
 git clone --branch v0.1.0 https://github.com/santapong/Accretion.git
 cd Accretion
+```
+
+For the implemented P5–P7 and frontend scope that will become v0.2:
+
+```bash
+git clone --branch develop https://github.com/santapong/Accretion.git
+cd Accretion
+```
+
+Then install and migrate:
+
+```bash
 cp .env.example .env
 
 uv sync --all-groups
@@ -275,6 +340,7 @@ All settings use the `ACCRETION_` prefix and can be placed in `.env`.
 | `ACCRETION_ENABLE_LIVE_PROVIDERS` | `false` | Allows Codex and Claude executions |
 | `ACCRETION_ENABLE_DYNAMIC_WORKFLOWS` | `false` | Enables P5 proposal and graph-revision services globally |
 | `ACCRETION_ENABLE_CANDIDATE_SEARCH` | `false` | Enables P6 search globally; project opt-in is still required |
+| `ACCRETION_ENABLE_EXPERIENCE_RETRIEVAL` | `false` | Enables P7 materialization, retrieval, selection, and replay integration globally |
 | `ACCRETION_GLOBAL_MAX_RUNS` | `4` | Global concurrency ceiling |
 | `ACCRETION_PROVIDER_MAX_RUNS` | `2` | Per-provider concurrency ceiling |
 | `ACCRETION_PROJECT_MAX_RUNS` | `2` | Per-project concurrency ceiling |
@@ -322,7 +388,9 @@ src/accretion/projections.py Read-only execution graph projections
 src/accretion/governance.py Capability policy, credentials, and governed executor
 src/accretion/benchmark.py Frozen ACR-ARCH replay and architecture metrics
 src/accretion/search_benchmark.py Frozen P6 quality-vs-compute replay metrics
+src/accretion/experience_benchmark.py Frozen P7 transfer-safety replay metrics
 src/accretion/orchestration/ P5 workflow and P6 candidate-search authority
+src/accretion/experience/ P7 materialization, embedding, compatibility, and retrieval
 src/accretion/verifiers/  Deterministic verifier implementations and registry
 migrations/               Alembic schema history
 tests/                    Unit, API, PostgreSQL, and live acceptance tests
