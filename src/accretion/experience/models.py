@@ -74,6 +74,14 @@ class Experience(StrictModel):
     manifest_paths: list[str] = Field(default_factory=list, max_length=256)
     policy_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     verifier_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    prompt_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    context_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    tool_profile_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    requested_skills: list[str] = Field(default_factory=list, max_length=64)
+    allowed_capabilities: list[str] = Field(default_factory=list, max_length=64)
+    denied_capabilities: list[str] = Field(default_factory=list, max_length=64)
+    verifier_ids: list[str] = Field(default_factory=list, max_length=64)
+    protected_side_effects: bool = False
     provider: Provider
     runtime_model: str = Field(min_length=1, max_length=160)
     runtime_version: str = Field(min_length=1, max_length=160)
@@ -133,6 +141,13 @@ class ExperienceQuery(StrictModel):
     manifest_paths: list[str] = Field(default_factory=list, max_length=256)
     policy_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
     verifier_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    prompt_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    context_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    tool_profile_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    requested_skills: list[str] = Field(default_factory=list, max_length=64)
+    allowed_capabilities: list[str] = Field(default_factory=list, max_length=64)
+    denied_capabilities: list[str] = Field(default_factory=list, max_length=64)
+    verifier_ids: list[str] = Field(default_factory=list, max_length=64)
     runtime_provider: Provider | None = None
     runtime_model: str | None = None
     runtime_version: str | None = None
@@ -235,3 +250,11 @@ class TrajectorySeed(StrictModel):
     rejection_reasons: list[str] = Field(default_factory=list)
     revalidated_at: datetime | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class ExperienceDetail(StrictModel):
+    schema_version: Literal["2.0"] = "2.0"
+    experience: Experience
+    segments: list[TrajectorySegment]
+    embedding_version: str
+    embedding_input_digest: str

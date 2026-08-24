@@ -6,7 +6,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class StrictModel(BaseModel):
@@ -406,10 +406,10 @@ class PromptContract(StrictModel):
 
 
 class ContextBundle(StrictModel):
-    schema_version: Literal["1.0"] = "1.0"
+    schema_version: Literal["1.0", "2.0"] = "1.0"
     context_bundle_id: str
     task_ref: str
-    version: Literal["context-bundle-v1"] = "context-bundle-v1"
+    version: Literal["context-bundle-v1", "context-bundle-v2"] = "context-bundle-v1"
     phase: str = "TASK_EXECUTION"
     project_summary: str
     evidence_refs: list[str] = Field(default_factory=list)
@@ -421,8 +421,39 @@ class ContextBundle(StrictModel):
     freshness: dict[str, Any] = Field(default_factory=dict)
     provenance: list[str] = Field(default_factory=list)
     token_budget: int = Field(default=8_000, gt=0)
-    experience_refs: list[str] = Field(default_factory=list, max_length=0)
+    supersedes_context_bundle_id: str | None = None
+    experience_query_id: str | None = None
+    experience_match_refs: list[str] = Field(default_factory=list, max_length=3)
+    experience_refs: list[str] = Field(default_factory=list, max_length=3)
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @model_validator(mode="after")
+    def validate_experience_revision(self) -> ContextBundle:
+        has_experience = bool(
+            self.experience_refs
+            or self.experience_match_refs
+            or self.experience_query_id
+            or self.supersedes_context_bundle_id
+        )
+        if self.version == "context-bundle-v1" and (
+            self.schema_version != "1.0" or has_experience
+        ):
+            raise ValueError("ContextBundle v1 cannot reference experience")
+        if self.version == "context-bundle-v2":
+            if self.schema_version != "2.0":
+                raise ValueError("ContextBundle v2 requires schema version 2.0")
+            if not all(
+                (
+                    self.supersedes_context_bundle_id,
+                    self.experience_query_id,
+                    self.experience_refs,
+                    self.experience_match_refs,
+                )
+            ):
+                raise ValueError("ContextBundle v2 requires complete experience provenance")
+            if len(self.experience_refs) != len(self.experience_match_refs):
+                raise ValueError("experience and match references must align")
+        return self
 
 
 class FeatureEvidence(StrictModel):
@@ -1228,6 +1259,7 @@ class TaskPlanning(StrictModel):
     context_bundle: ContextBundle
     current_profile: TaskProfile
     current_decision: StrategyDecision
+    context_history: list[ContextBundle] = Field(default_factory=list)
     profile_history: list[TaskProfile] = Field(default_factory=list)
     decision_history: list[StrategyDecision] = Field(default_factory=list)
     override_history: list[StrategyOverride] = Field(default_factory=list)

@@ -14,6 +14,7 @@ from accretion.experience.models import (
     ExperienceMatch,
     ExperiencePolarity,
     ExperienceQuery,
+    ExperienceSelection,
     ExperienceSourceKind,
     ExperienceTrust,
     MatchDisposition,
@@ -74,7 +75,7 @@ async def test_p7_vector_evidence_round_trips_and_retracts(tmp_path: Path) -> No
     experience = Experience(
         experience_id=new_id("experience"),
         project_id=project.project_id,
-        repository_identity=digest("repository"),
+        repository_identity=digest(project.project_id),
         task_id=task.envelope.task_id,
         task_type=TaskType.IMPLEMENT,
         task_family="python-service",
@@ -86,6 +87,9 @@ async def test_p7_vector_evidence_round_trips_and_retracts(tmp_path: Path) -> No
         manifest_paths=["pyproject.toml"],
         policy_digest=digest("policy"),
         verifier_digest=digest("verifier"),
+        prompt_digest=digest("prompt"),
+        context_digest=digest("context"),
+        tool_profile_digest=digest("tools"),
         provider=Provider.FAKE,
         runtime_model="fake",
         runtime_version="test",
@@ -121,6 +125,9 @@ async def test_p7_vector_evidence_round_trips_and_retracts(tmp_path: Path) -> No
         manifest_paths=experience.manifest_paths,
         policy_digest=experience.policy_digest,
         verifier_digest=experience.verifier_digest,
+        prompt_digest=experience.prompt_digest,
+        context_digest=experience.context_digest,
+        tool_profile_digest=experience.tool_profile_digest,
         embedding_input_digest=digest("query-input"),
     )
     match = ExperienceMatch(
@@ -140,6 +147,27 @@ async def test_p7_vector_evidence_round_trips_and_retracts(tmp_path: Path) -> No
             disposition=MatchDisposition.ACCEPTED,
             replay_eligible=True,
         ),
+    )
+    resulting_context_id = new_id("context")
+    selection = ExperienceSelection(
+        selection_id=new_id("experience_selection"),
+        task_id=task.envelope.task_id,
+        query_id=query.query_id,
+        match_ids=[match.match_id],
+        expected_context_bundle_id=context.context_bundle_id,
+        resulting_context_bundle_id=resulting_context_id,
+        selected_by="postgres-test",
+    )
+    revised_context = context.model_copy(
+        update={
+            "schema_version": "2.0",
+            "context_bundle_id": resulting_context_id,
+            "version": "context-bundle-v2",
+            "supersedes_context_bundle_id": context.context_bundle_id,
+            "experience_query_id": query.query_id,
+            "experience_match_refs": [match.match_id],
+            "experience_refs": [experience.experience_id],
+        }
     )
     search_id = new_id("search")
     candidate_id = new_id("search_candidate")
@@ -198,6 +226,7 @@ async def test_p7_vector_evidence_round_trips_and_retracts(tmp_path: Path) -> No
         await store.save_experience(experience, [segment], embedding)
         await store.save_experience_query(query, vector)
         await store.save_experience_matches([match])
+        await store.revise_context_with_experience(selection, revised_context)
         await store.create_search(search)
         await store.save_search_candidate(candidate)
         await store.save_trajectory_seed(seed)
@@ -208,7 +237,15 @@ async def test_p7_vector_evidence_round_trips_and_retracts(tmp_path: Path) -> No
         assert stored_embedding is not None
         assert stored_embedding.vector == vector
         assert await store.get_experience_query(query.query_id) == (query, vector)
+        assert await store.nearest_experience_embeddings(
+            experience.repository_identity, vector, limit=5
+        ) == [(experience.experience_id, 0.0)]
         assert await store.list_experience_matches(query.query_id) == [match]
+        assert await store.list_experience_selections(task.envelope.task_id) == [selection]
+        planning = await store.get_task_planning(task.envelope.task_id)
+        assert planning is not None
+        assert planning.context_bundle == revised_context
+        assert planning.context_history == [context, revised_context]
         assert await store.list_trajectory_seeds(search_id) == [seed]
 
         action = ModerationAction(

@@ -617,6 +617,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/experiences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Experiences */
+        get: operations["list_experiences_api_v2_experiences_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/experiences/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Query Experience */
+        post: operations["query_experience_api_v2_experiences_query_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/experiences/{experience_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Experience */
+        get: operations["get_experience_api_v2_experiences__experience_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/experiences/{experience_id}/retract": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Retract Experience */
+        post: operations["retract_experience_api_v2_experiences__experience_id__retract_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v2/projects/{project_id}/features": {
         parameters: {
             query?: never;
@@ -633,6 +701,23 @@ export interface paths {
         head?: never;
         /** Update Project Features */
         patch: operations["update_project_features_api_v2_projects__project_id__features_patch"];
+        trace?: never;
+    };
+    "/api/v2/runs/{run_id}/experiences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Materialize Experience */
+        post: operations["materialize_experience_api_v2_runs__run_id__experiences_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v2/runs/{run_id}/graph/diff": {
@@ -918,6 +1003,24 @@ export interface paths {
         get: operations["list_search_scores_api_v2_search__search_id__scores_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/tasks/{task_id}/experience-selections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Experience Selections */
+        get: operations["list_experience_selections_api_v2_tasks__task_id__experience_selections_get"];
+        put?: never;
+        /** Create Experience Selection */
+        post: operations["create_experience_selection_api_v2_tasks__task_id__experience_selections_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1633,6 +1736,40 @@ export interface components {
             /** Sequence */
             sequence: number;
         };
+        /** CompatibilityAssessment */
+        CompatibilityAssessment: {
+            disposition: components["schemas"]["MatchDisposition"];
+            /** Environment Score */
+            environment_score: number;
+            /** Final Score */
+            final_score: number;
+            /** Freshness Score */
+            freshness_score: number;
+            /**
+             * Negative Guidance Eligible
+             * @default false
+             */
+            negative_guidance_eligible: boolean;
+            /** Reasons */
+            reasons?: string[];
+            /**
+             * Replay Eligible
+             * @default false
+             */
+            replay_eligible: boolean;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Semantic Score */
+            semantic_score: number;
+            /** Transfer Risk */
+            transfer_risk: number;
+            /** Version Score */
+            version_score: number;
+        };
         /**
          * ConditionOperator
          * @enum {string}
@@ -1653,6 +1790,10 @@ export interface components {
             created_at?: string;
             /** Evidence Refs */
             evidence_refs?: string[];
+            /** Experience Match Refs */
+            experience_match_refs?: string[];
+            /** Experience Query Id */
+            experience_query_id?: string | null;
             /** Experience Refs */
             experience_refs?: string[];
             /** Freshness */
@@ -1675,9 +1816,11 @@ export interface components {
             /**
              * Schema Version
              * @default 1.0
-             * @constant
+             * @enum {string}
              */
-            schema_version: "1.0";
+            schema_version: "1.0" | "2.0";
+            /** Supersedes Context Bundle Id */
+            supersedes_context_bundle_id?: string | null;
             /** Task Ref */
             task_ref: string;
             /**
@@ -1688,9 +1831,9 @@ export interface components {
             /**
              * Version
              * @default context-bundle-v1
-             * @constant
+             * @enum {string}
              */
-            version: "context-bundle-v1";
+            version: "context-bundle-v1" | "context-bundle-v2";
             /** Workspace Map */
             workspace_map?: {
                 [key: string]: unknown;
@@ -1852,6 +1995,215 @@ export interface components {
          * @enum {string}
          */
         ExpectedHorizon: "SHORT" | "MEDIUM" | "LONG";
+        /**
+         * Experience
+         * @description Immutable, redacted evidence derived from one terminal local trajectory.
+         */
+        Experience: {
+            /** Allowed Capabilities */
+            allowed_capabilities?: string[];
+            /** Architecture Version */
+            architecture_version: string;
+            /** Content Digest */
+            content_digest: string;
+            /** Context Digest */
+            context_digest: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Denied Capabilities */
+            denied_capabilities?: string[];
+            /** Experience Id */
+            experience_id: string;
+            /** Failure Taxonomy */
+            failure_taxonomy?: string[];
+            /** Manifest Digest */
+            manifest_digest: string;
+            /** Manifest Paths */
+            manifest_paths?: string[];
+            /** Outcome */
+            outcome: string;
+            polarity: components["schemas"]["ExperiencePolarity"];
+            /** Policy Digest */
+            policy_digest: string;
+            /** Project Id */
+            project_id: string;
+            /** Prompt Digest */
+            prompt_digest: string;
+            /**
+             * Protected Side Effects
+             * @default false
+             */
+            protected_side_effects: boolean;
+            provider: components["schemas"]["Provider"];
+            /** Repository Identity */
+            repository_identity: string;
+            /** Requested Skills */
+            requested_skills?: string[];
+            /**
+             * Retracted
+             * @default false
+             */
+            retracted: boolean;
+            /**
+             * Revision
+             * @default 1
+             */
+            revision: number;
+            /** Runtime Model */
+            runtime_model: string;
+            /** Runtime Version */
+            runtime_version: string;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Source Candidate Id */
+            source_candidate_id?: string | null;
+            /** Source Commit */
+            source_commit: string;
+            source_kind: components["schemas"]["ExperienceSourceKind"];
+            /** Source Run Id */
+            source_run_id: string;
+            /** Task Family */
+            task_family: string;
+            /** Task Id */
+            task_id: string;
+            task_type: components["schemas"]["TaskType"];
+            /** Tool Profile Digest */
+            tool_profile_digest: string;
+            trust: components["schemas"]["ExperienceTrust"];
+            /** Verifier Digest */
+            verifier_digest: string;
+            /** Verifier Ids */
+            verifier_ids?: string[];
+        };
+        /** ExperienceDetail */
+        ExperienceDetail: {
+            /** Embedding Input Digest */
+            embedding_input_digest: string;
+            /** Embedding Version */
+            embedding_version: string;
+            experience: components["schemas"]["Experience"];
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Segments */
+            segments: components["schemas"]["TrajectorySegment"][];
+        };
+        /** ExperienceMatch */
+        ExperienceMatch: {
+            assessment: components["schemas"]["CompatibilityAssessment"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Experience Id */
+            experience_id: string;
+            /** Match Id */
+            match_id: string;
+            polarity: components["schemas"]["ExperiencePolarity"];
+            /** Query Id */
+            query_id: string;
+            /** Rank */
+            rank: number;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            trust: components["schemas"]["ExperienceTrust"];
+        };
+        /** ExperienceMaterializeCreate */
+        ExperienceMaterializeCreate: {
+            /** Candidate Id */
+            candidate_id?: string | null;
+        };
+        /**
+         * ExperiencePolarity
+         * @enum {string}
+         */
+        ExperiencePolarity: "POSITIVE" | "NEGATIVE";
+        /** ExperienceQueryCreate */
+        ExperienceQueryCreate: {
+            /**
+             * Include Failures
+             * @default true
+             */
+            include_failures: boolean;
+            /** Max Age Days */
+            max_age_days?: number | null;
+            /** Task Id */
+            task_id: string;
+            /**
+             * Top K
+             * @default 5
+             */
+            top_k: number;
+        };
+        /** ExperienceRetractCreate */
+        ExperienceRetractCreate: {
+            /** Expected Revision */
+            expected_revision: number;
+            /** Reason */
+            reason: string;
+        };
+        /** ExperienceSelection */
+        ExperienceSelection: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Expected Context Bundle Id */
+            expected_context_bundle_id: string;
+            /** Match Ids */
+            match_ids: string[];
+            /** Query Id */
+            query_id: string;
+            /** Resulting Context Bundle Id */
+            resulting_context_bundle_id: string;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Selected By */
+            selected_by: string;
+            /** Selection Id */
+            selection_id: string;
+            /** Task Id */
+            task_id: string;
+        };
+        /** ExperienceSelectionCreate */
+        ExperienceSelectionCreate: {
+            /** Expected Context Bundle Id */
+            expected_context_bundle_id: string;
+            /** Match Ids */
+            match_ids: string[];
+            /** Query Id */
+            query_id: string;
+        };
+        /**
+         * ExperienceSourceKind
+         * @enum {string}
+         */
+        ExperienceSourceKind: "RUN" | "CANDIDATE";
+        /**
+         * ExperienceTrust
+         * @enum {string}
+         */
+        ExperienceTrust: "HIGH" | "MEDIUM" | "LOW";
         /** FeatureEvidence */
         FeatureEvidence: {
             /**
@@ -2291,6 +2643,11 @@ export interface components {
          * @enum {string}
          */
         LoopStopReason: "VERIFIED_SUCCESS" | "MAX_ITERATIONS" | "WALL_TIME_EXCEEDED" | "MAX_TOOL_CALLS" | "MAX_TURNS" | "NO_PROGRESS" | "REPEATED_FAILURE" | "POLICY_ESCALATION" | "VERIFIER_UNAVAILABLE" | "PROVIDER_FAILURE" | "OPERATOR_CANCELLED" | "INTERRUPTED";
+        /**
+         * MatchDisposition
+         * @enum {string}
+         */
+        MatchDisposition: "ACCEPTED" | "DOWNRANKED" | "REJECTED";
         /** MetaPlugin */
         MetaPlugin: {
             /**
@@ -2516,6 +2873,8 @@ export interface components {
             dynamic_workflows?: boolean | null;
             /** Expected Revision */
             expected_revision: number;
+            /** Experience Retrieval */
+            experience_retrieval?: boolean | null;
         };
         /** PromptContract */
         PromptContract: {
@@ -3449,6 +3808,8 @@ export interface components {
         /** TaskPlanning */
         TaskPlanning: {
             context_bundle: components["schemas"]["ContextBundle"];
+            /** Context History */
+            context_history?: components["schemas"]["ContextBundle"][];
             current_decision: components["schemas"]["StrategyDecision"];
             current_profile: components["schemas"]["TaskProfile"];
             /** Decision History */
@@ -3546,6 +3907,38 @@ export interface components {
             /** Tool Call Id */
             tool_call_id: string;
         };
+        /** TrajectorySegment */
+        TrajectorySegment: {
+            /** Content */
+            content: {
+                [key: string]: unknown;
+            };
+            /** Content Digest */
+            content_digest: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Experience Id */
+            experience_id: string;
+            kind: components["schemas"]["TrajectorySegmentKind"];
+            /** Ordinal */
+            ordinal: number;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Segment Id */
+            segment_id: string;
+        };
+        /**
+         * TrajectorySegmentKind
+         * @enum {string}
+         */
+        TrajectorySegmentKind: "WORKFLOW_PATH" | "TOOL_SEQUENCE" | "VERIFIER_FINDINGS" | "REPAIR_PATTERN" | "FAILURE_PATTERN" | "ARTIFACT_SHAPE";
         /**
          * TypedCondition
          * @description Restricted JSON expression tree; it is data and is never evaluated as code.
@@ -4978,6 +5371,138 @@ export interface operations {
             };
         };
     };
+    list_experiences_api_v2_experiences_get: {
+        parameters: {
+            query?: {
+                project_id?: string | null;
+                repository_identity?: string | null;
+                include_retracted?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Experience"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    query_experience_api_v2_experiences_query_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExperienceQueryCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperienceMatch"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_experience_api_v2_experiences__experience_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experience_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperienceDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    retract_experience_api_v2_experiences__experience_id__retract_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                experience_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExperienceRetractCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Experience"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_project_features_api_v2_projects__project_id__features_get: {
         parameters: {
             query?: never;
@@ -5031,6 +5556,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ProjectFeatureSettings"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    materialize_experience_api_v2_runs__run_id__experiences_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExperienceMaterializeCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperienceDetail"];
                 };
             };
             /** @description Validation Error */
@@ -5574,6 +6134,72 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CandidateScore"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_experience_selections_api_v2_tasks__task_id__experience_selections_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperienceSelection"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_experience_selection_api_v2_tasks__task_id__experience_selections_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ExperienceSelectionCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperienceSelection"];
                 };
             };
             /** @description Validation Error */

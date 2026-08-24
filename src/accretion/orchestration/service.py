@@ -74,6 +74,7 @@ class DynamicWorkflowService:
         *,
         dynamic_workflows: bool | None,
         candidate_search: bool | None = None,
+        experience_retrieval: bool | None = None,
         expected_revision: int,
     ) -> ProjectFeatureSettings:
         current = await self.store.get_project_features(project_id)
@@ -85,14 +86,20 @@ class DynamicWorkflowService:
         next_search = (
             current.candidate_search if candidate_search is None else candidate_search
         )
+        next_experience = (
+            current.experience_retrieval
+            if experience_retrieval is None
+            else experience_retrieval
+        )
         if not next_dynamic:
             next_search = False
+        if not next_search:
+            next_experience = False
         requested = current.model_copy(
             update={
                 "dynamic_workflows": next_dynamic,
                 "candidate_search": next_search,
-                # P7 remains unavailable through the P6 surface.
-                "experience_retrieval": False,
+                "experience_retrieval": next_experience,
             }
         )
         return await self.store.update_project_features(
@@ -125,6 +132,18 @@ class DynamicWorkflowService:
             planning.current_profile,
             planner_runtime=effective_runtime,
         )
+        if planning.context_bundle.experience_match_refs:
+            draft = draft.model_copy(
+                update={
+                    "provenance_refs": [
+                        *draft.provenance_refs,
+                        *(
+                            f"experience-match:{item}"
+                            for item in planning.context_bundle.experience_match_refs
+                        ),
+                    ]
+                }
+            )
         run = await self.manager.prepare_dynamic_run(
             task_id,
             execution_provider,

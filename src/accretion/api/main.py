@@ -16,6 +16,10 @@ from accretion.api.schemas import (
     ApprovalDecisionCreate,
     BenchmarkRunCreate,
     ErrorEnvelope,
+    ExperienceMaterializeCreate,
+    ExperienceQueryCreate,
+    ExperienceRetractCreate,
+    ExperienceSelectionCreate,
     ProjectCreate,
     ProjectFeatureUpdate,
     ReplanCreate,
@@ -65,6 +69,17 @@ from accretion.contracts import (
     TaskType,
     TemplateStatus,
     VerificationResult,
+)
+from accretion.experience.models import (
+    Experience,
+    ExperienceDetail,
+    ExperienceMatch,
+    ExperienceSelection,
+)
+from accretion.experience.service import (
+    ExperienceConflictError,
+    ExperienceDisabledError,
+    ExperienceService,
 )
 from accretion.governance import seed_governance
 from accretion.orchestration.models import (
@@ -166,6 +181,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         operator_identity=settings.operator_identity,
     )
     app.state.candidate_search = search_service
+    app.state.experience = ExperienceService(
+        manager,
+        globally_enabled=settings.enable_experience_retrieval,
+        operator_identity=settings.operator_identity,
+    )
     await seed_templates(store)
     await seed_governance(store)
     await seed_acr_arch(store)
@@ -202,6 +222,10 @@ def dynamic_workflows(request: Request) -> DynamicWorkflowService:
 
 def candidate_search(request: Request) -> SearchService:
     return cast(SearchService, request.app.state.candidate_search)
+
+
+def experience_service(request: Request) -> ExperienceService:
+    return cast(ExperienceService, request.app.state.experience)
 
 
 @app.exception_handler(KeyError)
@@ -280,6 +304,20 @@ async def candidate_search_conflict_handler(
     return _error(409, code, str(exc))
 
 
+@app.exception_handler(ExperienceDisabledError)
+async def experience_disabled_handler(
+    request: Request, exc: ExperienceDisabledError
+) -> JSONResponse:
+    return _error(403, "EXPERIENCE_RETRIEVAL_DISABLED", str(exc))
+
+
+@app.exception_handler(ExperienceConflictError)
+async def experience_conflict_handler(
+    request: Request, exc: ExperienceConflictError
+) -> JSONResponse:
+    return _error(409, "EXPERIENCE_CONFLICT", str(exc))
+
+
 def _error(status: int, code: str, message: str, retryable: bool = False) -> JSONResponse:
     body = ErrorEnvelope(
         code=code,
@@ -334,6 +372,7 @@ async def update_project_features(
         project_id,
         dynamic_workflows=payload.dynamic_workflows,
         candidate_search=payload.candidate_search,
+        experience_retrieval=payload.experience_retrieval,
         expected_revision=payload.expected_revision,
     )
 
@@ -417,6 +456,87 @@ async def get_run(run_id: str, request: Request) -> Run:
     if run is None:
         raise KeyError(run_id)
     return run
+
+
+@app.post(
+    "/api/v2/runs/{run_id}/experiences",
+    response_model=ExperienceDetail,
+    status_code=201,
+)
+async def materialize_experience(
+    run_id: str, payload: ExperienceMaterializeCreate, request: Request
+) -> ExperienceDetail:
+    return await experience_service(request).materialize(
+        run_id, candidate_id=payload.candidate_id
+    )
+
+
+@app.get("/api/v2/experiences", response_model=list[Experience])
+async def list_experiences(
+    request: Request,
+    project_id: str | None = None,
+    repository_identity: str | None = None,
+    include_retracted: bool = False,
+) -> list[Experience]:
+    return await experience_service(request).list_experiences(
+        project_id=project_id,
+        repository_identity=repository_identity,
+        include_retracted=include_retracted,
+    )
+
+
+@app.get("/api/v2/experiences/{experience_id}", response_model=ExperienceDetail)
+async def get_experience(experience_id: str, request: Request) -> ExperienceDetail:
+    return await experience_service(request).detail(experience_id)
+
+
+@app.post("/api/v2/experiences/{experience_id}/retract", response_model=Experience)
+async def retract_experience(
+    experience_id: str, payload: ExperienceRetractCreate, request: Request
+) -> Experience:
+    return await experience_service(request).retract(
+        experience_id,
+        reason=payload.reason,
+        expected_revision=payload.expected_revision,
+    )
+
+
+@app.post("/api/v2/experiences/query", response_model=list[ExperienceMatch])
+async def query_experience(
+    payload: ExperienceQueryCreate, request: Request
+) -> list[ExperienceMatch]:
+    return await experience_service(request).query(
+        payload.task_id,
+        include_failures=payload.include_failures,
+        top_k=payload.top_k,
+        max_age_days=payload.max_age_days,
+    )
+
+
+@app.post(
+    "/api/v2/tasks/{task_id}/experience-selections",
+    response_model=ExperienceSelection,
+    status_code=201,
+)
+async def create_experience_selection(
+    task_id: str, payload: ExperienceSelectionCreate, request: Request
+) -> ExperienceSelection:
+    return await experience_service(request).select(
+        task_id,
+        query_id=payload.query_id,
+        match_ids=payload.match_ids,
+        expected_context_bundle_id=payload.expected_context_bundle_id,
+    )
+
+
+@app.get(
+    "/api/v2/tasks/{task_id}/experience-selections",
+    response_model=list[ExperienceSelection],
+)
+async def list_experience_selections(
+    task_id: str, request: Request
+) -> list[ExperienceSelection]:
+    return await experience_service(request).selections(task_id)
 
 
 @app.get(
