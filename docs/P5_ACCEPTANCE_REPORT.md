@@ -53,5 +53,6 @@ Recorded on 2026-08-23:
 
 P5 changes workflow structure under deterministic validation while retaining
 all v0.1 permission, verifier, approval, credential, budget, durable-state, and
-recovery boundaries. Candidate search, experience retrieval, learned routing,
-and self-modifying policy are absent.
+recovery boundaries. P6 candidate search is outside this report and requires its
+own independent opt-in; experience retrieval, learned routing, and self-modifying
+policy remain absent.

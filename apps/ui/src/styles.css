@@ -156,3 +156,63 @@ h1 em { color:#89d9a0; font-style:normal; }
 .router-decision li { display: flex; justify-content: space-between; gap: 1rem; }
 .replan-control { display: grid; grid-template-columns: minmax(240px, 1fr) auto; align-items: end; gap: .75rem; margin-top: 1rem; }
 @media (max-width: 720px) { .replan-control { grid-template-columns: 1fr; } }
+
+/* P6: bounded search planning, candidate lineage, and frozen research curve */
+.search-plan-form { margin-top: 1rem; padding: 1rem; border: 1px solid #49664f; background: rgba(10, 24, 15, .78); display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: .75rem; }
+.search-plan-heading { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; }
+.search-plan-heading h3 { margin: 0; }
+.search-plan-form .search-directives { grid-column: 1 / -1; }
+.search-plan-form > button { align-self: end; }
+.search-plan-form > .quiet { grid-column: span 3; align-self: center; margin: 0; }
+.search-inspector { border: 1px solid #41694b; background: rgba(8, 20, 12, .7); }
+.search-inspector > header { padding: 15px 17px; border-bottom: 1px solid #29322c; display: flex; align-items: center; justify-content: space-between; }
+.search-inspector h3 { margin: 0; font-size: 13px; }
+.search-inspector > header > span { font: 9px "DM Mono"; color: #779080; }
+.search-plan-tree { margin: 0; border: 0; border-bottom: 1px solid #29322c; }
+.search-plan-tree:last-child { border-bottom: 0; }
+.search-plan-tree > summary { display: flex; align-items: center; justify-content: space-between; }
+.search-plan-tree > summary > span:first-child { display: grid; gap: 5px; }
+.search-plan-tree > summary small { color: #6c7a70; font: 8px "DM Mono"; }
+.search-plan-meta { padding: 10px 14px; border-block: 1px solid #29322c; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.search-plan-meta > span { padding: 5px 7px; border: 1px solid #304038; color: #89998e; font: 8px "DM Mono"; }
+.search-plan-meta > button { margin-left: auto; }
+.candidate-tree { position: relative; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; padding: 20px; }
+.candidate-tree::before { content: ""; position: absolute; left: 20px; right: 20px; top: 10px; border-top: 1px solid #3b5342; }
+.candidate-card { position: relative; z-index: 1; border: 1px solid #334239; background: #101713; padding: 13px; min-width: 0; }
+.candidate-card::before { content: ""; position: absolute; left: 50%; top: -11px; height: 11px; border-left: 1px solid #3b5342; }
+.candidate-card.candidate-selected { border-color: #75db91; box-shadow: 0 0 0 1px rgba(117, 219, 145, .18); }
+.candidate-card > header { display: flex; justify-content: space-between; gap: 8px; }
+.candidate-card > header > div { display: grid; gap: 4px; }
+.candidate-card > header span:first-child { color: #68776d; font: 7px "DM Mono"; text-transform: uppercase; }
+.candidate-card > header strong { font: 11px "DM Mono"; }
+.candidate-runtime,.candidate-reviewer { color: #75847a; font: 8px "DM Mono"; overflow-wrap: anywhere; }
+.candidate-reviewer { color: #bfab73; }
+.candidate-card dl { display: grid; grid-template-columns: repeat(2, 1fr); margin: 12px 0; border: 1px solid #29322c; }
+.candidate-card dl div { padding: 8px; border-right: 1px solid #29322c; border-bottom: 1px solid #29322c; }
+.candidate-card dt { color: #627068; font: 7px "DM Mono"; text-transform: uppercase; }
+.candidate-card dd { margin: 4px 0 0; font: 9px "DM Mono"; }
+.candidate-reason { min-height: 34px; color: #859188; font-size: 9px; line-height: 1.5; }
+.candidate-card > small { display: block; color: #5f6c63; font: 7px "DM Mono"; overflow-wrap: anywhere; }
+.search-research-grid { display: grid; grid-template-columns: 1.35fr .65fr; gap: 16px; padding: 18px; }
+.search-curve,.provider-comparison { margin: 0; border: 1px solid #2d3931; background: #101612; padding: 16px; }
+.search-curve figcaption { display: grid; gap: 5px; }
+.search-curve figcaption span { color: #728077; font-size: 9px; }
+.search-curve svg { width: 100%; margin-top: 8px; overflow: visible; }
+.search-curve .curve-axis { fill: none; stroke: #536159; stroke-width: 1.5; }
+.search-curve .curve-grid { fill: none; stroke: #263129; stroke-width: 1; }
+.search-curve .curve-line { fill: none; stroke: #75db91; stroke-width: 3; }
+.search-curve circle { fill: #101612; stroke: #9be4ae; stroke-width: 3; }
+.search-curve text { fill: #637068; font: 9px "DM Mono"; text-anchor: middle; }
+.search-curve .curve-value { fill: #b8dec2; font-size: 10px; }
+.search-curve .curve-label { fill: #8c9a90; }
+.provider-comparison { display: grid; gap: 10px; align-content: start; }
+.provider-comparison h3 { margin: 0; font-size: 13px; }
+.provider-comparison article { border: 1px solid #304038; padding: 11px; display: grid; gap: 7px; }
+.provider-comparison article > div { display: flex; justify-content: space-between; }
+.provider-comparison article > span { color: #9be4ae; font: 20px "DM Mono"; }
+.provider-comparison article small,.provider-comparison > p { color: #68766c; font-size: 8px; }
+.provider-comparison code { color: #75a984; font: 7px "DM Mono"; overflow-wrap: anywhere; }
+.provider-rate { color: #9be4ae; font: 8px "DM Mono"; }
+.benchmark-table tr.null-result { background: rgba(171, 126, 57, .1); }
+@media (max-width: 900px) { .search-plan-form { grid-template-columns: repeat(2, 1fr); } .search-research-grid { grid-template-columns: 1fr; } }
+@media (max-width: 620px) { .search-plan-form { grid-template-columns: 1fr; } .search-plan-form > .quiet { grid-column: 1; } .candidate-tree { grid-template-columns: 1fr; } }

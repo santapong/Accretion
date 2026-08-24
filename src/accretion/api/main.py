@@ -96,6 +96,7 @@ from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore
 from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime
+from accretion.search_benchmark import SearchBenchmarkRunner, SearchBenchmarkSummary
 from accretion.services.run_manager import (
     ProjectionUnavailableError,
     RunManager,
@@ -826,6 +827,21 @@ async def get_acr_arch_task(task_id: str, request: Request) -> BenchmarkTaskDeta
     if detail is None:
         raise KeyError(task_id)
     return detail
+
+
+@app.get("/api/v2/benchmarks/search", response_model=SearchBenchmarkSummary)
+async def get_search_benchmark() -> SearchBenchmarkSummary:
+    return SearchBenchmarkRunner().run()
+
+
+@app.post(
+    "/api/v2/benchmarks/search/run",
+    response_model=SearchBenchmarkSummary,
+)
+async def run_search_benchmark(payload: BenchmarkRunCreate) -> SearchBenchmarkSummary:
+    if payload.execution_source is not BenchmarkExecutionSource.REPLAY:
+        raise ValueError("live search calibration requires the explicit local release gate")
+    return SearchBenchmarkRunner().run()
 
 
 @app.get("/api/v1/runs/{run_id}/events")

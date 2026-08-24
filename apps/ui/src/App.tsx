@@ -14,6 +14,9 @@ import type {
   AgentEvent,
   Project,
   Run,
+  SearchMode,
+  SearchRecord,
+  Task,
   TaskCreate,
   TaskPlanning,
   WorkflowProposal,
@@ -154,6 +157,9 @@ function PlanningReview({ planning, onUpdate }: {
   const [provider, setProvider] = useState("FAKE");
   const [dynamicProposal, setDynamicProposal] = useState<WorkflowProposal>();
   const [dynamicValidation, setDynamicValidation] = useState<WorkflowValidationOutcome>();
+  const [dynamicTask, setDynamicTask] = useState<Task>();
+  const [searchMode, setSearchMode] = useState<SearchMode>("BEST_OF_N");
+  const [searchRecord, setSearchRecord] = useState<SearchRecord>();
   const modeTemplates = (templatesQuery.data ?? []).filter(
     (template) => template.mode === mode,
   );
@@ -191,11 +197,12 @@ function PlanningReview({ planning, onUpdate }: {
     setFeedback("Preparing a governed P5 workflow proposal…");
     try {
       const task = await api.task(planning.task_id);
+      setDynamicTask(task);
       const features = await api.projectFeatures(task.envelope.project_id);
       if (!features.dynamic_workflows) {
         await api.updateProjectFeatures(
           task.envelope.project_id,
-          true,
+          { dynamicWorkflows: true },
           features.revision,
         );
       }
@@ -215,6 +222,52 @@ function PlanningReview({ planning, onUpdate }: {
     }
   }
 
+  async function attachSearch(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!dynamicProposal?.run_id || !dynamicTask) return;
+    const data = new FormData(event.currentTarget);
+    const branchCount = searchMode === "GENERATOR_REVIEWER"
+      ? 2
+      : Number(data.get("branch_count"));
+    const directives = searchMode === "HYPOTHESIS_BRANCH"
+      ? lines(data.get("candidate_directives"))
+      : [];
+    setFeedback("Attaching a bounded P6 search plan…");
+    try {
+      const features = await api.projectFeatures(dynamicTask.envelope.project_id);
+      if (!features.candidate_search) {
+        await api.updateProjectFeatures(
+          dynamicTask.envelope.project_id,
+          { dynamicWorkflows: true, candidateSearch: true },
+          features.revision,
+        );
+      }
+      const record = await api.createSearch(dynamicProposal.run_id, {
+        parent_node_id: String(data.get("parent_node_id")),
+        mode: searchMode,
+        branch_count: branchCount,
+        max_parallel: Math.min(Number(data.get("max_parallel")), branchCount),
+        per_branch_budget: {
+          schema_version: "2.0",
+          wall_time_seconds: Number(data.get("branch_wall")),
+          max_turns: Number(data.get("branch_turns")),
+          max_tool_calls: Number(data.get("branch_tools")),
+        },
+        total_budget: {
+          schema_version: "2.0",
+          wall_time_seconds: Number(data.get("total_wall")),
+          max_turns: Number(data.get("total_turns")),
+          max_tool_calls: Number(data.get("total_tools")),
+        },
+        candidate_directives: directives,
+      });
+      setSearchRecord(record);
+      setFeedback(`P6 ${record.plan.mode} plan attached to ${record.plan.parent_node_id}.`);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Search planning failed.");
+    }
+  }
+
   async function activateDynamic() {
     if (!dynamicProposal?.run_id) return;
     setFeedback("Activating the validated P5 graph…");
@@ -230,6 +283,14 @@ function PlanningReview({ planning, onUpdate }: {
       setFeedback(error instanceof Error ? error.message : "Dynamic activation failed.");
     }
   }
+
+  const eligibleSearchNodes = (dynamicProposal?.nodes ?? []).filter(
+    (node) => node.kind === "AGENT" && !(node.capability_refs ?? []).length,
+  );
+  const taskBudgets = dynamicTask?.envelope.budgets;
+  const defaultTotalWall = Math.min(taskBudgets?.wall_time_seconds ?? 240, 240);
+  const defaultTotalTurns = Math.min(taskBudgets?.max_turns ?? 8, 8);
+  const defaultTotalTools = Math.min(taskBudgets?.max_tool_calls ?? 24, 24);
 
   return (
     <section className="planning-review" aria-label="Task planning review">
@@ -277,6 +338,27 @@ function PlanningReview({ planning, onUpdate }: {
             <p>{dynamicProposal.rationale_summary}</p>
             <small>{dynamicProposal.nodes.length} nodes · {(dynamicProposal.edges ?? []).length} edges · planner {dynamicProposal.planner_version}</small>
           </aside>
+        ) : null}
+        {dynamicValidation?.validation.status === "ACCEPT" && eligibleSearchNodes.length ? (
+          <form className="search-plan-form" onSubmit={attachSearch} aria-label="P6 search plan">
+            <div className="search-plan-heading">
+              <div><p className="eyebrow">Optional test-time compute</p><h3>Attach bounded P6 search</h3></div>
+              {searchRecord ? <StatePill state={searchRecord.status} /> : null}
+            </div>
+            <label>Agent node<select name="parent_node_id">{eligibleSearchNodes.map((node) => <option key={node.local_id} value={node.local_id}>{node.local_id} · {node.objective}</option>)}</select></label>
+            <label>Mode<select value={searchMode} onChange={(event) => setSearchMode(event.target.value as SearchMode)}><option value="BEST_OF_N">Best of N</option><option value="HYPOTHESIS_BRANCH">Hypothesis branches</option><option value="CROSS_PROVIDER">Cross provider</option><option value="GENERATOR_REVIEWER">Generator + reviewer</option></select></label>
+            <label>Branches<input name="branch_count" type="number" min="1" max="4" defaultValue="2" disabled={searchMode === "GENERATOR_REVIEWER"} /></label>
+            <label>Parallel<input name="max_parallel" type="number" min="1" max="4" defaultValue={Math.min(taskBudgets?.max_parallel_runs ?? 1, 2)} /></label>
+            <label>Branch seconds<input name="branch_wall" type="number" min="1" defaultValue={Math.min(defaultTotalWall, 120)} /></label>
+            <label>Branch turns<input name="branch_turns" type="number" min="1" defaultValue={Math.min(defaultTotalTurns, 4)} /></label>
+            <label>Branch tools<input name="branch_tools" type="number" min="1" defaultValue={Math.min(defaultTotalTools, 12)} /></label>
+            <label>Total seconds<input name="total_wall" type="number" min="1" defaultValue={defaultTotalWall} /></label>
+            <label>Total turns<input name="total_turns" type="number" min="1" defaultValue={defaultTotalTurns} /></label>
+            <label>Total tools<input name="total_tools" type="number" min="1" defaultValue={defaultTotalTools} /></label>
+            {searchMode === "HYPOTHESIS_BRANCH" ? <label className="search-directives">Hypotheses <small>one per branch</small><textarea name="candidate_directives" required rows={3} /></label> : null}
+            <button className="secondary-button" type="submit" disabled={Boolean(searchRecord)}>Attach search plan</button>
+            <p className="quiet">Candidates receive no protected capabilities. Replay branches remain reserved for P7.</p>
+          </form>
         ) : null}
         {feedback ? <p className="form-status" role="status">{feedback}</p> : null}
       </div>
@@ -642,17 +724,81 @@ function BenchmarkPage() {
   );
 }
 
+function SearchBenchmarkPage() {
+  const queryClient = useQueryClient();
+  const [status, setStatus] = useState<string>();
+  const summary = useQuery({
+    queryKey: ["search-benchmark"],
+    queryFn: api.searchBenchmark,
+  });
+  const curve = summary.data?.curve ?? [];
+  const points = curve.map((point, index) => ({
+    ...point,
+    x: 64 + index * 190,
+    y: 190 - point.mean_quality * 145,
+  }));
+
+  async function replay() {
+    setStatus("Replaying frozen P6 candidate traces…");
+    try {
+      const report = await api.runSearchBenchmark();
+      setStatus(`Reproduced ${report.task_count} held-out tasks from ${report.trace_sha256.slice(0, 12)}…`);
+      await queryClient.invalidateQueries({ queryKey: ["search-benchmark"] });
+    } catch (error) {
+      setStatus(error instanceof Error ? error.message : "Search replay failed.");
+    }
+  }
+
+  return (
+    <section className="page-panel search-benchmark-page">
+      <header className="section-heading"><div><p className="eyebrow">P6 research evidence</p><h2>Quality vs compute</h2></div><button className="primary-button" onClick={replay}>Reproduce N=1/2/4</button></header>
+      <div className="benchmark-summary">
+        <div><strong>{summary.data?.task_count ?? 0}</strong><span>held-out tasks</span></div>
+        <div><strong>{curve.at(-1)?.acceptance_rate == null ? "—" : `${Math.round(curve.at(-1)!.acceptance_rate * 100)}%`}</strong><span>N=4 accepted</span></div>
+        <div><strong>{summary.data?.null_gain_task_ids.length ?? 0}</strong><span>null-gain results</span></div>
+        <div><strong>{summary.data?.selector_version ?? "—"}</strong><span>selector</span></div>
+      </div>
+      {status ? <p className="form-status benchmark-status" role="status">{status}</p> : null}
+      <div className="search-research-grid">
+        <figure className="search-curve">
+          <figcaption><strong>Verified quality curve</strong><span>Mean selected quality rises only when a candidate passes independent verification.</span></figcaption>
+          <svg viewBox="0 0 520 230" role="img" aria-label="Mean verified quality for one, two, and four candidates">
+            <path d="M 44 26 V 194 H 500" className="curve-axis" />
+            {[0.25, 0.5, 0.75, 1].map((value) => <g key={value}><path d={`M 44 ${190 - value * 145} H 500`} className="curve-grid" /><text x="8" y={194 - value * 145}>{value.toFixed(2)}</text></g>)}
+            <polyline points={points.map((point) => `${point.x},${point.y}`).join(" ")} className="curve-line" />
+            {points.map((point) => <g key={point.candidate_count}><circle cx={point.x} cy={point.y} r="6" /><text className="curve-value" x={point.x} y={point.y - 14}>{point.mean_quality.toFixed(3)}</text><text className="curve-label" x={point.x} y="216">N={point.candidate_count}</text></g>)}
+          </svg>
+        </figure>
+        <div className="provider-comparison">
+          <h3>Cross-provider replay</h3>
+          {(summary.data?.provider_comparison ?? []).map((provider) => <article key={provider.provider}><div><strong>{provider.provider}</strong><span className="provider-rate">{Math.round(provider.acceptance_rate * 100)}% accepted</span></div><span>{provider.mean_best_quality.toFixed(3)}</span><small>mean best eligible quality · {provider.accepted_tasks}/{provider.task_count} tasks accepted</small></article>)}
+          <p>Frozen fixture hashes</p>
+          <code>{summary.data?.corpus_sha256 ?? "loading corpus…"}</code>
+          <code>{summary.data?.trace_sha256 ?? "loading traces…"}</code>
+          <code>{summary.data?.config_sha256 ?? "loading config…"}</code>
+        </div>
+      </div>
+      <div className="benchmark-table-wrap">
+        <table className="benchmark-table">
+          <thead><tr><th>Task</th><th>Family</th><th>N=1</th><th>N=2</th><th>N=4</th><th>N2→N4 gain</th><th>Selected provider</th></tr></thead>
+          <tbody>{(summary.data?.tasks ?? []).map((task) => <tr key={task.task_id} className={summary.data?.null_gain_task_ids.includes(task.task_id) ? "null-result" : undefined}><td>{task.task_id} · {task.title}</td><td>{task.family}</td><td>{task.quality_by_candidate_count["1"].toFixed(3)}</td><td>{task.quality_by_candidate_count["2"].toFixed(3)}</td><td>{task.quality_by_candidate_count["4"].toFixed(3)}</td><td>{task.gain_from_two_to_four.toFixed(3)}</td><td>{task.selected_provider_at_four ?? "none"}</td></tr>)}</tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 const navigation = [
   ["/", "Dashboard"], ["/tasks/new", "New task"], ["/runtimes", "Runtimes"],
   ["/history", "History"], ["/approvals", "Approvals"], ["/capabilities", "Capabilities"],
-  ["/benchmarks/acr-arch", "ACR-ARCH"],
+  ["/benchmarks/acr-arch", "ACR-ARCH"], ["/benchmarks/search", "P6 Search"],
 ] as const;
 
 function OperatorShell() {
   return (
     <main>
       <nav>
-        <Link className="brand-link" to="/"><span className="brand-mark">A</span><span><strong>Accretion</strong><small>Operator / P4</small></span></Link>
+        <Link className="brand-link" to="/"><span className="brand-mark">A</span><span><strong>Accretion</strong><small>Operator / v0.2</small></span></Link>
         <div className="nav-links">{navigation.map(([path, label]) => <NavLink end={path === "/"} key={path} to={path}>{label}</NavLink>)}</div>
         <div className="nav-status"><i />Control plane</div>
       </nav>
@@ -666,6 +812,7 @@ function OperatorShell() {
           <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/capabilities" element={<CapabilitiesPage />} />
           <Route path="/benchmarks/acr-arch" element={<BenchmarkPage />} />
+          <Route path="/benchmarks/search" element={<SearchBenchmarkPage />} />
           <Route path="*" element={<section className="page-panel"><h2>Page not found</h2><Link to="/">Return to dashboard</Link></section>} />
         </Routes>
       </div>
