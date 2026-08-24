@@ -7,7 +7,11 @@ import sys
 from typing import Any
 
 from accretion.config import get_settings
-from accretion.contracts import CapabilityExecutionStatus, CapabilityRequest
+from accretion.contracts import (
+    CapabilityExecutionStatus,
+    CapabilityRequest,
+    CapabilityResolutionOutcome,
+)
 from accretion.governance import (
     CapabilityExecutor,
     CapabilityGateway,
@@ -21,6 +25,7 @@ from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore, StateStore
 from accretion.redaction import redact_text
+from accretion.resolver import CapabilityResolver
 
 MCP_PROTOCOL_VERSION = "2025-06-18"
 
@@ -42,6 +47,7 @@ class StdioMcpGateway:
         self.gateway = gateway
         self.store = store
         self.run_id = run_id
+        self.resolver = CapabilityResolver(store)
 
     async def dispatch(self, message: dict[str, Any]) -> dict[str, Any] | None:
         request_id = message.get("id")
@@ -70,18 +76,23 @@ class StdioMcpGateway:
             denied = set(task.envelope.denied_capabilities)
             tools = [
                 {
-                    "name": capability.capability_id,
-                    "description": capability.description,
-                    "inputSchema": capability.input_schema,
+                    "name": resolved.capability.capability_id,
+                    "description": resolved.capability.description,
+                    "inputSchema": resolved.capability.input_schema,
                     "annotations": {
-                        "readOnlyHint": not bool(capability.side_effects),
-                        "destructiveHint": bool(capability.side_effects),
-                        "idempotentHint": capability.idempotency.value != "NONE",
+                        "readOnlyHint": not bool(resolved.capability.side_effects),
+                        "destructiveHint": bool(resolved.capability.side_effects),
+                        "idempotentHint": resolved.capability.idempotency.value != "NONE",
                     },
                 }
-                for capability in await self.store.list_capabilities()
-                if capability.capability_id in allowed
-                and capability.capability_id not in denied
+                for resolved in await self.resolver.list_resolved()
+                if resolved.outcome
+                in {
+                    CapabilityResolutionOutcome.OK,
+                    CapabilityResolutionOutcome.NO_CONNECTOR_REQUIRED,
+                }
+                and resolved.capability.capability_id in allowed
+                and resolved.capability.capability_id not in denied
             ]
             return _response(request_id, {"tools": tools})
         if method == "tools/call":
@@ -96,7 +107,19 @@ class StdioMcpGateway:
                 "_declared_reason", f"Provider requested {name} through Accretion"
             )
             idempotency_key = arguments.pop("_idempotency_key", None)
-            capability = await self.store.get_capability(name)
+            resolved = await self.resolver.resolve(name)
+            if resolved is not None and resolved.outcome not in {
+                CapabilityResolutionOutcome.OK,
+                CapabilityResolutionOutcome.NO_CONNECTOR_REQUIRED,
+            }:
+                # Fail closed on unusable connections without leaking credentials.
+                return _error(
+                    request_id,
+                    -32002,
+                    f"capability {name} is not resolvable: "
+                    f"{resolved.outcome.value} ({resolved.reason})",
+                )
+            capability = resolved.capability if resolved else None
             version = capability.version if capability else "unknown"
             request = CapabilityRequest(
                 request_id=new_id("capability_request"),

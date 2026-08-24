@@ -52,6 +52,9 @@ _PREFIXES = {
     "experience_selection": "exs",
     "moderation_action": "mod",
     "trajectory_seed": "tsd",
+    "conndef": "cnd",
+    "conn": "con",
+    "capbind": "cbd",
 }
 
 

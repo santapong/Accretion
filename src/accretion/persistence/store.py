@@ -20,9 +20,13 @@ from accretion.contracts import (
     BenchmarkRun,
     BenchmarkTask,
     Capability,
+    CapabilityBinding,
     CapabilityExecutionResult,
     CapabilityPolicy,
     Checkpoint,
+    Connection,
+    ConnectionStatus,
+    ConnectorDefinition,
     ContextBundle,
     ErrorSummary,
     ExecutionMode,
@@ -84,10 +88,13 @@ from accretion.persistence.models import (
     BenchmarkRunRow,
     BenchmarkTaskRow,
     CandidateScoreRow,
+    CapabilityBindingRow,
     CapabilityPolicyRow,
     CapabilityRequestRow,
     CapabilityRow,
     CheckpointRow,
+    ConnectionRow,
+    ConnectorDefinitionRow,
     ContextBundleRow,
     ExperienceEmbeddingRow,
     ExperienceMatchRow,
@@ -305,6 +312,25 @@ class StateStore(Protocol):
     async def list_skills(self) -> list[MetaSkill]: ...
     async def upsert_plugin(self, plugin: MetaPlugin) -> MetaPlugin: ...
     async def list_plugins(self, allowlisted_only: bool = True) -> list[MetaPlugin]: ...
+    async def upsert_connector_definition(
+        self, connector: ConnectorDefinition
+    ) -> ConnectorDefinition: ...
+    async def get_connector_definition(self, connector_id: str) -> ConnectorDefinition | None: ...
+    async def list_connector_definitions(self) -> list[ConnectorDefinition]: ...
+    async def upsert_connection(self, connection: Connection) -> Connection: ...
+    async def get_connection(self, connection_id: str) -> Connection | None: ...
+    async def list_connections(
+        self,
+        connector_id: str | None = None,
+        status: ConnectionStatus | None = None,
+    ) -> list[Connection]: ...
+    async def upsert_capability_binding(self, binding: CapabilityBinding) -> CapabilityBinding: ...
+    async def list_capability_bindings(
+        self,
+        capability_id: str | None = None,
+        connector_id: str | None = None,
+        enabled_only: bool = True,
+    ) -> list[CapabilityBinding]: ...
     async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy: ...
     async def get_capability_policy(
         self, policy_id: str, version: str | None = None
@@ -438,6 +464,9 @@ class MemoryStore:
         self.skills: dict[tuple[str, str], MetaSkill] = {}
         self.plugins: dict[tuple[str, str], MetaPlugin] = {}
         self.capability_policies: dict[tuple[str, str], CapabilityPolicy] = {}
+        self.connector_definitions: dict[str, ConnectorDefinition] = {}
+        self.connections: dict[str, Connection] = {}
+        self.capability_bindings: dict[str, CapabilityBinding] = {}
         self.capability_results: dict[str, CapabilityExecutionResult] = {}
         self.benchmark_tasks: dict[tuple[str, str], BenchmarkTask] = {}
         self.benchmark_runs: dict[str, BenchmarkRun] = {}
@@ -1247,6 +1276,61 @@ class MemoryStore:
         return sorted(
             (item for item in self.plugins.values() if item.allowlisted or not allowlisted_only),
             key=lambda item: (item.plugin_id, item.version),
+        )
+
+    async def upsert_connector_definition(
+        self, connector: ConnectorDefinition
+    ) -> ConnectorDefinition:
+        self.connector_definitions[connector.connector_id] = connector
+        return connector
+
+    async def get_connector_definition(self, connector_id: str) -> ConnectorDefinition | None:
+        return self.connector_definitions.get(connector_id)
+
+    async def list_connector_definitions(self) -> list[ConnectorDefinition]:
+        return sorted(self.connector_definitions.values(), key=lambda item: item.connector_id)
+
+    async def upsert_connection(self, connection: Connection) -> Connection:
+        self.connections[connection.connection_id] = connection
+        return connection
+
+    async def get_connection(self, connection_id: str) -> Connection | None:
+        return self.connections.get(connection_id)
+
+    async def list_connections(
+        self,
+        connector_id: str | None = None,
+        status: ConnectionStatus | None = None,
+    ) -> list[Connection]:
+        return sorted(
+            (
+                item
+                for item in self.connections.values()
+                if (connector_id is None or item.connector_id == connector_id)
+                and (status is None or item.status == status)
+            ),
+            key=lambda item: item.connection_id,
+        )
+
+    async def upsert_capability_binding(self, binding: CapabilityBinding) -> CapabilityBinding:
+        self.capability_bindings[binding.binding_id] = binding
+        return binding
+
+    async def list_capability_bindings(
+        self,
+        capability_id: str | None = None,
+        connector_id: str | None = None,
+        enabled_only: bool = True,
+    ) -> list[CapabilityBinding]:
+        return sorted(
+            (
+                item
+                for item in self.capability_bindings.values()
+                if (capability_id is None or item.capability_id == capability_id)
+                and (connector_id is None or item.connector_id == connector_id)
+                and (item.enabled or not enabled_only)
+            ),
+            key=lambda item: item.binding_id,
         )
 
     async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy:
@@ -2984,6 +3068,138 @@ class PostgresStore:
         async with self.sessions() as session:
             rows = (await session.scalars(query)).all()
         return [MetaPlugin.model_validate(row.definition) for row in rows]
+
+    async def upsert_connector_definition(
+        self, connector: ConnectorDefinition
+    ) -> ConnectorDefinition:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(ConnectorDefinitionRow).where(
+                    ConnectorDefinitionRow.connector_id == connector.connector_id
+                )
+            )
+            definition = connector.model_dump(mode="json")
+            if row is not None:
+                row.auth_type = connector.auth_type.value
+                row.definition = definition
+            else:
+                session.add(
+                    ConnectorDefinitionRow(
+                        id=new_id("conndef"),
+                        connector_id=connector.connector_id,
+                        auth_type=connector.auth_type.value,
+                        definition=definition,
+                        created_at=connector.created_at,
+                    )
+                )
+        return connector
+
+    async def get_connector_definition(self, connector_id: str) -> ConnectorDefinition | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(ConnectorDefinitionRow).where(
+                    ConnectorDefinitionRow.connector_id == connector_id
+                )
+            )
+        return ConnectorDefinition.model_validate(row.definition) if row else None
+
+    async def list_connector_definitions(self) -> list[ConnectorDefinition]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(ConnectorDefinitionRow).order_by(ConnectorDefinitionRow.connector_id)
+                )
+            ).all()
+        return [ConnectorDefinition.model_validate(row.definition) for row in rows]
+
+    async def upsert_connection(self, connection: Connection) -> Connection:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(ConnectionRow).where(ConnectionRow.connection_id == connection.connection_id)
+            )
+            definition = connection.model_dump(mode="json")
+            if row is not None:
+                row.status = connection.status.value
+                row.scope = connection.scope.value
+                row.definition = definition
+            else:
+                session.add(
+                    ConnectionRow(
+                        id=new_id("conn"),
+                        connection_id=connection.connection_id,
+                        connector_id=connection.connector_id,
+                        workspace_id=connection.workspace_id,
+                        principal_id=connection.principal_id,
+                        scope=connection.scope.value,
+                        status=connection.status.value,
+                        definition=definition,
+                        created_at=connection.created_at,
+                    )
+                )
+        return connection
+
+    async def get_connection(self, connection_id: str) -> Connection | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(ConnectionRow).where(ConnectionRow.connection_id == connection_id)
+            )
+        return Connection.model_validate(row.definition) if row else None
+
+    async def list_connections(
+        self,
+        connector_id: str | None = None,
+        status: ConnectionStatus | None = None,
+    ) -> list[Connection]:
+        query = select(ConnectionRow).order_by(ConnectionRow.connection_id)
+        if connector_id is not None:
+            query = query.where(ConnectionRow.connector_id == connector_id)
+        if status is not None:
+            query = query.where(ConnectionRow.status == status.value)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [Connection.model_validate(row.definition) for row in rows]
+
+    async def upsert_capability_binding(self, binding: CapabilityBinding) -> CapabilityBinding:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(CapabilityBindingRow).where(
+                    CapabilityBindingRow.binding_id == binding.binding_id
+                )
+            )
+            definition = binding.model_dump(mode="json")
+            if row is not None:
+                row.enabled = binding.enabled
+                row.definition = definition
+            else:
+                session.add(
+                    CapabilityBindingRow(
+                        id=new_id("capbind"),
+                        binding_id=binding.binding_id,
+                        capability_id=binding.capability_id,
+                        connector_id=binding.connector_id,
+                        enabled=binding.enabled,
+                        definition=definition,
+                        created_at=binding.created_at,
+                    )
+                )
+        return binding
+
+    async def list_capability_bindings(
+        self,
+        capability_id: str | None = None,
+        connector_id: str | None = None,
+        enabled_only: bool = True,
+    ) -> list[CapabilityBinding]:
+        query = select(CapabilityBindingRow).order_by(CapabilityBindingRow.binding_id)
+        if capability_id is not None:
+            query = query.where(CapabilityBindingRow.capability_id == capability_id)
+        if connector_id is not None:
+            query = query.where(CapabilityBindingRow.connector_id == connector_id)
+        if enabled_only:
+            query = query.where(CapabilityBindingRow.enabled.is_(True))
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [CapabilityBinding.model_validate(row.definition) for row in rows]
 
     async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy:
         async with self.sessions.begin() as session:

@@ -15,6 +15,7 @@ from accretion import __version__
 from accretion.api.schemas import (
     ApprovalDecisionCreate,
     BenchmarkRunCreate,
+    CapabilityResolveRequest,
     ErrorEnvelope,
     ExperienceMaterializeCreate,
     ExperienceQueryCreate,
@@ -49,6 +50,8 @@ from accretion.contracts import (
     BenchmarkRun,
     BenchmarkTaskDetail,
     Capability,
+    Connection,
+    ConnectorDefinition,
     EventType,
     ExecutionMode,
     ExecutionTrace,
@@ -58,6 +61,7 @@ from accretion.contracts import (
     MetaSkill,
     Project,
     Provider,
+    ResolvedCapability,
     Run,
     RunAudit,
     RuntimeHealth,
@@ -119,6 +123,7 @@ from accretion.orchestration.service import (
 from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore
+from accretion.resolver import CapabilityResolver
 from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime
 from accretion.search_benchmark import SearchBenchmarkRunner, SearchBenchmarkSummary
 from accretion.services.run_manager import (
@@ -928,6 +933,31 @@ async def runtime_sessions(runtime_id: str, request: Request) -> list[SessionRef
 @app.get("/api/v1/capabilities", response_model=list[Capability])
 async def list_capabilities(request: Request) -> list[Capability]:
     return await manager(request).store.list_capabilities()
+
+
+@app.get("/api/v1/connectors", response_model=list[ConnectorDefinition])
+async def list_connectors(request: Request) -> list[ConnectorDefinition]:
+    return await manager(request).store.list_connector_definitions()
+
+
+@app.get("/api/v1/connections", response_model=list[Connection])
+async def list_connections(request: Request) -> list[Connection]:
+    return await manager(request).store.list_connections()
+
+
+@app.post("/api/v1/capabilities/resolve", response_model=ResolvedCapability)
+async def resolve_capability(
+    payload: CapabilityResolveRequest, request: Request
+) -> ResolvedCapability:
+    resolved = await CapabilityResolver(manager(request).store).resolve(
+        payload.capability_id,
+        version=payload.version,
+        principal_id=payload.principal_id,
+        workspace_id=payload.workspace_id,
+    )
+    if resolved is None:
+        raise KeyError(payload.capability_id)
+    return resolved
 
 
 @app.get("/api/v1/skills", response_model=list[MetaSkill])

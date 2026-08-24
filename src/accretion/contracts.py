@@ -388,6 +388,110 @@ class CapabilityExecutionResult(StrictModel):
     completed_at: datetime | None = None
 
 
+class ConnectorKind(StrEnum):
+    MCP = "MCP"
+    REST = "REST"
+    GRAPHQL = "GRAPHQL"
+    SDK = "SDK"
+    LOCAL = "LOCAL"
+
+
+class ConnectorAuthType(StrEnum):
+    NONE = "NONE"
+    OAUTH2 = "OAUTH2"
+    OIDC = "OIDC"
+    API_KEY = "API_KEY"
+    SERVICE_ACCOUNT = "SERVICE_ACCOUNT"
+    EMA = "EMA"
+
+
+class ConnectionScope(StrEnum):
+    USER = "USER"
+    WORKSPACE = "WORKSPACE"
+
+
+class ConnectionStatus(StrEnum):
+    PENDING = "PENDING"
+    ACTIVE = "ACTIVE"
+    DEGRADED = "DEGRADED"
+    REAUTH_REQUIRED = "REAUTH_REQUIRED"
+    REVOKED = "REVOKED"
+
+
+class CapabilityBindingBackend(StrictModel):
+    type: CapabilityBackend
+    server_ref: str | None = None
+    method: str | None = None
+    tool_name: str | None = None
+
+
+class CapabilityBinding(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    binding_id: str
+    capability_id: str
+    connector_id: str
+    backend: CapabilityBindingBackend
+    input_transform_ref: str | None = None
+    output_transform_ref: str | None = None
+    policy_ref: str | None = None
+    enabled: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class ConnectorDefinition(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    connector_id: str
+    plugin_id: str | None = None
+    name: str
+    kind: ConnectorKind
+    auth_type: ConnectorAuthType = ConnectorAuthType.NONE
+    authorization_server: str | None = None
+    resource_server: str | None = None
+    default_scopes: list[str] = Field(default_factory=list)
+    optional_scopes: list[str] = Field(default_factory=list)
+    connection_scope: ConnectionScope = ConnectionScope.USER
+    health_check_ref: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class Connection(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    connection_id: str
+    connector_id: str
+    workspace_id: str
+    principal_id: str | None = None
+    scope: ConnectionScope = ConnectionScope.USER
+    token_handle_ref: str | None = None
+    granted_scopes: list[str] = Field(default_factory=list)
+    status: ConnectionStatus = ConnectionStatus.PENDING
+    workspace_shareable: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    last_health_check: datetime | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ConnectionRef(StrictModel):
+    connection_id: str
+    connector_id: str
+    status: ConnectionStatus
+
+
+class CapabilityResolutionOutcome(StrEnum):
+    OK = "OK"
+    NO_CONNECTOR_REQUIRED = "NO_CONNECTOR_REQUIRED"
+    REQUIRE_REAUTH = "REQUIRE_REAUTH"
+    NO_CONNECTION = "NO_CONNECTION"
+    DISABLED = "DISABLED"
+
+
+class ResolvedCapability(StrictModel):
+    capability: Capability
+    outcome: CapabilityResolutionOutcome
+    binding: CapabilityBinding | None = None
+    connection: ConnectionRef | None = None
+    reason: str = ""
+
+
 class PromptContract(StrictModel):
     schema_version: Literal["1.0"] = "1.0"
     prompt_contract_id: str

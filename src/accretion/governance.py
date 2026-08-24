@@ -18,11 +18,19 @@ from accretion.contracts import (
     Capability,
     CapabilityAuthorization,
     CapabilityBackend,
+    CapabilityBinding,
+    CapabilityBindingBackend,
     CapabilityExecutionResult,
     CapabilityExecutionStatus,
     CapabilityKind,
     CapabilityPolicy,
     CapabilityRequest,
+    Connection,
+    ConnectionScope,
+    ConnectionStatus,
+    ConnectorAuthType,
+    ConnectorDefinition,
+    ConnectorKind,
     CredentialReference,
     ErrorSummary,
     EventType,
@@ -642,6 +650,39 @@ async def seed_governance(store: StateStore) -> None:
             version="1.0.0",
             description="Deny by default; approve protected external effects.",
             require_approval_at_risk=RiskLevel.HIGH,
+            created_at=created_at,
+        )
+    )
+    # M0 demo connector: exercises the full connection-aware resolution path
+    # for accretion.echo with NONE auth. Built-ins stay binding-free so the
+    # NO_CONNECTOR_REQUIRED fast path keeps v0.1/v0.2 behavior unchanged.
+    await store.upsert_connector_definition(
+        ConnectorDefinition(
+            connector_id="conndef_local_echo",
+            name="Local echo connector",
+            kind=ConnectorKind.LOCAL,
+            auth_type=ConnectorAuthType.NONE,
+            connection_scope=ConnectionScope.WORKSPACE,
+            created_at=created_at,
+        )
+    )
+    await store.upsert_connection(
+        Connection(
+            connection_id="conn_local_echo",
+            connector_id="conndef_local_echo",
+            workspace_id="workspace_local",
+            scope=ConnectionScope.WORKSPACE,
+            status=ConnectionStatus.ACTIVE,
+            workspace_shareable=True,
+            created_at=created_at,
+        )
+    )
+    await store.upsert_capability_binding(
+        CapabilityBinding(
+            binding_id="capbind_local_echo",
+            capability_id="accretion.echo",
+            connector_id="conndef_local_echo",
+            backend=CapabilityBindingBackend(type=CapabilityBackend.PYTHON),
             created_at=created_at,
         )
     )

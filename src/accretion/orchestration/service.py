@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 
 from accretion.contracts import (
     RISK_RANK,
+    CapabilityResolutionOutcome,
     EventType,
     GraphNodeStatus,
     Provider,
@@ -36,6 +37,7 @@ from accretion.orchestration.models import (
 )
 from accretion.orchestration.router import PerformanceAwareRuntimeRouter
 from accretion.orchestration.validator import GraphValidator
+from accretion.resolver import CapabilityResolver
 from accretion.services.run_manager import RunManager
 
 
@@ -453,7 +455,16 @@ class DynamicWorkflowService:
     ) -> tuple[CapabilitySnapshot, PolicySnapshot]:
         task = await self.manager._require_task(task_id)
         run = await self.manager._require_run(run_id)
-        capabilities = await self.store.list_capabilities()
+        resolved = await CapabilityResolver(self.store).list_resolved()
+        capabilities = [
+            item.capability
+            for item in resolved
+            if item.outcome
+            in {
+                CapabilityResolutionOutcome.OK,
+                CapabilityResolutionOutcome.NO_CONNECTOR_REQUIRED,
+            }
+        ]
         skills = await self.store.list_skills()
         health = await asyncio.gather(
             *(runtime.health() for runtime in self.manager.runtimes.values())

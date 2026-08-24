@@ -23,6 +23,13 @@ from accretion.orchestration.models import (
 )
 
 
+class CapabilityResolveRequest(BaseModel):
+    capability_id: str
+    version: str | None = None
+    principal_id: str | None = None
+    workspace_id: str | None = None
+
+
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
     repository_path: Path
