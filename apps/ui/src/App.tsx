@@ -15,6 +15,7 @@ import type {
   ExperienceDetail,
   ExperienceMatch,
   Project,
+  Provider,
   Run,
   SearchMode,
   SearchRecord,
@@ -267,7 +268,7 @@ function PlanningReview({ planning, onUpdate }: {
   async function run() {
     setFeedback("Creating run…");
     try {
-      const created = await api.startRun(planning.task_id, { provider: provider as "FAKE" | "CODEX" | "CLAUDE" });
+      const created = await api.startRun(planning.task_id, { provider: provider as Provider });
       setFeedback(`Run ${shortId(created.run_id)} created.`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Run creation failed.");
@@ -447,7 +448,7 @@ function PlanningReview({ planning, onUpdate }: {
             <button className="secondary-button" type="submit" disabled={!selectedTemplate}>Request override</button>
           </form>
           <div className="run-control">
-            <label>Runtime<select value={provider} onChange={(event) => setProvider(event.target.value)}><option>FAKE</option><option>CODEX</option><option>CLAUDE</option></select></label>
+            <label>Runtime<select value={provider} onChange={(event) => setProvider(event.target.value)}><option>FAKE</option><option>CODEX</option><option>CLAUDE</option><option>OPENCODE</option></select></label>
             <button className="primary-button" type="button" onClick={run}>Create run</button>
             <button className="secondary-button" type="button" onClick={proposeDynamic}>Propose P5 graph</button>
             {dynamicValidation?.validation.status === "ACCEPT" ? (

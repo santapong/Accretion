@@ -935,6 +935,28 @@ Possible projection elements:
 - App Server approvals;
 - installed plugin/app capabilities when supported.
 
+## 15.4 Opencode projection
+
+Possible projection elements:
+
+- inline server configuration via `OPENCODE_CONFIG_CONTENT`;
+- per-prompt tool allow/deny map on `prompt_async`;
+- non-interactive permission policy (`edit`/`bash` patterns, `webfetch`, `external_directory`);
+- per-session working directory, which is how a run is pinned to its worktree.
+
+Two constraints distinguish this adapter from §15.2 and §15.3:
+
+- **No capability gateway.** opencode resolves `mcp` once per server process, while the
+  Accretion gateway pins one `ACCRETION_GATEWAY_RUN_ID` for its lifetime. On a server shared
+  by concurrent runs that would attribute every governed side effect to whichever run started
+  first, so the adapter configures no gateway and refuses any task carrying a non-empty
+  capability set. Such tasks must be routed to Claude or Codex.
+- **The model is configuration, never code.** `prompt_async` takes an explicit
+  `providerID`/`modelID`, supplied by `ACCRETION_OPENCODE_MODEL` or `SessionConfig.model`.
+  `health()` verifies the configured model still appears in `opencode models` and reports
+  `DEGRADED` when it does not, so a withdrawn preview model fails at planning time rather
+  than mid-run.
+
 Provider differences remain isolated in adapters.
 
 ---

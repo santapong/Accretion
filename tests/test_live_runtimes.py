@@ -19,6 +19,7 @@ from accretion.contracts import (
 from accretion.ids import new_id
 from accretion.runtimes.claude import ClaudeRuntime
 from accretion.runtimes.codex import CodexRuntime
+from accretion.runtimes.opencode import OpencodeRuntime
 
 pytestmark = [
     pytest.mark.live,
@@ -44,6 +45,11 @@ def harmless_task() -> TaskEnvelope:
 
 def claude_runtime() -> ClaudeRuntime:
     return ClaudeRuntime(model=os.getenv("ACCRETION_CLAUDE_LIVE_MODEL"))
+
+
+def opencode_runtime() -> OpencodeRuntime:
+    model = os.getenv("ACCRETION_OPENCODE_MODEL")
+    return OpencodeRuntime(model=model) if model else OpencodeRuntime()
 
 
 async def collect(runtime: AgentRuntime, run: RunRef) -> list[AgentEvent]:
@@ -116,3 +122,51 @@ async def test_live_claude_and_codex_run_in_separate_worktrees(tmp_path: Path) -
         assert claude_events[-1].normalized_type is EventType.RUNTIME_CALL_COMPLETED
     finally:
         await codex.close()
+
+
+async def test_live_opencode_reports_ready_for_the_configured_model() -> None:
+    runtime = opencode_runtime()
+    health = await runtime.health()
+    # DEGRADED here is the designed signal that the configured model was withdrawn.
+    assert health.status is RuntimeStatus.READY, health.last_error
+
+
+async def test_live_opencode_rejects_a_withdrawn_model(tmp_path: Path) -> None:
+    """Rehearses a free preview model disappearing: it must fail health, not a live run."""
+
+    runtime = OpencodeRuntime(model="opencode/definitely-not-a-real-model")
+    health = await runtime.health()
+    assert health.status is RuntimeStatus.DEGRADED
+    assert health.last_error is not None
+    assert "definitely-not-a-real-model" in health.last_error.message
+
+
+async def test_live_opencode_runs_two_independent_sessions_on_one_server(
+    tmp_path: Path,
+) -> None:
+    first_workspace = tmp_path / "opencode-first"
+    second_workspace = tmp_path / "opencode-second"
+    initialize_repository(first_workspace)
+    initialize_repository(second_workspace)
+    runtime = opencode_runtime()
+    try:
+        assert (await runtime.health()).status is RuntimeStatus.READY
+        first_session = await runtime.create_session(
+            SessionConfig(run_id=new_id("run"), workspace=first_workspace)
+        )
+        second_session = await runtime.create_session(
+            SessionConfig(run_id=new_id("run"), workspace=second_workspace)
+        )
+        first_run, second_run = await asyncio.gather(
+            runtime.submit(first_session, harmless_task()),
+            runtime.submit(second_session, harmless_task()),
+        )
+        first_events, second_events = await asyncio.gather(
+            collect(runtime, first_run), collect(runtime, second_run)
+        )
+        # One shared server, two sessions: the global event bus must demultiplex cleanly.
+        assert first_run.native_run_id != second_run.native_run_id
+        assert first_events[-1].normalized_type is EventType.RUNTIME_CALL_COMPLETED
+        assert second_events[-1].normalized_type is EventType.RUNTIME_CALL_COMPLETED
+    finally:
+        await runtime.close()

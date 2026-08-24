@@ -16,12 +16,15 @@ class StrictModel(BaseModel):
 class Provider(StrEnum):
     CLAUDE = "CLAUDE"
     CODEX = "CODEX"
+    OPENCODE = "OPENCODE"
     FAKE = "FAKE"
     DETERMINISTIC = "DETERMINISTIC"
     HUMAN = "HUMAN"
 
 
-LIVE_PROVIDERS: frozenset[Provider] = frozenset({Provider.CLAUDE, Provider.CODEX})
+LIVE_PROVIDERS: frozenset[Provider] = frozenset(
+    {Provider.CLAUDE, Provider.CODEX, Provider.OPENCODE}
+)
 """Providers backed by a signed-in agent CLI, gated by the live-provider policy."""
 
 
