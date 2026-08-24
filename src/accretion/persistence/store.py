@@ -3469,6 +3469,10 @@ class PostgresStore:
             )
             definition = connection.model_dump(mode="json")
             if row is not None:
+                # Ownership can change on re-consent; the indexed columns must follow the
+                # model or any query filtering on them reads a stale owner.
+                row.workspace_id = connection.workspace_id
+                row.principal_id = connection.principal_id
                 row.status = connection.status.value
                 row.scope = connection.scope.value
                 row.definition = definition

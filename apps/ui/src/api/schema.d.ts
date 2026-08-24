@@ -198,7 +198,13 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Connections */
+        /**
+         * List Connections
+         * @description List only the connections this principal may see.
+         *
+         *     Returns a summary rather than the stored model: a Connection carries
+         *     ``token_handle_ref``, which is broker-internal and never leaves the API (INV3-002).
+         */
         get: operations["list_connections_api_v1_connections_get"];
         put?: never;
         post?: never;
@@ -2095,47 +2101,6 @@ export interface components {
          * @enum {string}
          */
         ConditionOperator: "ALL" | "ANY" | "NOT" | "EQ" | "NE" | "LT" | "LTE" | "GT" | "GTE" | "IN";
-        /** Connection */
-        Connection: {
-            /** Connection Id */
-            connection_id: string;
-            /** Connector Id */
-            connector_id: string;
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at?: string;
-            /** Granted Scopes */
-            granted_scopes?: string[];
-            /** Last Health Check */
-            last_health_check?: string | null;
-            /** Metadata */
-            metadata?: {
-                [key: string]: unknown;
-            };
-            /** Principal Id */
-            principal_id?: string | null;
-            /**
-             * Schema Version
-             * @default 1.0
-             * @constant
-             */
-            schema_version: "1.0";
-            /** @default USER */
-            scope: components["schemas"]["ConnectionScope"];
-            /** @default PENDING */
-            status: components["schemas"]["ConnectionStatus"];
-            /** Token Handle Ref */
-            token_handle_ref?: string | null;
-            /** Workspace Id */
-            workspace_id: string;
-            /**
-             * Workspace Shareable
-             * @default false
-             */
-            workspace_shareable: boolean;
-        };
         /** ConnectionRef */
         ConnectionRef: {
             /** Connection Id */
@@ -2154,6 +2119,36 @@ export interface components {
          * @enum {string}
          */
         ConnectionStatus: "PENDING" | "ACTIVE" | "DEGRADED" | "REAUTH_REQUIRED" | "REVOKED";
+        /**
+         * ConnectionSummary
+         * @description Read-only connection listing; token handles never enter the API (INV3-002).
+         */
+        ConnectionSummary: {
+            /** Connection Id */
+            connection_id: string;
+            /** Connector Id */
+            connector_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Granted Scopes */
+            granted_scopes?: string[];
+            /** Last Health Check */
+            last_health_check?: string | null;
+            /** Principal Id */
+            principal_id?: string | null;
+            scope: components["schemas"]["ConnectionScope"];
+            status: components["schemas"]["ConnectionStatus"];
+            /** Workspace Id */
+            workspace_id: string;
+            /**
+             * Workspace Shareable
+             * @default false
+             */
+            workspace_shareable: boolean;
+        };
         /**
          * ConnectorAuthType
          * @enum {string}
@@ -5498,7 +5493,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Connection"][];
+                    "application/json": components["schemas"]["ConnectionSummary"][];
                 };
             };
         };

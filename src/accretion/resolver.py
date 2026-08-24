@@ -11,11 +11,13 @@ from __future__ import annotations
 
 from accretion.contracts import (
     Capability,
+    CapabilityBinding,
     CapabilityResolutionOutcome,
     Connection,
     ConnectionRef,
     ConnectionScope,
     ConnectionStatus,
+    ConnectorAuthType,
     ConnectorDefinition,
     ResolvedCapability,
 )
@@ -73,7 +75,28 @@ class CapabilityResolver:
                 outcome=CapabilityResolutionOutcome.NO_CONNECTOR_REQUIRED,
                 reason="capability has no connector binding",
             )
-        binding = bindings[0]
+        # A capability may be bound to several connectors. Try each in the store's
+        # deterministic order and take the first that fully resolves, rather than
+        # silently considering only one and reporting the rest as unavailable.
+        attempts = [
+            await self._resolve_binding(
+                capability, binding, principal_id=principal_id, workspace_id=workspace_id
+            )
+            for binding in bindings
+        ]
+        for attempt in attempts:
+            if attempt.outcome is CapabilityResolutionOutcome.OK:
+                return attempt
+        return attempts[0]
+
+    async def _resolve_binding(
+        self,
+        capability: Capability,
+        binding: CapabilityBinding,
+        *,
+        principal_id: str | None,
+        workspace_id: str | None,
+    ) -> ResolvedCapability:
         connector = await self.store.get_connector_definition(binding.connector_id)
         if connector is None:
             return ResolvedCapability(
@@ -160,10 +183,16 @@ class CapabilityResolver:
         ]
         if workspace_connections:
             return self._best(workspace_connections)
-        # Anonymous local-first mode (no principals until M1): NONE-auth
-        # connectors may use an unowned usable connection.
-        if principal_id is None and connector.auth_type.value == "NONE":
-            unowned = [item for item in candidates if item.principal_id is None]
+        # Anonymous local-first mode: only a connector that needs no credential may
+        # fall back to an unowned connection, and only one that carries no token
+        # handle. Post-M1 every API request has a principal, so this path exists for
+        # the credential-free gateway subprocess alone.
+        if principal_id is None and connector.auth_type is ConnectorAuthType.NONE:
+            unowned = [
+                item
+                for item in candidates
+                if item.principal_id is None and item.token_handle_ref is None
+            ]
             if unowned:
                 return self._best(unowned)
         return None

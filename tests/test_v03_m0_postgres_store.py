@@ -4,6 +4,7 @@ import os
 from datetime import UTC, datetime
 
 import pytest
+from sqlalchemy import select
 
 from accretion.contracts import (
     CapabilityBackend,
@@ -18,6 +19,7 @@ from accretion.contracts import (
 )
 from accretion.ids import new_id
 from accretion.persistence.database import create_engine, create_session_factory
+from accretion.persistence.models import ConnectionRow
 from accretion.persistence.store import PostgresStore
 
 POSTGRES_URL = os.getenv("ACCRETION_TEST_POSTGRES_URL")
@@ -88,5 +90,63 @@ async def test_v03_m0_connection_contracts_round_trip_and_update() -> None:
         assert await store.list_capability_bindings(
             capability_id=capability_id, enabled_only=False
         ) == [disabled]
+    finally:
+        await engine.dispose()
+
+
+async def test_reowning_a_connection_updates_the_indexed_owner_columns() -> None:
+    """Ownership can move on re-consent; the indexed columns must follow the model.
+
+    MemoryStore stores the whole model, so only Postgres exercises this: the update
+    branch of ``upsert_connection`` previously wrote back status, scope, and the JSON
+    definition while leaving ``workspace_id`` and ``principal_id`` at their original
+    values, so ``list_connections`` filtered on a stale owner.
+    """
+
+    assert POSTGRES_URL is not None
+    engine = create_engine(POSTGRES_URL)
+    store = PostgresStore(create_session_factory(engine))
+    connector_id = new_id("conndef")
+    connection_id = new_id("conn")
+    try:
+        await store.upsert_connector_definition(
+            ConnectorDefinition(
+                connector_id=connector_id,
+                name="M2 re-owning connector",
+                kind=ConnectorKind.LOCAL,
+                auth_type=ConnectorAuthType.OAUTH2,
+                created_at=CREATED_AT,
+            )
+        )
+        original = Connection(
+            connection_id=connection_id,
+            connector_id=connector_id,
+            workspace_id="workspace_first",
+            principal_id="prin_first",
+            scope=ConnectionScope.USER,
+            status=ConnectionStatus.PENDING,
+            created_at=CREATED_AT,
+        )
+        await store.upsert_connection(original)
+        await store.upsert_connection(
+            original.model_copy(
+                update={
+                    "workspace_id": "workspace_second",
+                    "principal_id": "prin_second",
+                    "status": ConnectionStatus.ACTIVE,
+                }
+            )
+        )
+
+        # get_connection reads the JSON definition, which was always updated, so it
+        # cannot see this bug. Assert on the indexed columns themselves.
+        async with store.sessions() as session:
+            row = await session.scalar(
+                select(ConnectionRow).where(ConnectionRow.connection_id == connection_id)
+            )
+        assert row is not None
+        assert row.workspace_id == "workspace_second"
+        assert row.principal_id == "prin_second"
+        assert row.status == ConnectionStatus.ACTIVE.value
     finally:
         await engine.dispose()
