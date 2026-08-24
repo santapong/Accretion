@@ -11,9 +11,9 @@ trajectory, independently verifies candidates, and promotes only a unique
 eligible winner. Search can multiply computation; it cannot multiply authority.
 
 P6 implements `BEST_OF_N`, `HYPOTHESIS_BRANCH`, `CROSS_PROVIDER`, and
-`GENERATOR_REVIEWER`. `REPLAY_BRANCH` is present only as a forward-compatible
-contract value and stops with `REPLAY_BRANCH_REQUIRES_P7`; experience retrieval
-and replay remain P7 work.
+`GENERATOR_REVIEWER`. A P6-only service keeps `REPLAY_BRANCH` fail closed with
+`REPLAY_BRANCH_REQUIRES_P7`; the independently gated P7 service activates it only
+for explicitly selected, currently compatible verified experience.
 
 ## Enable P6
 

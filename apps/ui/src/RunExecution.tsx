@@ -19,12 +19,15 @@ import type {
   ApprovalRecord,
   CandidateScore,
   CandidateTrajectory,
+  ExperienceDetail,
+  ExperienceMatch,
   GraphProjection,
   GraphProjectionNode,
   GraphValidationResult,
   LoopExecution,
   Run,
   SearchRecord,
+  TrajectorySeed,
   VerificationResult,
 } from "./types";
 
@@ -368,6 +371,41 @@ function VerificationPanel({ verifications }: { verifications: VerificationResul
   );
 }
 
+function ExperienceCapture({ run }: { run: Run }) {
+  const [feedback, setFeedback] = useState<string>();
+  const [captured, setCaptured] = useState<ExperienceDetail>();
+  const materializable = ["SUCCEEDED", "FAILED", "REQUIRES_HUMAN"].includes(run.state);
+
+  async function materialize() {
+    setFeedback("Validating and materializing terminal evidence…");
+    try {
+      const features = await api.projectFeatures(run.project_id);
+      if (!features.experience_retrieval) {
+        await api.updateProjectFeatures(
+          run.project_id,
+          { dynamicWorkflows: true, candidateSearch: true, experienceRetrieval: true },
+          features.revision,
+        );
+      }
+      const detail = await api.materializeExperience(run.run_id);
+      setCaptured(detail);
+      setFeedback("Immutable redacted experience materialized.");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Experience materialization failed.");
+    }
+  }
+
+  if (!materializable && !captured) return null;
+  return (
+    <section className="experience-capture" aria-label="Experience materialization">
+      <div><p className="eyebrow">P7 explicit capture</p><h3>Terminal experience</h3><p>Only verifier-backed procedural evidence is retained; patches, sessions, credentials, and native payloads are excluded.</p></div>
+      <button className="secondary-button" type="button" onClick={materialize} disabled={Boolean(captured)}>Materialize run experience</button>
+      {captured ? <small>{captured.experience.trust} {captured.experience.polarity} · {captured.segments.length} controlled segments · {captured.embedding_version}</small> : null}
+      {feedback ? <p className="form-status" role="status">{feedback}</p> : null}
+    </section>
+  );
+}
+
 function CandidateCard({
   candidate,
   score,
@@ -378,6 +416,7 @@ function CandidateCard({
   selected: boolean;
 }) {
   const spend = candidate.budget_spent;
+  const sourceKind = candidate.source_kind ?? "FRESH";
   return (
     <article className={`candidate-card ${selected ? "candidate-selected" : ""}`}>
       <header>
@@ -385,6 +424,7 @@ function CandidateCard({
         <StatusBadge state={candidate.status} />
       </header>
       <p className="candidate-runtime">{candidate.runtime_id} · {candidate.runtime_model} · {candidate.runtime_version}</p>
+      <p className={`candidate-source candidate-source-${sourceKind.toLowerCase()}`}>{sourceKind === "REPLAY" ? "Verified replay treatment" : "Fresh control"}</p>
       {candidate.reviewer_provider ? <p className="candidate-reviewer">Reviewed by {candidate.reviewer_provider}</p> : null}
       <dl>
         <div><dt>Score</dt><dd>{score?.total_score == null ? "—" : score.total_score.toFixed(3)}</dd></div>
@@ -395,8 +435,48 @@ function CandidateCard({
         <div><dt>Latency</dt><dd>{candidate.latency_ms} ms</dd></div>
       </dl>
       <p className="candidate-reason">{candidate.terminal_reason ?? score?.explanation ?? "Candidate has not completed."}</p>
+      {sourceKind === "REPLAY" ? <p className="candidate-replay-state">Seed {candidate.seed_revalidation_status ?? "PENDING"} · {(candidate.trajectory_segment_refs ?? []).length} procedural segments</p> : null}
       <small>{candidate.trajectory_ref ?? candidate.session_id ?? "trajectory pending"}</small>
     </article>
+  );
+}
+
+function ExperienceLineage({
+  search,
+  seeds,
+  matches,
+  details,
+}: {
+  search: SearchRecord;
+  seeds: TrajectorySeed[];
+  matches: Map<string, ExperienceMatch>;
+  details: Map<string, ExperienceDetail>;
+}) {
+  const positiveIds = search.plan.replay_seed_match_ids ?? [];
+  const negativeIds = search.plan.negative_guidance_match_ids ?? [];
+  const attached = [...positiveIds, ...negativeIds];
+  if (search.plan.mode !== "REPLAY_BRANCH") return null;
+  return (
+    <section className="experience-lineage" aria-label="Experience replay lineage">
+      <header><div><p className="eyebrow">P7 explainability</p><h4>Experience replay lineage</h4></div><span>{seeds.length} frozen seed{seeds.length === 1 ? "" : "s"}</span></header>
+      <div className="experience-lineage-grid">
+        {attached.map((matchId) => {
+          const match = matches.get(matchId);
+          const detail = match ? details.get(match.experience_id) : undefined;
+          const seed = seeds.find((item) => item.match_id === matchId);
+          const role = positiveIds.includes(matchId) ? "REPLAY SEED" : "NEGATIVE GUIDANCE";
+          return (
+            <article key={matchId}>
+              <header><strong>{role}</strong><StatusBadge state={match?.assessment.disposition ?? seed?.validation_status ?? "PENDING"} /></header>
+              {match ? <div className="experience-score-row"><span>{match.assessment.final_score.toFixed(3)} compatibility</span><span>{match.assessment.transfer_risk.toFixed(3)} transfer risk</span><span>{match.trust} trust</span></div> : null}
+              {detail ? <p>{detail.experience.source_kind} {detail.experience.source_run_id} · {detail.experience.provider}/{detail.experience.runtime_version} · commit {detail.experience.source_commit.slice(0, 12)}</p> : null}
+              {seed ? <><small>Reused segments: {seed.segment_ids.join(", ")}</small><ul>{(seed.procedural_guidance ?? []).map((item) => <li key={item}>{item}</li>)}</ul><p className="experience-revalidations">Revalidation: {(seed.required_revalidations ?? []).join(" · ")}</p></> : <small>Guidance match; never eligible to seed a branch.</small>}
+              {(match?.assessment.reasons ?? []).length ? <p className="experience-reasons">{match?.assessment.reasons?.join(" · ")}</p> : null}
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -428,6 +508,28 @@ function SearchTree({ run }: { run: Run }) {
       refetchInterval: active ? 2000 : false,
     })),
   });
+  const seedQueries = useQueries({
+    queries: searches.map((search) => ({
+      queryKey: ["search-replay-seeds", search.plan.search_id],
+      queryFn: () => api.replaySeeds(search.plan.search_id),
+      retry: false,
+      refetchInterval: active ? 2000 : false,
+    })),
+  });
+  const matchesQuery = useQuery({
+    queryKey: ["selected-experience-matches", run.task_id],
+    queryFn: () => api.selectedExperienceMatches(run.task_id),
+    retry: false,
+    refetchInterval: active ? 2500 : false,
+  });
+  const selectedMatches = Array.isArray(matchesQuery.data) ? matchesQuery.data : [];
+  const detailQueries = useQueries({
+    queries: selectedMatches.map((match) => ({
+      queryKey: ["experience-detail", match.experience_id],
+      queryFn: () => api.experience(match.experience_id),
+      retry: false,
+    })),
+  });
   if (!searchesQuery.isLoading && !searches.length) return null;
 
   async function cancel(searchId: string) {
@@ -452,6 +554,15 @@ function SearchTree({ run }: { run: Run }) {
         const scoresByCandidate = new Map(
           scores.map((score) => [score.candidate_id, score]),
         );
+        const seeds = Array.isArray(seedQueries[index]?.data)
+          ? seedQueries[index].data
+          : [];
+        const matchesById = new Map(
+          selectedMatches.map((match) => [match.match_id, match]),
+        );
+        const detailsById = new Map(
+          detailQueries.flatMap((query) => query.data ? [[query.data.experience.experience_id, query.data] as const] : []),
+        );
         const cancellable = ["PLANNED", "RUNNING", "SELECTING"].includes(search.status);
         return (
           <details className="search-plan-tree" key={search.plan.search_id} open>
@@ -466,6 +577,7 @@ function SearchTree({ run }: { run: Run }) {
               <span>{search.stop_reason ? display(search.stop_reason) : "search pending"}</span>
               {cancellable ? <button className="secondary-button" type="button" onClick={() => cancel(search.plan.search_id)}>Cancel search</button> : null}
             </div>
+            <ExperienceLineage search={search} seeds={seeds} matches={matchesById} details={detailsById} />
             <div className="candidate-tree">
               {candidates.map((candidate) => (
                 <CandidateCard
@@ -662,6 +774,7 @@ export function RunExecution({ run }: { run: Run | undefined }) {
         <StatusBadge state={run.state} />
       </header>
       <div className="execution-content">
+        <ExperienceCapture run={run} />
         <DynamicWorkflowInspector run={run} />
         <SearchTree run={run} />
         <PendingApprovals runId={run.run_id} />

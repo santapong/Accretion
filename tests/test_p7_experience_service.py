@@ -477,6 +477,13 @@ async def test_p7_experience_api_surface(tmp_path: Path) -> None:
         assert len(
             (await client.get(f"/api/v2/tasks/{target_task_id}/experience-selections")).json()
         ) == 1
+        selected_matches = await client.get(
+            f"/api/v2/tasks/{target_task_id}/experience-matches"
+        )
+        assert selected_matches.status_code == 200
+        assert [item["match_id"] for item in selected_matches.json()] == [
+            match["match_id"]
+        ]
         retracted = await client.post(
             f"/api/v2/experiences/{experience_id}/retract",
             json={"reason": "API moderation fixture", "expected_revision": 1},

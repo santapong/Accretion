@@ -8,9 +8,8 @@ P5 adds opt-in, run-specific workflow proposals without giving a model policy
 authority. Reviewed fragments produce typed `WorkflowProposal` records;
 deterministic code validates and content-addresses the graph; only an accepted
 proposal is compiled into the existing P3 checkpoint, verifier, approval, and
-side-effect scheduler. P6 candidate search is a separate opt-in extension and
-grants no authority when only P5 is enabled. P7 experience retrieval remains
-unimplemented.
+side-effect scheduler. P6 candidate search and P7 experience retrieval are
+separate opt-in extensions and grant no authority when only P5 is enabled.
 
 ## Enable P5
 

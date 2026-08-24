@@ -583,6 +583,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/benchmarks/experience": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Experience Benchmark */
+        get: operations["get_experience_benchmark_api_v2_benchmarks_experience_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/benchmarks/experience/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Experience Benchmark */
+        post: operations["run_experience_benchmark_api_v2_benchmarks_experience_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v2/benchmarks/search": {
         parameters: {
             query?: never;
@@ -992,6 +1026,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/search/{search_id}/replay-seeds": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Replay Seeds */
+        get: operations["list_replay_seeds_api_v2_search__search_id__replay_seeds_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v2/search/{search_id}/scores": {
         parameters: {
             query?: never;
@@ -1001,6 +1052,23 @@ export interface paths {
         };
         /** List Search Scores */
         get: operations["list_search_scores_api_v2_search__search_id__scores_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/tasks/{task_id}/experience-matches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Selected Experience Matches */
+        get: operations["list_selected_experience_matches_api_v2_tasks__task_id__experience_matches_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2082,6 +2150,116 @@ export interface components {
             /** Verifier Ids */
             verifier_ids?: string[];
         };
+        /** ExperienceBenchmarkGate */
+        ExperienceBenchmarkGate: {
+            /** Benefit Passed */
+            benefit_passed: boolean;
+            /** False Accepts Not Increased */
+            false_accepts_not_increased: boolean;
+            /** Negative Transfer Passed */
+            negative_transfer_passed: boolean;
+            /** Negative Transfer Rate */
+            negative_transfer_rate: number;
+            /** Passed */
+            passed: boolean;
+            /** Replay Quality Uplift */
+            replay_quality_uplift: number;
+            /** Replay Tool Call Reduction */
+            replay_tool_call_reduction: number;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Stale Rejection Passed */
+            stale_rejection_passed: boolean;
+            /** Stale Rejection Rate */
+            stale_rejection_rate: number;
+            /** Success Rate Not Regressed */
+            success_rate_not_regressed: boolean;
+            /** Thresholds */
+            thresholds: {
+                [key: string]: number;
+            };
+        };
+        /** ExperienceBenchmarkSummary */
+        ExperienceBenchmarkSummary: {
+            /** Benchmark Run Id */
+            benchmark_run_id: string;
+            /** Config Sha256 */
+            config_sha256: string;
+            /** Configuration Version */
+            configuration_version: string;
+            /** Corpus Sha256 */
+            corpus_sha256: string;
+            /**
+             * Execution Source
+             * @default REPLAY
+             * @constant
+             */
+            execution_source: "REPLAY";
+            /**
+             * Frozen At
+             * Format: date-time
+             */
+            frozen_at: string;
+            gate: components["schemas"]["ExperienceBenchmarkGate"];
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Selector Version */
+            selector_version: string;
+            /** Source Count */
+            source_count: number;
+            /** Source Counts */
+            source_counts: {
+                [key: string]: number;
+            };
+            /** Source Sha256 */
+            source_sha256: string;
+            /** Suite Version */
+            suite_version: string;
+            /** Task Count */
+            task_count: number;
+            /** Tasks */
+            tasks: components["schemas"]["ExperienceBenchmarkTaskResult"][];
+            /** Trace Count */
+            trace_count: number;
+            /** Trace Sha256 */
+            trace_sha256: string;
+            /** Treatments */
+            treatments: components["schemas"]["ExperienceTreatmentSummary"][];
+        };
+        /** ExperienceBenchmarkTaskResult */
+        ExperienceBenchmarkTaskResult: {
+            /** Family */
+            family: string;
+            /** Negative Transfer Treatments */
+            negative_transfer_treatments: components["schemas"]["ExperienceTreatment"][];
+            /** Quality By Treatment */
+            quality_by_treatment: {
+                [key: string]: number;
+            };
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Success By Treatment */
+            success_by_treatment: {
+                [key: string]: boolean;
+            };
+            /** Task Id */
+            task_id: string;
+            task_type: components["schemas"]["TaskType"];
+            /** Title */
+            title: string;
+        };
         /** ExperienceDetail */
         ExperienceDetail: {
             /** Embedding Input Digest */
@@ -2199,6 +2377,51 @@ export interface components {
          * @enum {string}
          */
         ExperienceSourceKind: "RUN" | "CANDIDATE";
+        /**
+         * ExperienceTreatment
+         * @enum {string}
+         */
+        ExperienceTreatment: "FRESH" | "SUCCESS_ONLY" | "SUCCESS_FAILURE" | "REPLAY";
+        /** ExperienceTreatmentSummary */
+        ExperienceTreatmentSummary: {
+            /** Experience Null Rate */
+            experience_null_rate: number;
+            /** Experience Rejection Rate */
+            experience_rejection_rate: number;
+            /** Experience Use Rate */
+            experience_use_rate: number;
+            /** False Accepts */
+            false_accepts: number;
+            /** Mean Compute */
+            mean_compute: number;
+            /** Mean Latency Ms */
+            mean_latency_ms: number;
+            /** Mean Quality */
+            mean_quality: number;
+            /** Mean Tool Calls */
+            mean_tool_calls: number;
+            /** Mean Turns */
+            mean_turns: number;
+            /** Negative Transfers */
+            negative_transfers: number;
+            /** Quality Uplift */
+            quality_uplift: number;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Success Rate */
+            success_rate: number;
+            /** Successful Tasks */
+            successful_tasks: number;
+            /** Task Count */
+            task_count: number;
+            /** Tool Call Reduction */
+            tool_call_reduction: number;
+            treatment: components["schemas"]["ExperienceTreatment"];
+        };
         /**
          * ExperienceTrust
          * @enum {string}
@@ -3441,9 +3664,13 @@ export interface components {
              */
             max_parallel: number;
             mode: components["schemas"]["SearchMode"];
+            /** Negative Guidance Match Ids */
+            negative_guidance_match_ids?: string[];
             /** Parent Node Id */
             parent_node_id: string;
             per_branch_budget: components["schemas"]["SearchBudgetEnvelope"];
+            /** Replay Seed Match Ids */
+            replay_seed_match_ids?: string[];
             total_budget: components["schemas"]["SearchBudgetEnvelope"];
         };
         /**
@@ -3572,6 +3799,11 @@ export interface components {
          * @enum {string}
          */
         SearchStopReason: "ACCEPTED" | "COMPLETED" | "BUDGET_EXHAUSTED" | "LOW_EXPECTED_GAIN" | "LOW_DIVERSITY" | "VERIFIER_UNCERTAIN" | "PROVIDER_UNAVAILABLE" | "OPERATOR_CANCELLED" | "CANDIDATE_FAILURE";
+        /**
+         * SeedValidationStatus
+         * @enum {string}
+         */
+        SeedValidationStatus: "PENDING" | "ELIGIBLE" | "REJECTED" | "USED";
         /** SessionRef */
         SessionRef: {
             /** Native Session Id */
@@ -3906,6 +4138,44 @@ export interface components {
             status: "REQUESTED" | "STARTED" | "COMPLETED" | "FAILED";
             /** Tool Call Id */
             tool_call_id: string;
+        };
+        /** TrajectorySeed */
+        TrajectorySeed: {
+            /** Assumptions */
+            assumptions?: string[];
+            /** Candidate Id */
+            candidate_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Experience Id */
+            experience_id: string;
+            /** Match Id */
+            match_id: string;
+            /** Procedural Guidance */
+            procedural_guidance?: string[];
+            /** Rejection Reasons */
+            rejection_reasons?: string[];
+            /** Required Revalidations */
+            required_revalidations?: string[];
+            /** Revalidated At */
+            revalidated_at?: string | null;
+            /**
+             * Schema Version
+             * @default 2.0
+             * @constant
+             */
+            schema_version: "2.0";
+            /** Search Id */
+            search_id: string;
+            /** Seed Id */
+            seed_id: string;
+            /** Segment Ids */
+            segment_ids: string[];
+            /** @default PENDING */
+            validation_status: components["schemas"]["SeedValidationStatus"];
         };
         /** TrajectorySegment */
         TrajectorySegment: {
@@ -5318,6 +5588,59 @@ export interface operations {
             };
         };
     };
+    get_experience_benchmark_api_v2_benchmarks_experience_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperienceBenchmarkSummary"];
+                };
+            };
+        };
+    };
+    run_experience_benchmark_api_v2_benchmarks_experience_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BenchmarkRunCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperienceBenchmarkSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_search_benchmark_api_v2_benchmarks_search_get: {
         parameters: {
             query?: never;
@@ -6116,6 +6439,37 @@ export interface operations {
             };
         };
     };
+    list_replay_seeds_api_v2_search__search_id__replay_seeds_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                search_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TrajectorySeed"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_search_scores_api_v2_search__search_id__scores_get: {
         parameters: {
             query?: never;
@@ -6134,6 +6488,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CandidateScore"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_selected_experience_matches_api_v2_tasks__task_id__experience_matches_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExperienceMatch"][];
                 };
             };
             /** @description Validation Error */

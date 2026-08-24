@@ -15,6 +15,7 @@ and release reviewers. Start with the path that matches what you want to do.
 | Operate or recover runs | [P0 runtime runbook](P0_RUNBOOK.md) | [P2 loops](P2_RUNBOOK.md), [P3 replay](P3_RUNBOOK.md) |
 | Operate P5 dynamic workflows | [P5 runbook](P5_RUNBOOK.md) | [P5 decisions](P5_DECISIONS.md), [acceptance](P5_ACCEPTANCE_REPORT.md) |
 | Compare P6 candidates | [P6 runbook](P6_RUNBOOK.md) | [Developer showcase](P6_SHOWCASE.md), [decisions](P6_DECISIONS.md), [acceptance](P6_ACCEPTANCE_REPORT.md) |
+| Reuse verified experience | [P7 runbook](P7_RUNBOOK.md) | [Developer showcase](P7_SHOWCASE.md), [decisions](P7_DECISIONS.md), [acceptance](P7_ACCEPTANCE_REPORT.md) |
 | Reproduce research | [Frozen v0.1 baseline](V0_1_BASELINE.md) | [ACR-ARCH](ACR_ARCH_V01.md), [release audit](V0_1_RELEASE_AUDIT.md) |
 | Review security | [Security policy](../SECURITY.md) | [Trust-boundary diagram](assets/trust-boundary.svg) |
 | Plan the next release | [v0.2 delivery plan](V0_2_PLAN.md) | [v0.2 SDD](sdd/Accretion_SDD_v0.2.md) |
@@ -34,6 +35,8 @@ and release reviewers. Start with the path that matches what you want to do.
 | [P5 lifecycle](assets/p5-dynamic-workflow.svg) | Proposal, deterministic validation, fallback, activation, and safe replan | [P5 runbook](P5_RUNBOOK.md) |
 | [P6 search lifecycle](assets/p6-search-lifecycle.svg) | Shared budgets, isolated candidates, fail-closed selection, and crash-safe promotion | [P6 runbook](P6_RUNBOOK.md) |
 | [P6 quality/compute curve](assets/p6-quality-compute.svg) | Frozen N=1/2/4 replay result and verified acceptance | [P6 acceptance report](P6_ACCEPTANCE_REPORT.md) |
+| [P7 experience lifecycle](assets/p7-experience-replay.svg) | Materialization, compatibility, frozen selection, fresh-control replay, and revalidation | [P7 runbook](P7_RUNBOOK.md) |
+| [P7 transfer gate](assets/p7-transfer-gate.svg) | Frozen uplift, tool use, stale rejection, false accepts, and negative transfer | [P7 acceptance report](P7_ACCEPTANCE_REPORT.md) |
 
 Every SVG has a title and long description for assistive technology. Technical
 diagrams are repository-native so changes can be reviewed as text. The generated

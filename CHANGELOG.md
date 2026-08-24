@@ -30,6 +30,23 @@ All notable changes to Accretion are documented in this file.
   API endpoints, and an operator research page.
 - Added the P6 runbook, developer showcase, acceptance report, decision record,
   and accessible repository-native lifecycle and quality/compute diagrams.
+- Added opt-in P7 immutable experience contracts, controlled procedural
+  segments, deterministic 384-dimensional embeddings, exact pgvector retrieval,
+  compatibility/transfer-risk evidence, retraction, negative knowledge,
+  operator-frozen `ContextBundle` v2 selection, and additive APIs
+  ([PR #41](https://github.com/santapong/Accretion/pull/41),
+  [PR #42](https://github.com/santapong/Accretion/pull/42)).
+- Added P7 `REPLAY_BRANCH` execution with one fresh control, one new isolated
+  candidate per selected positive seed, revalidated negative avoidance guidance,
+  durable seed/start/rejection evidence, repeated launch/selection/promotion/
+  recovery checks, and fail-closed stale-seed pruning without substitution
+  ([PR #43](https://github.com/santapong/Accretion/pull/43)).
+- Added P7 planning, provenance, replay-lineage, and benchmark operator views;
+  runbook, showcase, acceptance report, and accessible lifecycle/gate diagrams.
+- Added a frozen 20-task, 50-source, 80-trace P7 benchmark with four treatments,
+  false-accept and negative-transfer accounting, stale rejection, quality/compute
+  uplift, use/rejection/null rates, negative cases, replay-only API endpoints,
+  and exact fixture fingerprints.
 
 ### Changed
 
@@ -39,8 +56,9 @@ All notable changes to Accretion are documented in this file.
   React Hooks correctness rules without duplicating query-backed state.
 - Updated the operator shell and project documentation to describe the completed
   P5/P6 `develop` scope while retaining `v0.1.0` as the current stable release.
-- Reserved `REPLAY_BRANCH` as a fail-closed contract value until P7 implements
-  verified experience compatibility, applicability, and negative-transfer rules.
+- Activated `REPLAY_BRANCH` only when P7 is independently enabled and selected
+  experience passes current compatibility and applicability checks; P6-only
+  deployments retain the original fail-closed reservation behavior.
 
 ### Security
 
@@ -50,6 +68,10 @@ All notable changes to Accretion are documented in this file.
 - Required independently verified unique selection before promotion, persisted
   cancellation before interruption, re-evaluated policy before patch application,
   and recorded parent-before/after digests for recovery.
+- Restricted P7 evidence to redacted deterministic procedure, excluded patches,
+  transcripts, credentials, native sessions, capability arguments/results,
+  approvals, permissions, and side-effect state, and required compatibility
+  revalidation before replay can launch, win selection, promote, or recover.
 
 ## [0.1.0] - 2026-08-22
 

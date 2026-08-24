@@ -1,0 +1,24 @@
+{
+  "tasks": [
+    {"task_id":"p7-001","task_type":"IMPLEMENT","family":"api","title":"Add a deterministic health endpoint"},
+    {"task_id":"p7-002","task_type":"IMPLEMENT","family":"persistence","title":"Persist an immutable audit field"},
+    {"task_id":"p7-003","task_type":"IMPLEMENT","family":"runtime","title":"Add bounded runtime cancellation"},
+    {"task_id":"p7-004","task_type":"IMPLEMENT","family":"ui","title":"Render candidate provenance"},
+    {"task_id":"p7-005","task_type":"IMPLEMENT","family":"verification","title":"Add an output contract check"},
+    {"task_id":"p7-006","task_type":"REVIEW","family":"security","title":"Review a capability authority boundary"},
+    {"task_id":"p7-007","task_type":"REVIEW","family":"migration","title":"Review a reversible schema migration"},
+    {"task_id":"p7-008","task_type":"REVIEW","family":"recovery","title":"Review restart reconciliation"},
+    {"task_id":"p7-009","task_type":"REVIEW","family":"api","title":"Review additive API compatibility"},
+    {"task_id":"p7-010","task_type":"REVIEW","family":"redaction","title":"Review persisted evidence redaction"},
+    {"task_id":"p7-011","task_type":"ANALYSIS","family":"routing","title":"Analyze runtime routing evidence"},
+    {"task_id":"p7-012","task_type":"ANALYSIS","family":"budget","title":"Analyze shared budget accounting"},
+    {"task_id":"p7-013","task_type":"ANALYSIS","family":"quality","title":"Analyze verified candidate quality"},
+    {"task_id":"p7-014","task_type":"ANALYSIS","family":"risk","title":"Analyze false-accept risk"},
+    {"task_id":"p7-015","task_type":"ANALYSIS","family":"transfer","title":"Analyze experience transfer validity"},
+    {"task_id":"p7-016","task_type":"RESEARCH","family":"retrieval","title":"Compare deterministic retrieval strategies"},
+    {"task_id":"p7-017","task_type":"RESEARCH","family":"replay","title":"Measure procedural replay uplift"},
+    {"task_id":"p7-018","task_type":"RESEARCH","family":"negative","title":"Measure negative knowledge value"},
+    {"task_id":"p7-019","task_type":"RESEARCH","family":"freshness","title":"Measure stale evidence rejection"},
+    {"task_id":"p7-020","task_type":"RESEARCH","family":"transfer","title":"Measure a negative transfer case"}
+  ]
+}

@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1500 680" role="img" aria-labelledby="title description">
+  <title id="title">P7 verified experience retrieval and replay lifecycle</title>
+  <desc id="description">A terminal verified run is explicitly materialized into redacted procedural segments and a deterministic vector. Repository-scoped retrieval combines semantic, environment, version, and freshness evidence. The operator freezes accepted matches in ContextBundle version 2. Replay search retains a fresh control and gives each positive match a new isolated candidate, with compatibility revalidated before launch, selection, promotion, and recovery. Invalid seeds are pruned while the fresh control continues.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#0a120d"/><stop offset="1" stop-color="#172119"/></linearGradient>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L0,6 L9,3 z" fill="#75db91"/></marker>
+    <style>.ey{font:700 18px 'DM Mono',monospace;letter-spacing:3px;fill:#75db91}.h{font:700 28px Inter,sans-serif;fill:#eef7f0}.t{font:16px Inter,sans-serif;fill:#a7b6aa}.s{font:13px 'DM Mono',monospace;fill:#819087}.box{fill:#101813;stroke:#385043;stroke-width:2}.gold{fill:#1b180e;stroke:#806c3d;stroke-width:2}.line{fill:none;stroke:#75db91;stroke-width:3;marker-end:url(#arrow)}.guard{fill:#121a14;stroke:#9a8248;stroke-width:2;stroke-dasharray:8 7}</style>
+  </defs>
+  <rect width="1500" height="680" rx="30" fill="url(#bg)"/>
+  <text x="58" y="62" class="ey">P7 · VERIFIED EXPERIENCE</text>
+  <text x="58" y="105" class="h">Reuse procedure, never authority</text>
+  <text x="58" y="137" class="t">Every replay is a new candidate under current repository, policy, budget, capability, and verifier state.</text>
+  <rect x="58" y="190" width="238" height="160" rx="20" class="box"/>
+  <text x="82" y="228" class="ey">01 · SOURCE</text><text x="82" y="267" class="h">Terminal evidence</text>
+  <text x="82" y="300" class="t">verified success · HIGH</text><text x="82" y="327" class="t">complete failure · MEDIUM</text>
+  <rect x="348" y="190" width="255" height="160" rx="20" class="box"/>
+  <text x="372" y="228" class="ey">02 · MATERIALIZE</text><text x="372" y="267" class="h">Safe representation</text>
+  <text x="372" y="300" class="t">controlled segments only</text><text x="372" y="327" class="t">deterministic VECTOR(384)</text>
+  <rect x="655" y="190" width="250" height="160" rx="20" class="box"/>
+  <text x="679" y="228" class="ey">03 · RETRIEVE</text><text x="679" y="267" class="h">Compatibility</text>
+  <text x="679" y="300" class="t">semantic · environment</text><text x="679" y="327" class="t">version · freshness · risk</text>
+  <rect x="957" y="190" width="238" height="160" rx="20" class="gold"/>
+  <text x="981" y="228" class="ey">04 · OPERATOR</text><text x="981" y="267" class="h">Freeze context v2</text>
+  <text x="981" y="300" class="t">select ≤ 3 accepted matches</text><text x="981" y="327" class="t">before workflow proposal</text>
+  <rect x="1247" y="190" width="195" height="160" rx="20" class="box"/>
+  <text x="1271" y="228" class="ey">05 · PLAN</text><text x="1271" y="267" class="h">Replay search</text>
+  <text x="1271" y="300" class="t">fresh control</text><text x="1271" y="327" class="t">+ 1–3 positive seeds</text>
+  <path d="M296 270 H338" class="line"/><path d="M603 270 H645" class="line"/><path d="M905 270 H947" class="line"/><path d="M1195 270 H1237" class="line"/>
+  <rect x="150" y="430" width="1200" height="174" rx="22" class="guard"/>
+  <text x="184" y="470" class="ey">REVALIDATION ENVELOPE</text>
+  <circle cx="326" cy="529" r="28" fill="#16251b" stroke="#75db91" stroke-width="2"/><text x="310" y="536" class="h">P</text><text x="277" y="579" class="s">PLAN</text>
+  <circle cx="594" cy="529" r="28" fill="#16251b" stroke="#75db91" stroke-width="2"/><text x="578" y="536" class="h">L</text><text x="550" y="579" class="s">LAUNCH</text>
+  <circle cx="862" cy="529" r="28" fill="#16251b" stroke="#75db91" stroke-width="2"/><text x="846" y="536" class="h">S</text><text x="816" y="579" class="s">SELECT</text>
+  <circle cx="1130" cy="529" r="28" fill="#16251b" stroke="#75db91" stroke-width="2"/><text x="1114" y="536" class="h">P</text><text x="1080" y="579" class="s">PROMOTE</text>
+  <path d="M354 529 H556" class="line"/><path d="M622 529 H824" class="line"/><path d="M890 529 H1092" class="line"/>
+  <text x="750" y="644" text-anchor="middle" class="t">Invalid seed → durable rejection + replay branch pruned · fresh control continues · no substitution</text>
+</svg>
