@@ -6,6 +6,9 @@ All notable changes to Accretion are documented in this file.
 
 ### Added
 
+- Added a newcomer-focused project overview, a complete operator frontend guide,
+  and accessible repository-native SVGs for release orientation and the ten-route
+  UI/data-flow map.
 - Added a developer documentation hub, accessible architecture and lifecycle
   diagrams, and a deterministic public-API showcase using the fake runtime.
 - Added an actionable v0.2 P5–P7 delivery plan tied to the normative v0.2 SDD.
@@ -50,6 +53,9 @@ All notable changes to Accretion are documented in this file.
 
 ### Changed
 
+- Reworked the project README and active documentation hub, developer guide,
+  showcases, and P0–P7 runbooks to explain stable versus `develop` scope, the
+  completed frontend, and the remaining v0.2 release audit consistently.
 - Updated the Python, frontend, and GitHub Actions toolchains to their current
   compatible releases.
 - Reworked UI project defaults and event-stream state to comply with the current

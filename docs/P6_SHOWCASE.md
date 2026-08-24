@@ -29,6 +29,9 @@ The exact API plan body and inspection endpoints are in the
 [P6 runbook](P6_RUNBOOK.md). Start with `FAKE`; live provider execution is a
 separate, explicit opt-in.
 
+Use the [frontend guide](FRONTEND_GUIDE.md) to orient the Planning Review, Live
+Run, and P6 Search pages before walking through the scenario.
+
 ## Read the result
 
 The useful question is not just “which candidate won?” Verify all four layers:

@@ -3,6 +3,9 @@
 Status: implementation evidence prepared on 2026-08-24. This report closes P7;
 it does not by itself authorize a v0.2 release tag or merge to `main`.
 
+The [frontend guide](FRONTEND_GUIDE.md) provides the route-level map for the UI
+evidence summarized by `V02-P7-007`.
+
 <img src="assets/p7-experience-replay.svg" alt="P7 verified experience materialization, retrieval, operator selection, replay execution, and repeated compatibility revalidation" width="100%" />
 
 ## Acceptance mapping

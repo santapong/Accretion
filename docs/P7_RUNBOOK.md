@@ -16,6 +16,10 @@ P7 never reuses a patch, transcript, runtime/native session, credentials,
 capability arguments or results, permissions, approvals, verifier acceptance,
 side-effect identifiers, or mutable workspace state.
 
+The [frontend guide](FRONTEND_GUIDE.md) maps retrieval, frozen selection,
+materialization, fresh/replay treatment labels, experience lineage, repeated
+revalidation, and the benchmark gate to their implemented operator routes.
+
 ## Enable P7
 
 All three deployment flags default off and must be enabled together:

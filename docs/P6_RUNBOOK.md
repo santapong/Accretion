@@ -15,6 +15,10 @@ P6 implements `BEST_OF_N`, `HYPOTHESIS_BRANCH`, `CROSS_PROVIDER`, and
 `REPLAY_BRANCH_REQUIRES_P7`; the independently gated P7 service activates it only
 for explicitly selected, currently compatible verified experience.
 
+The [frontend guide](FRONTEND_GUIDE.md) maps search-plan inputs and the complete
+candidate lineage, score, spend, selection, and promotion views. These frontend
+surfaces are implemented and gate-passing on `develop`.
+
 ## Enable P6
 
 Both deployment gates default off. P6 also depends on P5 dynamic workflows:

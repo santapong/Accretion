@@ -3,6 +3,10 @@
 Status: implementation evidence prepared on 2026-08-24. P7 experience retrieval
 and replay are not part of this report.
 
+> This is the frozen P6 milestone report. Current `develop` also includes the P7
+> frontend surfaces documented in the [frontend guide](FRONTEND_GUIDE.md); the
+> historical counts here are intentionally unchanged.
+
 <img src="assets/p6-search-lifecycle.svg" alt="P6 bounded candidate-search authority, selection, promotion, and recovery lifecycle" width="100%" />
 
 ## Acceptance mapping

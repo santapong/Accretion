@@ -6,6 +6,9 @@ new run still starts from the current repository snapshot, receives current
 permissions, executes in a fresh session/worktree, and must pass current
 verifiers.
 
+Use the [frontend guide](FRONTEND_GUIDE.md) to orient the Planning Review, Live
+Run, and P7 Experience pages before walking through the scenario.
+
 <img src="assets/p7-experience-replay.svg" alt="Verified source evidence becoming operator-selected, repeatedly revalidated procedural guidance for one isolated replay candidate beside a fresh control" width="100%" />
 
 ## Scenario

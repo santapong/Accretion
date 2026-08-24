@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title description">
+  <title id="title">Accretion operator frontend route and data-flow map</title>
+  <desc id="description">The React operator frontend has ten implemented routes. Dashboard and New task start work. Live run is the central surface for graph state, controls, approvals, verifiers, candidate search, experience replay, and normalized events. Runtimes, History, Approvals, and Capabilities provide operational governance. ACR-ARCH, P6 Search, and P7 Experience reproduce research evidence. All screens read authoritative FastAPI snapshots through React Query, while live runs add resumable server-sent events.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07100b"/><stop offset=".6" stop-color="#0b1710"/><stop offset="1" stop-color="#17130d"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="8" stdDeviation="11" flood-color="#000" flood-opacity=".34"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#75db91"/></marker>
+    <style>
+      text{font-family:Arial,Helvetica,sans-serif}.eyebrow{fill:#75db91;font-size:17px;font-weight:700;letter-spacing:3px}.heading{fill:#f4f8f5;font-size:38px;font-weight:700}.subtitle{fill:#a9b9ae;font-size:19px}.group{fill:#75db91;font-size:14px;font-weight:800;letter-spacing:1.5px}.route{fill:#f5f8f6;font-size:18px;font-weight:700}.path{fill:#8fa097;font-family:monospace;font-size:13px}.copy{fill:#bcc9c1;font-size:14px}.center-title{fill:#f7faf8;font-size:24px;font-weight:700;text-anchor:middle}.center-copy{fill:#c2cec6;font-size:15px;text-anchor:middle}.data-title{fill:#f7faf8;font-size:18px;font-weight:700}.data-copy{fill:#aebcb3;font-size:14px}.badge{fill:#07100b;font-size:13px;font-weight:800;text-anchor:middle;dominant-baseline:central}
+    </style>
+  </defs>
+  <rect width="1600" height="900" rx="32" fill="url(#bg)"/>
+  <text x="62" y="64" class="eyebrow">OPERATOR FRONTEND</text>
+  <text x="62" y="114" class="heading">Ten routes, one authoritative operational view</text>
+  <text x="62" y="149" class="subtitle">React renders durable backend evidence; it does not invent execution state or acceptance.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="62" y="194" width="380" height="620" rx="22" fill="#0e1d14" stroke="#315d40" stroke-width="2"/>
+    <text x="88" y="232" class="group">START AND PLAN</text>
+    <rect x="86" y="252" width="332" height="72" rx="14" fill="#14271b"/><text x="108" y="280" class="route">Dashboard</text><text x="108" y="304" class="path">/</text>
+    <rect x="86" y="336" width="332" height="72" rx="14" fill="#14271b"/><text x="108" y="364" class="route">New task + planning</text><text x="108" y="388" class="path">/tasks/new</text>
+    <text x="88" y="444" class="group">OPERATE AND GOVERN</text>
+    <rect x="86" y="464" width="158" height="72" rx="14" fill="#14271b"/><text x="104" y="492" class="route">Runtimes</text><text x="104" y="516" class="path">/runtimes</text>
+    <rect x="260" y="464" width="158" height="72" rx="14" fill="#14271b"/><text x="278" y="492" class="route">History</text><text x="278" y="516" class="path">/history</text>
+    <rect x="86" y="548" width="158" height="72" rx="14" fill="#14271b"/><text x="104" y="576" class="route">Approvals</text><text x="104" y="600" class="path">/approvals</text>
+    <rect x="260" y="548" width="158" height="72" rx="14" fill="#14271b"/><text x="278" y="576" class="route">Capabilities</text><text x="278" y="600" class="path">/capabilities</text>
+    <text x="88" y="656" class="group">REPRODUCE RESEARCH</text>
+    <rect x="86" y="676" width="101" height="104" rx="14" fill="#261c10" stroke="#735328"/><text x="100" y="708" class="route">ACR-</text><text x="100" y="731" class="route">ARCH</text><text x="100" y="758" class="path">/benchmarks/</text><text x="100" y="776" class="path">acr-arch</text>
+    <rect x="201" y="676" width="101" height="104" rx="14" fill="#261c10" stroke="#735328"/><text x="215" y="708" class="route">P6</text><text x="215" y="731" class="route">Search</text><text x="215" y="758" class="path">/benchmarks/</text><text x="215" y="776" class="path">search</text>
+    <rect x="316" y="676" width="102" height="104" rx="14" fill="#261c10" stroke="#735328"/><text x="330" y="708" class="route">P7</text><text x="330" y="731" class="route">Experience</text><text x="330" y="758" class="path">/benchmarks/</text><text x="330" y="776" class="path">experience</text>
+  </g>
+
+  <path d="M442 500H519" stroke="#75db91" stroke-width="4" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <rect x="520" y="194" width="620" height="620" rx="24" fill="#102218" stroke="#4c9b65" stroke-width="2.5"/>
+    <rect x="726" y="220" width="208" height="30" rx="15" fill="#75db91"/><text x="830" y="235" class="badge">CENTRAL RUN SURFACE</text>
+    <text x="830" y="294" class="center-title">Live run</text>
+    <text x="830" y="320" class="path" text-anchor="middle">/runs/:runId</text>
+
+    <rect x="558" y="358" width="250" height="100" rx="16" fill="#0b1810" stroke="#326b46"/><text x="683" y="390" class="center-title" font-size="18">Topology + state</text><text x="683" y="420" class="center-copy">React Flow graph · nodes</text><text x="683" y="442" class="center-copy">checkpoints · revisions</text>
+    <rect x="852" y="358" width="250" height="100" rx="16" fill="#0b1810" stroke="#326b46"/><text x="977" y="390" class="center-title" font-size="18">Run controls</text><text x="977" y="420" class="center-copy">Pause · resume · cancel</text><text x="977" y="442" class="center-copy">approval decisions</text>
+    <rect x="558" y="482" width="250" height="100" rx="16" fill="#0b1810" stroke="#326b46"/><text x="683" y="514" class="center-title" font-size="18">Acceptance</text><text x="683" y="544" class="center-copy">Verifier findings · policy</text><text x="683" y="566" class="center-copy">artifacts · terminal state</text>
+    <rect x="852" y="482" width="250" height="100" rx="16" fill="#0b1810" stroke="#326b46"/><text x="977" y="514" class="center-title" font-size="18">Normalized trace</text><text x="977" y="544" class="center-copy">Snapshot first · ordered SSE</text><text x="977" y="566" class="center-copy">reconnect and gap recovery</text>
+    <rect x="558" y="606" width="250" height="100" rx="16" fill="#211a10" stroke="#735328"/><text x="683" y="638" class="center-title" font-size="18">P6 candidate tree</text><text x="683" y="668" class="center-copy">Lineage · scores · spend</text><text x="683" y="690" class="center-copy">selection · promotion</text>
+    <rect x="852" y="606" width="250" height="100" rx="16" fill="#211a10" stroke="#735328"/><text x="977" y="638" class="center-title" font-size="18">P7 experience</text><text x="977" y="668" class="center-copy">Materialize · provenance</text><text x="977" y="690" class="center-copy">replay seeds · revalidation</text>
+    <text x="830" y="766" class="center-copy">Every displayed decision links back to persisted API evidence.</text>
+  </g>
+
+  <path d="M1140 500H1217" stroke="#75db91" stroke-width="4" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <rect x="1218" y="194" width="320" height="620" rx="22" fill="#0f1912" stroke="#735328" stroke-width="2"/>
+    <text x="1244" y="232" class="group">AUTHORITATIVE DATA</text>
+    <rect x="1242" y="260" width="272" height="118" rx="16" fill="#14271b" stroke="#315d40"/><text x="1264" y="292" class="data-title">FastAPI snapshots</text><text x="1264" y="321" class="data-copy">Typed REST responses</text><text x="1264" y="345" class="data-copy">Generated TypeScript schema</text>
+    <rect x="1242" y="400" width="272" height="118" rx="16" fill="#14271b" stroke="#315d40"/><text x="1264" y="432" class="data-title">React Query</text><text x="1264" y="461" class="data-copy">Cache by resource identity</text><text x="1264" y="485" class="data-copy">Polling for active projections</text>
+    <rect x="1242" y="540" width="272" height="118" rx="16" fill="#14271b" stroke="#315d40"/><text x="1264" y="572" class="data-title">Resumable SSE</text><text x="1264" y="601" class="data-copy">Monotonic event sequence</text><text x="1264" y="625" class="data-copy">Snapshot recovery after gaps</text>
+    <rect x="1242" y="680" width="272" height="100" rx="16" fill="#261c10" stroke="#735328"/><text x="1264" y="712" class="data-title">Safety invariant</text><text x="1264" y="741" class="data-copy">UI requests actions;</text><text x="1264" y="765" class="data-copy">backend owns authority.</text>
+  </g>
+  <text x="800" y="858" class="subtitle" text-anchor="middle">Implemented on develop · 21 component tests · ESLint + TypeScript + production build passing</text>
+</svg>

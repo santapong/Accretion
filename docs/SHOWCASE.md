@@ -1,8 +1,10 @@
 # Accretion showcase
 
-This walkthrough demonstrates the v0.1 product without consuming a signed-in
-provider session. It uses the deterministic fake runtime and the same public API
-used by the operator interface.
+This walkthrough demonstrates the stable v0.1 control-plane path without
+consuming a signed-in provider session. On `develop`, the same path opens in the
+completed P0–P7 operator frontend; P5–P7 remain explicit opt-ins and do not
+change this deterministic example. It uses the fake runtime and the same public
+API used by the operator interface.
 
 <img src="assets/accretion-showcase.png" alt="Illustrative dark developer workspace with a central workflow graph, normalized event trace, governed runtime streams, verification gates, and isolated Git workspaces" width="100%" />
 
@@ -79,6 +81,13 @@ The dashboard exposes:
 - the snapshot-first, resumable normalized event stream;
 - verifier findings and acceptance status;
 - checkpoint, approval, capability, and audit provenance when present.
+
+<img src="assets/operator-ui-map.svg" alt="Operator UI route map showing where a developer creates a task, opens a live run, inspects governance, and reproduces the ACR-ARCH, P6, and P7 research views" width="100%" />
+
+The [frontend guide](FRONTEND_GUIDE.md) lists all ten implemented routes. The
+most useful path for this showcase is **Dashboard → New task → Live run →
+History**; the three benchmark pages reproduce frozen evidence independently of
+this example run.
 
 The equivalent read-only API views are:
 
