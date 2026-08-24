@@ -28,6 +28,9 @@ class Settings(BaseSettings):
     capability_policy_id: str = "local-capability-policy"
     granted_permissions: list[str] = Field(default_factory=list)
     credential_env_map: dict[str, str] = Field(default_factory=dict)
+    # Base64 32-byte master key for the token broker's envelope encryption. Kept
+    # outside PostgreSQL (SDD 13.3); empty means the broker cannot store credentials.
+    token_encryption_key: str = ""
     auth_mode: Literal["LOCAL_PRINCIPAL", "OIDC"] = "LOCAL_PRINCIPAL"
     oidc_issuer: str = ""
     oidc_client_id: str = ""

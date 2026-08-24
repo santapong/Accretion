@@ -39,6 +39,7 @@ from accretion.contracts import (
     LoopStopReason,
     MetaPlugin,
     MetaSkill,
+    OAuthTransaction,
     Principal,
     Project,
     PromptContract,
@@ -56,6 +57,7 @@ from accretion.contracts import (
     TaskPlanning,
     TaskProfile,
     TemplateStatus,
+    TokenHandle,
     VerificationResult,
     WorkflowTemplate,
     WorkspaceEntity,
@@ -112,6 +114,7 @@ from accretion.persistence.models import (
     GraphValidationResultRow,
     LoopExecutionRow,
     LoopIterationRow,
+    OAuthTransactionRow,
     PluginRow,
     PrincipalRow,
     ProjectFeatureSettingsRow,
@@ -128,11 +131,13 @@ from accretion.persistence.models import (
     SearchCandidateRow,
     SearchPlanRow,
     SearchPromotionRow,
+    SecretRecordRow,
     SkillRow,
     StrategyDecisionRow,
     StrategyOverrideRow,
     TaskProfileRow,
     TaskRow,
+    TokenHandleRow,
     TrajectoryReplaySeedRow,
     TrajectorySegmentRow,
     VerificationRow,
@@ -142,6 +147,7 @@ from accretion.persistence.models import (
     WorkspaceMembershipRow,
     WorkspaceRow,
 )
+from accretion.secrets_store import SecretRecord
 
 _TERMINAL_LOOP_EXECUTION_STATUSES = {
     LoopExecutionStatus.SUCCEEDED,
@@ -347,6 +353,15 @@ class StateStore(Protocol):
         self, transaction: AuthTransaction
     ) -> AuthTransaction: ...
     async def consume_auth_transaction(self, state: str) -> AuthTransaction | None: ...
+    async def create_oauth_transaction(
+        self, transaction: OAuthTransaction
+    ) -> OAuthTransaction: ...
+    async def consume_oauth_transaction(self, state: str) -> OAuthTransaction | None: ...
+    async def upsert_token_handle(self, handle: TokenHandle) -> TokenHandle: ...
+    async def get_token_handle(self, token_handle_id: str) -> TokenHandle | None: ...
+    async def upsert_secret_record(self, record: SecretRecord) -> SecretRecord: ...
+    async def get_secret_record(self, secret_store_key: str) -> SecretRecord | None: ...
+    async def delete_secret_record(self, secret_store_key: str) -> None: ...
     async def upsert_connector_definition(
         self, connector: ConnectorDefinition
     ) -> ConnectorDefinition: ...
@@ -504,6 +519,9 @@ class MemoryStore:
         self.workspace_memberships: dict[tuple[str, str], WorkspaceMembership] = {}
         self.auth_sessions: dict[str, AuthSession] = {}
         self.auth_transactions: dict[str, AuthTransaction] = {}
+        self.oauth_transactions: dict[str, OAuthTransaction] = {}
+        self.token_handles: dict[str, TokenHandle] = {}
+        self.secret_records: dict[str, SecretRecord] = {}
         self.connector_definitions: dict[str, ConnectorDefinition] = {}
         self.connections: dict[str, Connection] = {}
         self.capability_bindings: dict[str, CapabilityBinding] = {}
@@ -1415,6 +1433,35 @@ class MemoryStore:
         if transaction is None or transaction.expires_at <= datetime.now(UTC):
             return None
         return transaction
+
+    async def create_oauth_transaction(
+        self, transaction: OAuthTransaction
+    ) -> OAuthTransaction:
+        self.oauth_transactions[transaction.state] = transaction
+        return transaction
+
+    async def consume_oauth_transaction(self, state: str) -> OAuthTransaction | None:
+        transaction = self.oauth_transactions.pop(state, None)
+        if transaction is None or transaction.expires_at <= datetime.now(UTC):
+            return None
+        return transaction
+
+    async def upsert_token_handle(self, handle: TokenHandle) -> TokenHandle:
+        self.token_handles[handle.token_handle_id] = handle
+        return handle
+
+    async def get_token_handle(self, token_handle_id: str) -> TokenHandle | None:
+        return self.token_handles.get(token_handle_id)
+
+    async def upsert_secret_record(self, record: SecretRecord) -> SecretRecord:
+        self.secret_records[record.secret_store_key] = record
+        return record
+
+    async def get_secret_record(self, secret_store_key: str) -> SecretRecord | None:
+        return self.secret_records.get(secret_store_key)
+
+    async def delete_secret_record(self, secret_store_key: str) -> None:
+        self.secret_records.pop(secret_store_key, None)
 
     async def upsert_connector_definition(
         self, connector: ConnectorDefinition
@@ -3418,6 +3465,133 @@ class PostgresStore:
             if transaction.expires_at <= datetime.now(UTC):
                 return None
         return transaction
+
+    async def create_oauth_transaction(
+        self, transaction: OAuthTransaction
+    ) -> OAuthTransaction:
+        async with self.sessions.begin() as session:
+            session.add(
+                OAuthTransactionRow(
+                    id=new_id("oauth_transaction"),
+                    state=transaction.state,
+                    connector_id=transaction.connector_id,
+                    principal_id=transaction.principal_id,
+                    expires_at=transaction.expires_at,
+                    definition=transaction.model_dump(mode="json"),
+                    created_at=transaction.created_at,
+                )
+            )
+        return transaction
+
+    async def consume_oauth_transaction(self, state: str) -> OAuthTransaction | None:
+        """Single-use redemption; the row is deleted whether or not it had expired.
+
+        The row lock plus delete is what makes a replayed state fail closed
+        (AC3-SEC-04), so it must stay inside one transaction.
+        """
+
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(OAuthTransactionRow)
+                .where(OAuthTransactionRow.state == state)
+                .with_for_update()
+            )
+            if row is None:
+                return None
+            transaction = OAuthTransaction.model_validate(row.definition)
+            await session.delete(row)
+            if transaction.expires_at <= datetime.now(UTC):
+                return None
+        return transaction
+
+    async def upsert_token_handle(self, handle: TokenHandle) -> TokenHandle:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(TokenHandleRow).where(
+                    TokenHandleRow.token_handle_id == handle.token_handle_id
+                )
+            )
+            definition = handle.model_dump(mode="json")
+            if row is not None:
+                row.status = handle.status.value
+                row.expires_at = handle.expires_at
+                row.principal_id = handle.principal_id
+                row.workspace_id = handle.workspace_id
+                row.definition = definition
+            else:
+                session.add(
+                    TokenHandleRow(
+                        id=new_id("token_handle"),
+                        token_handle_id=handle.token_handle_id,
+                        connector_id=handle.connector_id,
+                        workspace_id=handle.workspace_id,
+                        principal_id=handle.principal_id,
+                        status=handle.status.value,
+                        expires_at=handle.expires_at,
+                        definition=definition,
+                        created_at=handle.created_at,
+                    )
+                )
+        return handle
+
+    async def get_token_handle(self, token_handle_id: str) -> TokenHandle | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(TokenHandleRow).where(
+                    TokenHandleRow.token_handle_id == token_handle_id
+                )
+            )
+        return TokenHandle.model_validate(row.definition) if row else None
+
+    async def upsert_secret_record(self, record: SecretRecord) -> SecretRecord:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(SecretRecordRow).where(
+                    SecretRecordRow.secret_store_key == record.secret_store_key
+                )
+            )
+            if row is not None:
+                row.key_id = record.key_id
+                row.nonce = record.nonce
+                row.ciphertext = record.ciphertext
+            else:
+                session.add(
+                    SecretRecordRow(
+                        id=new_id("secret_record"),
+                        secret_store_key=record.secret_store_key,
+                        key_id=record.key_id,
+                        nonce=record.nonce,
+                        ciphertext=record.ciphertext,
+                        created_at=datetime.now(UTC),
+                    )
+                )
+        return record
+
+    async def get_secret_record(self, secret_store_key: str) -> SecretRecord | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(SecretRecordRow).where(
+                    SecretRecordRow.secret_store_key == secret_store_key
+                )
+            )
+        if row is None:
+            return None
+        return SecretRecord(
+            secret_store_key=row.secret_store_key,
+            key_id=row.key_id,
+            nonce=row.nonce,
+            ciphertext=row.ciphertext,
+        )
+
+    async def delete_secret_record(self, secret_store_key: str) -> None:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(SecretRecordRow).where(
+                    SecretRecordRow.secret_store_key == secret_store_key
+                )
+            )
+            if row is not None:
+                await session.delete(row)
 
     async def upsert_connector_definition(
         self, connector: ConnectorDefinition

@@ -60,6 +60,11 @@ _PREFIXES = {
     "workspace_membership": "wsm",
     "auth_session": "aus",
     "auth_transaction": "atx",
+    # SDD 6.2 writes token handles as ``tokh_``; the prefix registry is three
+    # characters wide, so the canonical form is ``tkh_``.
+    "token_handle": "tkh",
+    "oauth_transaction": "otx",
+    "secret_record": "sec",
 }
 
 

@@ -470,6 +470,69 @@ class AuthTransaction(StrictModel):
     expires_at: datetime
 
 
+class OAuthTransactionPurpose(StrEnum):
+    """Why an OAuth transaction exists.
+
+    A login state and a connector state must never be redeemable at each other's
+    callback (ADR3-003), so purpose is mandatory and carries no default.
+    """
+
+    CONNECT = "CONNECT"
+    REAUTHORIZE = "REAUTHORIZE"
+
+
+class OAuthTransaction(StrictModel):
+    """Short-lived, single-use connector authorization state (SDD 19.1).
+
+    Deliberately a sibling of AuthTransaction rather than a widening of it: sharing
+    one state keyspace between SSO login and connector authorization is the confused
+    deputy ADR3-003 exists to prevent.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    transaction_id: str
+    purpose: OAuthTransactionPurpose
+    state: str
+    code_verifier: str
+    connector_id: str
+    principal_id: str
+    workspace_id: str
+    connection_id: str | None = None
+    requested_scopes: list[str] = Field(default_factory=list)
+    redirect_target: str = "/"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime
+
+
+class TokenStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    EXPIRED = "EXPIRED"
+    REVOKED = "REVOKED"
+    ERROR = "ERROR"
+
+
+class TokenHandle(StrictModel):
+    """Opaque reference to broker-held credentials (SDD 6.2).
+
+    Carries no token material. ``secret_store_key`` addresses the ciphertext in the
+    secret store and is never returned through the public API or runtime context.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    token_handle_id: str
+    connector_id: str
+    principal_id: str | None = None
+    workspace_id: str
+    issuer: str
+    scopes: list[str] = Field(default_factory=list)
+    audience: list[str] = Field(default_factory=list)
+    expires_at: datetime | None = None
+    secret_store_key: str
+    status: TokenStatus = TokenStatus.ACTIVE
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    refreshed_at: datetime | None = None
+
+
 class ConnectorKind(StrEnum):
     MCP = "MCP"
     REST = "REST"
