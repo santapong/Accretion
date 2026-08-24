@@ -26,6 +26,7 @@ class Settings(BaseSettings):
     granted_permissions: list[str] = Field(default_factory=list)
     credential_env_map: dict[str, str] = Field(default_factory=dict)
     enable_dynamic_workflows: bool = False
+    enable_candidate_search: bool = False
 
     @property
     def worktree_dir(self) -> Path:

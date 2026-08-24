@@ -55,11 +55,15 @@ from accretion.contracts import (
 )
 from accretion.ids import new_id
 from accretion.orchestration.models import (
+    CandidateScore,
+    CandidateTrajectory,
     GraphValidationResult,
     ProjectFeatureSettings,
     ReplanRequest,
     RunGraphRevision,
     RuntimeDecision,
+    SearchPromotionRecord,
+    SearchRecord,
     WorkflowProposal,
 )
 from accretion.persistence.models import (
@@ -69,6 +73,7 @@ from accretion.persistence.models import (
     ArchitectureMetricRow,
     BenchmarkRunRow,
     BenchmarkTaskRow,
+    CandidateScoreRow,
     CapabilityPolicyRow,
     CapabilityRequestRow,
     CapabilityRow,
@@ -89,6 +94,9 @@ from accretion.persistence.models import (
     RunRow,
     RuntimeDecisionRow,
     RuntimeSessionRow,
+    SearchCandidateRow,
+    SearchPlanRow,
+    SearchPromotionRow,
     SkillRow,
     StrategyDecisionRow,
     StrategyOverrideRow,
@@ -288,6 +296,27 @@ class StateStore(Protocol):
     async def list_replan_requests(self, run_id: str) -> list[ReplanRequest]: ...
     async def save_runtime_decision(self, decision: RuntimeDecision) -> RuntimeDecision: ...
     async def list_runtime_decisions(self, run_id: str) -> list[RuntimeDecision]: ...
+    async def create_search(self, record: SearchRecord) -> SearchRecord: ...
+    async def get_search(self, search_id: str) -> SearchRecord | None: ...
+    async def list_searches(self, run_id: str) -> list[SearchRecord]: ...
+    async def update_search(
+        self, record: SearchRecord, *, expected_revision: int
+    ) -> SearchRecord: ...
+    async def save_search_candidate(
+        self, candidate: CandidateTrajectory
+    ) -> CandidateTrajectory: ...
+    async def get_search_candidate(
+        self, candidate_id: str
+    ) -> CandidateTrajectory | None: ...
+    async def list_search_candidates(self, search_id: str) -> list[CandidateTrajectory]: ...
+    async def save_candidate_score(self, score: CandidateScore) -> CandidateScore: ...
+    async def list_candidate_scores(self, search_id: str) -> list[CandidateScore]: ...
+    async def save_search_promotion(
+        self, promotion: SearchPromotionRecord
+    ) -> SearchPromotionRecord: ...
+    async def get_search_promotion(
+        self, search_id: str
+    ) -> SearchPromotionRecord | None: ...
 
 
 class MemoryStore:
@@ -333,6 +362,10 @@ class MemoryStore:
         self.graph_revisions: dict[str, list[RunGraphRevision]] = {}
         self.replan_requests: dict[str, ReplanRequest] = {}
         self.runtime_decisions: dict[str, RuntimeDecision] = {}
+        self.searches: dict[str, SearchRecord] = {}
+        self.search_candidates: dict[str, CandidateTrajectory] = {}
+        self.candidate_scores: dict[str, CandidateScore] = {}
+        self.search_promotions: dict[str, SearchPromotionRecord] = {}
         self._lock = asyncio.Lock()
 
     async def create_project(self, project: Project) -> Project:
@@ -1275,6 +1308,102 @@ class MemoryStore:
             (item for item in self.runtime_decisions.values() if item.run_id == run_id),
             key=lambda item: item.created_at,
         )
+
+    async def create_search(self, record: SearchRecord) -> SearchRecord:
+        if record.plan.run_id not in self.runs:
+            raise KeyError(record.plan.run_id)
+        if record.plan.search_id in self.searches:
+            raise ValueError(f"search {record.plan.search_id} already exists")
+        if any(
+            item.plan.run_id == record.plan.run_id
+            and item.plan.graph_revision == record.plan.graph_revision
+            and item.plan.parent_node_id == record.plan.parent_node_id
+            for item in self.searches.values()
+        ):
+            raise ValueError("a search already exists for this graph node revision")
+        self.searches[record.plan.search_id] = record
+        return record
+
+    async def get_search(self, search_id: str) -> SearchRecord | None:
+        return self.searches.get(search_id)
+
+    async def list_searches(self, run_id: str) -> list[SearchRecord]:
+        return sorted(
+            (item for item in self.searches.values() if item.plan.run_id == run_id),
+            key=lambda item: item.plan.created_at,
+        )
+
+    async def update_search(
+        self, record: SearchRecord, *, expected_revision: int
+    ) -> SearchRecord:
+        current = self.searches.get(record.plan.search_id)
+        if current is None:
+            raise KeyError(record.plan.search_id)
+        if current.plan != record.plan:
+            raise ValueError("search plan is immutable")
+        if current.revision != expected_revision:
+            raise ValueError("search revision conflict")
+        updated = record.model_copy(
+            update={"revision": expected_revision + 1, "updated_at": datetime.now(UTC)}
+        )
+        self.searches[record.plan.search_id] = updated
+        return updated
+
+    async def save_search_candidate(
+        self, candidate: CandidateTrajectory
+    ) -> CandidateTrajectory:
+        if candidate.search_id not in self.searches:
+            raise KeyError(candidate.search_id)
+        current = self.search_candidates.get(candidate.candidate_id)
+        if current is not None and (
+            current.search_id != candidate.search_id or current.ordinal != candidate.ordinal
+        ):
+            raise ValueError("candidate identity is immutable")
+        self.search_candidates[candidate.candidate_id] = candidate
+        return candidate
+
+    async def get_search_candidate(
+        self, candidate_id: str
+    ) -> CandidateTrajectory | None:
+        return self.search_candidates.get(candidate_id)
+
+    async def list_search_candidates(self, search_id: str) -> list[CandidateTrajectory]:
+        return sorted(
+            (item for item in self.search_candidates.values() if item.search_id == search_id),
+            key=lambda item: item.ordinal,
+        )
+
+    async def save_candidate_score(self, score: CandidateScore) -> CandidateScore:
+        if score.search_id not in self.searches:
+            raise KeyError(score.search_id)
+        current = self.candidate_scores.get(score.candidate_id)
+        if current is not None and current != score:
+            raise ValueError(f"candidate score for {score.candidate_id} is immutable")
+        self.candidate_scores[score.candidate_id] = score
+        return score
+
+    async def list_candidate_scores(self, search_id: str) -> list[CandidateScore]:
+        return sorted(
+            (item for item in self.candidate_scores.values() if item.search_id == search_id),
+            key=lambda item: item.candidate_id,
+        )
+
+    async def save_search_promotion(
+        self, promotion: SearchPromotionRecord
+    ) -> SearchPromotionRecord:
+        current = self.search_promotions.get(promotion.search_id)
+        if current is not None and (
+            current.promotion_id != promotion.promotion_id
+            or current.candidate_id != promotion.candidate_id
+        ):
+            raise ValueError("search promotion identity is immutable")
+        self.search_promotions[promotion.search_id] = promotion
+        return promotion
+
+    async def get_search_promotion(
+        self, search_id: str
+    ) -> SearchPromotionRecord | None:
+        return self.search_promotions.get(search_id)
 
 
 class PostgresStore:
@@ -2940,6 +3069,196 @@ class PostgresStore:
                 )
             ).all()
         return [RuntimeDecision.model_validate(row.decision) for row in rows]
+
+    async def create_search(self, record: SearchRecord) -> SearchRecord:
+        async with self.sessions.begin() as session:
+            if await session.get(RunRow, record.plan.run_id) is None:
+                raise KeyError(record.plan.run_id)
+            session.add(
+                SearchPlanRow(
+                    id=record.plan.search_id,
+                    run_id=record.plan.run_id,
+                    parent_node_id=record.plan.parent_node_id,
+                    graph_revision=record.plan.graph_revision,
+                    mode=record.plan.mode.value,
+                    status=record.status.value,
+                    revision=record.revision,
+                    record=record.model_dump(mode="json"),
+                    created_at=record.plan.created_at,
+                    updated_at=record.updated_at,
+                )
+            )
+        return record
+
+    async def get_search(self, search_id: str) -> SearchRecord | None:
+        async with self.sessions() as session:
+            row = await session.get(SearchPlanRow, search_id)
+        return SearchRecord.model_validate(row.record) if row is not None else None
+
+    async def list_searches(self, run_id: str) -> list[SearchRecord]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(SearchPlanRow)
+                    .where(SearchPlanRow.run_id == run_id)
+                    .order_by(SearchPlanRow.created_at, SearchPlanRow.id)
+                )
+            ).all()
+        return [SearchRecord.model_validate(row.record) for row in rows]
+
+    async def update_search(
+        self, record: SearchRecord, *, expected_revision: int
+    ) -> SearchRecord:
+        async with self.sessions.begin() as session:
+            row = await session.get(
+                SearchPlanRow, record.plan.search_id, with_for_update=True
+            )
+            if row is None:
+                raise KeyError(record.plan.search_id)
+            current = SearchRecord.model_validate(row.record)
+            if current.plan != record.plan:
+                raise ValueError("search plan is immutable")
+            if row.revision != expected_revision:
+                raise ValueError("search revision conflict")
+            updated = record.model_copy(
+                update={
+                    "revision": expected_revision + 1,
+                    "updated_at": datetime.now(UTC),
+                }
+            )
+            row.status = updated.status.value
+            row.revision = updated.revision
+            row.record = updated.model_dump(mode="json")
+            row.updated_at = updated.updated_at
+        return updated
+
+    async def save_search_candidate(
+        self, candidate: CandidateTrajectory
+    ) -> CandidateTrajectory:
+        async with self.sessions.begin() as session:
+            if await session.get(SearchPlanRow, candidate.search_id) is None:
+                raise KeyError(candidate.search_id)
+            row = await session.get(SearchCandidateRow, candidate.candidate_id)
+            if row is None:
+                session.add(
+                    SearchCandidateRow(
+                        id=candidate.candidate_id,
+                        search_id=candidate.search_id,
+                        run_id=candidate.run_id,
+                        ordinal=candidate.ordinal,
+                        provider=candidate.provider.value,
+                        status=candidate.status.value,
+                        trajectory=candidate.model_dump(mode="json"),
+                        created_at=candidate.created_at,
+                        completed_at=candidate.completed_at,
+                    )
+                )
+            else:
+                current = CandidateTrajectory.model_validate(row.trajectory)
+                if current.search_id != candidate.search_id or current.ordinal != candidate.ordinal:
+                    raise ValueError("candidate identity is immutable")
+                row.provider = candidate.provider.value
+                row.status = candidate.status.value
+                row.trajectory = candidate.model_dump(mode="json")
+                row.completed_at = candidate.completed_at
+        return candidate
+
+    async def get_search_candidate(
+        self, candidate_id: str
+    ) -> CandidateTrajectory | None:
+        async with self.sessions() as session:
+            row = await session.get(SearchCandidateRow, candidate_id)
+        return CandidateTrajectory.model_validate(row.trajectory) if row is not None else None
+
+    async def list_search_candidates(self, search_id: str) -> list[CandidateTrajectory]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(SearchCandidateRow)
+                    .where(SearchCandidateRow.search_id == search_id)
+                    .order_by(SearchCandidateRow.ordinal)
+                )
+            ).all()
+        return [CandidateTrajectory.model_validate(row.trajectory) for row in rows]
+
+    async def save_candidate_score(self, score: CandidateScore) -> CandidateScore:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(CandidateScoreRow).where(
+                    CandidateScoreRow.candidate_id == score.candidate_id
+                )
+            )
+            if row is not None:
+                current = CandidateScore.model_validate(row.score)
+                if current != score:
+                    raise ValueError(f"candidate score for {score.candidate_id} is immutable")
+                return current
+            session.add(
+                CandidateScoreRow(
+                    id=score.score_id,
+                    search_id=score.search_id,
+                    candidate_id=score.candidate_id,
+                    eligible=score.eligible,
+                    total_score=score.total_score,
+                    score=score.model_dump(mode="json"),
+                    created_at=score.created_at,
+                )
+            )
+        return score
+
+    async def list_candidate_scores(self, search_id: str) -> list[CandidateScore]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(CandidateScoreRow)
+                    .where(CandidateScoreRow.search_id == search_id)
+                    .order_by(CandidateScoreRow.created_at, CandidateScoreRow.id)
+                )
+            ).all()
+        return [CandidateScore.model_validate(row.score) for row in rows]
+
+    async def save_search_promotion(
+        self, promotion: SearchPromotionRecord
+    ) -> SearchPromotionRecord:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(SearchPromotionRow).where(
+                    SearchPromotionRow.search_id == promotion.search_id
+                )
+            )
+            if row is None:
+                session.add(
+                    SearchPromotionRow(
+                        id=promotion.promotion_id,
+                        search_id=promotion.search_id,
+                        candidate_id=promotion.candidate_id,
+                        run_id=promotion.run_id,
+                        status=promotion.status,
+                        record=promotion.model_dump(mode="json"),
+                        created_at=promotion.created_at,
+                        completed_at=promotion.completed_at,
+                    )
+                )
+            else:
+                current = SearchPromotionRecord.model_validate(row.record)
+                if (
+                    current.promotion_id != promotion.promotion_id
+                    or current.candidate_id != promotion.candidate_id
+                ):
+                    raise ValueError("search promotion identity is immutable")
+                row.status = promotion.status
+                row.record = promotion.model_dump(mode="json")
+                row.completed_at = promotion.completed_at
+        return promotion
+
+    async def get_search_promotion(
+        self, search_id: str
+    ) -> SearchPromotionRecord | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(SearchPromotionRow).where(SearchPromotionRow.search_id == search_id)
+            )
+        return SearchPromotionRecord.model_validate(row.record) if row is not None else None
 
     @staticmethod
     def _row_to_benchmark_run(row: BenchmarkRunRow) -> BenchmarkRun:
