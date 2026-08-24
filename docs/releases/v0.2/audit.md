@@ -7,6 +7,11 @@
 >
 > Decision: **RELEASE AUTHORIZED WITH A DOCUMENTED MAINTAINER EXCEPTION.**
 
+> Released: `v0.2.0` on 2026-08-24 from
+> `de146cd9e1a3e651e066f8dde020c7938cbc1316`; see the
+> [frozen baseline](baseline.md) and
+> [published release](https://github.com/santapong/Accretion/releases/tag/v0.2.0).
+
 The v0.2 implementation and deterministic research claims are complete. The
 automated code, database, generated-contract, frontend, dependency, frozen
 research, signed-in provider, and protected release-topology checks pass.
@@ -29,6 +34,10 @@ or rewritten by this release.
 | Audited code commit | `00220f7713943286b24535549b08ccbeb309637a` |
 | Release-finalization base | `origin/develop@e48ea4ef2ff97ecfc8852972ca649b8e9dc7bfd5` |
 | Stable branch before release | `origin/main@05ccc38703f3bdc685f324b895c4cd3e2eb1112a` |
+| Authorized develop commit | `7cd9e0a9d90a2d93c1c60907490bd34e98ec5d68` |
+| Release tree | `3828947d0b74f23125193b0553f0a4eb36239460` |
+| v0.2 tag object | `2c455bac152c971ca85932262ac121c8d847274a` |
+| v0.2 peeled release commit | `de146cd9e1a3e651e066f8dde020c7938cbc1316` |
 | v0.1 tag object | `3280e117aadf9ee5f431804dd92bffd2fc80229f` |
 | v0.1 peeled release commit | `6324c8fab1776f0bcc1535f6d6c44fe95588f0e2` |
 | Python | `3.12.9` in the locked project environment |
@@ -56,13 +65,13 @@ rewritten during this work.
 | Frontend dependency audit | PASS | `npm audit` reported 0 vulnerabilities across 328 dependencies. |
 | Tracked credential-shape scan | PASS | No tracked file matched the release scan for common token or private-key shapes. |
 | Documentation integrity | PASS | The repository docs check resolved all local links, enforced the managed folder layout, and validated accessible XML metadata across 58 Markdown files and 18 SVGs. |
-| Open critical issue inventory | PASS | Authenticated GitHub searches found no open critical issue and no open Dependabot pull request. Open issues #45, #47, and #52 are respectively release topology, post-v0.2 planning, and the documented browser exception. |
+| Open critical issue inventory | PASS | Authenticated GitHub searches found no open critical issue and no open Dependabot pull request. Release-topology issue #45 closed with the release; open issues #47 and #52 are respectively post-v0.2 planning and the documented browser exception. |
 | v0.1 baseline integrity | PASS | The annotated tag object and peeled release commit match the frozen baseline record. |
 | Codex signed-in runtime | PASS | The live test completed two independent Codex threads on one App Server. |
 | Claude signed-in runtime | PASS | The adapter runs without ambient hooks/plugins, honors the typed `sonnet` model selection, and emitted normalized start, progress, and terminal events. All 3/3 live-runtime cases passed in 20.76 seconds, including mixed-provider isolation. |
 | Balanced ACR-ARCH live sample | PASS | 10/10 exact artifacts passed deterministic verification: five Codex and five Claude, two tasks per category. The redacted report SHA-256 is `f378db0cd06fc1e95cfe5527496ea98e12c216a9ebb2d1d59bebdb389c2fe76c`. |
 | Browser smoke and accessibility | **NOT RUN · MAINTAINER EXCEPTION** | The supported browser runtime exposed no controllable browser instance. No visual, responsive, keyboard, focus, or accessibility PASS is claimed. Issue [#52](https://github.com/santapong/Accretion/issues/52) tracks post-release evidence. |
-| Protected release topology | PASS | Release-bridge [PR #46](https://github.com/santapong/Accretion/pull/46) descends from `main`, is refreshed to the exact audited `develop` tree, and uses the normal squash-only linear-history policy. No protection exception or history rewrite is required. Its final head must be re-verified after this audit update before promotion. |
+| Protected release topology | PASS | Release-bridge [PR #46](https://github.com/santapong/Accretion/pull/46) descended from `main`, matched the exact authorized `develop` tree, passed CI run 164, and squash-merged under the normal linear-history policy. Post-merge `main` tree `3828947d0b74f23125193b0553f0a4eb36239460` exactly matched the authorized tree. |
 
 ## Frozen research evidence
 
@@ -102,16 +111,16 @@ can remain squash-only and linear without changing repository settings. Issue
 Issue [#47](https://github.com/santapong/Accretion/issues/47) holds only post-v0.2
 work; no v0.3 feature belongs in this release.
 
-## Promotion procedure
+## Completed promotion record
 
-1. Refresh release-bridge PR #46 from `main` so its tree exactly equals the
-   audited `develop` commit, require green CI and resolved conversations, verify
-   both commit IDs and tree equality, then squash-merge through the protected
-   workflow.
-2. Create annotated tag `v0.2.0` from the resulting `main` commit and publish the
-   GitHub release using [the prepared release notes](notes.md).
-3. Create `docs/releases/v0.2/baseline.md` from the actual tag object, peeled commit, release
-   URL, fixture hashes, and final audit. Never precompute or invent those values.
+1. Release-bridge PR #46 was refreshed to authorized `develop`, passed backend
+   and frontend CI, had no unresolved review threads, and squash-merged to
+   protected `main`.
+2. Post-merge verification proved exact tree equality before annotated tag
+   `v0.2.0` was created at the resulting `main` commit.
+3. The non-draft GitHub release was published from [the release notes](notes.md),
+   and [the frozen baseline](baseline.md) records the observed tag object,
+   peeled commit, release tree, URL, and evidence fingerprints.
 
 ## Reproduction commands
 
