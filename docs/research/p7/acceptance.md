@@ -3,10 +3,10 @@
 Status: implementation evidence prepared on 2026-08-24. This report closes P7;
 it does not by itself authorize a v0.2 release tag or merge to `main`.
 
-The [frontend guide](FRONTEND_GUIDE.md) provides the route-level map for the UI
+The [frontend guide](../../guides/frontend.md) provides the route-level map for the UI
 evidence summarized by `V02-P7-007`.
 
-<img src="assets/p7-experience-replay.svg" alt="P7 verified experience materialization, retrieval, operator selection, replay execution, and repeated compatibility revalidation" width="100%" />
+<img src="../../assets/p7-experience-replay.svg" alt="P7 verified experience materialization, retrieval, operator selection, replay execution, and repeated compatibility revalidation" width="100%" />
 
 ## Acceptance mapping
 
@@ -23,7 +23,7 @@ evidence summarized by `V02-P7-007`.
 
 ## Frozen benchmark result
 
-<img src="assets/p7-transfer-gate.svg" alt="P7 benchmark gate passing with quality uplift, reduced tool calls, 95 percent stale rejection, 3.33 percent negative transfer, and no false-accept increase" width="100%" />
+<img src="../../assets/p7-transfer-gate.svg" alt="P7 benchmark gate passing with quality uplift, reduced tool calls, 95 percent stale rejection, 3.33 percent negative transfer, and no false-accept increase" width="100%" />
 
 | Treatment | Success | Mean quality | Uplift | Mean turns | Mean tool calls | Tool reduction | False accepts | Negative transfers |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|

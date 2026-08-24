@@ -15,7 +15,7 @@ Promotion remains blocked only because the selected release policy also
 requires browser/accessibility evidence and the supported in-app browser has no
 connected browser instance.
 
-<img src="assets/v02-release-gate.svg" alt="v0.2 release evidence flowing from the immutable v0.1 control through P5 dynamic, P6 search, P7 transfer, and the full clean-checkout gate before promotion to main" width="100%" />
+<img src="../../assets/v02-release-gate.svg" alt="v0.2 release evidence flowing from the immutable v0.1 control through P5 dynamic, P6 search, P7 transfer, and the full clean-checkout gate before promotion to main" width="100%" />
 
 The candidate is integrated into `develop`. No release tag, GitHub release, or
 v0.2 baseline record is created while this decision is NO-GO. Package metadata
@@ -39,7 +39,7 @@ the current release and static control.
 | Claude Code | `2.1.241` |
 
 The v0.1 tag object and peeled commit match
-[the frozen v0.1 baseline](V0_1_BASELINE.md); no v0.1 release document or tag was
+[the frozen v0.1 baseline](../v0.1/baseline.md); no v0.1 release document or tag was
 rewritten during this work.
 
 ## Gate results
@@ -55,6 +55,7 @@ rewritten during this work.
 | Production dependency audit | PASS | `pip-audit` found no known vulnerability in the exact exported production requirements. |
 | Frontend dependency audit | PASS | `npm audit` reported 0 vulnerabilities across 328 dependencies. |
 | Tracked credential-shape scan | PASS | No tracked file matched the release scan for common token or private-key shapes. |
+| Documentation integrity | PASS | The repository docs check resolved all local links, enforced the managed folder layout, and validated accessible XML metadata across 58 Markdown files and 18 SVGs. |
 | Open critical issue inventory | PASS | Authenticated GitHub searches found no open critical issue and no open Dependabot pull request. |
 | v0.1 baseline integrity | PASS | The annotated tag object and peeled release commit match the frozen baseline record. |
 | Codex signed-in runtime | PASS | The live test completed two independent Codex threads on one App Server. |
@@ -107,8 +108,8 @@ work; no v0.3 feature belongs in this release.
    both commit IDs and tree equality, then squash-merge through the protected
    workflow.
 4. Create annotated tag `v0.2.0` from the resulting `main` commit and publish the
-   GitHub release using [the prepared release notes](V0_2_RELEASE_NOTES.md).
-5. Create `V0_2_BASELINE.md` from the actual tag object, peeled commit, release
+   GitHub release using [the prepared release notes](notes.md).
+5. Create `docs/releases/v0.2/baseline.md` from the actual tag object, peeled commit, release
    URL, fixture hashes, and final audit. Never precompute or invent those values.
 
 ## Reproduction commands
@@ -131,6 +132,7 @@ npm run api:generate
 npm run check
 npm run test
 npm run build
+make docs-check
 ACCRETION_LIVE_PROVIDERS=1 ACCRETION_CLAUDE_LIVE_MODEL=sonnet \
   PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 \
   uv run --no-sync pytest -p pytest_asyncio.plugin -m live tests/test_live_runtimes.py

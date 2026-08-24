@@ -4,13 +4,13 @@ Status: implementation evidence prepared on 2026-08-23. P6 and P7 are not part
 of this report.
 
 > This is the frozen P5 milestone report. Current `develop` also includes the P6
-> and P7 frontend surfaces documented in the [frontend guide](FRONTEND_GUIDE.md);
+> and P7 frontend surfaces documented in the [frontend guide](../../guides/frontend.md);
 > the historical counts here are intentionally unchanged.
 
-The later [P5 dynamic benchmark](P5_DYNAMIC_BENCHMARK.md) supplies the separate
+The later [P5 dynamic benchmark](benchmark.md) supplies the separate
 release-level `RQ-DYN` evidence that was not part of this milestone report.
 
-<img src="assets/p5-dynamic-workflow.svg" alt="P5 validated workflow proposal, activation, fallback, and revision lifecycle" width="100%" />
+<img src="../../assets/p5-dynamic-workflow.svg" alt="P5 validated workflow proposal, activation, fallback, and revision lifecycle" width="100%" />
 
 ## Acceptance mapping
 

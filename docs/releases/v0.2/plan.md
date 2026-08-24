@@ -4,12 +4,12 @@ Status: implementation complete for the v0.2.0 candidate. P5, P6, P7, their
 four frozen research suites, and the eleven-route operator frontend pass the
 automated candidate checks. Promotion remains blocked by the browser/accessibility
 gate and one-time branch-ancestry reconciliation recorded in the
-[release audit](V0_2_RELEASE_AUDIT.md).
+[release audit](audit.md).
 This document translates the normative
-[v0.2 SDD](sdd/Accretion_SDD_v0.2.md) into an implementation and review sequence;
+[v0.2 SDD](../../sdd/Accretion_SDD_v0.2.md) into an implementation and review sequence;
 it does not change the SDD contracts.
 
-<img src="assets/v02-roadmap.svg" alt="v0.2 roadmap from the completed v0.1 gate through P5 dynamic workflows, P6 bounded routing and search, P7 verified experience, and the final research release gate" width="100%" />
+<img src="../../assets/v02-roadmap.svg" alt="v0.2 roadmap from the completed v0.1 gate through P5 dynamic workflows, P6 bounded routing and search, P7 verified experience, and the final research release gate" width="100%" />
 
 ## Release thesis
 
@@ -22,7 +22,7 @@ acceptance policy, or durable-state ownership.
 ## Entry gate
 
 The v0.1 prerequisites are now present. Their canonical identifiers and frozen
-surfaces are recorded in the [v0.1 baseline](V0_1_BASELINE.md):
+surfaces are recorded in the [v0.1 baseline](../v0.1/baseline.md):
 
 - immutable `v0.1.0` release tag and published release evidence;
 - deterministic static strategy baseline and validated templates;
@@ -31,7 +31,7 @@ surfaces are recorded in the [v0.1 baseline](V0_1_BASELINE.md):
 - frozen ACR-ARCH inputs and reproducible baseline reports.
 
 P5 began from the recorded `develop@bb249f5` integration snapshot. Its required
-SDD choices are captured in the [P5 decision record](P5_DECISIONS.md). The
+SDD choices are captured in the [P5 decision record](../../research/p5/decisions.md). The
 immutable `v0.1.0` release remains the experimental control and compatibility
 floor; the moving `develop` branch is not the v0.1 baseline.
 
@@ -41,10 +41,10 @@ floor; the moving `develop` branch is not the v0.1 baseline.
 
 Implementation status: merged into `develop` by
 [PR #35](https://github.com/santapong/Accretion/pull/35) behind opt-in gates.
-Operational details and evidence are in the [P5 runbook](P5_RUNBOOK.md) and
-[P5 acceptance report](P5_ACCEPTANCE_REPORT.md). The missing release-level
+Operational details and evidence are in the [P5 runbook](../../runbooks/p5-dynamic-workflows.md) and
+[P5 acceptance report](../../research/p5/acceptance.md). The missing release-level
 static-versus-dynamic research condition is now closed by the
-[frozen P5 benchmark](P5_DYNAMIC_BENCHMARK.md).
+[frozen P5 benchmark](../../research/p5/benchmark.md).
 
 Outcome: a model may propose graph structure, but deterministic code decides
 whether that structure is admissible and executable.
@@ -73,9 +73,9 @@ Implementation status: completed across the
 [contracts/persistence PR #37](https://github.com/santapong/Accretion/pull/37),
 [executor/recovery PR #38](https://github.com/santapong/Accretion/pull/38), and
 [operator/research PR #39](https://github.com/santapong/Accretion/pull/39).
-Operational details and evidence are in the [P6 runbook](P6_RUNBOOK.md),
-[decision record](P6_DECISIONS.md), and
-[P6 acceptance report](P6_ACCEPTANCE_REPORT.md).
+Operational details and evidence are in the [P6 runbook](../../runbooks/p6-candidate-search.md),
+[decision record](../../research/p6/decisions.md), and
+[P6 acceptance report](../../research/p6/acceptance.md).
 
 Outcome: Accretion can compare a small number of candidates without hiding the
 cost, selection evidence, or losing trajectories.
@@ -106,8 +106,8 @@ Implementation status: experience contracts/persistence merged in
 and context selection merged in [PR #42](https://github.com/santapong/Accretion/pull/42),
 and replay/operator/benchmark evidence completed in
 [PR #43](https://github.com/santapong/Accretion/pull/43) behind the independent P7
-gate. Operational details are in the [P7 runbook](P7_RUNBOOK.md),
-[decision record](P7_DECISIONS.md), and [acceptance report](P7_ACCEPTANCE_REPORT.md).
+gate. Operational details are in the [P7 runbook](../../runbooks/p7-verified-experience.md),
+[decision record](../../research/p7/decisions.md), and [acceptance report](../../research/p7/acceptance.md).
 
 Outcome: prior evidence can inform a new run without becoming unreviewed policy.
 
@@ -142,7 +142,7 @@ Exit evidence:
 
 ## Frontend delivery status
 
-<img src="assets/operator-ui-map.svg" alt="Completed v0.2 frontend with eleven routes for planning, live operation, governance, and ACR-ARCH and P5 through P7 research, backed by typed snapshots and resumable events" width="100%" />
+<img src="../../assets/operator-ui-map.svg" alt="Completed v0.2 frontend with eleven routes for planning, live operation, governance, and ACR-ARCH and P5 through P7 research, backed by typed snapshots and resumable events" width="100%" />
 
 The frontend work planned for P5–P7 is complete in the release candidate. Planning Review
 supports experience selection, dynamic proposal validation, and bounded search
@@ -179,11 +179,11 @@ and benchmark evidence where applicable.
 ## Frozen and remaining decisions
 
 - P5 graph grammar, topology bounds, reusable state, and fallback behavior are
-  frozen in the [P5 decision record](P5_DECISIONS.md).
+  frozen in the [P5 decision record](../../research/p5/decisions.md).
 - P6 ranking, shared-budget, cancellation, isolation, promotion, and recovery
-  behavior are frozen in the [P6 decision record](P6_DECISIONS.md).
+  behavior are frozen in the [P6 decision record](../../research/p6/decisions.md).
 - P7 representation, invalidation, replay/recovery, and benchmark behavior are
-  frozen in the [P7 decision record](P7_DECISIONS.md). Expansion requires a new
+  frozen in the [P7 decision record](../../research/p7/decisions.md). Expansion requires a new
   ADR and cannot rewrite the preregistered v0.2 evidence after the fact.
 
 ## Explicit non-goals
@@ -199,5 +199,5 @@ checkout, the dynamic treatment demonstrates preregistered benefit over the v0.1
 static control, verifier safety does not regress, negative-transfer results are
 reported, all inherited v0.1 gates pass, and the operator can explain every
 proposal, revision, candidate, retrieval, and terminal decision from durable
-records. The [frontend guide](FRONTEND_GUIDE.md) is the route-level checklist for
+records. The [frontend guide](../../guides/frontend.md) is the route-level checklist for
 that operator explanation gate.

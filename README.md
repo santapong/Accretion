@@ -15,9 +15,10 @@ isolated workspaces, and a durable normalized execution trace.
 [![Status](https://img.shields.io/badge/status-v0.2.0%20candidate-d29922)](#project-status)
 
 [Author: resume.draveniq.dev](https://resume.draveniq.dev) ·
-[Documentation](docs/README.md) · [Frontend guide](docs/FRONTEND_GUIDE.md) ·
-[Developer guide](docs/DEVELOPER_GUIDE.md) · [Showcase](docs/SHOWCASE.md) ·
-[Project status](#project-status) · [v0.2 plan](docs/V0_2_PLAN.md)
+[Documentation](docs/README.md) · [Frontend guide](docs/guides/frontend.md) ·
+[Developer guide](docs/guides/developer.md) · [Showcase](docs/guides/showcase.md) ·
+[Research results](docs/research/README.md) · [Project status](#project-status) ·
+[v0.2 plan](docs/releases/v0.2/plan.md)
 
 <br />
 
@@ -30,7 +31,7 @@ isolated workspaces, and a durable normalized execution trace.
 > P6 bounded candidate search, P7 verified-experience replay, and frozen research
 > gates while retaining the immutable `v0.1.0` release as the current release and
 > static control. Promotion is blocked until every item in the
-> [v0.2 release audit](docs/V0_2_RELEASE_AUDIT.md) passes.
+> [v0.2 release audit](docs/releases/v0.2/audit.md) passes.
 > The inherited v0.1 foundation includes P0 runtime feasibility, P1
 > deterministic planning, P2 verifier-gated feedback loops, P3 static graph
 > execution, and the P4 governed harness/operator release gate. Its five validated
@@ -56,10 +57,10 @@ fixtures, examples, and operational documentation in one workspace.
 |---|---|---|
 | Evaluate the current release | Clone the `v0.1.0` tag and follow [Quick start](#quick-start) | Released and immutable |
 | Evaluate the v0.2 candidate | Check out `develop` after the release-candidate PR merges | Not a release until the audit passes and `v0.2.0` is tagged |
-| Reproduce the static control | Clone `v0.1.0` and read the [frozen baseline](docs/V0_1_BASELINE.md) | Preserved v0.1 evidence |
+| Reproduce the static control | Clone `v0.1.0` and read the [frozen baseline](docs/releases/v0.1/baseline.md) | Preserved v0.1 evidence |
 | Understand the safety model | Read [Architecture](#architecture), the [trust boundary](docs/assets/trust-boundary.svg), and [SECURITY.md](SECURITY.md) | Applies across releases |
-| Build a contribution | Start with the [developer guide](docs/DEVELOPER_GUIDE.md) and [CONTRIBUTING.md](CONTRIBUTING.md) | Pull requests target `develop` |
-| Reproduce the evidence | Use the [documentation hub](docs/README.md) to choose ACR-ARCH or the P5, P6, and P7 benchmark reports | Frozen replay is deterministic; release live-provider evidence is separate |
+| Build a contribution | Start with the [developer guide](docs/guides/developer.md) and [CONTRIBUTING.md](CONTRIBUTING.md) | Pull requests target `develop` |
+| Reproduce the evidence | Start with [Experiments and results](docs/research/README.md), then open the detailed ACR-ARCH or P5–P7 report | Frozen replay is deterministic; live-provider and release evidence stay separate |
 
 This is a local orchestration and research system, not an unrestricted deployment
 agent. It deliberately fails closed when evidence, authority, budgets, or recovery
@@ -121,7 +122,7 @@ events, and exposes the decision and verifier evidence needed to explain a run.
 | Live behavior | Snapshot-first state, monotonic SSE, reconnect and sequence-gap recovery |
 | Verification | 22 component tests, ESLint, TypeScript, OpenAPI idempotence, and production build pass; browser/accessibility remains a blocking release-audit item |
 
-See the [operator frontend guide](docs/FRONTEND_GUIDE.md) for every route, the
+See the [operator frontend guide](docs/guides/frontend.md) for every route, the
 operator journey, data flow, P5–P7 coverage, source map, and frontend commands.
 
 ## Architecture
@@ -180,7 +181,7 @@ ceilings.
 ## Developer showcase
 
 <div align="center">
-  <a href="docs/SHOWCASE.md">
+  <a href="docs/guides/showcase.md">
     <img src="docs/assets/accretion-showcase.png" alt="Illustrative developer workspace showing governed runtime streams, a validated workflow graph, normalized events, verification gates, and isolated Git workspaces" width="100%" />
   </a>
 </div>
@@ -192,7 +193,7 @@ runtime without consuming a signed-in provider session:
 uv run python examples/showcase.py --repository "$PWD"
 ```
 
-The [showcase walkthrough](docs/SHOWCASE.md) explains the resulting planning,
+The [showcase walkthrough](docs/guides/showcase.md) explains the resulting planning,
 runtime, verification, graph, trace, and audit records.
 
 ## Project status
@@ -208,6 +209,20 @@ runtime, verification, graph, trace, and audit records.
 | P6 — Bounded candidate search | Implemented (opt-in) | Evidence-based routing, isolated branches, shared budgets, fail-closed ranking, promotion recovery, operator lineage, and frozen N=1/2/4 replay research |
 | P7 — Verified experience | Implemented (opt-in) | Explicit materialization/selection, exact deterministic retrieval, invalidation, negative guidance, isolated fresh-control replay, operator provenance, and frozen negative-transfer research |
 
+### Research result summary
+
+<div align="center">
+  <a href="docs/assets/research-results.svg">
+    <img src="docs/assets/research-results.svg" alt="Accretion experiment map showing the immutable ACR-ARCH control, positive P5 dynamic-workflow uplift, bounded P6 quality-versus-compute improvement, passing P7 verified-experience transfer gates, and separate live-provider and release checks" width="100%" />
+  </a>
+</div>
+
+The consolidated [experiments and results guide](docs/research/README.md)
+explains the frozen design, primary result, classification, negative/null cases,
+fixture provenance, and reproduction path for ACR-ARCH and P5–P7. It also keeps
+signed-in provider calibration and release engineering results visibly separate
+from deterministic research claims.
+
 ### P6 completion summary
 
 P6 was delivered as three independently reviewed slices into `develop`:
@@ -219,7 +234,7 @@ P6 was delivered as three independently reviewed slices into `develop`:
 | Operator and research surfaces | [PR #39](https://github.com/santapong/Accretion/pull/39) | Search planning and lineage UI, provider/model/version and spend evidence, frozen 12-task N=1/2/4 benchmark, runbook, showcase, acceptance report, and accessible diagrams |
 
 All nine P6 acceptance criteria (`V02-P6-001` through `V02-P6-009`) are mapped
-to automated evidence in the [P6 acceptance report](docs/P6_ACCEPTANCE_REPORT.md).
+to automated evidence in the [P6 acceptance report](docs/research/p6/acceptance.md).
 The final P6 gate recorded 200 passing PostgreSQL-backed backend tests with three
 opt-in live-provider tests skipped, 19 passing UI tests, a successful production
 build, and a complete PostgreSQL upgrade/downgrade/upgrade cycle. P6 remains off
@@ -241,7 +256,7 @@ negative experience only as avoidance guidance, and revalidates before launch,
 selection, promotion, and recovery.
 
 All eight P7 criteria (`V02-P7-001` through `V02-P7-008`) are mapped in the
-[P7 acceptance report](docs/P7_ACCEPTANCE_REPORT.md). The frozen P7 gate contains
+[P7 acceptance report](docs/research/p7/acceptance.md). The frozen P7 gate contains
 20 tasks, 50 sources, and 80 traces; it records 95% stale rejection, 3.33%
 negative transfer, +0.0705 replay quality, 20% fewer replay tool calls, and no
 false-accept or success-rate regression. These are fixture results, not live
@@ -250,15 +265,15 @@ provider claims.
 See the [v0.1 system design](docs/sdd/Accretion_SDD_v0.1.md) and the
 [multi-release SDD index](docs/sdd/Accretion_SDD_INDEX_v0.3.md) for the full
 architecture and acceptance criteria. The latest
-[v0.1 release audit](docs/V0_1_RELEASE_AUDIT.md) records the clean-checkout GO
-decision. The [frozen v0.1 baseline](docs/V0_1_BASELINE.md) identifies the exact
-release and experimental control; the [v0.1.0 release notes](docs/V0_1_RELEASE_NOTES.md)
+[v0.1 release audit](docs/releases/v0.1/audit.md) records the clean-checkout GO
+decision. The [frozen v0.1 baseline](docs/releases/v0.1/baseline.md) identifies the exact
+release and experimental control; the [v0.1.0 release notes](docs/releases/v0.1/notes.md)
 describe its shipped scope, compatibility, and reproducibility hashes.
 
 The v0.2 candidate includes the opt-in P5 dynamic-workflow, P6 bounded-search, and P7
-verified-experience slices. Start with the [P5 dynamic benchmark](docs/P5_DYNAMIC_BENCHMARK.md), [P7 runbook](docs/P7_RUNBOOK.md),
-[developer showcase](docs/P7_SHOWCASE.md), [acceptance report](docs/P7_ACCEPTANCE_REPORT.md),
-and [delivery plan](docs/V0_2_PLAN.md). The [v0.2 release audit](docs/V0_2_RELEASE_AUDIT.md) records the current NO-GO gate and remaining blockers; the
+verified-experience slices. Start with the [P5 dynamic benchmark](docs/research/p5/benchmark.md), [P7 runbook](docs/runbooks/p7-verified-experience.md),
+[developer showcase](docs/research/p7/showcase.md), [acceptance report](docs/research/p7/acceptance.md),
+and [delivery plan](docs/releases/v0.2/plan.md). The [v0.2 release audit](docs/releases/v0.2/audit.md) records the current NO-GO gate and remaining blockers; the
 [v0.2 SDD](docs/sdd/Accretion_SDD_v0.2.md) remains the normative contract.
 
 ## Quick start
@@ -375,8 +390,8 @@ ACCRETION_LIVE_PROVIDERS=1 ACCRETION_CLAUDE_LIVE_MODEL=sonnet \
 ```
 
 The validated CLI range and recorded acceptance evidence are documented in the
-[P0 runtime runbook](docs/P0_RUNBOOK.md) and the
-[P2 loops and verifiers runbook](docs/P2_RUNBOOK.md).
+[P0 runtime runbook](docs/runbooks/p0-runtime.md) and the
+[P2 loops and verifiers runbook](docs/runbooks/p2-feedback-loops.md).
 
 ## Repository guide
 
@@ -398,8 +413,13 @@ src/accretion/verifiers/  Deterministic verifier implementations and registry
 migrations/               Alembic schema history
 tests/                    Unit, API, PostgreSQL, and live acceptance tests
 examples/                 Safe public-API demonstrations using the fake runtime
-docs/                     Developer guides, runbooks, plans, and visual references
-docs/sdd/                 Versioned system design specifications
+docs/                     Documentation hub and grouped visual assets
+docs/guides/              Newcomer, developer, frontend, and showcase guides
+docs/runbooks/            P0–P7 operation and recovery procedures
+docs/research/            Experiment design, frozen results, and decisions
+docs/releases/            Versioned plans, audits, notes, and baselines
+docs/governance/          Repository and documentation process
+docs/sdd/                 Versioned normative system design specifications
 ```
 
 ## Contributing and security
@@ -407,7 +427,7 @@ docs/sdd/                 Versioned system design specifications
 Development uses short-lived branches and pull requests into protected
 `develop`; stable releases are promoted to `main`. Before contributing, read
 [CONTRIBUTING.md](CONTRIBUTING.md) and the
-[branch policy](docs/BRANCH_POLICY.md).
+[branch policy](docs/governance/branch-policy.md).
 
 Please report security concerns through the process in
 [SECURITY.md](SECURITY.md), not through a public issue.

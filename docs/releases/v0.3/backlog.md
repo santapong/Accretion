@@ -3,7 +3,7 @@
 Status: post-release planning handoff only. No v0.3 feature is included in the
 v0.2.0 candidate, and implementation must not begin before v0.2.0 is released.
 
-The normative contract remains [Accretion SDD v0.3](sdd/Accretion_SDD_v0.3.md).
+The normative contract remains [Accretion SDD v0.3](../../sdd/Accretion_SDD_v0.3.md).
 This ledger orders its existing milestones without changing acceptance criteria
 or unlocking the hash-manifested v0.4+ designs.
 

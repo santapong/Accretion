@@ -1,6 +1,6 @@
 # Branch policy
 
-<img src="assets/delivery-workflow.svg" alt="Protected delivery workflow from a short-lived branch into develop, through required CI and squash merge, then through a release pull request to main and a semantic version tag" width="100%" />
+<img src="../assets/delivery-workflow.svg" alt="Protected delivery workflow from a short-lived branch into develop, through required CI and squash merge, then through a release pull request to main and a semantic version tag" width="100%" />
 
 ## Long-lived branches
 

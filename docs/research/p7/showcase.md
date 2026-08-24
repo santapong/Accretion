@@ -6,10 +6,10 @@ new run still starts from the current repository snapshot, receives current
 permissions, executes in a fresh session/worktree, and must pass current
 verifiers.
 
-Use the [frontend guide](FRONTEND_GUIDE.md) to orient the Planning Review, Live
+Use the [frontend guide](../../guides/frontend.md) to orient the Planning Review, Live
 Run, and P7 Experience pages before walking through the scenario.
 
-<img src="assets/p7-experience-replay.svg" alt="Verified source evidence becoming operator-selected, repeatedly revalidated procedural guidance for one isolated replay candidate beside a fresh control" width="100%" />
+<img src="../../assets/p7-experience-replay.svg" alt="Verified source evidence becoming operator-selected, repeatedly revalidated procedural guidance for one isolated replay candidate beside a fresh control" width="100%" />
 
 ## Scenario
 
@@ -54,16 +54,16 @@ loss of transfer validity can only remove influence, never add authority.
 
 ## Reproduce the research result
 
-<img src="assets/p7-transfer-gate.svg" alt="Frozen P7 benchmark result with one visible replay negative-transfer task and a passing aggregate safety and benefit gate" width="100%" />
+<img src="../../assets/p7-transfer-gate.svg" alt="Frozen P7 benchmark result with one visible replay negative-transfer task and a passing aggregate safety and benefit gate" width="100%" />
 
 Open `http://localhost:5173/benchmarks/experience` and choose **Reproduce P7
-gate**, or call the replay endpoint from the [P7 runbook](P7_RUNBOOK.md). The
+gate**, or call the replay endpoint from the [P7 runbook](../../runbooks/p7-verified-experience.md). The
 report includes the two negative-transfer cases instead of hiding them. The
 frozen fixture passes because aggregate negative transfer remains within the
 preregistered ceiling, stale evidence is rejected at the required rate, false
 accepts do not increase, success does not regress, and replay improves both
 quality and tool use.
 
-Continue with the [P7 acceptance report](P7_ACCEPTANCE_REPORT.md) for criterion
-mapping and the [P7 decision record](P7_DECISIONS.md) for frozen thresholds and
+Continue with the [P7 acceptance report](acceptance.md) for criterion
+mapping and the [P7 decision record](decisions.md) for frozen thresholds and
 explicit exclusions.

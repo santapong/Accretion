@@ -2,7 +2,7 @@
 
 <img src="../assets/v02-roadmap.svg" alt="Release roadmap from the completed v0.1 static control-plane gate through v0.2 P5 dynamic workflows, P6 routing and search, P7 verified experience, and the gated v0.3 integration platform" width="100%" />
 
-The [v0.2 delivery plan](../V0_2_PLAN.md) translates the normative v0.2 SDD into
+The [v0.2 delivery plan](../releases/v0.2/plan.md) translates the normative v0.2 SDD into
 reviewable implementation slices without changing its contracts.
 
 ## Release map

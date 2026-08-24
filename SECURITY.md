@@ -11,7 +11,7 @@
 - Mutable runs use isolated Git worktrees and independent verification.
 
 See the [v0.1 security architecture](docs/sdd/Accretion_SDD_v0.1.md) and
-[developer guide](docs/DEVELOPER_GUIDE.md#6-preserve-the-authority-boundary) for
+[developer guide](docs/guides/developer.md#6-preserve-the-authority-boundary) for
 the implementation boundary.
 
 ## Supported versions

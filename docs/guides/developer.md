@@ -1,11 +1,11 @@
 # Developer guide
 
 This guide takes a new contributor from a clean checkout to a verified local
-change. For a five-minute product tour, use the [showcase](SHOWCASE.md). For the
+change. For a five-minute product tour, use the [showcase](showcase.md). For the
 implemented route map and React data model, use the
-[operator frontend guide](FRONTEND_GUIDE.md).
+[operator frontend guide](frontend.md).
 
-<img src="assets/developer-journey.svg" alt="Developer journey from clone through a protected contribution" width="100%" />
+<img src="../assets/developer-journey.svg" alt="Developer journey from clone through a protected contribution" width="100%" />
 
 ## 1. Choose a baseline
 
@@ -47,7 +47,7 @@ Open the operator UI at `http://localhost:5173` and API documentation at
 `http://localhost:8000/docs`. Start with the `FAKE` runtime. Signed-in Codex and
 Claude sessions remain opt-in and are not required for local development.
 
-<img src="assets/operator-ui-map.svg" alt="Implemented Accretion operator frontend routes and their authoritative FastAPI snapshot, React Query, and resumable event flow" width="100%" />
+<img src="../assets/operator-ui-map.svg" alt="Implemented Accretion operator frontend routes and their authoritative FastAPI snapshot, React Query, and resumable event flow" width="100%" />
 
 The UI is complete for the P0–P7 v0.2 candidate scope. It renders API-backed
 evidence across eleven routes; it does not own run state or acceptance. The
@@ -85,7 +85,7 @@ curl http://localhost:8000/api/v1/runs/<run-id>/trace
 
 ## 6. Preserve the authority boundary
 
-<img src="assets/trust-boundary.svg" alt="Deterministic capability and credential boundary around external runtimes" width="100%" />
+<img src="../assets/trust-boundary.svg" alt="Deterministic capability and credential boundary around external runtimes" width="100%" />
 
 Provider output may propose work, but it cannot raise permission ceilings,
 validate its own result, expose credentials, or silently retry uncertain side
@@ -107,7 +107,7 @@ tests remain explicitly opt-in.
 
 ## 8. Submit the change
 
-Follow [CONTRIBUTING.md](../CONTRIBUTING.md) and the
-[branch policy](BRANCH_POLICY.md). Keep the branch focused, explain the outcome
+Follow [CONTRIBUTING.md](../../CONTRIBUTING.md) and the
+[branch policy](../governance/branch-policy.md). Keep the branch focused, explain the outcome
 and recovery path, and let the required backend and frontend checks finish before
 squash-merging.
