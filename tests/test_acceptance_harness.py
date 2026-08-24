@@ -74,6 +74,15 @@ def test_manual_evidence_goes_stale() -> None:
     assert harness.classify(fresh) == "MANUAL"
 
 
+def test_a_frontend_criterion_is_reported_separately_from_a_pytest_claim() -> None:
+    """This gate reads pytest markers; a vitest-proven criterion records where it lives."""
+
+    entry = criterion(verification="frontend", evidence="apps/ui/src/App.test.tsx")
+    assert harness.classify(entry) == "FRONTEND"
+    # Distinct from PROVEN so a reader can tell which suite actually ran it.
+    assert harness.classify(criterion(tests=["t::a"], outcomes=["passed"])) == "PROVEN"
+
+
 def test_not_yet_due_is_out_of_scope_rather_than_failing() -> None:
     entry = criterion(verification="not_yet_due", reason="M4")
     assert harness.classify(entry) == "NOT_YET_DUE"

@@ -7,12 +7,20 @@
 #   verification = "test"          proven by a marked, passing test (the default)
 #   verification = "manual"        needs evidence + last_verified; goes stale after 180 days
 #   verification = "waived"        needs reason + issue + expires; fails once expired
+#   verification = "frontend"      proven by the vitest suite CI runs; needs evidence
 #   verification = "not_yet_due"   belongs to a milestone that has not started
 #
 # Both escape hatches expire on purpose. An audit records what someone believed on one
 # day; this file makes every belief carry an end date.
 
 [criteria]
+
+# --- Proven by the frontend suite -------------------------------------------
+# This gate reads pytest markers, so a criterion whose proof lives in vitest is
+# recorded with a pointer. `npm run test` runs these in CI on every pull request.
+V01-P4-004 = { verification = "frontend", evidence = "apps/ui/src/App.test.tsx (9 route tests) + EventStream.test.tsx + RunExecution.test.tsx" }
+V02-P6-008 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:314 renders P6 candidate lineage, provenance, scores, spend, and selection reason" }
+V02-P7-007 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:373 renders P7 experience provenance, compatibility, transfer risk, and reused segments" }
 
 # --- Not yet due: milestones M3-M6 have not started -------------------------
 AC3-MCP-02 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
