@@ -106,6 +106,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/capabilities/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve Capability */
+        post: operations["resolve_capability_api_v1_capabilities_resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Connections */
+        get: operations["list_connections_api_v1_connections_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Connectors */
+        get: operations["list_connectors_api_v1_connectors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/plugins": {
         parameters: {
             query?: never;
@@ -1760,6 +1811,48 @@ export interface components {
          * @enum {string}
          */
         CapabilityBackend: "MCP" | "NATIVE" | "HTTP" | "CLI" | "PYTHON" | "AGENT_RUNTIME";
+        /** CapabilityBinding */
+        CapabilityBinding: {
+            backend: components["schemas"]["CapabilityBindingBackend"];
+            /** Binding Id */
+            binding_id: string;
+            /** Capability Id */
+            capability_id: string;
+            /** Connector Id */
+            connector_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Input Transform Ref */
+            input_transform_ref?: string | null;
+            /** Output Transform Ref */
+            output_transform_ref?: string | null;
+            /** Policy Ref */
+            policy_ref?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+        };
+        /** CapabilityBindingBackend */
+        CapabilityBindingBackend: {
+            /** Method */
+            method?: string | null;
+            /** Server Ref */
+            server_ref?: string | null;
+            /** Tool Name */
+            tool_name?: string | null;
+            type: components["schemas"]["CapabilityBackend"];
+        };
         /** CapabilityExecutionResult */
         CapabilityExecutionResult: {
             authorization: components["schemas"]["CapabilityAuthorization"];
@@ -1816,6 +1909,22 @@ export interface components {
              * @constant
              */
             schema_version: "1.0";
+        };
+        /**
+         * CapabilityResolutionOutcome
+         * @enum {string}
+         */
+        CapabilityResolutionOutcome: "OK" | "NO_CONNECTOR_REQUIRED" | "REQUIRE_REAUTH" | "NO_CONNECTION" | "DISABLED";
+        /** CapabilityResolveRequest */
+        CapabilityResolveRequest: {
+            /** Capability Id */
+            capability_id: string;
+            /** Principal Id */
+            principal_id?: string | null;
+            /** Version */
+            version?: string | null;
+            /** Workspace Id */
+            workspace_id?: string | null;
         };
         /**
          * CheckpointKind
@@ -1877,6 +1986,110 @@ export interface components {
          * @enum {string}
          */
         ConditionOperator: "ALL" | "ANY" | "NOT" | "EQ" | "NE" | "LT" | "LTE" | "GT" | "GTE" | "IN";
+        /** Connection */
+        Connection: {
+            /** Connection Id */
+            connection_id: string;
+            /** Connector Id */
+            connector_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Granted Scopes */
+            granted_scopes?: string[];
+            /** Last Health Check */
+            last_health_check?: string | null;
+            /** Metadata */
+            metadata?: {
+                [key: string]: unknown;
+            };
+            /** Principal Id */
+            principal_id?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** @default USER */
+            scope: components["schemas"]["ConnectionScope"];
+            /** @default PENDING */
+            status: components["schemas"]["ConnectionStatus"];
+            /** Token Handle Ref */
+            token_handle_ref?: string | null;
+            /** Workspace Id */
+            workspace_id: string;
+            /**
+             * Workspace Shareable
+             * @default false
+             */
+            workspace_shareable: boolean;
+        };
+        /** ConnectionRef */
+        ConnectionRef: {
+            /** Connection Id */
+            connection_id: string;
+            /** Connector Id */
+            connector_id: string;
+            status: components["schemas"]["ConnectionStatus"];
+        };
+        /**
+         * ConnectionScope
+         * @enum {string}
+         */
+        ConnectionScope: "USER" | "WORKSPACE";
+        /**
+         * ConnectionStatus
+         * @enum {string}
+         */
+        ConnectionStatus: "PENDING" | "ACTIVE" | "DEGRADED" | "REAUTH_REQUIRED" | "REVOKED";
+        /**
+         * ConnectorAuthType
+         * @enum {string}
+         */
+        ConnectorAuthType: "NONE" | "OAUTH2" | "OIDC" | "API_KEY" | "SERVICE_ACCOUNT" | "EMA";
+        /** ConnectorDefinition */
+        ConnectorDefinition: {
+            /** @default NONE */
+            auth_type: components["schemas"]["ConnectorAuthType"];
+            /** Authorization Server */
+            authorization_server?: string | null;
+            /** @default USER */
+            connection_scope: components["schemas"]["ConnectionScope"];
+            /** Connector Id */
+            connector_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Default Scopes */
+            default_scopes?: string[];
+            /** Health Check Ref */
+            health_check_ref?: string | null;
+            kind: components["schemas"]["ConnectorKind"];
+            /** Name */
+            name: string;
+            /** Optional Scopes */
+            optional_scopes?: string[];
+            /** Plugin Id */
+            plugin_id?: string | null;
+            /** Resource Server */
+            resource_server?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+        };
+        /**
+         * ConnectorKind
+         * @enum {string}
+         */
+        ConnectorKind: "MCP" | "REST" | "GRAPHQL" | "SDK" | "LOCAL";
         /** ContextBundle */
         ContextBundle: {
             /** Artifact Refs */
@@ -3453,6 +3666,18 @@ export interface components {
          * @enum {string}
          */
         ReplanStatus: "REQUESTED" | "VALIDATING" | "ACTIVATED" | "REJECTED" | "REQUIRES_HUMAN";
+        /** ResolvedCapability */
+        ResolvedCapability: {
+            binding?: components["schemas"]["CapabilityBinding"] | null;
+            capability: components["schemas"]["Capability"];
+            connection?: components["schemas"]["ConnectionRef"] | null;
+            outcome: components["schemas"]["CapabilityResolutionOutcome"];
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
         /**
          * RiskLevel
          * @enum {string}
@@ -4927,6 +5152,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Capability"][];
+                };
+            };
+        };
+    };
+    resolve_capability_api_v1_capabilities_resolve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CapabilityResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolvedCapability"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_connections_api_v1_connections_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Connection"][];
+                };
+            };
+        };
+    };
+    list_connectors_api_v1_connectors_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorDefinition"][];
                 };
             };
         };

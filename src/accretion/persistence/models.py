@@ -379,6 +379,54 @@ class PluginRow(Base):
     )
 
 
+class ConnectorDefinitionRow(Base):
+    __tablename__ = "connector_definitions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    connector_id: Mapped[str] = mapped_column(String(255), unique=True)
+    auth_type: Mapped[str] = mapped_column(String(32))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_connector_definitions_auth", "auth_type", "connector_id"),)
+
+
+class ConnectionRow(Base):
+    __tablename__ = "connections"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    connection_id: Mapped[str] = mapped_column(String(255), unique=True)
+    connector_id: Mapped[str] = mapped_column(String(255))
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    principal_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    scope: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(32))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_connections_connector_status", "connector_id", "status"),
+        Index("ix_connections_workspace", "workspace_id", "principal_id"),
+    )
+
+
+class CapabilityBindingRow(Base):
+    __tablename__ = "capability_bindings"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    binding_id: Mapped[str] = mapped_column(String(255), unique=True)
+    capability_id: Mapped[str] = mapped_column(String(255))
+    connector_id: Mapped[str] = mapped_column(String(255))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("capability_id", "connector_id", name="uq_capability_bindings_cap_conn"),
+        Index("ix_capability_bindings_capability", "enabled", "capability_id"),
+    )
+
+
 class CapabilityPolicyRow(Base):
     __tablename__ = "policies"
 
