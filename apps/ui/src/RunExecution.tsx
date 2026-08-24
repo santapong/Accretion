@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Background,
   BaseEdge,
@@ -17,10 +17,17 @@ import { api } from "./api";
 import { layoutProjection } from "./graphLayout";
 import type {
   ApprovalRecord,
+  CandidateScore,
+  CandidateTrajectory,
+  ExperienceDetail,
+  ExperienceMatch,
   GraphProjection,
   GraphProjectionNode,
+  GraphValidationResult,
   LoopExecution,
   Run,
+  SearchRecord,
+  TrajectorySeed,
   VerificationResult,
 } from "./types";
 
@@ -364,6 +371,372 @@ function VerificationPanel({ verifications }: { verifications: VerificationResul
   );
 }
 
+function ExperienceCapture({ run }: { run: Run }) {
+  const [feedback, setFeedback] = useState<string>();
+  const [captured, setCaptured] = useState<ExperienceDetail>();
+  const materializable = ["SUCCEEDED", "FAILED", "REQUIRES_HUMAN"].includes(run.state);
+
+  async function materialize() {
+    setFeedback("Validating and materializing terminal evidence…");
+    try {
+      const features = await api.projectFeatures(run.project_id);
+      if (!features.experience_retrieval) {
+        await api.updateProjectFeatures(
+          run.project_id,
+          { dynamicWorkflows: true, candidateSearch: true, experienceRetrieval: true },
+          features.revision,
+        );
+      }
+      const detail = await api.materializeExperience(run.run_id);
+      setCaptured(detail);
+      setFeedback("Immutable redacted experience materialized.");
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Experience materialization failed.");
+    }
+  }
+
+  if (!materializable && !captured) return null;
+  return (
+    <section className="experience-capture" aria-label="Experience materialization">
+      <div><p className="eyebrow">P7 explicit capture</p><h3>Terminal experience</h3><p>Only verifier-backed procedural evidence is retained; patches, sessions, credentials, and native payloads are excluded.</p></div>
+      <button className="secondary-button" type="button" onClick={materialize} disabled={Boolean(captured)}>Materialize run experience</button>
+      {captured ? <small>{captured.experience.trust} {captured.experience.polarity} · {captured.segments.length} controlled segments · {captured.embedding_version}</small> : null}
+      {feedback ? <p className="form-status" role="status">{feedback}</p> : null}
+    </section>
+  );
+}
+
+function CandidateCard({
+  candidate,
+  score,
+  selected,
+}: {
+  candidate: CandidateTrajectory;
+  score: CandidateScore | undefined;
+  selected: boolean;
+}) {
+  const spend = candidate.budget_spent;
+  const sourceKind = candidate.source_kind ?? "FRESH";
+  return (
+    <article className={`candidate-card ${selected ? "candidate-selected" : ""}`}>
+      <header>
+        <div><span>Candidate {String(candidate.ordinal).padStart(2, "0")}</span><strong>{candidate.provider}</strong></div>
+        <StatusBadge state={candidate.status} />
+      </header>
+      <p className="candidate-runtime">{candidate.runtime_id} · {candidate.runtime_model} · {candidate.runtime_version}</p>
+      <p className={`candidate-source candidate-source-${sourceKind.toLowerCase()}`}>{sourceKind === "REPLAY" ? "Verified replay treatment" : "Fresh control"}</p>
+      {candidate.reviewer_provider ? <p className="candidate-reviewer">Reviewed by {candidate.reviewer_provider}</p> : null}
+      <dl>
+        <div><dt>Score</dt><dd>{score?.total_score == null ? "—" : score.total_score.toFixed(3)}</dd></div>
+        <div><dt>Quality</dt><dd>{score?.quality_score == null ? "—" : score.quality_score.toFixed(3)}</dd></div>
+        <div><dt>Cost proxy</dt><dd>{score ? score.cost_proxy.toFixed(3) : "—"}</dd></div>
+        <div><dt>Latency proxy</dt><dd>{score ? score.latency_proxy.toFixed(3) : "—"}</dd></div>
+        <div><dt>Spend</dt><dd>{spend?.turns ?? 0}t / {spend?.tool_calls ?? 0} tools</dd></div>
+        <div><dt>Latency</dt><dd>{candidate.latency_ms} ms</dd></div>
+      </dl>
+      <p className="candidate-reason">{candidate.terminal_reason ?? score?.explanation ?? "Candidate has not completed."}</p>
+      {sourceKind === "REPLAY" ? <p className="candidate-replay-state">Seed {candidate.seed_revalidation_status ?? "PENDING"} · {(candidate.trajectory_segment_refs ?? []).length} procedural segments</p> : null}
+      <small>{candidate.trajectory_ref ?? candidate.session_id ?? "trajectory pending"}</small>
+    </article>
+  );
+}
+
+function ExperienceLineage({
+  search,
+  seeds,
+  matches,
+  details,
+}: {
+  search: SearchRecord;
+  seeds: TrajectorySeed[];
+  matches: Map<string, ExperienceMatch>;
+  details: Map<string, ExperienceDetail>;
+}) {
+  const positiveIds = search.plan.replay_seed_match_ids ?? [];
+  const negativeIds = search.plan.negative_guidance_match_ids ?? [];
+  const attached = [...positiveIds, ...negativeIds];
+  if (search.plan.mode !== "REPLAY_BRANCH") return null;
+  return (
+    <section className="experience-lineage" aria-label="Experience replay lineage">
+      <header><div><p className="eyebrow">P7 explainability</p><h4>Experience replay lineage</h4></div><span>{seeds.length} frozen seed{seeds.length === 1 ? "" : "s"}</span></header>
+      <div className="experience-lineage-grid">
+        {attached.map((matchId) => {
+          const match = matches.get(matchId);
+          const detail = match ? details.get(match.experience_id) : undefined;
+          const seed = seeds.find((item) => item.match_id === matchId);
+          const role = positiveIds.includes(matchId) ? "REPLAY SEED" : "NEGATIVE GUIDANCE";
+          return (
+            <article key={matchId}>
+              <header><strong>{role}</strong><StatusBadge state={match?.assessment.disposition ?? seed?.validation_status ?? "PENDING"} /></header>
+              {match ? <div className="experience-score-row"><span>{match.assessment.final_score.toFixed(3)} compatibility</span><span>{match.assessment.transfer_risk.toFixed(3)} transfer risk</span><span>{match.trust} trust</span></div> : null}
+              {detail ? <p>{detail.experience.source_kind} {detail.experience.source_run_id} · {detail.experience.provider}/{detail.experience.runtime_version} · commit {detail.experience.source_commit.slice(0, 12)}</p> : null}
+              {seed ? <><small>Reused segments: {seed.segment_ids.join(", ")}</small><ul>{(seed.procedural_guidance ?? []).map((item) => <li key={item}>{item}</li>)}</ul><p className="experience-revalidations">Revalidation: {(seed.required_revalidations ?? []).join(" · ")}</p></> : <small>Guidance match; never eligible to seed a branch.</small>}
+              {(match?.assessment.reasons ?? []).length ? <p className="experience-reasons">{match?.assessment.reasons?.join(" · ")}</p> : null}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+function SearchTree({ run }: { run: Run }) {
+  const queryClient = useQueryClient();
+  const active = !terminalStates.has(run.state);
+  const searchesQuery = useQuery({
+    queryKey: ["run-searches", run.run_id],
+    queryFn: () => api.searches(run.run_id),
+    retry: false,
+    refetchInterval: active ? 2000 : false,
+  });
+  const searches: SearchRecord[] = Array.isArray(searchesQuery.data)
+    ? searchesQuery.data
+    : [];
+  const candidateQueries = useQueries({
+    queries: searches.map((search) => ({
+      queryKey: ["search-candidates", search.plan.search_id],
+      queryFn: () => api.searchCandidates(search.plan.search_id),
+      retry: false,
+      refetchInterval: active ? 2000 : false,
+    })),
+  });
+  const scoreQueries = useQueries({
+    queries: searches.map((search) => ({
+      queryKey: ["search-scores", search.plan.search_id],
+      queryFn: () => api.searchScores(search.plan.search_id),
+      retry: false,
+      refetchInterval: active ? 2000 : false,
+    })),
+  });
+  const seedQueries = useQueries({
+    queries: searches.map((search) => ({
+      queryKey: ["search-replay-seeds", search.plan.search_id],
+      queryFn: () => api.replaySeeds(search.plan.search_id),
+      retry: false,
+      refetchInterval: active ? 2000 : false,
+    })),
+  });
+  const matchesQuery = useQuery({
+    queryKey: ["selected-experience-matches", run.task_id],
+    queryFn: () => api.selectedExperienceMatches(run.task_id),
+    retry: false,
+    refetchInterval: active ? 2500 : false,
+  });
+  const selectedMatches = Array.isArray(matchesQuery.data) ? matchesQuery.data : [];
+  const detailQueries = useQueries({
+    queries: selectedMatches.map((match) => ({
+      queryKey: ["experience-detail", match.experience_id],
+      queryFn: () => api.experience(match.experience_id),
+      retry: false,
+    })),
+  });
+  if (!searchesQuery.isLoading && !searches.length) return null;
+
+  async function cancel(searchId: string) {
+    await api.cancelSearch(searchId);
+    await queryClient.invalidateQueries({ queryKey: ["run-searches", run.run_id] });
+  }
+
+  return (
+    <section className="search-inspector" aria-label="Candidate search tree">
+      <header>
+        <div><p className="eyebrow">P6 bounded test-time compute</p><h3>Candidate search tree</h3></div>
+        <span>{searches.length} plan{searches.length === 1 ? "" : "s"}</span>
+      </header>
+      {searchesQuery.isLoading ? <p className="empty compact">Loading candidate lineage…</p> : null}
+      {searches.map((search, index) => {
+        const candidates = Array.isArray(candidateQueries[index]?.data)
+          ? candidateQueries[index].data
+          : [];
+        const scores = Array.isArray(scoreQueries[index]?.data)
+          ? scoreQueries[index].data
+          : [];
+        const scoresByCandidate = new Map(
+          scores.map((score) => [score.candidate_id, score]),
+        );
+        const seeds = Array.isArray(seedQueries[index]?.data)
+          ? seedQueries[index].data
+          : [];
+        const matchesById = new Map(
+          selectedMatches.map((match) => [match.match_id, match]),
+        );
+        const detailsById = new Map(
+          detailQueries.flatMap((query) => query.data ? [[query.data.experience.experience_id, query.data] as const] : []),
+        );
+        const cancellable = ["PLANNED", "RUNNING", "SELECTING"].includes(search.status);
+        return (
+          <details className="search-plan-tree" key={search.plan.search_id} open>
+            <summary>
+              <span><strong>{display(search.plan.mode)}</strong><small>{search.plan.parent_node_id} · r{search.plan.graph_revision}</small></span>
+              <StatusBadge state={search.status} />
+            </summary>
+            <div className="search-plan-meta">
+              <span>{search.plan.branch_count} branches / {search.plan.max_parallel} parallel</span>
+              <span>{search.budget_spent?.turns ?? 0}/{search.plan.total_budget.max_turns} turns</span>
+              <span>{search.budget_spent?.tool_calls ?? 0}/{search.plan.total_budget.max_tool_calls} tools</span>
+              <span>{search.stop_reason ? display(search.stop_reason) : "search pending"}</span>
+              {cancellable ? <button className="secondary-button" type="button" onClick={() => cancel(search.plan.search_id)}>Cancel search</button> : null}
+            </div>
+            <ExperienceLineage search={search} seeds={seeds} matches={matchesById} details={detailsById} />
+            <div className="candidate-tree">
+              {candidates.map((candidate) => (
+                <CandidateCard
+                  candidate={candidate}
+                  key={candidate.candidate_id}
+                  score={scoresByCandidate.get(candidate.candidate_id)}
+                  selected={search.selected_candidate_id === candidate.candidate_id}
+                />
+              ))}
+              {!candidates.length ? <p className="quiet">Candidates are created when the parent node starts.</p> : null}
+            </div>
+          </details>
+        );
+      })}
+    </section>
+  );
+}
+
+function DynamicWorkflowInspector({ run }: { run: Run }) {
+  const queryClient = useQueryClient();
+  const [replanEvidence, setReplanEvidence] = useState("");
+  const [feedback, setFeedback] = useState<string>();
+  const proposals = useQuery({
+    queryKey: ["workflow-proposals", run.run_id],
+    queryFn: () => api.workflowProposals(run.run_id),
+    retry: false,
+    refetchInterval: terminalStates.has(run.state) ? false : 2500,
+  });
+  const proposalItems = Array.isArray(proposals.data) ? proposals.data : [];
+  const latestProposal = proposalItems.at(-1);
+  const validations = useQuery({
+    queryKey: ["workflow-validations", run.run_id, latestProposal?.proposal_id],
+    queryFn: () => api.workflowValidations(run.run_id, latestProposal!.proposal_id),
+    enabled: Boolean(latestProposal),
+    retry: false,
+  });
+  const revisions = useQuery({
+    queryKey: ["graph-revisions", run.run_id],
+    queryFn: () => api.graphRevisions(run.run_id),
+    retry: false,
+    refetchInterval: terminalStates.has(run.state) ? false : 2500,
+  });
+  const decisions = useQuery({
+    queryKey: ["runtime-decisions", run.run_id],
+    queryFn: () => api.runtimeDecisions(run.run_id),
+    retry: false,
+  });
+  const replans = useQuery({
+    queryKey: ["replans", run.run_id],
+    queryFn: () => api.replans(run.run_id),
+    retry: false,
+  });
+  const revisionItems = Array.isArray(revisions.data) ? revisions.data : [];
+  const decisionItems = Array.isArray(decisions.data) ? decisions.data : [];
+  const replanItems = Array.isArray(replans.data) ? replans.data : [];
+  const previousRevision = revisionItems.length > 1
+    ? revisionItems[revisionItems.length - 2].revision
+    : undefined;
+  const activeRevision = revisionItems.at(-1)?.revision;
+  const diff = useQuery({
+    queryKey: ["graph-revision-diff", run.run_id, previousRevision, activeRevision],
+    queryFn: () => api.graphDiff(run.run_id, previousRevision!, activeRevision!),
+    enabled: previousRevision != null && activeRevision != null,
+    retry: false,
+  });
+  if (!proposals.isLoading && !latestProposal && !revisionItems.length) return null;
+
+  const validationItems = Array.isArray(validations.data) ? validations.data : [];
+  const latestValidation: GraphValidationResult | undefined = validationItems.at(-1);
+
+  async function requestReplan() {
+    setFeedback("Pausing at a safe boundary and validating a new revision…");
+    try {
+      const result = await api.replan(
+        run.run_id,
+        "HUMAN_REQUEST",
+        replanEvidence.trim() ? [replanEvidence.trim()] : [],
+      );
+      setFeedback(
+        result.revision
+          ? `Revision ${result.revision.revision} activated with protected history preserved.`
+          : `Replan ${result.request.status.toLowerCase().replaceAll("_", " ")}.`,
+      );
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["workflow-proposals", run.run_id] }),
+        queryClient.invalidateQueries({ queryKey: ["graph-revisions", run.run_id] }),
+        queryClient.invalidateQueries({ queryKey: ["replans", run.run_id] }),
+        queryClient.invalidateQueries({ queryKey: ["run-graph", run.run_id] }),
+      ]);
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Replan failed.");
+    }
+  }
+
+  return (
+    <section className="dynamic-inspector" aria-labelledby="dynamic-workflow-heading">
+      <header>
+        <div><p className="eyebrow">P5 authority boundary</p><h3 id="dynamic-workflow-heading">Dynamic workflow</h3></div>
+        <StatusBadge state={latestValidation?.status ?? (activeRevision ? "ACTIVE" : "PROPOSED")} />
+      </header>
+      {latestProposal ? (
+        <article className="proposal-inspector">
+          <div className="dynamic-metrics">
+            <span><strong>{latestProposal.nodes.length}</strong> nodes</span>
+            <span><strong>{(latestProposal.edges ?? []).length}</strong> edges</span>
+            <span><strong>{Math.round(latestProposal.confidence * 100)}%</strong> confidence</span>
+          </div>
+          <h4>{(latestProposal.fragment_refs ?? []).join(" · ")}</h4>
+          <p>{latestProposal.rationale_summary}</p>
+          <ul>{(latestProposal.assumptions ?? []).map((assumption) => <li key={assumption}>{assumption}</li>)}</ul>
+          {(latestValidation?.errors ?? []).length ? (
+            <ul className="finding-list">
+              {(latestValidation?.errors ?? []).map((finding) => (
+                <li className="finding-error" key={`${finding.code}-${finding.path}`}>
+                  <span>{finding.severity}</span><div><strong>{finding.code}</strong><p>{finding.message}</p></div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          <small>{latestProposal.planner_version} · {latestValidation?.validator_version ?? "validation pending"}</small>
+        </article>
+      ) : null}
+      <div className="revision-timeline" aria-label="Graph revision timeline">
+        {revisionItems.map((revision) => (
+          <article key={revision.revision_id}>
+            <span>r{revision.revision}</span>
+            <div><strong>{revision.reason.replaceAll("_", " ")}</strong><small>{revision.normalized_graph_hash.slice(0, 12)}…</small></div>
+            <small>{(revision.protected_state_refs ?? []).length} protected refs</small>
+          </article>
+        ))}
+        {!revisionItems.length ? <p className="quiet">No graph revision is active.</p> : null}
+      </div>
+      {diff.data ? (
+        <div className="graph-diff-summary">
+          <strong>r{diff.data.from_revision} → r{diff.data.to_revision}</strong>
+          <span>+{(diff.data.added_nodes ?? []).length} / −{(diff.data.removed_nodes ?? []).length} nodes</span>
+          <span>{(diff.data.changed_nodes ?? []).length} changed</span>
+          <span>{(diff.data.protected_state_refs ?? []).length} protected state refs</span>
+        </div>
+      ) : null}
+      {decisionItems.map((decision) => (
+        <details className="router-decision" key={decision.decision_id}>
+          <summary><strong>Runtime: {decision.selected_runtime ?? "none"}</strong><span>{decision.policy_version}</span></summary>
+          <p>{decision.selected_reason}</p>
+          <ul>{decision.candidates.map((candidate) => <li key={`${candidate.provider}-${candidate.runtime_version}`}><strong>{candidate.provider}</strong><span>{candidate.score.toFixed(3)} · {candidate.available ? "available" : candidate.exclusion_reason}</span></li>)}</ul>
+        </details>
+      ))}
+      {replanItems.length ? <p className="quiet">{replanItems.length} durable replan request(s)</p> : null}
+      {run.state === "PAUSED" && revisionItems.length ? (
+        <div className="replan-control">
+          <label>Replan evidence reference<input value={replanEvidence} onChange={(event) => setReplanEvidence(event.target.value)} placeholder="operator:reason-or-evidence-id" /></label>
+          <button className="secondary-button" type="button" onClick={requestReplan}>Request safe replan</button>
+        </div>
+      ) : null}
+      {feedback ? <p className="form-status" role="status">{feedback}</p> : null}
+    </section>
+  );
+}
+
 export function RunExecution({ run }: { run: Run | undefined }) {
   const runId = run?.run_id;
   const refetchInterval = run && !terminalStates.has(run.state) ? 2500 : false;
@@ -401,6 +774,9 @@ export function RunExecution({ run }: { run: Run | undefined }) {
         <StatusBadge state={run.state} />
       </header>
       <div className="execution-content">
+        <ExperienceCapture run={run} />
+        <DynamicWorkflowInspector run={run} />
+        <SearchTree run={run} />
         <PendingApprovals runId={run.run_id} />
         {loopQuery.data ? <BudgetSummary loop={loopQuery.data} /> : null}
         {projection ? <ProjectionCanvas projection={projection} /> : (

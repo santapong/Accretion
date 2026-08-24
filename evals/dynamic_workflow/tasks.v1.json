@@ -1,0 +1,16 @@
+{
+  "tasks": [
+    {"task_id":"p5-001","cohort":"PREDICTABLE","task_type":"IMPLEMENT","family":"bounded-edit","title":"Add a typed response field","budgets":{"wall_time_seconds":300,"max_turns":12,"max_tool_calls":24}},
+    {"task_id":"p5-002","cohort":"PREDICTABLE","task_type":"REVIEW","family":"focused-review","title":"Review one deterministic validator","budgets":{"wall_time_seconds":300,"max_turns":12,"max_tool_calls":24}},
+    {"task_id":"p5-003","cohort":"PREDICTABLE","task_type":"ANALYSIS","family":"contract-analysis","title":"Trace one API contract","budgets":{"wall_time_seconds":300,"max_turns":12,"max_tool_calls":24}},
+    {"task_id":"p5-004","cohort":"PREDICTABLE","task_type":"RESEARCH","family":"local-research","title":"Summarize a frozen local corpus","budgets":{"wall_time_seconds":300,"max_turns":12,"max_tool_calls":24}},
+    {"task_id":"p5-005","cohort":"HETEROGENEOUS","task_type":"IMPLEMENT","family":"cross-layer-change","title":"Implement a schema API and UI change","budgets":{"wall_time_seconds":480,"max_turns":16,"max_tool_calls":32}},
+    {"task_id":"p5-006","cohort":"HETEROGENEOUS","task_type":"REVIEW","family":"security-review","title":"Review policy persistence and operator projection","budgets":{"wall_time_seconds":480,"max_turns":16,"max_tool_calls":32}},
+    {"task_id":"p5-007","cohort":"HETEROGENEOUS","task_type":"ANALYSIS","family":"recovery-analysis","title":"Analyze recovery across graph revisions","budgets":{"wall_time_seconds":480,"max_turns":16,"max_tool_calls":32}},
+    {"task_id":"p5-008","cohort":"HETEROGENEOUS","task_type":"RESEARCH","family":"invalid-proposal","title":"Recover from an invalid research workflow","budgets":{"wall_time_seconds":480,"max_turns":16,"max_tool_calls":32}},
+    {"task_id":"p5-009","cohort":"UNCERTAIN","task_type":"IMPLEMENT","family":"ambiguous-failure","title":"Diagnose and repair an ambiguous integration failure","budgets":{"wall_time_seconds":600,"max_turns":20,"max_tool_calls":40}},
+    {"task_id":"p5-010","cohort":"UNCERTAIN","task_type":"REVIEW","family":"unknown-risk","title":"Review an incompletely specified authority change","budgets":{"wall_time_seconds":600,"max_turns":20,"max_tool_calls":40}},
+    {"task_id":"p5-011","cohort":"UNCERTAIN","task_type":"ANALYSIS","family":"branching-analysis","title":"Compare competing root-cause hypotheses","budgets":{"wall_time_seconds":600,"max_turns":20,"max_tool_calls":40}},
+    {"task_id":"p5-012","cohort":"UNCERTAIN","task_type":"RESEARCH","family":"evidence-synthesis","title":"Synthesize conflicting implementation evidence","budgets":{"wall_time_seconds":600,"max_turns":20,"max_tool_calls":40}}
+  ]
+}

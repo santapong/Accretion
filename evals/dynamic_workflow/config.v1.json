@@ -1,0 +1,16 @@
+{
+  "suite_version": "p5-dynamic-workflow-v1",
+  "configuration_version": "p5-release-gate-v1",
+  "selector_version": "fragment-planner-v2",
+  "held_out_task_count": 12,
+  "treatments": ["STATIC", "DYNAMIC"],
+  "cohorts": ["PREDICTABLE", "HETEROGENEOUS", "UNCERTAIN"],
+  "usage_cost_weight": 0.15,
+  "latency_weight": 0.15,
+  "risk_weight": 0.35,
+  "human_burden_weight": 0.2,
+  "minimum_heterogeneous_uncertain_utility_uplift": 0.02,
+  "minimum_predictable_utility_uplift": -0.02,
+  "allow_experimental_null_release": true,
+  "precision": 6
+}

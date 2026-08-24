@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from accretion.contracts import (
     ApprovalDecisionValue,
@@ -14,6 +14,12 @@ from accretion.contracts import (
     TaskBudgets,
     TaskType,
     TemplateStatus,
+)
+from accretion.orchestration.models import (
+    PlannerRuntime,
+    ReplanReason,
+    SearchBudgetEnvelope,
+    SearchMode,
 )
 
 
@@ -42,6 +48,67 @@ class TaskCreate(BaseModel):
 
 class RunCreate(BaseModel):
     provider: Provider = Provider.FAKE
+
+
+class ProjectFeatureUpdate(BaseModel):
+    dynamic_workflows: bool | None = None
+    candidate_search: bool | None = None
+    experience_retrieval: bool | None = None
+    expected_revision: int = Field(ge=1)
+
+    @model_validator(mode="after")
+    def require_feature(self) -> ProjectFeatureUpdate:
+        if (
+            self.dynamic_workflows is None
+            and self.candidate_search is None
+            and self.experience_retrieval is None
+        ):
+            raise ValueError("at least one feature setting is required")
+        return self
+
+
+class ExperienceMaterializeCreate(BaseModel):
+    candidate_id: str | None = None
+
+
+class ExperienceQueryCreate(BaseModel):
+    task_id: str
+    include_failures: bool = True
+    top_k: int = Field(default=5, ge=1, le=10)
+    max_age_days: int | None = Field(default=None, ge=1, le=3650)
+
+
+class ExperienceSelectionCreate(BaseModel):
+    query_id: str
+    match_ids: list[str] = Field(min_length=1, max_length=3)
+    expected_context_bundle_id: str
+
+
+class ExperienceRetractCreate(BaseModel):
+    reason: str = Field(min_length=1, max_length=2_000)
+    expected_revision: int = Field(ge=1)
+
+
+class WorkflowProposeCreate(BaseModel):
+    execution_provider: Provider = Provider.FAKE
+    planner_runtime: PlannerRuntime = PlannerRuntime.DETERMINISTIC
+
+
+class ReplanCreate(BaseModel):
+    reason: ReplanReason
+    evidence_refs: list[str] = Field(default_factory=list)
+
+
+class SearchCreate(BaseModel):
+    parent_node_id: str = Field(min_length=1, max_length=96)
+    mode: SearchMode
+    branch_count: int = Field(default=2, ge=1, le=4)
+    max_parallel: int = Field(default=2, ge=1, le=4)
+    per_branch_budget: SearchBudgetEnvelope
+    total_budget: SearchBudgetEnvelope
+    candidate_directives: list[str] = Field(default_factory=list, max_length=4)
+    replay_seed_match_ids: list[str] = Field(default_factory=list, max_length=3)
+    negative_guidance_match_ids: list[str] = Field(default_factory=list, max_length=3)
 
 
 class StrategyOverrideCreate(BaseModel):

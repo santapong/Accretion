@@ -4,6 +4,8 @@ ACR-ARCH is Accretion's frozen architecture-selection benchmark. The v0.1
 corpus is deliberately small enough to reproduce on a workstation while still
 covering every static execution mode and the safety/recovery boundary.
 
+<img src="../assets/benchmark-pipeline.svg" alt="Reproducible ACR-ARCH pipeline from frozen tasks, environments, configuration, and replay traces through validation and deterministic scoring to queryable reports" width="100%" />
+
 ## Frozen inputs
 
 The benchmark inputs are versioned independently from `selector-v1`:
@@ -38,8 +40,8 @@ replace them.
 ## Reproduce
 
 ```bash
-python scripts/generate_acr_arch_fixtures.py
-uv run pytest tests/test_acr_arch.py
+uv run --no-sync python scripts/generate_acr_arch_fixtures.py
+uv run --no-sync pytest tests/test_acr_arch.py
 ```
 
 The signed-in provider calibration is intentionally separate from the frozen replay
@@ -47,12 +49,15 @@ dataset. It selects two tasks from every category, balances five calls per provi
 and independently verifies the exact artifact written by each isolated provider run:
 
 ```bash
-ACCRETION_LIVE_PROVIDERS=1 uv run python scripts/run_acr_arch_live_sample.py
+ACCRETION_LIVE_PROVIDERS=1 ACCRETION_CLAUDE_LIVE_MODEL=sonnet \
+  uv run python scripts/run_acr_arch_live_sample.py \
+  --output artifacts/release/v0.2.0/acr-arch-live-sample.json
 ```
 
 The command writes its redacted report to
-`artifacts/release/acr-arch-live-sample.json`; live results never alter the frozen
-replay traces or release metrics.
+`artifacts/release/v0.2.0/acr-arch-live-sample.json`; live results never alter
+the frozen replay traces or release metrics. The latest 10/10 verified sample
+and its report hash are summarized in [Experiments and results](README.md).
 
 The tests pin the corpus and trace SHA-256 digests, validate the exact category
 composition, require two or more modes per task, recompute all 68 metrics, and
@@ -71,3 +76,7 @@ The summary endpoint filters by mode, provider, task type, verifier, and
 selector version. The POST endpoint only accepts `REPLAY`; live subscription
 runs remain an explicit local release-gate operation so normal UI use cannot
 silently consume provider quota.
+
+The implemented operator page is `http://localhost:5173/benchmarks/acr-arch`.
+See the [frontend guide](../guides/frontend.md) for its place in the complete route
+map and the snapshot authority model shared with the P6 and P7 research pages.

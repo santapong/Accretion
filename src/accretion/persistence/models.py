@@ -3,10 +3,12 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from pgvector.sqlalchemy import VECTOR
 from sqlalchemy import (
     JSON,
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -28,6 +30,17 @@ class ProjectRow(Base):
     name: Mapped[str] = mapped_column(String(255))
     repository_path: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ProjectFeatureSettingsRow(Base):
+    __tablename__ = "project_feature_settings"
+
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="CASCADE"), primary_key=True
+    )
+    settings: Mapped[dict[str, Any]] = mapped_column(JSON)
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
 
 class TaskRow(Base):
@@ -183,9 +196,7 @@ class LoopIterationRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (
-        UniqueConstraint(
-            "loop_execution_id", "number", name="uq_loop_iterations_execution_number"
-        ),
+        UniqueConstraint("loop_execution_id", "number", name="uq_loop_iterations_execution_number"),
         Index("ix_loop_iterations_execution_number", "loop_execution_id", "number"),
     )
 
@@ -377,9 +388,7 @@ class CapabilityPolicyRow(Base):
     definition: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
-    __table_args__ = (
-        UniqueConstraint("policy_id", "version", name="uq_policies_id_version"),
-    )
+    __table_args__ = (UniqueConstraint("policy_id", "version", name="uq_policies_id_version"),)
 
 
 class CapabilityRequestRow(Base):
@@ -419,6 +428,161 @@ class ProjectVersionRow(Base):
     __table_args__ = (
         UniqueConstraint("project_id", "version", name="uq_project_versions_project_version"),
     )
+
+
+class ExperienceRow(Base):
+    __tablename__ = "experiences"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="RESTRICT"))
+    source_run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="RESTRICT"))
+    source_candidate_id: Mapped[str | None] = mapped_column(
+        ForeignKey("search_candidates.id", ondelete="RESTRICT"), nullable=True
+    )
+    source_key: Mapped[str] = mapped_column(String(96), unique=True)
+    repository_identity: Mapped[str] = mapped_column(String(64))
+    trust: Mapped[str] = mapped_column(String(16))
+    polarity: Mapped[str] = mapped_column(String(16))
+    retracted: Mapped[bool] = mapped_column(Boolean, default=False)
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_experiences_project_created", "project_id", "created_at"),
+        Index("ix_experiences_repository_trust", "repository_identity", "trust"),
+    )
+
+
+class TrajectorySegmentRow(Base):
+    __tablename__ = "trajectory_segments"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    experience_id: Mapped[str] = mapped_column(
+        ForeignKey("experiences.id", ondelete="CASCADE")
+    )
+    ordinal: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(32))
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("experience_id", "ordinal", name="uq_trajectory_segment_ordinal"),
+        Index("ix_trajectory_segments_experience", "experience_id", "ordinal"),
+    )
+
+
+class ExperienceEmbeddingRow(Base):
+    __tablename__ = "experience_embeddings"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    experience_id: Mapped[str] = mapped_column(
+        ForeignKey("experiences.id", ondelete="CASCADE"), unique=True
+    )
+    version: Mapped[str] = mapped_column(String(64))
+    input_digest: Mapped[str] = mapped_column(String(64))
+    embedding: Mapped[Any] = mapped_column(VECTOR(384))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ExperienceQueryRow(Base):
+    __tablename__ = "experience_queries"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    project_id: Mapped[str] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+    repository_identity: Mapped[str] = mapped_column(String(64))
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    embedding: Mapped[Any] = mapped_column(VECTOR(384))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_experience_queries_task_created", "task_id", "created_at"),)
+
+
+class ExperienceMatchRow(Base):
+    __tablename__ = "experience_matches"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    query_id: Mapped[str] = mapped_column(
+        ForeignKey("experience_queries.id", ondelete="CASCADE")
+    )
+    experience_id: Mapped[str] = mapped_column(
+        ForeignKey("experiences.id", ondelete="RESTRICT")
+    )
+    rank: Mapped[int] = mapped_column(Integer)
+    disposition: Mapped[str] = mapped_column(String(16))
+    final_score: Mapped[float] = mapped_column(Float)
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("query_id", "experience_id", name="uq_experience_match_query_source"),
+        UniqueConstraint("query_id", "rank", name="uq_experience_match_query_rank"),
+        Index("ix_experience_matches_query_rank", "query_id", "rank"),
+    )
+
+
+class ExperienceSelectionRow(Base):
+    __tablename__ = "experience_selections"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+    query_id: Mapped[str] = mapped_column(
+        ForeignKey("experience_queries.id", ondelete="RESTRICT")
+    )
+    expected_context_bundle_id: Mapped[str] = mapped_column(
+        ForeignKey("context_bundles.id", ondelete="RESTRICT")
+    )
+    resulting_context_bundle_id: Mapped[str] = mapped_column(
+        ForeignKey("context_bundles.id", ondelete="RESTRICT")
+    )
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_experience_selections_task", "task_id", "created_at"),)
+
+
+class ExperienceModerationActionRow(Base):
+    __tablename__ = "experience_moderation_actions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    experience_id: Mapped[str] = mapped_column(
+        ForeignKey("experiences.id", ondelete="RESTRICT")
+    )
+    action: Mapped[str] = mapped_column(String(16))
+    expected_revision: Mapped[int] = mapped_column(Integer)
+    resulting_revision: Mapped[int] = mapped_column(Integer)
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "experience_id", "resulting_revision", name="uq_experience_moderation_revision"
+        ),
+        Index("ix_experience_moderation_experience", "experience_id", "created_at"),
+    )
+
+
+class TrajectoryReplaySeedRow(Base):
+    __tablename__ = "trajectory_replay_seeds"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    search_id: Mapped[str] = mapped_column(ForeignKey("search_plans.id", ondelete="CASCADE"))
+    candidate_id: Mapped[str] = mapped_column(
+        ForeignKey("search_candidates.id", ondelete="CASCADE"), unique=True
+    )
+    match_id: Mapped[str] = mapped_column(
+        ForeignKey("experience_matches.id", ondelete="RESTRICT")
+    )
+    experience_id: Mapped[str] = mapped_column(
+        ForeignKey("experiences.id", ondelete="RESTRICT")
+    )
+    validation_status: Mapped[str] = mapped_column(String(16))
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_trajectory_replay_seeds_search", "search_id", "created_at"),)
 
 
 class EvidenceRow(Base):
@@ -480,9 +644,7 @@ class ExperimentRunRow(Base):
     __tablename__ = "experiment_runs"
 
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
-    experiment_id: Mapped[str] = mapped_column(
-        ForeignKey("experiments.id", ondelete="CASCADE")
-    )
+    experiment_id: Mapped[str] = mapped_column(ForeignKey("experiments.id", ondelete="CASCADE"))
     record: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
@@ -523,9 +685,7 @@ class BenchmarkTaskRow(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
     __table_args__ = (
-        UniqueConstraint(
-            "benchmark_task_id", "version", name="uq_benchmark_tasks_id_version"
-        ),
+        UniqueConstraint("benchmark_task_id", "version", name="uq_benchmark_tasks_id_version"),
         Index("ix_benchmark_tasks_category", "category", "task_type"),
     )
 
@@ -542,13 +702,9 @@ class BenchmarkRunRow(Base):
     trace_sha256: Mapped[str] = mapped_column(String(64))
     scenario_count: Mapped[int] = mapped_column(Integer)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    __table_args__ = (
-        Index("ix_benchmark_runs_suite_started", "suite_version", "started_at"),
-    )
+    __table_args__ = (Index("ix_benchmark_runs_suite_started", "suite_version", "started_at"),)
 
 
 class ArchitectureMetricRow(Base):
@@ -643,6 +799,176 @@ class RunGraphEdgeRow(Base):
     position: Mapped[int] = mapped_column(Integer)
     edge: Mapped[dict[str, Any]] = mapped_column(JSON)
 
-    __table_args__ = (
-        UniqueConstraint("run_graph_id", "key", name="uq_run_graph_edges_graph_key"),
+    __table_args__ = (UniqueConstraint("run_graph_id", "key", name="uq_run_graph_edges_graph_key"),)
+
+
+class WorkflowProposalRow(Base):
+    __tablename__ = "workflow_proposals"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+    run_id: Mapped[str | None] = mapped_column(
+        ForeignKey("runs.id", ondelete="CASCADE"), nullable=True
     )
+    based_on_graph_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    planner_version: Mapped[str] = mapped_column(String(64))
+    proposal: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_workflow_proposals_task_created", "task_id", "created_at"),
+        Index("ix_workflow_proposals_run_created", "run_id", "created_at"),
+    )
+
+
+class GraphValidationResultRow(Base):
+    __tablename__ = "graph_validation_results"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    proposal_id: Mapped[str] = mapped_column(
+        ForeignKey("workflow_proposals.id", ondelete="CASCADE")
+    )
+    status: Mapped[str] = mapped_column(String(32))
+    validator_version: Mapped[str] = mapped_column(String(64))
+    result: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_graph_validation_proposal_created", "proposal_id", "created_at"),)
+
+
+class RunGraphRevisionRow(Base):
+    __tablename__ = "run_graph_revisions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_graph_id: Mapped[str] = mapped_column(ForeignKey("run_graphs.id", ondelete="CASCADE"))
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    revision: Mapped[int] = mapped_column(Integer)
+    parent_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    proposal_id: Mapped[str] = mapped_column(
+        ForeignKey("workflow_proposals.id", ondelete="RESTRICT")
+    )
+    graph_hash: Mapped[str] = mapped_column(String(64))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("run_graph_id", "revision", name="uq_run_graph_revisions_graph_revision"),
+        Index("ix_run_graph_revisions_run_revision", "run_id", "revision"),
+    )
+
+
+class ReplanRequestRow(Base):
+    __tablename__ = "replan_requests"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    based_on_graph_revision: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(32))
+    request: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_replan_requests_run_created", "run_id", "created_at"),)
+
+
+class RuntimeDecisionRow(Base):
+    __tablename__ = "runtime_decisions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    node_id: Mapped[str] = mapped_column(String(128))
+    selected_runtime: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    policy_version: Mapped[str] = mapped_column(String(64))
+    decision: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_runtime_decisions_run_created", "run_id", "created_at"),)
+
+
+class SearchPlanRow(Base):
+    __tablename__ = "search_plans"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    parent_node_id: Mapped[str] = mapped_column(String(96))
+    graph_revision: Mapped[int] = mapped_column(Integer)
+    mode: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(32))
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "run_id",
+            "graph_revision",
+            "parent_node_id",
+            name="uq_search_plan_run_revision_node",
+        ),
+        Index("ix_search_plans_run_created", "run_id", "created_at"),
+        Index("ix_search_plans_status_updated", "status", "updated_at"),
+    )
+
+
+class SearchCandidateRow(Base):
+    __tablename__ = "search_candidates"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    search_id: Mapped[str] = mapped_column(
+        ForeignKey("search_plans.id", ondelete="CASCADE")
+    )
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    ordinal: Mapped[int] = mapped_column(Integer)
+    provider: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(32))
+    trajectory: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (
+        UniqueConstraint("search_id", "ordinal", name="uq_search_candidates_ordinal"),
+        Index("ix_search_candidates_search_ordinal", "search_id", "ordinal"),
+    )
+
+
+class CandidateScoreRow(Base):
+    __tablename__ = "candidate_scores"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    search_id: Mapped[str] = mapped_column(
+        ForeignKey("search_plans.id", ondelete="CASCADE")
+    )
+    candidate_id: Mapped[str] = mapped_column(
+        ForeignKey("search_candidates.id", ondelete="CASCADE"), unique=True
+    )
+    eligible: Mapped[bool] = mapped_column(Boolean)
+    total_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    score: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_candidate_scores_search", "search_id", "created_at"),)
+
+
+class SearchPromotionRow(Base):
+    __tablename__ = "search_promotions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    search_id: Mapped[str] = mapped_column(
+        ForeignKey("search_plans.id", ondelete="CASCADE"), unique=True
+    )
+    candidate_id: Mapped[str] = mapped_column(
+        ForeignKey("search_candidates.id", ondelete="RESTRICT")
+    )
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="CASCADE"))
+    status: Mapped[str] = mapped_column(String(32))
+    record: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    __table_args__ = (Index("ix_search_promotions_run", "run_id", "created_at"),)

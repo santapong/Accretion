@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "./App";
@@ -108,15 +108,16 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-test("renders the P4 runtime dashboard and operator navigation", async () => {
+test("renders the v0.2 runtime dashboard and operator navigation", async () => {
   renderApp();
   expect(screen.getByText("Runtime observatory")).toBeInTheDocument();
-  expect(screen.getByText("Operator / P4")).toBeInTheDocument();
+  expect(screen.getByText("Operator / v0.2")).toBeInTheDocument();
   expect(await screen.findByText("FAKE")).toBeInTheDocument();
   expect(screen.getAllByRole("link", { name: "New task" })).toHaveLength(2);
   expect(screen.getByRole("link", { name: "Runtimes" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "Capabilities" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "ACR-ARCH" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "P5 Dynamic" })).toBeInTheDocument();
   expect(screen.getByText("No runs yet. Create and profile a task.")).toBeInTheDocument();
 });
 
@@ -180,6 +181,138 @@ test("filters and reproduces the versioned ACR-ARCH benchmark", async () => {
   expect(await screen.findByText(/Reproduced 68 scenarios/)).toBeInTheDocument();
 });
 
+test("renders and reproduces the frozen P6 N=1/2/4 search curve", async () => {
+  const report = {
+    schema_version: "2.0", benchmark_run_id: "sbr_fixture", suite_version: "1.0.0",
+    configuration_version: "1.0.0", selector_version: "verified-best-candidate-v2",
+    execution_source: "REPLAY", task_count: 12, candidate_counts: [1, 2, 4],
+    corpus_sha256: "a".repeat(64), trace_sha256: "b".repeat(64), config_sha256: "c".repeat(64),
+    frozen_at: "2026-08-24T00:00:00Z", null_gain_task_ids: ["p6-007"],
+    curve: [
+      { schema_version: "2.0", candidate_count: 1, task_count: 12, accepted_tasks: 8, acceptance_rate: 0.666667, mean_quality: 0.4725, marginal_quality_gain: 0.4725, mean_turns: 1, mean_tool_calls: 1.8, mean_latency_ms: 860 },
+      { schema_version: "2.0", candidate_count: 2, task_count: 12, accepted_tasks: 10, acceptance_rate: 0.833333, mean_quality: 0.608333, marginal_quality_gain: 0.135833, mean_turns: 2, mean_tool_calls: 3.7, mean_latency_ms: 930 },
+      { schema_version: "2.0", candidate_count: 4, task_count: 12, accepted_tasks: 12, acceptance_rate: 1, mean_quality: 0.768333, marginal_quality_gain: 0.16, mean_turns: 4, mean_tool_calls: 8.7, mean_latency_ms: 1090 },
+    ],
+    provider_comparison: [
+      { schema_version: "2.0", provider: "CLAUDE", task_count: 12, accepted_tasks: 12, acceptance_rate: 1, mean_best_quality: 0.768333 },
+      { schema_version: "2.0", provider: "CODEX", task_count: 12, accepted_tasks: 11, acceptance_rate: 0.916667, mean_best_quality: 0.683333 },
+    ],
+    tasks: [{
+      schema_version: "2.0", task_id: "p6-007", family: "IMPLEMENT", title: "Add a fail-closed API control",
+      quality_by_candidate_count: { "1": 0.75, "2": 0.77, "4": 0.77 },
+      accepted_by_candidate_count: { "1": true, "2": true, "4": true },
+      selected_provider_at_four: "CLAUDE", gain_from_two_to_four: 0,
+    }],
+  };
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url === "/api/v2/benchmarks/search") return response(report);
+    if (url.endsWith("/api/v2/benchmarks/search/run") && init?.method === "POST") return response(report);
+    return response([]);
+  });
+
+  renderApp("/benchmarks/search");
+  expect(await screen.findByRole("img", { name: "Mean verified quality for one, two, and four candidates" })).toBeInTheDocument();
+  expect(await screen.findByText("verified-best-candidate-v2")).toBeInTheDocument();
+  expect(screen.getAllByText("0.768").length).toBeGreaterThan(0);
+  expect(screen.getByText(/p6-007 · Add a fail-closed API control/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Reproduce N=1/2/4" }));
+  expect(await screen.findByText(/Reproduced 12 held-out tasks/)).toBeInTheDocument();
+});
+
+test("renders and reproduces the frozen P5 dynamic workflow gate", async () => {
+  const report = {
+    schema_version: "2.0", benchmark_run_id: "dbr_fixture",
+    suite_version: "p5-dynamic-workflow-v1", configuration_version: "p5-release-gate-v1",
+    selector_version: "fragment-planner-v2", execution_source: "REPLAY",
+    task_count: 12, trace_count: 24, corpus_sha256: "a".repeat(64),
+    trace_sha256: "b".repeat(64), config_sha256: "c".repeat(64),
+    frozen_at: "2026-08-24T00:00:00Z",
+    gate: {
+      schema_version: "2.0", passed: true, research_classification: "POSITIVE",
+      benefit_passed: true, predictable_non_inferiority_passed: true,
+      success_rate_not_regressed: true, safety_invariants_passed: true,
+      static_fallback_operational: true, heterogeneous_uncertain_uplift: 0.16,
+      predictable_uplift: 0.005, thresholds: {},
+    },
+    treatments: [{
+      schema_version: "2.0", treatment: "DYNAMIC", task_count: 12,
+      successful_tasks: 12, success_rate: 1, mean_quality: 0.724,
+      mean_utility: 0.652, mean_turns: 9.5, mean_tool_calls: 18.3,
+      mean_latency_ms: 2400, invalid_proposal_rate: 0.083333,
+      replan_rate: 0.416667, human_intervention_rate: 0.083333,
+      mean_graph_nodes: 6.6, mean_graph_depth: 4.1, structural_variation_rate: 1,
+    }],
+    cohorts: [{
+      schema_version: "2.0", cohort: "HETEROGENEOUS", task_count: 4,
+      static_mean_utility: 0.45, dynamic_mean_utility: 0.61, utility_uplift: 0.16,
+      static_success_rate: 0.75, dynamic_success_rate: 1,
+    }],
+    tasks: [],
+  };
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url === "/api/v2/benchmarks/dynamic") return response(report);
+    if (url.endsWith("/api/v2/benchmarks/dynamic/run") && init?.method === "POST") {
+      return response(report);
+    }
+    return response([]);
+  });
+
+  renderApp("/benchmarks/dynamic");
+  expect(await screen.findByRole("heading", { name: "Dynamic workflow gate" })).toBeInTheDocument();
+  expect(await screen.findByText("POSITIVE")).toBeInTheDocument();
+  expect(screen.getByText("+0.160 utility")).toBeInTheDocument();
+  expect(screen.getByText(/Invalid proposals degrade safely/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Reproduce static vs dynamic" }));
+  expect(await screen.findByText(/Reproduced 24 traces; gate passed/)).toBeInTheDocument();
+});
+
+test("renders and reproduces the frozen P7 experience transfer gate", async () => {
+  const report = {
+    schema_version: "2.0", benchmark_run_id: "ebr_fixture", suite_version: "p7-experience-v1",
+    configuration_version: "p7-gate-v1", selector_version: "verified-experience-selector-v1",
+    execution_source: "REPLAY", task_count: 20, source_count: 50, trace_count: 80,
+    source_counts: { POSITIVE: 20, NEGATIVE: 10, STALE_INCOMPATIBLE: 20 },
+    corpus_sha256: "a".repeat(64), source_sha256: "b".repeat(64),
+    trace_sha256: "c".repeat(64), config_sha256: "d".repeat(64),
+    frozen_at: "2026-08-24T00:00:00Z",
+    gate: {
+      schema_version: "2.0", passed: true, false_accepts_not_increased: true,
+      stale_rejection_passed: true, negative_transfer_passed: true, benefit_passed: true,
+      success_rate_not_regressed: true, stale_rejection_rate: 0.95,
+      negative_transfer_rate: 0.033333, replay_quality_uplift: 0.0705,
+      replay_tool_call_reduction: 0.2, thresholds: {},
+    },
+    treatments: [{
+      schema_version: "2.0", treatment: "REPLAY", task_count: 20, successful_tasks: 19,
+      success_rate: 0.95, mean_quality: 0.7815, mean_turns: 4, mean_tool_calls: 8,
+      mean_latency_ms: 945, mean_compute: 12, quality_uplift: 0.0705,
+      tool_call_reduction: 0.2, false_accepts: 1, negative_transfers: 1,
+      experience_use_rate: 1, experience_rejection_rate: 1, experience_null_rate: 0,
+    }],
+    tasks: [{ schema_version: "2.0", task_id: "p7-020", task_type: "RESEARCH",
+      family: "transfer", title: "Measure a negative transfer case",
+      quality_by_treatment: { FRESH: 0.79, REPLAY: 0.73 },
+      success_by_treatment: { FRESH: true, REPLAY: true },
+      negative_transfer_treatments: ["REPLAY"] }],
+  };
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url === "/api/v2/benchmarks/experience") return response(report);
+    if (url.endsWith("/api/v2/benchmarks/experience/run") && init?.method === "POST") return response(report);
+    return response([]);
+  });
+
+  renderApp("/benchmarks/experience");
+  expect(await screen.findByRole("heading", { name: "Experience transfer gate" })).toBeInTheDocument();
+  expect((await screen.findAllByText("95%")).length).toBeGreaterThan(0);
+  expect(screen.getByText("3.33%")).toBeInTheDocument();
+  expect(screen.getByText(/p7-020/)).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Reproduce P7 gate" }));
+  expect(await screen.findByText(/Reproduced 80 traces; gate passed/)).toBeInTheDocument();
+});
+
 test.each([
   ["DIRECT", "direct-v1"],
   ["LOOP", "feedback-loop-v1"],
@@ -209,6 +342,72 @@ test.each([
     { path: "reports/result.json", kind: "file", non_empty: true },
     { path: "src/generated-summary.md", kind: "file", non_empty: true },
   ]);
+});
+
+test("attaches an opt-in bounded P6 plan before activating a validated P5 graph", async () => {
+  installPlanningApi("GRAPH", "fixed-graph-v1");
+  const baseImplementation = vi.mocked(fetch).getMockImplementation()!;
+  vi.mocked(fetch).mockImplementation(async (input, init) => {
+    const url = String(input);
+    if (url === "/api/v1/tasks/tsk_fixture" && !init?.method) return response({
+      envelope: {
+        task_id: "tsk_fixture", project_id: "prj_fixture", objective: "Investigate",
+        budgets: { wall_time_seconds: 300, max_turns: 10, max_tool_calls: 30, max_loop_iterations: 1, max_parallel_runs: 2 },
+      },
+    });
+    if (url.endsWith("/api/v2/projects/prj_fixture/features") && !init?.method) return response({
+      schema_version: "2.0", project_id: "prj_fixture", dynamic_workflows: true,
+      candidate_search: false, revision: 2,
+    });
+    if (url.endsWith("/api/v2/projects/prj_fixture/features") && init?.method === "PATCH") return response({
+      schema_version: "2.0", project_id: "prj_fixture", dynamic_workflows: true,
+      candidate_search: true, revision: 3,
+    });
+    if (url.endsWith("/api/v2/tasks/tsk_fixture/workflow/propose") && init?.method === "POST") return response({
+      schema_version: "2.0", proposal_id: "proposal_fixture", task_id: "tsk_fixture",
+      run_id: "run_dynamic", objective: "Investigate", planner_runtime: "DETERMINISTIC",
+      planner_version: "fragment-planner-v2", confidence: 0.9,
+      nodes: [{ schema_version: "2.0", local_id: "act", kind: "AGENT", objective: "Implement safely", capability_refs: [], checkpoint: true, max_attempts: 1, risk_level: "LOW", runtime_requirement: "ANY", timeout_seconds: 120 }],
+      edges: [], rationale_summary: "Reviewed fragment", repair_attempt: 0,
+    });
+    if (url.endsWith("/api/v2/runs/run_dynamic/workflow/proposals/proposal_fixture/validate") && init?.method === "POST") return response({
+      schema_version: "2.0", run_id: "run_dynamic", proposal: {
+        schema_version: "2.0", proposal_id: "proposal_fixture", task_id: "tsk_fixture",
+        run_id: "run_dynamic", objective: "Investigate", planner_runtime: "DETERMINISTIC",
+        planner_version: "fragment-planner-v2", confidence: 0.9,
+        nodes: [{ schema_version: "2.0", local_id: "act", kind: "AGENT", objective: "Implement safely", capability_refs: [], checkpoint: true, max_attempts: 1, risk_level: "LOW", runtime_requirement: "ANY", timeout_seconds: 120 }],
+        edges: [], rationale_summary: "Reviewed fragment", repair_attempt: 0,
+      },
+      validation: { schema_version: "2.0", validation_id: "validation_fixture", proposal_id: "proposal_fixture", status: "ACCEPT", errors: [], warnings: [], required_repairs: [], validator_version: "graph-validator-v2" },
+    });
+    if (url.endsWith("/api/v2/runs/run_dynamic/search") && init?.method === "POST") return response({
+      schema_version: "2.0", revision: 1, status: "PLANNED",
+      plan: {
+        schema_version: "2.0", search_id: "search_fixture", run_id: "run_dynamic", parent_node_id: "act",
+        graph_revision: 1, mode: "BEST_OF_N", branch_count: 2, max_parallel: 2,
+        per_branch_budget: { schema_version: "2.0", wall_time_seconds: 120, max_turns: 4, max_tool_calls: 12 },
+        total_budget: { schema_version: "2.0", wall_time_seconds: 240, max_turns: 8, max_tool_calls: 24 },
+        verifier_policy_ref: "policy", router_policy_version: "performance-router-v2", requested_by: "operator",
+      },
+    });
+    return baseImplementation(input, init);
+  });
+
+  renderApp("/tasks/new");
+  await createPlannedTask();
+  fireEvent.click(screen.getByRole("button", { name: "Propose P5 graph" }));
+  const form = await screen.findByRole("form", { name: "P6 search plan" });
+  expect(within(form).getByText("Attach bounded P6 search")).toBeInTheDocument();
+  fireEvent.click(within(form).getByRole("button", { name: "Attach search plan" }));
+  expect(await screen.findByText(/P6 BEST_OF_N plan attached to act/)).toBeInTheDocument();
+  await waitFor(() => expect(fetch).toHaveBeenCalledWith(
+    "/api/v2/projects/prj_fixture/features",
+    expect.objectContaining({ method: "PATCH", body: expect.stringContaining('"candidate_search":true') }),
+  ));
+  await waitFor(() => expect(fetch).toHaveBeenCalledWith(
+    "/api/v2/runs/run_dynamic/search",
+    expect.objectContaining({ method: "POST", body: expect.stringContaining('"mode":"BEST_OF_N"') }),
+  ));
 });
 
 test("surfaces the server's fail-closed template rejection", async () => {

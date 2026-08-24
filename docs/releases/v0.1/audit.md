@@ -8,6 +8,12 @@ The candidate passes every MUST criterion in SDD Section 20, has no open critica
 security issue in the authenticated issue inventory, and reproduces the frozen
 ACR-ARCH dataset from a clean checkout and clean PostgreSQL 16 database.
 
+<img src="../../assets/benchmark-pipeline.svg" alt="Release-evidence pipeline from frozen benchmark inputs through schema validation, deterministic replay, raw dimensions, utility and regret, and durable operator reports" width="100%" />
+
+> Post-release note: the audited candidate was promoted and the immutable
+> `v0.1.0` tag now records the shipped release. The procedure below remains the
+> historical evidence used for that promotion.
+
 ## Clean-checkout evidence
 
 The complete gate was rerun from a new clone of the exact candidate with newly
@@ -72,7 +78,7 @@ change these frozen release metrics.
 3. Require backend/frontend CI success and zero unresolved review conversations.
 4. Merge through GitHub using squash merge.
 5. Create annotated tag `v0.1.0` from the resulting `main` commit and publish the
-   GitHub release using `docs/V0_1_RELEASE_NOTES.md`.
+   GitHub release using `docs/releases/v0.1/notes.md`.
 
 No code change is permitted between the audited candidate and the release PR. A
 code change requires a new clean-checkout audit; documentation-only release evidence

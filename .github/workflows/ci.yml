@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: pgvector/pgvector:0.8.6-pg16
         env:
           POSTGRES_DB: accretion
           POSTGRES_USER: accretion
@@ -27,13 +27,14 @@ jobs:
       ACCRETION_TEST_POSTGRES_URL: postgresql+asyncpg://accretion:accretion@localhost:5432/accretion
       PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
       - run: uv sync --all-groups
       - run: uv run --no-sync ruff check .
       - run: uv run --no-sync mypy src
+      - run: uv run --no-sync python scripts/check_docs.py
       - run: uv run --no-sync alembic upgrade head
       - run: uv run --no-sync alembic downgrade base
       - run: uv run --no-sync alembic upgrade head
@@ -42,12 +43,12 @@ jobs:
   frontend:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: npm
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync --all-groups
       - run: npm ci
       - run: npm run api:generate

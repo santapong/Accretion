@@ -1,13 +1,20 @@
 # Accretion P3 static graphs, checkpoints, and replay runbook
 
+<img src="../assets/checkpoint-replay.svg" alt="Checkpoint and replay lifecycle showing atomic checkpoint evidence, restart classification, safe resume, fail-closed escalation, and event-log-derived projections" width="100%" />
+
 ## Scope
 
 P3 enables the persisted `GRAPH/fixed-graph-v1`, `HYBRID/hybrid-rd-v1`, and
 `safe-unknown-v1` decisions. Every run instantiates an immutable `RunGraph`
 from a VALIDATED, checksum-pinned template; a fail-closed scheduler walks the
 graph, checkpoints at node boundaries, blocks on durable human approval gates,
-and delegates bounded loop regions to the P2 engine. Dynamic workflow
-synthesis and learned routing remain blocked until v0.2+ and are not emulated.
+and delegates bounded loop regions to the P2 engine. The v0.1 P3 API remains
+static and unchanged; opt-in P5 proposals now compile into this same scheduler
+only after deterministic validation. Learned routing remains out of scope.
+
+The current [frontend guide](../guides/frontend.md) shows where the graph projection,
+controls, approval state, verifier evidence, and normalized trace appear in the
+completed operator UI. Historical counts below remain the P3 milestone snapshot.
 
 ## Safety and recovery invariants
 

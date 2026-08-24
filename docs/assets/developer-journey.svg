@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1500" height="620" viewBox="0 0 1500 620" role="img" aria-labelledby="title description">
+  <title id="title">Accretion developer journey</title>
+  <desc id="description">Six steps take a developer from cloning Accretion through running the local stack, creating a task, observing a normalized run, verifying evidence, and extending the system through a protected pull request.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07100b"/><stop offset="1" stop-color="#111710"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity=".32"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0 10 5 0 10Z" fill="#75db91"/></marker>
+    <style>
+      text{font-family:Arial,Helvetica,sans-serif}.eyebrow{fill:#75db91;font-size:17px;font-weight:700;letter-spacing:3px}.heading{fill:#f4f8f5;font-size:36px;font-weight:700}.sub{fill:#a9b9ae;font-size:18px}.card{fill:#101d15;stroke:#315d40;stroke-width:2}.card.alt{fill:#211a10;stroke:#7b5a2c}.number{fill:#07100b;font-size:16px;font-weight:800;text-anchor:middle;dominant-baseline:central}.title{fill:#f6faf7;font-size:21px;font-weight:700}.copy{fill:#b9c8be;font-size:15px}.command{fill:#75db91;font-size:14px;font-family:monospace}.label{fill:#8fa097;font-size:13px;font-weight:700;letter-spacing:1px;text-anchor:middle}
+    </style>
+  </defs>
+  <rect width="1500" height="620" rx="30" fill="url(#bg)"/>
+  <text x="60" y="64" class="eyebrow">DEVELOPER JOURNEY</text>
+  <text x="60" y="112" class="heading">From clean checkout to a verified contribution</text>
+  <text x="60" y="146" class="sub">Start deterministic, inspect durable evidence, then change one bounded surface at a time.</text>
+  <path d="M174 304H1325" stroke="#75db91" stroke-width="4" opacity=".7" marker-end="url(#arrow)"/>
+  <g filter="url(#shadow)">
+    <g transform="translate(58 205)"><rect width="210" height="202" rx="20" class="card"/><circle cx="34" cy="38" r="17" fill="#75db91"/><text x="34" y="38" class="number">1</text><text x="62" y="45" class="title">Clone</text><text x="24" y="88" class="copy">Use the release tag for</text><text x="24" y="111" class="copy">stable evaluation.</text><text x="24" y="153" class="command">git clone …</text><text x="24" y="176" class="command">cd Accretion</text></g>
+    <g transform="translate(292 205)"><rect width="210" height="202" rx="20" class="card alt"/><circle cx="34" cy="38" r="17" fill="#f1b55e"/><text x="34" y="38" class="number">2</text><text x="62" y="45" class="title">Run locally</text><text x="24" y="88" class="copy">Sync, migrate, and start</text><text x="24" y="111" class="copy">API plus operator UI.</text><text x="24" y="153" class="command">make dev-db</text><text x="24" y="176" class="command">make api / make ui</text></g>
+    <g transform="translate(526 205)"><rect width="210" height="202" rx="20" class="card"/><circle cx="34" cy="38" r="17" fill="#75db91"/><text x="34" y="38" class="number">3</text><text x="62" y="45" class="title">Create a task</text><text x="24" y="88" class="copy">Declare objective, bounds,</text><text x="24" y="111" class="copy">outputs, and capabilities.</text><text x="24" y="153" class="command">examples/showcase.py</text></g>
+    <g transform="translate(760 205)"><rect width="210" height="202" rx="20" class="card alt"/><circle cx="34" cy="38" r="17" fill="#f1b55e"/><text x="34" y="38" class="number">4</text><text x="62" y="45" class="title">Observe</text><text x="24" y="88" class="copy">Follow graph nodes, events,</text><text x="24" y="111" class="copy">budgets, and checkpoints.</text><text x="24" y="153" class="command">/runs/{id}/audit</text></g>
+    <g transform="translate(994 205)"><rect width="210" height="202" rx="20" class="card"/><circle cx="34" cy="38" r="17" fill="#75db91"/><text x="34" y="38" class="number">5</text><text x="62" y="45" class="title">Verify</text><text x="24" y="88" class="copy">Inspect immutable evidence;</text><text x="24" y="111" class="copy">fail closed on uncertainty.</text><text x="24" y="153" class="command">make check</text><text x="24" y="176" class="command">make test</text></g>
+    <g transform="translate(1228 205)"><rect width="214" height="202" rx="20" class="card alt"/><circle cx="34" cy="38" r="17" fill="#f1b55e"/><text x="34" y="38" class="number">6</text><text x="62" y="45" class="title">Extend</text><text x="24" y="88" class="copy">Open a focused PR into</text><text x="24" y="111" class="copy">protected develop.</text><text x="24" y="153" class="command">feature/* → develop</text></g>
+  </g>
+  <text x="750" y="472" class="label">DURABLE STATE • NORMALIZED EVENTS • DETERMINISTIC AUTHORITY</text>
+  <rect x="255" y="514" width="990" height="52" rx="16" fill="#0d1b12" stroke="#294d35"/>
+  <text x="750" y="546" class="sub" text-anchor="middle">Use the fake runtime first. Enable signed-in providers only when the deterministic path is understood.</text>
+</svg>

@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" role="img" aria-labelledby="title description">
+  <title id="title">Accretion v0.2 experiments and results</title>
+  <desc id="description">The immutable ACR-ARCH v0.1 static control feeds three deterministic v0.2 experiments. P5 dynamic workflows pass with positive utility uplift and static fallback. P6 bounded search improves verified acceptance and quality from one to four candidates while preserving a null result. P7 verified experience improves quality and reduces tool calls while passing stale-rejection, negative-transfer, and false-accept gates. Frozen replay evidence remains separate from signed-in provider calibration and the final release gate.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#07131b"/><stop offset="0.58" stop-color="#102219"/><stop offset="1" stop-color="#21170d"/>
+    </linearGradient>
+    <linearGradient id="card" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#132a20"/><stop offset="1" stop-color="#0c1c15"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0 0 10 5 0 10Z" fill="#79df9a"/>
+    </marker>
+    <style>
+      text{font-family:Arial,Helvetica,sans-serif}.eyebrow{fill:#79df9a;font-size:15px;font-weight:700;letter-spacing:2.5px}.heading{fill:#f5f9f6;font-size:31px;font-weight:700}.sub{fill:#afc1b5;font-size:16px}.title{fill:#f5f9f6;font-size:20px;font-weight:700}.copy{fill:#b9cbbf;font-size:14px}.metric{fill:#79df9a;font-size:18px;font-weight:700}.badge{fill:#07130c;font-size:12px;font-weight:800;text-anchor:middle;dominant-baseline:central}.foot{fill:#d6dfd9;font-size:14px;font-weight:700}.line{fill:none;stroke:#79df9a;stroke-width:3;marker-end:url(#arrow)}
+    </style>
+  </defs>
+  <rect width="1200" height="620" rx="28" fill="url(#bg)"/>
+  <text x="48" y="52" class="eyebrow">FROZEN REPLAY · SEPARATE LIVE CALIBRATION</text>
+  <text x="48" y="92" class="heading">v0.2 research evidence at a glance</text>
+  <text x="48" y="122" class="sub">Versioned fixtures preserve benefit, safety, negative results, and exact reproduction.</text>
+
+  <g transform="translate(48 162)">
+    <rect width="250" height="150" rx="18" fill="#17251d" stroke="#769282" stroke-width="2"/>
+    <rect x="18" y="18" width="78" height="25" rx="13" fill="#a9b9ae"/><text x="57" y="31" class="badge">CONTROL</text>
+    <text x="18" y="75" class="title">ACR-ARCH v0.1</text>
+    <text x="18" y="104" class="metric">30 tasks · 68 traces</text>
+    <text x="18" y="130" class="copy">Immutable static selector evidence</text>
+  </g>
+
+  <path d="M304 237H342" class="line"/>
+
+  <g transform="translate(350 162)">
+    <rect width="250" height="150" rx="18" fill="url(#card)" stroke="#4c9b65" stroke-width="2"/>
+    <rect x="18" y="18" width="108" height="25" rx="13" fill="#79df9a"/><text x="72" y="31" class="badge">PASS · POSITIVE</text>
+    <text x="18" y="75" class="title">P5 · Dynamic</text>
+    <text x="18" y="104" class="metric">+0.224631 utility</text>
+    <text x="18" y="130" class="copy">Success 9/12 → 12/12 · fallback PASS</text>
+  </g>
+
+  <path d="M606 237H644" class="line"/>
+
+  <g transform="translate(652 162)">
+    <rect width="250" height="150" rx="18" fill="url(#card)" stroke="#4c9b65" stroke-width="2"/>
+    <rect x="18" y="18" width="60" height="25" rx="13" fill="#79df9a"/><text x="48" y="31" class="badge">PASS</text>
+    <text x="18" y="75" class="title">P6 · Search</text>
+    <text x="18" y="104" class="metric">8/12 → 12/12 accepts</text>
+    <text x="18" y="130" class="copy">Quality 0.472500 → 0.768333</text>
+  </g>
+
+  <path d="M908 237H946" class="line"/>
+
+  <g transform="translate(954 162)">
+    <rect width="198" height="150" rx="18" fill="url(#card)" stroke="#4c9b65" stroke-width="2"/>
+    <rect x="18" y="18" width="60" height="25" rx="13" fill="#79df9a"/><text x="48" y="31" class="badge">PASS</text>
+    <text x="18" y="75" class="title">P7 · Experience</text>
+    <text x="18" y="104" class="metric">+0.070500 quality</text>
+    <text x="18" y="130" class="copy">20% fewer tools · safety PASS</text>
+  </g>
+
+  <path d="M175 326V375H600" class="line"/><path d="M475 326V375H600" class="line"/><path d="M777 326V375H600" class="line"/><path d="M1053 326V375H600" class="line"/>
+
+  <g transform="translate(208 382)">
+    <rect width="784" height="176" rx="20" fill="#171f19" stroke="#8a723e" stroke-width="2"/>
+    <text x="24" y="38" class="eyebrow">SEPARATE VALIDATION LAYERS</text>
+    <text x="24" y="74" class="title">Signed-in calibration</text>
+    <text x="24" y="102" class="copy">3/3 runtime cases · 10/10 verified samples</text>
+    <text x="24" y="124" class="copy">Provider, model, and version recorded</text>
+    <line x1="392" y1="58" x2="392" y2="138" stroke="#425047"/>
+    <text x="420" y="74" class="title">Release engineering</text>
+    <text x="420" y="102" class="copy">Tests · migrations · contracts · dependencies</text>
+    <text x="420" y="124" class="copy">CI · browser exception #52 · protected promotion</text>
+    <text x="392" y="156" class="foot" text-anchor="middle">Live output never rewrites frozen replay results</text>
+  </g>
+  <text x="600" y="588" class="sub" text-anchor="middle">Read design, result, hashes, negative cases, and reproduction commands in docs/research/</text>
+</svg>

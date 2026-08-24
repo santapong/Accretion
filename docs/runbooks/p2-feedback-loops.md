@@ -1,5 +1,7 @@
 # Accretion P2 loops and verifiers runbook
 
+<img src="../assets/accretion-feedback-loop.svg" alt="Bounded P2 lifecycle from one runtime session to immutable observation and independent verification, with verified completion, structured repair, or human escalation" width="100%" />
+
 ## Scope
 
 P2 enables the persisted `LOOP/feedback-loop-v1` decision. A loop reuses one
@@ -9,6 +11,10 @@ repairs, or escalates according to a versioned acceptance policy.
 
 `GRAPH/fixed-graph-v1`, `HYBRID/hybrid-rd-v1`, and `safe-unknown-v1` remain blocked
 until P3. P2 does not emulate these modes through direct or loop execution.
+
+For the current operator route and data-flow map, see the
+[frontend guide](../guides/frontend.md). The historical counts below remain the P2
+milestone evidence; the P7 completion report records the current aggregate UI gate.
 
 ## Safety and recovery invariants
 

@@ -9,6 +9,9 @@ prerequisite: "Accretion v0.2 release gate passed"
 
 # Accretion v0.3 — System Design Specification
 
+Roadmap context: [multi-release SDD index](Accretion_SDD_INDEX_v0.3.md). v0.3
+remains locked behind the completed v0.2 release gate.
+
 **Release thesis:** v0.3 turns Accretion from a local multi-runtime meta-harness into a governed **integration platform**. It adds installable plugins, remote/local MCP connection management, OAuth/OIDC and enterprise SSO, per-user/per-workspace connections, token brokerage, capability binding, and administrative policy — while preserving the v0.1/v0.2 rule that agents receive capabilities, never raw credentials.
 
 > **Codex implementation rule:** v0.3 does not replace the v0.1 Capability Registry or v0.2 Dynamic Orchestrator. It extends them. Do not implement learned policy/RL or self-evolution here. Identity, authorization, secrets, and approval ceilings remain deterministic.

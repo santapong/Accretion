@@ -289,6 +289,7 @@ async def test_claude_uses_session_id_once_then_resume(
         SessionConfig(
             run_id=run_id,
             workspace=tmp_path,
+            model="sonnet",
             allowed_tools=["accretion.echo"],
         )
     )
@@ -305,6 +306,8 @@ async def test_claude_uses_session_id_once_then_resume(
     assert commands[0][commands[0].index("--session-id") + 1] == session.native_session_id
     assert commands[1][commands[1].index("--resume") + 1] == session.native_session_id
     assert "--strict-mcp-config" in commands[0]
+    assert "--safe-mode" in commands[0]
+    assert commands[0][commands[0].index("--model") + 1] == "sonnet"
     mcp_config = json.loads(commands[0][commands[0].index("--mcp-config") + 1])
     assert mcp_config["mcpServers"]["accretion"]["args"] == [
         "-m",

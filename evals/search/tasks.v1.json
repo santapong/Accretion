@@ -1,0 +1,16 @@
+{
+  "tasks": [
+    {"task_id": "p6-001", "family": "IMPLEMENT", "title": "Add a typed configuration field"},
+    {"task_id": "p6-002", "family": "REVIEW", "title": "Find a boundary-condition regression"},
+    {"task_id": "p6-003", "family": "ANALYSIS", "title": "Explain an orchestration failure"},
+    {"task_id": "p6-004", "family": "IMPLEMENT", "title": "Repair a deterministic serializer"},
+    {"task_id": "p6-005", "family": "RESEARCH", "title": "Compare two compatible runtime approaches"},
+    {"task_id": "p6-006", "family": "REVIEW", "title": "Audit a permission boundary"},
+    {"task_id": "p6-007", "family": "IMPLEMENT", "title": "Add a fail-closed API control"},
+    {"task_id": "p6-008", "family": "ANALYSIS", "title": "Classify a restart inconsistency"},
+    {"task_id": "p6-009", "family": "IMPLEMENT", "title": "Preserve an immutable evidence link"},
+    {"task_id": "p6-010", "family": "RESEARCH", "title": "Evaluate a bounded search policy"},
+    {"task_id": "p6-011", "family": "REVIEW", "title": "Detect a shared-budget accounting error"},
+    {"task_id": "p6-012", "family": "ANALYSIS", "title": "Resolve ambiguous verifier evidence"}
+  ]
+}
