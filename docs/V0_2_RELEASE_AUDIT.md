@@ -5,7 +5,8 @@
 > Candidate code: `feature/v02-release-closure` at
 > `bbec630cd0a24c66ea30de55351ae5eff3b6e2b8`
 >
-> Decision: **NO-GO — do not promote to `main` or create `v0.2.0` yet.**
+> Decision: **NO-GO for release — integration into `develop` is allowed, but do
+> not promote to `main` or create `v0.2.0` yet.**
 
 The v0.2 implementation and deterministic research claims are complete. The
 automated code, database, generated-contract, frontend, dependency, and frozen
@@ -17,9 +18,11 @@ the current environment.
 
 <img src="assets/v02-release-gate.svg" alt="v0.2 release evidence flowing from the immutable v0.1 control through P5 dynamic, P6 search, P7 transfer, and the full clean-checkout gate before promotion to main" width="100%" />
 
-No release tag, GitHub release, or v0.2 baseline record is created while this
-decision is NO-GO. Package metadata uses `0.2.0` to identify the candidate, but
-the immutable `v0.1.0` tag remains the current release and static control.
+The candidate may merge into `develop` after its normal CI passes; that
+integration does not change the NO-GO release decision. No release tag, GitHub
+release, or v0.2 baseline record is created while this decision is NO-GO.
+Package metadata uses `0.2.0` to identify the candidate, but the immutable
+`v0.1.0` tag remains the current release and static control.
 
 ## Candidate identity and environment
 
@@ -104,11 +107,13 @@ post-v0.2 work; no v0.3 feature belongs in this release.
 
 ## Procedure after the blockers clear
 
-1. Rerun the complete gate from a clean checkout of the exact candidate. Any code
-   change creates a new candidate and requires a new audit.
-2. Change this audit to GO only when every blocking row passes, then merge the
-   release-candidate pull request into `develop`.
-3. Open the audited `develop` to `main` release pull request, require CI and
+1. Merge the release-candidate pull request into `develop` after its normal CI
+   passes. This is integration only and does not authorize release promotion.
+2. After the blockers clear, rerun the complete gate from a clean checkout of
+   the integrated candidate. Any code change creates a new candidate and requires
+   a new audit.
+3. Change this audit to GO only when every blocking row passes, then open the
+   audited `develop` to `main` release pull request, require CI and
    resolved review conversations, and merge through the protected workflow.
 4. Create annotated tag `v0.2.0` from the resulting `main` commit and publish the
    GitHub release using [the prepared release notes](V0_2_RELEASE_NOTES.md).
