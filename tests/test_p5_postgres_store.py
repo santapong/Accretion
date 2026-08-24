@@ -42,6 +42,7 @@ pytestmark = [
 ]
 
 
+@pytest.mark.acceptance("V02-P5-007", "V02-P5-010")
 async def test_p5_postgres_records_round_trip_and_remain_immutable(tmp_path: Path) -> None:
     assert POSTGRES_URL is not None
     engine = create_engine(POSTGRES_URL)
@@ -95,9 +96,12 @@ async def test_p5_postgres_records_round_trip_and_remain_immutable(tmp_path: Pat
         await store.create_project(project)
         await store.create_task(task)
         await store.create_run(run)
-        await store.upsert_workflow_template(DIRECT_V1)
+        # Use the template the store returns, not the module constant: a second run
+        # against the same database finds the existing row and returns it, and its
+        # template_record_id is the one minted by the first run's process.
+        stored_template = await store.upsert_workflow_template(DIRECT_V1)
         graph = instantiate_run_graph(
-            DIRECT_V1,
+            stored_template,
             run_id=run.run_id,
             task_id=task.envelope.task_id,
             budgets=TaskBudgets(),
