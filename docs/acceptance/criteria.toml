@@ -1,0 +1,42 @@
+# Acceptance verification policy.
+#
+# The SDDs are the source of truth for WHAT the criteria are; this file records only
+# HOW each is verified. A criterion absent from this file must be proven by a test
+# that claims it with @pytest.mark.acceptance("<id>").
+#
+#   verification = "test"          proven by a marked, passing test (the default)
+#   verification = "manual"        needs evidence + last_verified; goes stale after 180 days
+#   verification = "waived"        needs reason + issue + expires; fails once expired
+#   verification = "not_yet_due"   belongs to a milestone that has not started
+#
+# Both escape hatches expire on purpose. An audit records what someone believed on one
+# day; this file makes every belief carry an end date.
+
+[criteria]
+
+# --- Not yet due: milestones M3-M6 have not started -------------------------
+AC3-MCP-02 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
+AC3-MCP-03 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
+AC3-MCP-04 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
+AC3-MCP-05 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
+AC3-MCP-06 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
+AC3-MCP-07 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
+AC3-MCP-08 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
+AC3-PLG-01 = { verification = "not_yet_due", reason = "M4 plugin manager" }
+AC3-PLG-02 = { verification = "not_yet_due", reason = "M4 plugin manager" }
+AC3-PLG-03 = { verification = "not_yet_due", reason = "M4 plugin manager" }
+AC3-PLG-04 = { verification = "not_yet_due", reason = "M4 plugin manager" }
+AC3-PLG-05 = { verification = "not_yet_due", reason = "M4 plugin manager" }
+AC3-PLG-06 = { verification = "not_yet_due", reason = "M4 plugin manager" }
+AC3-RES-01 = { verification = "not_yet_due", reason = "M5 research plugin" }
+AC3-RES-02 = { verification = "not_yet_due", reason = "M5 research plugin" }
+AC3-RES-03 = { verification = "not_yet_due", reason = "M5 research plugin" }
+AC3-RES-04 = { verification = "not_yet_due", reason = "M5 research plugin" }
+AC3-UI-01 = { verification = "not_yet_due", reason = "M6 frontend and administration" }
+AC3-UI-02 = { verification = "not_yet_due", reason = "M6 frontend and administration" }
+AC3-UI-03 = { verification = "not_yet_due", reason = "M6 frontend and administration" }
+AC3-UI-04 = { verification = "not_yet_due", reason = "M6 frontend and administration" }
+AC3-UI-05 = { verification = "not_yet_due", reason = "M6 frontend and administration" }
+
+# AC3-MCP-01 is local stdio MCP, delivered pre-v0.3 by the capability gateway, so it
+# is due now even though section 27 files the rest of MCP under M3.

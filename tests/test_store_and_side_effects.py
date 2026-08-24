@@ -1,3 +1,5 @@
+import pytest
+
 from accretion.contracts import (
     AgentEvent,
     EventType,
@@ -48,6 +50,7 @@ async def test_event_sequences_are_monotonic() -> None:
     assert (await store.get_run(run.run_id)).last_sequence == 3  # type: ignore[union-attr]
 
 
+@pytest.mark.acceptance("V01-P0-006", "V01-P4-003")
 async def test_side_effect_intent_is_idempotent_and_uncertain_work_is_not_retried() -> None:
     ledger = MemorySideEffectLedger()
     first, created = await ledger.record_intent(

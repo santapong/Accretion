@@ -55,6 +55,7 @@ def manager(store: MemoryStore, tmp_path: Path) -> RunManager:
     )
 
 
+@pytest.mark.acceptance("V01-P1-001")
 def test_versioned_contract_rejects_unknown_schema_version() -> None:
     with pytest.raises(ValidationError):
         PromptContract.model_validate(
@@ -68,6 +69,7 @@ def test_versioned_contract_rejects_unknown_schema_version() -> None:
         )
 
 
+@pytest.mark.acceptance("V01-P1-002")
 def test_profiler_is_deterministic_and_uses_explicit_unknowns(tmp_path: Path) -> None:
     (tmp_path / "pyproject.toml").write_text("[project]\nname='fixture'\n")
     (tmp_path / "tests").mkdir()
@@ -128,6 +130,7 @@ def test_profiler_is_deterministic_and_uses_explicit_unknowns(tmp_path: Path) ->
         (profile(), ExecutionMode.HYBRID, "hybrid-rd-v1"),
     ],
 )
+@pytest.mark.acceptance("V01-P1-003")
 def test_selector_covers_all_threshold_branches(
     fixture: TaskProfile, mode: ExecutionMode, template: str
 ) -> None:
@@ -136,6 +139,7 @@ def test_selector_covers_all_threshold_branches(
     assert decision.selected_template_id == template
 
 
+@pytest.mark.acceptance("V01-P1-005")
 def test_high_risk_policy_forces_gates_and_denies_downgrade() -> None:
     risky = profile(risk=RiskLevel.HIGH)
     current = select_strategy(risky)
@@ -156,6 +160,7 @@ def test_high_risk_policy_forces_gates_and_denies_downgrade() -> None:
     assert override.denial_reason
 
 
+@pytest.mark.acceptance("V01-P1-001", "V01-P1-006")
 async def test_task_planning_is_atomic_legacy_safe_and_override_audited(
     tmp_path: Path,
 ) -> None:

@@ -4,6 +4,7 @@ import asyncio
 import subprocess
 from pathlib import Path
 
+import pytest
 from httpx import ASGITransport, AsyncClient
 
 from accretion.api.main import SSE_TERMINAL_EVENTS, app
@@ -198,6 +199,7 @@ async def test_invalid_sse_cursor_uses_error_envelope(tmp_path: Path) -> None:
     assert body["correlation_id"]
 
 
+@pytest.mark.acceptance("V01-P4-005")
 async def test_sse_query_cursor_replays_only_events_after_snapshot(tmp_path: Path) -> None:
     run_manager = build_manager(tmp_path)
     run = await run_manager.store.create_run(

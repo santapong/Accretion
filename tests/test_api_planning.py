@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
+import pytest
 from httpx import ASGITransport, AsyncClient
 
 from accretion.api.main import app
@@ -39,6 +40,7 @@ def manager(tmp_path: Path) -> RunManager:
     )
 
 
+@pytest.mark.acceptance("V01-P1-004", "V01-P4-007")
 async def test_planning_api_and_p2_loop_execution(tmp_path: Path) -> None:
     repository = tmp_path / "repository"
     repository.mkdir()
@@ -112,6 +114,7 @@ async def test_planning_api_and_p2_loop_execution(tmp_path: Path) -> None:
         assert [item["run_id"] for item in sessions.json()] == [run_id]
 
 
+@pytest.mark.acceptance("V01-P1-006")
 async def test_denied_override_is_returned_and_current_decision_is_unchanged(
     tmp_path: Path,
 ) -> None:

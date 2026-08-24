@@ -57,6 +57,7 @@ async def login(
     return principal.principal_id, session.auth_session_id
 
 
+@pytest.mark.acceptance("AC3-ID-01")
 async def test_pkce_challenge_is_s256_and_verifier_never_leaves_the_server() -> None:
     idp = FakeIdp()
     service = build_service(idp)
@@ -70,6 +71,7 @@ async def test_pkce_challenge_is_s256_and_verifier_never_leaves_the_server() -> 
     assert verifier not in url
 
 
+@pytest.mark.acceptance("AC3-ID-01")
 async def test_full_login_creates_principal_membership_and_session() -> None:
     idp = FakeIdp()
     service = build_service(idp)
@@ -87,6 +89,7 @@ async def test_full_login_creates_principal_membership_and_session() -> None:
     assert await service.resolve_session(session_id) == principal
 
 
+@pytest.mark.acceptance("AC3-ID-02")
 async def test_changed_email_updates_in_place_without_duplicate_identity() -> None:
     idp = FakeIdp()
     service = build_service(idp)
@@ -98,6 +101,7 @@ async def test_changed_email_updates_in_place_without_duplicate_identity() -> No
     assert principal is not None and principal.email == "new@example.test"
 
 
+@pytest.mark.acceptance("AC3-ID-03")
 async def test_wrong_issuer_audience_and_nonce_fail_authentication() -> None:
     for override in (
         {"claim_issuer": "https://evil.test"},
@@ -113,6 +117,7 @@ async def test_wrong_issuer_audience_and_nonce_fail_authentication() -> None:
             await service.complete_login(state=query["state"][0], code=code)
 
 
+@pytest.mark.acceptance("AC3-ID-03")
 async def test_discovery_issuer_mismatch_is_rejected() -> None:
     idp = FakeIdp(issuer=ISSUER)
     service = build_service(idp)
@@ -124,6 +129,7 @@ async def test_discovery_issuer_mismatch_is_rejected() -> None:
         await service.oidc.discover()
 
 
+@pytest.mark.acceptance("AC3-ID-03")
 async def test_unknown_replayed_and_expired_state_fail_closed() -> None:
     idp = FakeIdp()
     service = build_service(idp)
@@ -233,6 +239,7 @@ async def test_disabled_principal_is_refused_everywhere() -> None:
         del app.state.manager
 
 
+@pytest.mark.acceptance("AC3-CON-05")
 async def test_per_user_connection_never_resolves_for_another_user() -> None:
     idp = FakeIdp()
     service = build_service(idp)

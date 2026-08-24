@@ -1,3 +1,5 @@
+import pytest
+
 from accretion.ids import has_prefix, new_id
 from accretion.redaction import redact
 
@@ -23,6 +25,7 @@ def test_recursive_redaction_removes_secret_values() -> None:
     assert redacted["message"] == "Bearer [REDACTED]"
 
 
+@pytest.mark.acceptance("V01-P4-002")
 def test_auth_material_is_redacted() -> None:
     value = {
         "code_verifier": "pkce-verifier-value",

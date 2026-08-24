@@ -44,7 +44,11 @@ packages = ["src/accretion"]
 addopts = "-ra --strict-markers"
 asyncio_mode = "auto"
 testpaths = ["tests"]
-markers = ["integration: requires PostgreSQL", "live: invokes a signed-in provider CLI"]
+markers = [
+  "integration: requires PostgreSQL",
+  "live: invokes a signed-in provider CLI",
+  "acceptance(*ids): proves the named SDD acceptance criteria",
+]
 
 [tool.ruff]
 target-version = "py312"

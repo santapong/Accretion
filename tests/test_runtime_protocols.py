@@ -33,6 +33,7 @@ def test_codex_stable_notifications_normalize_to_run_lifecycle() -> None:
     )
 
 
+@pytest.mark.acceptance("V01-P0-003")
 def test_claude_stream_json_normalizes_to_run_lifecycle() -> None:
     assert ClaudeRuntime._normalize({"type": "system", "subtype": "init"}) == (
         EventType.RUNTIME_CALL_STARTED
@@ -46,6 +47,7 @@ def test_claude_stream_json_normalizes_to_run_lifecycle() -> None:
     )
 
 
+@pytest.mark.acceptance("V01-P0-001", "V01-P0-007")
 def test_runtime_health_classifies_every_required_state() -> None:
     cases = [
         ((0, "codex 0.148.0", 0, "logged in"), RuntimeStatus.READY),

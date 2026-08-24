@@ -111,6 +111,7 @@ async def test_unknown_template_fails_closed(tmp_path: Path) -> None:
     assert await manager.store.list_runs() == []
 
 
+@pytest.mark.acceptance("V01-P3-001")
 async def test_non_validated_template_returns_409(tmp_path: Path) -> None:
     store = MemoryStore()
     manager = build_manager(tmp_path, store=store)
@@ -390,6 +391,7 @@ async def test_safe_unknown_replan_exhaustion_escalates(tmp_path: Path) -> None:
 # --- V01-P3-002: no API accepts executable topology ---
 
 
+@pytest.mark.acceptance("V01-P3-002", "V01-P4-006")
 def test_openapi_exposes_no_writable_topology() -> None:
     schema = app.openapi()
     components = schema.get("components", {}).get("schemas", {})
