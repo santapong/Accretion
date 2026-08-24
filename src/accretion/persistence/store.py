@@ -53,6 +53,16 @@ from accretion.contracts import (
     WorkflowTemplate,
     WorkspaceLease,
 )
+from accretion.experience.models import (
+    Experience,
+    ExperienceEmbedding,
+    ExperienceMatch,
+    ExperienceQuery,
+    ExperienceSelection,
+    ModerationAction,
+    TrajectorySeed,
+    TrajectorySegment,
+)
 from accretion.ids import new_id
 from accretion.orchestration.models import (
     CandidateScore,
@@ -79,6 +89,12 @@ from accretion.persistence.models import (
     CapabilityRow,
     CheckpointRow,
     ContextBundleRow,
+    ExperienceEmbeddingRow,
+    ExperienceMatchRow,
+    ExperienceModerationActionRow,
+    ExperienceQueryRow,
+    ExperienceRow,
+    ExperienceSelectionRow,
     GraphValidationResultRow,
     LoopExecutionRow,
     LoopIterationRow,
@@ -102,6 +118,8 @@ from accretion.persistence.models import (
     StrategyOverrideRow,
     TaskProfileRow,
     TaskRow,
+    TrajectoryReplaySeedRow,
+    TrajectorySegmentRow,
     VerificationRow,
     WorkflowProposalRow,
     WorkflowTemplateRow,
@@ -317,6 +335,42 @@ class StateStore(Protocol):
     async def get_search_promotion(
         self, search_id: str
     ) -> SearchPromotionRecord | None: ...
+    async def save_experience(
+        self,
+        experience: Experience,
+        segments: Sequence[TrajectorySegment],
+        embedding: ExperienceEmbedding,
+    ) -> Experience: ...
+    async def get_experience(self, experience_id: str) -> Experience | None: ...
+    async def list_experiences(
+        self,
+        *,
+        project_id: str | None = None,
+        repository_identity: str | None = None,
+        include_retracted: bool = False,
+    ) -> list[Experience]: ...
+    async def list_trajectory_segments(self, experience_id: str) -> list[TrajectorySegment]: ...
+    async def get_experience_embedding(
+        self, experience_id: str
+    ) -> ExperienceEmbedding | None: ...
+    async def save_experience_query(
+        self, query: ExperienceQuery, vector: Sequence[float]
+    ) -> ExperienceQuery: ...
+    async def get_experience_query(
+        self, query_id: str
+    ) -> tuple[ExperienceQuery, list[float]] | None: ...
+    async def save_experience_matches(
+        self, matches: Sequence[ExperienceMatch]
+    ) -> list[ExperienceMatch]: ...
+    async def list_experience_matches(self, query_id: str) -> list[ExperienceMatch]: ...
+    async def save_experience_selection(
+        self, selection: ExperienceSelection
+    ) -> ExperienceSelection: ...
+    async def list_experience_selections(self, task_id: str) -> list[ExperienceSelection]: ...
+    async def retract_experience(self, action: ModerationAction) -> Experience: ...
+    async def list_moderation_actions(self, experience_id: str) -> list[ModerationAction]: ...
+    async def save_trajectory_seed(self, seed: TrajectorySeed) -> TrajectorySeed: ...
+    async def list_trajectory_seeds(self, search_id: str) -> list[TrajectorySeed]: ...
 
 
 class MemoryStore:
@@ -366,6 +420,15 @@ class MemoryStore:
         self.search_candidates: dict[str, CandidateTrajectory] = {}
         self.candidate_scores: dict[str, CandidateScore] = {}
         self.search_promotions: dict[str, SearchPromotionRecord] = {}
+        self.experiences: dict[str, Experience] = {}
+        self.experience_source_keys: dict[tuple[str, str | None], str] = {}
+        self.trajectory_segments: dict[str, list[TrajectorySegment]] = {}
+        self.experience_embeddings: dict[str, ExperienceEmbedding] = {}
+        self.experience_queries: dict[str, tuple[ExperienceQuery, list[float]]] = {}
+        self.experience_matches: dict[str, list[ExperienceMatch]] = {}
+        self.experience_selections: dict[str, list[ExperienceSelection]] = {}
+        self.moderation_actions: dict[str, list[ModerationAction]] = {}
+        self.trajectory_seeds: dict[str, list[TrajectorySeed]] = {}
         self._lock = asyncio.Lock()
 
     async def create_project(self, project: Project) -> Project:
@@ -1404,6 +1467,176 @@ class MemoryStore:
         self, search_id: str
     ) -> SearchPromotionRecord | None:
         return self.search_promotions.get(search_id)
+
+    async def save_experience(
+        self,
+        experience: Experience,
+        segments: Sequence[TrajectorySegment],
+        embedding: ExperienceEmbedding,
+    ) -> Experience:
+        source_key = (experience.source_run_id, experience.source_candidate_id)
+        async with self._lock:
+            existing_id = self.experience_source_keys.get(source_key)
+            if existing_id is not None:
+                existing = self.experiences[existing_id]
+                if (
+                    existing != experience
+                    or self.trajectory_segments[existing_id] != list(segments)
+                    or self.experience_embeddings[existing_id] != embedding
+                ):
+                    raise ValueError("conflicting experience evidence for terminal source")
+                return existing
+            if any(segment.experience_id != experience.experience_id for segment in segments):
+                raise ValueError("trajectory segment belongs to another experience")
+            if embedding.experience_id != experience.experience_id:
+                raise ValueError("embedding belongs to another experience")
+            ordinals = [segment.ordinal for segment in segments]
+            if not segments or len(set(ordinals)) != len(ordinals):
+                raise ValueError("experience requires uniquely ordered trajectory segments")
+            self.experiences[experience.experience_id] = experience
+            self.experience_source_keys[source_key] = experience.experience_id
+            self.trajectory_segments[experience.experience_id] = sorted(
+                segments, key=lambda item: item.ordinal
+            )
+            self.experience_embeddings[experience.experience_id] = embedding
+            return experience
+
+    async def get_experience(self, experience_id: str) -> Experience | None:
+        return self.experiences.get(experience_id)
+
+    async def list_experiences(
+        self,
+        *,
+        project_id: str | None = None,
+        repository_identity: str | None = None,
+        include_retracted: bool = False,
+    ) -> list[Experience]:
+        items = self.experiences.values()
+        return sorted(
+            (
+                item
+                for item in items
+                if (project_id is None or item.project_id == project_id)
+                and (
+                    repository_identity is None
+                    or item.repository_identity == repository_identity
+                )
+                and (include_retracted or not item.retracted)
+            ),
+            key=lambda item: (item.created_at, item.experience_id),
+        )
+
+    async def list_trajectory_segments(self, experience_id: str) -> list[TrajectorySegment]:
+        return list(self.trajectory_segments.get(experience_id, []))
+
+    async def get_experience_embedding(
+        self, experience_id: str
+    ) -> ExperienceEmbedding | None:
+        return self.experience_embeddings.get(experience_id)
+
+    async def save_experience_query(
+        self, query: ExperienceQuery, vector: Sequence[float]
+    ) -> ExperienceQuery:
+        values = [float(value) for value in vector]
+        if len(values) != 384:
+            raise ValueError("experience query vector must contain 384 dimensions")
+        current = self.experience_queries.get(query.query_id)
+        if current is not None and current != (query, values):
+            raise ValueError("experience query is immutable")
+        self.experience_queries[query.query_id] = (query, values)
+        return query
+
+    async def get_experience_query(
+        self, query_id: str
+    ) -> tuple[ExperienceQuery, list[float]] | None:
+        current = self.experience_queries.get(query_id)
+        if current is None:
+            return None
+        return current[0], list(current[1])
+
+    async def save_experience_matches(
+        self, matches: Sequence[ExperienceMatch]
+    ) -> list[ExperienceMatch]:
+        if not matches:
+            return []
+        query_id = matches[0].query_id
+        if any(match.query_id != query_id for match in matches):
+            raise ValueError("experience matches must belong to one query")
+        if query_id not in self.experience_queries:
+            raise KeyError(query_id)
+        current = self.experience_matches.get(query_id)
+        if current is not None and current != list(matches):
+            raise ValueError("experience matches are immutable")
+        self.experience_matches[query_id] = list(matches)
+        return list(matches)
+
+    async def list_experience_matches(self, query_id: str) -> list[ExperienceMatch]:
+        return sorted(self.experience_matches.get(query_id, []), key=lambda item: item.rank)
+
+    async def save_experience_selection(
+        self, selection: ExperienceSelection
+    ) -> ExperienceSelection:
+        items = self.experience_selections.setdefault(selection.task_id, [])
+        current = next(
+            (item for item in items if item.selection_id == selection.selection_id), None
+        )
+        if current is not None:
+            if current != selection:
+                raise ValueError("experience selection is immutable")
+            return current
+        items.append(selection)
+        return selection
+
+    async def list_experience_selections(self, task_id: str) -> list[ExperienceSelection]:
+        return sorted(
+            self.experience_selections.get(task_id, []), key=lambda item: item.created_at
+        )
+
+    async def retract_experience(self, action: ModerationAction) -> Experience:
+        async with self._lock:
+            current = self.experiences.get(action.experience_id)
+            if current is None:
+                raise KeyError(action.experience_id)
+            existing = next(
+                (
+                    item
+                    for item in self.moderation_actions.get(action.experience_id, [])
+                    if item.action_id == action.action_id
+                ),
+                None,
+            )
+            if existing is not None:
+                if existing != action:
+                    raise ValueError("moderation action is immutable")
+                return current
+            if current.revision != action.expected_revision:
+                raise ValueError("experience revision conflict")
+            updated = current.model_copy(
+                update={"revision": action.resulting_revision, "retracted": True}
+            )
+            self.experiences[action.experience_id] = updated
+            self.moderation_actions.setdefault(action.experience_id, []).append(action)
+            return updated
+
+    async def list_moderation_actions(self, experience_id: str) -> list[ModerationAction]:
+        return sorted(
+            self.moderation_actions.get(experience_id, []), key=lambda item: item.created_at
+        )
+
+    async def save_trajectory_seed(self, seed: TrajectorySeed) -> TrajectorySeed:
+        items = self.trajectory_seeds.setdefault(seed.search_id, [])
+        current = next((item for item in items if item.seed_id == seed.seed_id), None)
+        if current is not None:
+            if current != seed:
+                raise ValueError("trajectory seed is immutable")
+            return current
+        if any(item.candidate_id == seed.candidate_id for item in items):
+            raise ValueError("candidate already has a trajectory seed")
+        items.append(seed)
+        return seed
+
+    async def list_trajectory_seeds(self, search_id: str) -> list[TrajectorySeed]:
+        return sorted(self.trajectory_seeds.get(search_id, []), key=lambda item: item.created_at)
 
 
 class PostgresStore:
@@ -3259,6 +3492,363 @@ class PostgresStore:
                 select(SearchPromotionRow).where(SearchPromotionRow.search_id == search_id)
             )
         return SearchPromotionRecord.model_validate(row.record) if row is not None else None
+
+    async def save_experience(
+        self,
+        experience: Experience,
+        segments: Sequence[TrajectorySegment],
+        embedding: ExperienceEmbedding,
+    ) -> Experience:
+        if any(segment.experience_id != experience.experience_id for segment in segments):
+            raise ValueError("trajectory segment belongs to another experience")
+        if embedding.experience_id != experience.experience_id:
+            raise ValueError("embedding belongs to another experience")
+        ordinals = [segment.ordinal for segment in segments]
+        if not segments or len(set(ordinals)) != len(ordinals):
+            raise ValueError("experience requires uniquely ordered trajectory segments")
+        source_key = self._experience_source_key(experience)
+        async with self.sessions.begin() as session:
+            existing = await session.scalar(
+                select(ExperienceRow)
+                .where(ExperienceRow.source_key == source_key)
+                .with_for_update()
+            )
+            if existing is not None:
+                current = Experience.model_validate(existing.record)
+                segment_rows = (
+                    await session.scalars(
+                        select(TrajectorySegmentRow)
+                        .where(TrajectorySegmentRow.experience_id == existing.id)
+                        .order_by(TrajectorySegmentRow.ordinal)
+                    )
+                ).all()
+                embedding_row = await session.scalar(
+                    select(ExperienceEmbeddingRow).where(
+                        ExperienceEmbeddingRow.experience_id == existing.id
+                    )
+                )
+                current_segments = [
+                    TrajectorySegment.model_validate(row.record) for row in segment_rows
+                ]
+                if (
+                    current != experience
+                    or current_segments != sorted(segments, key=lambda item: item.ordinal)
+                    or embedding_row is None
+                    or embedding_row.id != embedding.embedding_id
+                    or embedding_row.version != embedding.version
+                    or embedding_row.input_digest != embedding.input_digest
+                ):
+                    raise ValueError("conflicting experience evidence for terminal source")
+                return current
+            session.add(
+                ExperienceRow(
+                    id=experience.experience_id,
+                    project_id=experience.project_id,
+                    task_id=experience.task_id,
+                    source_run_id=experience.source_run_id,
+                    source_candidate_id=experience.source_candidate_id,
+                    source_key=source_key,
+                    repository_identity=experience.repository_identity,
+                    trust=experience.trust.value,
+                    polarity=experience.polarity.value,
+                    retracted=experience.retracted,
+                    revision=experience.revision,
+                    record=experience.model_dump(mode="json"),
+                    created_at=experience.created_at,
+                )
+            )
+            await session.flush()
+            session.add_all(
+                TrajectorySegmentRow(
+                    id=segment.segment_id,
+                    experience_id=segment.experience_id,
+                    ordinal=segment.ordinal,
+                    kind=segment.kind.value,
+                    record=segment.model_dump(mode="json"),
+                    created_at=segment.created_at,
+                )
+                for segment in segments
+            )
+            session.add(
+                ExperienceEmbeddingRow(
+                    id=embedding.embedding_id,
+                    experience_id=embedding.experience_id,
+                    version=embedding.version,
+                    input_digest=embedding.input_digest,
+                    embedding=embedding.vector,
+                    created_at=embedding.created_at,
+                )
+            )
+        return experience
+
+    async def get_experience(self, experience_id: str) -> Experience | None:
+        async with self.sessions() as session:
+            row = await session.get(ExperienceRow, experience_id)
+        return Experience.model_validate(row.record) if row is not None else None
+
+    async def list_experiences(
+        self,
+        *,
+        project_id: str | None = None,
+        repository_identity: str | None = None,
+        include_retracted: bool = False,
+    ) -> list[Experience]:
+        query = select(ExperienceRow).order_by(ExperienceRow.created_at, ExperienceRow.id)
+        if project_id is not None:
+            query = query.where(ExperienceRow.project_id == project_id)
+        if repository_identity is not None:
+            query = query.where(ExperienceRow.repository_identity == repository_identity)
+        if not include_retracted:
+            query = query.where(ExperienceRow.retracted.is_(False))
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [Experience.model_validate(row.record) for row in rows]
+
+    async def list_trajectory_segments(self, experience_id: str) -> list[TrajectorySegment]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(TrajectorySegmentRow)
+                    .where(TrajectorySegmentRow.experience_id == experience_id)
+                    .order_by(TrajectorySegmentRow.ordinal)
+                )
+            ).all()
+        return [TrajectorySegment.model_validate(row.record) for row in rows]
+
+    async def get_experience_embedding(
+        self, experience_id: str
+    ) -> ExperienceEmbedding | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(ExperienceEmbeddingRow).where(
+                    ExperienceEmbeddingRow.experience_id == experience_id
+                )
+            )
+        if row is None:
+            return None
+        return ExperienceEmbedding(
+            embedding_id=row.id,
+            experience_id=row.experience_id,
+            version=row.version,
+            input_digest=row.input_digest,
+            vector=[float(value) for value in row.embedding],
+            created_at=row.created_at,
+        )
+
+    async def save_experience_query(
+        self, query: ExperienceQuery, vector: Sequence[float]
+    ) -> ExperienceQuery:
+        values = [float(value) for value in vector]
+        if len(values) != 384:
+            raise ValueError("experience query vector must contain 384 dimensions")
+        async with self.sessions.begin() as session:
+            row = await session.get(ExperienceQueryRow, query.query_id)
+            if row is not None:
+                current = ExperienceQuery.model_validate(row.record)
+                if current != query:
+                    raise ValueError("experience query is immutable")
+                return current
+            session.add(
+                ExperienceQueryRow(
+                    id=query.query_id,
+                    project_id=query.project_id,
+                    task_id=query.task_id,
+                    repository_identity=query.repository_identity,
+                    record=query.model_dump(mode="json"),
+                    embedding=values,
+                    created_at=query.created_at,
+                )
+            )
+        return query
+
+    async def get_experience_query(
+        self, query_id: str
+    ) -> tuple[ExperienceQuery, list[float]] | None:
+        async with self.sessions() as session:
+            row = await session.get(ExperienceQueryRow, query_id)
+        if row is None:
+            return None
+        return (
+            ExperienceQuery.model_validate(row.record),
+            [float(value) for value in row.embedding],
+        )
+
+    async def save_experience_matches(
+        self, matches: Sequence[ExperienceMatch]
+    ) -> list[ExperienceMatch]:
+        if not matches:
+            return []
+        query_id = matches[0].query_id
+        if any(match.query_id != query_id for match in matches):
+            raise ValueError("experience matches must belong to one query")
+        async with self.sessions.begin() as session:
+            if await session.get(ExperienceQueryRow, query_id) is None:
+                raise KeyError(query_id)
+            existing_rows = (
+                await session.scalars(
+                    select(ExperienceMatchRow)
+                    .where(ExperienceMatchRow.query_id == query_id)
+                    .order_by(ExperienceMatchRow.rank)
+                )
+            ).all()
+            if existing_rows:
+                existing = [ExperienceMatch.model_validate(row.record) for row in existing_rows]
+                if existing != list(matches):
+                    raise ValueError("experience matches are immutable")
+                return existing
+            session.add_all(
+                ExperienceMatchRow(
+                    id=match.match_id,
+                    query_id=match.query_id,
+                    experience_id=match.experience_id,
+                    rank=match.rank,
+                    disposition=match.assessment.disposition.value,
+                    final_score=match.assessment.final_score,
+                    record=match.model_dump(mode="json"),
+                    created_at=match.created_at,
+                )
+                for match in matches
+            )
+        return list(matches)
+
+    async def list_experience_matches(self, query_id: str) -> list[ExperienceMatch]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(ExperienceMatchRow)
+                    .where(ExperienceMatchRow.query_id == query_id)
+                    .order_by(ExperienceMatchRow.rank)
+                )
+            ).all()
+        return [ExperienceMatch.model_validate(row.record) for row in rows]
+
+    async def save_experience_selection(
+        self, selection: ExperienceSelection
+    ) -> ExperienceSelection:
+        async with self.sessions.begin() as session:
+            row = await session.get(ExperienceSelectionRow, selection.selection_id)
+            if row is not None:
+                current = ExperienceSelection.model_validate(row.record)
+                if current != selection:
+                    raise ValueError("experience selection is immutable")
+                return current
+            session.add(
+                ExperienceSelectionRow(
+                    id=selection.selection_id,
+                    task_id=selection.task_id,
+                    query_id=selection.query_id,
+                    expected_context_bundle_id=selection.expected_context_bundle_id,
+                    resulting_context_bundle_id=selection.resulting_context_bundle_id,
+                    record=selection.model_dump(mode="json"),
+                    created_at=selection.created_at,
+                )
+            )
+        return selection
+
+    async def list_experience_selections(self, task_id: str) -> list[ExperienceSelection]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(ExperienceSelectionRow)
+                    .where(ExperienceSelectionRow.task_id == task_id)
+                    .order_by(ExperienceSelectionRow.created_at)
+                )
+            ).all()
+        return [ExperienceSelection.model_validate(row.record) for row in rows]
+
+    async def retract_experience(self, action: ModerationAction) -> Experience:
+        async with self.sessions.begin() as session:
+            existing_action = await session.get(ExperienceModerationActionRow, action.action_id)
+            if existing_action is not None:
+                current_action = ModerationAction.model_validate(existing_action.record)
+                if current_action != action:
+                    raise ValueError("moderation action is immutable")
+                row = await session.get(ExperienceRow, action.experience_id)
+                if row is None:
+                    raise KeyError(action.experience_id)
+                return Experience.model_validate(row.record)
+            row = await session.get(
+                ExperienceRow, action.experience_id, with_for_update=True
+            )
+            if row is None:
+                raise KeyError(action.experience_id)
+            if row.revision != action.expected_revision:
+                raise ValueError("experience revision conflict")
+            current = Experience.model_validate(row.record)
+            updated = current.model_copy(
+                update={"revision": action.resulting_revision, "retracted": True}
+            )
+            row.revision = updated.revision
+            row.retracted = True
+            row.record = updated.model_dump(mode="json")
+            session.add(
+                ExperienceModerationActionRow(
+                    id=action.action_id,
+                    experience_id=action.experience_id,
+                    action=action.action.value,
+                    expected_revision=action.expected_revision,
+                    resulting_revision=action.resulting_revision,
+                    record=action.model_dump(mode="json"),
+                    created_at=action.created_at,
+                )
+            )
+        return updated
+
+    async def list_moderation_actions(self, experience_id: str) -> list[ModerationAction]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(ExperienceModerationActionRow)
+                    .where(ExperienceModerationActionRow.experience_id == experience_id)
+                    .order_by(ExperienceModerationActionRow.created_at)
+                )
+            ).all()
+        return [ModerationAction.model_validate(row.record) for row in rows]
+
+    async def save_trajectory_seed(self, seed: TrajectorySeed) -> TrajectorySeed:
+        async with self.sessions.begin() as session:
+            row = await session.get(TrajectoryReplaySeedRow, seed.seed_id)
+            if row is not None:
+                current = TrajectorySeed.model_validate(row.record)
+                if current != seed:
+                    raise ValueError("trajectory seed is immutable")
+                return current
+            existing = await session.scalar(
+                select(TrajectoryReplaySeedRow).where(
+                    TrajectoryReplaySeedRow.candidate_id == seed.candidate_id
+                )
+            )
+            if existing is not None:
+                raise ValueError("candidate already has a trajectory seed")
+            session.add(
+                TrajectoryReplaySeedRow(
+                    id=seed.seed_id,
+                    search_id=seed.search_id,
+                    candidate_id=seed.candidate_id,
+                    match_id=seed.match_id,
+                    experience_id=seed.experience_id,
+                    validation_status=seed.validation_status.value,
+                    record=seed.model_dump(mode="json"),
+                    created_at=seed.created_at,
+                )
+            )
+        return seed
+
+    async def list_trajectory_seeds(self, search_id: str) -> list[TrajectorySeed]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(TrajectoryReplaySeedRow)
+                    .where(TrajectoryReplaySeedRow.search_id == search_id)
+                    .order_by(TrajectoryReplaySeedRow.created_at)
+                )
+            ).all()
+        return [TrajectorySeed.model_validate(row.record) for row in rows]
+
+    @staticmethod
+    def _experience_source_key(experience: Experience) -> str:
+        candidate = experience.source_candidate_id or "run"
+        return f"{experience.source_run_id}:{candidate}"
 
     @staticmethod
     def _row_to_benchmark_run(row: BenchmarkRunRow) -> BenchmarkRun:
