@@ -70,7 +70,12 @@ class TokenBroker(Protocol):
     ) -> TokenHandle: ...
 
     async def get_access_material(
-        self, handle: TokenHandle, *, audience: list[str], scopes: list[str]
+        self,
+        handle: TokenHandle,
+        *,
+        audience: list[str],
+        scopes: list[str],
+        expected_issuer: str | None = None,
     ) -> EphemeralCredential: ...
 
     async def refresh(self, handle: TokenHandle) -> TokenHandle: ...
@@ -127,13 +132,25 @@ class EncryptedTokenBroker:
     # ------------------------------------------------------------------ reading
 
     async def get_access_material(
-        self, handle: TokenHandle, *, audience: list[str], scopes: list[str]
+        self,
+        handle: TokenHandle,
+        *,
+        audience: list[str],
+        scopes: list[str],
+        expected_issuer: str | None = None,
     ) -> EphemeralCredential:
         if handle.status is not TokenStatus.ACTIVE:
             raise TokenBrokerError(f"token handle is {handle.status.value}")
-        if audience and handle.audience and not set(audience) <= set(handle.audience):
-            # AC3-CON-06: an audience the credential was not issued for is refused.
-            raise TokenBrokerError("token audience does not cover the requested resource")
+        # AC3-CON-06. Both checks fail closed: a credential whose issuer or audience
+        # cannot be *shown* to cover the request is refused, rather than allowed
+        # because one side of the comparison happens to be empty.
+        if expected_issuer is not None and handle.issuer != expected_issuer:
+            raise TokenBrokerError("token issuer does not match the requesting connector")
+        if audience:
+            if not handle.audience:
+                raise TokenBrokerError("token records no audience to check the request against")
+            if not set(audience) <= set(handle.audience):
+                raise TokenBrokerError("token audience does not cover the requested resource")
         if scopes and not set(scopes) <= set(handle.scopes):
             raise TokenBrokerError("token scopes do not cover the requested capability")
         if _is_stale(handle):

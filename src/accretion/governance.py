@@ -26,6 +26,7 @@ from accretion.contracts import (
     CapabilityPolicy,
     CapabilityRequest,
     Connection,
+    ConnectionRef,
     ConnectionScope,
     ConnectionStatus,
     ConnectorAuthType,
@@ -43,8 +44,9 @@ from accretion.contracts import (
 from accretion.ids import new_id
 from accretion.persistence.side_effects import SideEffectLedger, SideEffectStatus
 from accretion.persistence.store import StateStore
-from accretion.redaction import redact, redact_text
+from accretion.redaction import redact, redact_text, scrub_values
 from accretion.runtimes.common import make_event
+from accretion.token_broker import TokenBroker, TokenBrokerError
 
 CapabilityHandler = Callable[[dict[str, Any], Mapping[str, str]], Awaitable[dict[str, Any]]]
 EventNotifier = Callable[[str], Awaitable[None]]
@@ -247,6 +249,7 @@ class CapabilityGateway:
         policy_engine: CapabilityPolicyEngine,
         policy_id: str = "local-capability-policy",
         notify: EventNotifier | None = None,
+        token_broker: TokenBroker | None = None,
     ) -> None:
         self.store = store
         self.side_effects = side_effects
@@ -255,8 +258,55 @@ class CapabilityGateway:
         self.policy_engine = policy_engine
         self.policy_id = policy_id
         self.notify = notify
+        # The Token Broker is the sole credential authority for connector-backed
+        # capabilities (ADR3-004). The env-var CredentialBroker above still serves
+        # v0.1-style `credential_refs` and is deliberately left in place.
+        self.token_broker = token_broker
 
-    async def execute(self, request: CapabilityRequest) -> CapabilityExecutionResult:
+    async def _connection_credentials(
+        self, connection: ConnectionRef, capability: Capability
+    ) -> dict[str, str]:
+        """Mint short-lived access material for a connector-backed capability.
+
+        The plaintext exists only in the returned mapping, which reaches the executor
+        and nothing else: it is never persisted, never redacted into an event, and
+        never returned to the agent (INV3-003).
+        """
+
+        if self.token_broker is None:
+            raise CredentialUnavailableError(
+                f"capability {capability.capability_id} needs connection "
+                f"{connection.connection_id} but no token broker is configured"
+            )
+        stored = await self.store.get_connection(connection.connection_id)
+        if stored is None or stored.token_handle_ref is None:
+            raise CredentialUnavailableError(
+                f"connection {connection.connection_id} holds no credential"
+            )
+        handle = await self.store.get_token_handle(stored.token_handle_ref)
+        if handle is None:
+            raise CredentialUnavailableError(
+                f"connection {connection.connection_id} references a missing token handle"
+            )
+        connector = await self.store.get_connector_definition(stored.connector_id)
+        try:
+            material = await self.token_broker.get_access_material(
+                handle,
+                audience=[connector.resource_server]
+                if connector and connector.resource_server
+                else [],
+                scopes=list(stored.granted_scopes),
+                expected_issuer=connector.authorization_server if connector else None,
+            )
+        except TokenBrokerError as exc:
+            # Fail closed: an unusable credential must not fall through to an
+            # unauthenticated call.
+            raise CredentialUnavailableError(str(exc)) from exc
+        return {f"connection:{stored.connector_id}": material.reveal()}
+
+    async def execute(
+        self, request: CapabilityRequest, connection: ConnectionRef | None = None
+    ) -> CapabilityExecutionResult:
         run = await self.store.get_run(request.run_id)
         if run is None:
             raise KeyError(request.run_id)
@@ -334,6 +384,13 @@ class CapabilityGateway:
             return result
 
         credentials = self.broker.resolve(capability.credential_refs)
+        if connection is not None:
+            # AC3-SEC-03: connector-backed capabilities take their credential from the
+            # broker, never from the resolver, the request, or the agent.
+            credentials = {
+                **credentials,
+                **await self._connection_credentials(connection, capability),
+            }
         operation_id: str | None = None
         if capability.side_effects:
             assert request.idempotency_key is not None
@@ -361,7 +418,13 @@ class CapabilityGateway:
             {"side_effect_operation_id": operation_id},
         )
         try:
-            output = redact(await self.executor.execute(capability, request.arguments, credentials))
+            # Scrub by value as well as by key: a capability can return its own
+            # injected credential under a harmless key, which key-name redaction
+            # cannot see (AC3-SEC-02).
+            output = scrub_values(
+                redact(await self.executor.execute(capability, request.arguments, credentials)),
+                credentials.values(),
+            )
             validate(instance=output, schema=capability.output_schema)
             if request.idempotency_key:
                 await self.side_effects.finish(
