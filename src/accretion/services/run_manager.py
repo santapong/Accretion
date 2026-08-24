@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
+from typing import Protocol
 
 from accretion.checkpoints import (
     ReconcileClassification,
@@ -80,6 +81,7 @@ from accretion.looping import (
     build_loop_spec,
     terminal_outcome,
 )
+from accretion.orchestration.models import SearchRecord, SearchStatus
 from accretion.persistence.side_effects import SideEffectLedger
 from accretion.persistence.store import StateStore
 from accretion.planning import (
@@ -113,6 +115,18 @@ class RuntimeCallOutcome:
     tool_calls: int
     error: ErrorSummary | None = None
     stop_reason: LoopStopReason | None = None
+
+
+class SearchNodeExecutor(Protocol):
+    async def __call__(
+        self,
+        record: SearchRecord,
+        run: Run,
+        task: Task,
+        lease: WorkspaceLease,
+        node: RunNode,
+        policy: AcceptancePolicy,
+    ) -> SearchRecord: ...
 
 
 class NodeOutcome(StrEnum):
@@ -200,6 +214,7 @@ class RunManager:
         self.pause_requested: set[str] = set()
         self.terminal_locks: dict[str, asyncio.Lock] = {}
         self.approval_conditions: dict[str, asyncio.Condition] = {}
+        self.search_executor: SearchNodeExecutor | None = None
 
     async def create_project(self, name: str, repository_path: Path) -> Project:
         repository_path = repository_path.resolve(strict=True)
@@ -1084,6 +1099,7 @@ class RunManager:
             return await self._graph_agent(
                 run,
                 task,
+                lease,
                 session,
                 node=node,
                 instruction=spec.instruction if spec else None,
@@ -1152,6 +1168,7 @@ class RunManager:
         self,
         run: Run,
         task: Task,
+        lease: WorkspaceLease,
         session: SessionRef,
         *,
         node: RunNode,
@@ -1160,6 +1177,78 @@ class RunManager:
         cursor: _GraphCursor,
         entered_via: str | None,
     ) -> tuple[NodeOutcome, SessionRef]:
+        revisions = await self.store.list_graph_revisions(run.run_id)
+        graph_revision = revisions[-1].revision if revisions else 1
+        searches = [
+            item
+            for item in await self.store.list_searches(run.run_id)
+            if item.plan.parent_node_id == node.key
+            and item.plan.graph_revision == graph_revision
+        ]
+        if searches:
+            if len(searches) != 1 or self.search_executor is None:
+                cursor.last_error = ErrorSummary(
+                    code="SEARCH_EXECUTOR_UNAVAILABLE",
+                    message="the pending search plan has no unique executor",
+                )
+                return NodeOutcome.FAIL, session
+            await self._node_transition(
+                run,
+                session.session_id,
+                node.key,
+                entered=True,
+                entered_via=entered_via,
+            )
+            record = searches[0]
+            if record.status is SearchStatus.PLANNED:
+                record = await self.search_executor(
+                    record,
+                    run,
+                    task,
+                    lease,
+                    node,
+                    await self._require_policy(run.acceptance_policy_id),
+                )
+            successful = record.status is SearchStatus.SUCCEEDED
+            waiting = record.status in {
+                SearchStatus.REQUIRES_HUMAN,
+                SearchStatus.RUNNING,
+                SearchStatus.SELECTING,
+            }
+            await self._node_transition(
+                run,
+                session.session_id,
+                node.key,
+                entered=False,
+                status=(
+                    "SUCCEEDED"
+                    if successful
+                    else "WAITING"
+                    if waiting
+                    else "CANCELLED"
+                    if record.status is SearchStatus.CANCELLED
+                    else "FAILED"
+                ),
+            )
+            if successful:
+                cursor.statuses[node.key] = GraphNodeStatus.SUCCEEDED
+                selected = (
+                    await self.store.get_search_candidate(record.selected_candidate_id)
+                    if record.selected_candidate_id
+                    else None
+                )
+                if selected and selected.artifact_refs:
+                    cursor.last_artifact_id = selected.artifact_refs[-1]
+                    cursor.last_artifact_sha256 = selected.patch_sha256
+                return NodeOutcome.SUCCESS, session
+            if record.status is SearchStatus.CANCELLED:
+                cursor.statuses[node.key] = GraphNodeStatus.CANCELLED
+                return NodeOutcome.CANCELLED, session
+            if waiting:
+                cursor.statuses[node.key] = GraphNodeStatus.WAITING
+                return NodeOutcome.INCONCLUSIVE, session
+            cursor.statuses[node.key] = GraphNodeStatus.FAILED
+            return NodeOutcome.FAIL, session
         objective = task.envelope.objective
         if instruction:
             objective = f"{objective}\n\n{instruction}"
@@ -2378,8 +2467,13 @@ class RunManager:
         iteration_id: str | None = None,
         persist: bool = True,
         emit_result: bool = True,
+        trajectory_events: list[AgentEvent] | None = None,
     ) -> list[VerificationResult]:
-        events = await self.store.list_events(run.run_id)
+        events = (
+            await self.store.list_events(run.run_id)
+            if trajectory_events is None
+            else trajectory_events
+        )
         context = VerificationContext(
             task_id=task.envelope.task_id,
             project_id=task.envelope.project_id,

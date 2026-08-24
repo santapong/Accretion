@@ -470,6 +470,7 @@ class CandidateTrajectory(StrictModel):
     runtime_model: str
     runtime_version: str
     reviewer_provider: Provider | None = None
+    session_id: str | None = None
     workspace_lease_id: str | None = None
     workspace_path: str | None = None
     trajectory_ref: str | None = None

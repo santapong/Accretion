@@ -159,14 +159,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         globally_enabled=settings.enable_dynamic_workflows,
         operator_identity=settings.operator_identity,
     )
-    app.state.candidate_search = SearchService(
+    search_service = SearchService(
         manager,
         globally_enabled=settings.enable_candidate_search,
         operator_identity=settings.operator_identity,
     )
+    app.state.candidate_search = search_service
     await seed_templates(store)
     await seed_governance(store)
     await seed_acr_arch(store)
+    await search_service.reconcile()
     await manager.reconcile()
     yield
     for task in manager.background.values():

@@ -38,6 +38,63 @@ class WorktreeManager:
             branch_name=branch,
         )
 
+    async def acquire_candidate(
+        self,
+        *,
+        project_id: str,
+        run_id: str,
+        search_id: str,
+        candidate_id: str,
+        repository: Path,
+        base_revision: str,
+        parent_patch: str,
+    ) -> WorkspaceLease:
+        repository = repository.resolve(strict=True)
+        revision = (await self._git(repository, "rev-parse", base_revision)).strip()
+        candidate_root = (self.root / "search" / search_id).resolve()
+        candidate_root.mkdir(parents=True, exist_ok=True)
+        path = (candidate_root / candidate_id).resolve()
+        if path.exists():
+            raise WorkspaceError(f"candidate workspace already exists for {candidate_id}")
+        branch = f"accretion/search/{search_id}/{candidate_id}"
+        await self._git(repository, "worktree", "add", "-b", branch, str(path), revision)
+        if parent_patch:
+            await self._git_input(path, parent_patch, "apply", "--binary", "--whitespace=nowarn")
+        await self._git(path, "add", "--all")
+        await self._git(
+            path,
+            "-c",
+            "user.name=Accretion Search",
+            "-c",
+            "user.email=search@accretion.local",
+            "commit",
+            "--allow-empty",
+            "-m",
+            f"candidate seed {candidate_id}",
+        )
+        seeded_revision = (await self._git(path, "rev-parse", "HEAD")).strip()
+        return WorkspaceLease(
+            lease_id=new_id("workspace"),
+            project_id=project_id,
+            run_id=run_id,
+            base_revision=seeded_revision,
+            path=path,
+            branch_name=branch,
+            cleanup_policy="KEEP_ALWAYS",
+        )
+
+    async def apply_diff(self, lease: WorkspaceLease, patch: str) -> None:
+        if not patch:
+            return
+        await self._git_input(lease.path, patch, "apply", "--check", "--binary")
+        await self._git_input(
+            lease.path,
+            patch,
+            "apply",
+            "--binary",
+            "--whitespace=nowarn",
+        )
+
     async def reacquire(
         self, *, lease: WorkspaceLease, repository: Path
     ) -> WorkspaceLease:
@@ -155,6 +212,22 @@ class WorktreeManager:
             stderr=asyncio.subprocess.PIPE,
         )
         stdout, stderr = await process.communicate()
+        if process.returncode != 0:
+            message = stderr.decode(errors="replace").strip()
+            raise WorkspaceError(message or f"git {' '.join(args)} failed")
+        return stdout.decode(errors="replace")
+
+    @staticmethod
+    async def _git_input(cwd: Path, value: str, *args: str) -> str:
+        process = await asyncio.create_subprocess_exec(
+            "git",
+            *args,
+            cwd=cwd,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await process.communicate(value.encode())
         if process.returncode != 0:
             message = stderr.decode(errors="replace").strip()
             raise WorkspaceError(message or f"git {' '.join(args)} failed")
