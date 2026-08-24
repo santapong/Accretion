@@ -4,6 +4,7 @@ import asyncio
 import subprocess
 from pathlib import Path
 
+import pytest
 from httpx import ASGITransport, AsyncClient
 
 from accretion.api.main import app
@@ -103,6 +104,7 @@ async def test_p5_proposal_validation_activation_and_runtime_evidence(
     }
 
 
+@pytest.mark.acceptance("V02-P5-002")
 async def test_invalid_proposal_falls_back_once_to_static_template(tmp_path: Path) -> None:
     repository = tmp_path / "repository"
     repository.mkdir()
@@ -126,6 +128,7 @@ async def test_invalid_proposal_falls_back_once_to_static_template(tmp_path: Pat
     await manager.background[outcome.fallback_run_id]
 
 
+@pytest.mark.acceptance("V02-P5-004")
 async def test_high_risk_dynamic_node_cannot_start_before_gate(tmp_path: Path) -> None:
     repository = tmp_path / "repository"
     repository.mkdir()
@@ -173,6 +176,7 @@ async def test_high_risk_dynamic_node_cannot_start_before_gate(tmp_path: Path) -
     assert run is not None and run.state is RunState.REQUIRES_HUMAN
 
 
+@pytest.mark.acceptance("V02-P5-008")
 async def test_mid_run_replan_creates_immutable_revision_and_preserves_state(
     tmp_path: Path,
 ) -> None:
@@ -223,6 +227,7 @@ async def test_mid_run_replan_creates_immutable_revision_and_preserves_state(
         await resumed
 
 
+@pytest.mark.acceptance("V02-P5-001")
 async def test_p5_api_surface_is_additive_and_project_gated(tmp_path: Path) -> None:
     repository = tmp_path / "repository"
     repository.mkdir()

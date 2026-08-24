@@ -125,6 +125,7 @@ def budget(*, wall: int = 120, turns: int = 4, tools: int = 12) -> SearchBudgetE
     )
 
 
+@pytest.mark.acceptance("V02-P6-002")
 def test_search_contracts_reject_invalid_bounds_and_feature_dependencies() -> None:
     with pytest.raises(ValidationError, match="requires dynamic workflows"):
         ProjectFeatureSettings(project_id="prj_test", candidate_search=True)
@@ -180,6 +181,7 @@ async def test_replay_branch_is_reserved_for_p7(tmp_path: Path) -> None:
         )
 
 
+@pytest.mark.acceptance("V02-P6-001")
 async def test_best_of_two_isolates_candidates_and_promotes_only_unique_winner(
     tmp_path: Path,
 ) -> None:
@@ -231,6 +233,7 @@ async def test_best_of_two_isolates_candidates_and_promotes_only_unique_winner(
     assert len(await manager.store.list_candidate_scores(record.plan.search_id)) == 2
 
 
+@pytest.mark.acceptance("V02-P6-002")
 async def test_shared_budget_prunes_unfunded_sibling(tmp_path: Path) -> None:
     runtime = FakeRuntime(
         scripted_outcomes=[
@@ -264,6 +267,7 @@ async def test_shared_budget_prunes_unfunded_sibling(tmp_path: Path) -> None:
     assert final.budget_spent.tool_calls <= 2
 
 
+@pytest.mark.acceptance("V02-P6-002")
 async def test_search_borrows_parent_slot_without_deadlocking_limit_one(
     tmp_path: Path,
 ) -> None:
@@ -299,6 +303,7 @@ async def test_search_borrows_parent_slot_without_deadlocking_limit_one(
     assert (await search.get(record.plan.search_id)).status is SearchStatus.SUCCEEDED
 
 
+@pytest.mark.acceptance("V02-P6-003")
 async def test_protected_capability_node_cannot_receive_search_plan(tmp_path: Path) -> None:
     _, _, search, run_id = await prepared_run(tmp_path, allowed_capabilities=["filesystem.write"])
     with pytest.raises(CandidateSearchConflictError, match="capability-bearing"):
@@ -314,6 +319,7 @@ async def test_protected_capability_node_cannot_receive_search_plan(tmp_path: Pa
         )
 
 
+@pytest.mark.acceptance("V02-P6-001")
 async def test_candidate_failure_does_not_corrupt_sibling_or_parent(tmp_path: Path) -> None:
     def fail_hook(session: SessionRef, _request: RuntimeSubmission) -> None:
         (session.workspace / "failed-only.txt").write_text("not promotable")
@@ -352,6 +358,7 @@ async def test_candidate_failure_does_not_corrupt_sibling_or_parent(tmp_path: Pa
     assert sum(item.status.value == "SELECTED" for item in candidates) == 1
 
 
+@pytest.mark.acceptance("V02-P6-004")
 async def test_operator_cancellation_stops_search_without_promotion(tmp_path: Path) -> None:
     runtime = FakeRuntime(step_delay=0.2)
     manager, dynamic, search, run_id = await prepared_run(tmp_path, runtime=runtime)
@@ -412,6 +419,7 @@ async def test_identical_verified_candidates_stop_for_low_diversity(tmp_path: Pa
     assert final.selected_candidate_id is None
 
 
+@pytest.mark.acceptance("V02-P6-007")
 async def test_cross_provider_records_runtime_provenance_and_promotes_winner(
     tmp_path: Path,
 ) -> None:
@@ -453,6 +461,7 @@ async def test_cross_provider_records_runtime_provenance_and_promotes_winner(
     assert winner.provider is Provider.CODEX
 
 
+@pytest.mark.acceptance("V02-P6-006")
 async def test_restart_interrupts_active_candidates_and_charges_full_branch_budget(
     tmp_path: Path,
 ) -> None:
@@ -504,6 +513,7 @@ async def test_restart_interrupts_active_candidates_and_charges_full_branch_budg
         (0.895, SearchStatus.STOPPED, SearchStopReason.LOW_EXPECTED_GAIN),
     ],
 )
+@pytest.mark.acceptance("V02-P6-004")
 async def test_search_stops_on_tie_or_low_expected_gain(
     tmp_path: Path,
     runner_up_score: float,

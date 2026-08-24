@@ -137,6 +137,8 @@ def apply_policy(criteria: dict[str, Criterion]) -> list[str]:
         if criterion.verification == "manual":
             if not criterion.evidence or not criterion.last_verified:
                 errors.append(f"{identifier}: manual needs evidence and last_verified")
+        if criterion.verification == "frontend" and not criterion.evidence:
+            errors.append(f"{identifier}: frontend needs evidence naming the vitest test")
     return errors
 
 
@@ -183,6 +185,10 @@ def classify(criterion: Criterion) -> str:
         if criterion.last_verified and _stale(criterion.last_verified):
             return "MANUAL_STALE"
         return "MANUAL"
+    if criterion.verification == "frontend":
+        # Proven by the vitest suite, which CI runs via `npm run test`. This gate reads
+        # pytest markers only, so it records the pointer rather than re-proving it.
+        return "FRONTEND"
     if not criterion.tests:
         return "UNCOVERED"
     if any(outcome == "failed" for outcome in criterion.outcomes):

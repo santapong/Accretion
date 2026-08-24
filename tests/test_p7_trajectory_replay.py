@@ -4,6 +4,8 @@ import json
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from accretion.concurrency import ConcurrencyLimiter
 from accretion.contracts import (
     AcceptancePolicy,
@@ -189,6 +191,7 @@ async def prepare_replay(
     )
 
 
+@pytest.mark.acceptance("V02-P7-005")
 async def test_replay_executes_fresh_control_and_frozen_procedural_seed(
     tmp_path: Path,
 ) -> None:
@@ -270,6 +273,7 @@ async def test_replay_executes_fresh_control_and_frozen_procedural_seed(
     }
 
 
+@pytest.mark.acceptance("V02-P7-006")
 async def test_retracted_seed_is_pruned_before_workspace_and_fresh_control_continues(
     tmp_path: Path,
 ) -> None:

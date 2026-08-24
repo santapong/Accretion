@@ -42,6 +42,7 @@ pytestmark = [
 ]
 
 
+@pytest.mark.acceptance("V02-P5-007", "V02-P5-010")
 async def test_p5_postgres_records_round_trip_and_remain_immutable(tmp_path: Path) -> None:
     assert POSTGRES_URL is not None
     engine = create_engine(POSTGRES_URL)
