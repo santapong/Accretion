@@ -2,34 +2,33 @@
 
 > Audit date: 2026-08-24 (Asia/Bangkok)
 >
-> Candidate code: `fix/v02-release-blockers` at
-> `00220f7713943286b24535549b08ccbeb309637a`
+> Integrated candidate: `origin/develop` at
+> `6ed3584fb2a4dea2d1c7add67ce2e68fb230a553`
 >
-> Decision: **NO-GO for release — integration into `develop` is allowed, but do
-> not promote to `main` or create `v0.2.0` yet.**
+> Decision: **NO-GO for release — do not promote to `main` or create `v0.2.0`
+> until the remaining browser gate passes.**
 
 The v0.2 implementation and deterministic research claims are complete. The
-automated code, database, generated-contract, frontend, dependency, and frozen
-research and signed-in provider checks pass. Promotion remains blocked because
-the selected release policy also requires browser/accessibility evidence and a
-one-time repair of the unrelated `main`/`develop` histories. Neither operation
-is available through the current browser or repository administration surfaces.
+automated code, database, generated-contract, frontend, dependency, frozen
+research, signed-in provider, and protected release-topology checks pass.
+Promotion remains blocked only because the selected release policy also
+requires browser/accessibility evidence and the supported in-app browser has no
+connected browser instance.
 
 <img src="assets/v02-release-gate.svg" alt="v0.2 release evidence flowing from the immutable v0.1 control through P5 dynamic, P6 search, P7 transfer, and the full clean-checkout gate before promotion to main" width="100%" />
 
-The candidate may merge into `develop` after its normal CI passes; that
-integration does not change the NO-GO release decision. No release tag, GitHub
-release, or v0.2 baseline record is created while this decision is NO-GO.
-Package metadata uses `0.2.0` to identify the candidate, but the immutable
-`v0.1.0` tag remains the current release and static control.
+The candidate is integrated into `develop`. No release tag, GitHub release, or
+v0.2 baseline record is created while this decision is NO-GO. Package metadata
+uses `0.2.0` to identify the candidate, but the immutable `v0.1.0` tag remains
+the current release and static control.
 
 ## Candidate identity and environment
 
 | Item | Audited value |
 |---|---|
-| Candidate commit | `00220f7713943286b24535549b08ccbeb309637a` |
-| Candidate base | `origin/develop@b7eb6b19280e2a8c29c0d80c27ad2c32f688de86` |
-| Stable branch before reconciliation | `origin/main@05ccc38703f3bdc685f324b895c4cd3e2eb1112a` |
+| Audited code commit | `00220f7713943286b24535549b08ccbeb309637a` |
+| Integrated candidate | `origin/develop@6ed3584fb2a4dea2d1c7add67ce2e68fb230a553` |
+| Stable branch before release | `origin/main@05ccc38703f3bdc685f324b895c4cd3e2eb1112a` |
 | v0.1 tag object | `3280e117aadf9ee5f431804dd92bffd2fc80229f` |
 | v0.1 peeled release commit | `6324c8fab1776f0bcc1535f6d6c44fe95588f0e2` |
 | Python | `3.12.9` in the locked project environment |
@@ -62,7 +61,7 @@ rewritten during this work.
 | Claude signed-in runtime | PASS | The adapter runs without ambient hooks/plugins, honors the typed `sonnet` model selection, and emitted normalized start, progress, and terminal events. All 3/3 live-runtime cases passed in 20.76 seconds, including mixed-provider isolation. |
 | Balanced ACR-ARCH live sample | PASS | 10/10 exact artifacts passed deterministic verification: five Codex and five Claude, two tasks per category. The redacted report SHA-256 is `f378db0cd06fc1e95cfe5527496ea98e12c216a9ebb2d1d59bebdb389c2fe76c`. |
 | Browser smoke and accessibility | **NOT RUN / BLOCKING** | The supported in-app browser runtime exposed no controllable browser instance. No visual, keyboard, or accessibility PASS is claimed. |
-| Branch-ancestry reconciliation | **BLOCKED** | Reconciliation [PR #46](https://github.com/santapong/Accretion/pull/46) was refreshed to the exact `develop` tree and CI run 143 passed. GitHub still rejects the required merge because merge commits are disabled and linear history is enforced; the available administrative token cannot edit those settings. |
+| Protected release topology | PASS | Release-bridge [PR #46](https://github.com/santapong/Accretion/pull/46) descends from `main`, is refreshed to the exact audited `develop` tree, and uses the normal squash-only linear-history policy. No protection exception or history rewrite is required. Its final head must be re-verified after this audit update before promotion. |
 
 ## Frozen research evidence
 
@@ -84,35 +83,29 @@ predictable-task non-inferiority, safety, success non-regression, and static
 fallback. A regression test proves a below-threshold treatment cannot report an
 overall PASS.
 
-## Promotion blockers
+## Promotion blocker
 
-Both items below are release-blocking under the selected full gate:
+Connect a supported browser instance and pass route smoke, responsive layout,
+keyboard operation, visible focus, and automated accessibility checks for all
+eleven routes.
 
-1. Connect a supported browser instance and pass route smoke, responsive layout,
-   keyboard operation, visible focus, and automated accessibility checks for all
-   eleven routes.
-2. Temporarily allow the two-parent history-reconciliation merge and disable the
-   linear-history restriction, merge PR #46, then restore the protections. The
-   refreshed reconciliation commit
-   `f6c4d711c9bee200f6d33fedfadb4dca50850c9e` has the exact audited `develop`
-   tree and introduces no content change. The locally verified two-parent commit
-   `d95efbfef717e29f4822b4f922f73a77607185e4` also has that exact tree, but a
-   non-forced update was correctly rejected by the active linear-history rule.
-
-Issue [#45](https://github.com/santapong/Accretion/issues/45) tracks the ancestry
-repair. Issue [#47](https://github.com/santapong/Accretion/issues/47) holds only
-post-v0.2 work; no v0.3 feature belongs in this release.
+The earlier two-parent ancestry-repair proposal is superseded by the protected
+release bridge in [PR #46](https://github.com/santapong/Accretion/pull/46). The
+bridge applies the exact audited `develop` tree on top of `main`, so the release
+can remain squash-only and linear without changing repository settings. Issue
+[#45](https://github.com/santapong/Accretion/issues/45) records that decision.
+Issue [#47](https://github.com/santapong/Accretion/issues/47) holds only post-v0.2
+work; no v0.3 feature belongs in this release.
 
 ## Procedure after the blockers clear
 
-1. Merge the release-candidate pull request into `develop` after its normal CI
-   passes. This is integration only and does not authorize release promotion.
-2. After the blockers clear, rerun the complete gate from a clean checkout of
-   the integrated candidate. Any code change creates a new candidate and requires
-   a new audit.
-3. Change this audit to GO only when every blocking row passes, then open the
-   audited `develop` to `main` release pull request, require CI and
-   resolved review conversations, and merge through the protected workflow.
+1. After the browser blocker clears, rerun any gate affected by a resulting code
+   change. Any code change creates a new candidate and requires a new audit.
+2. Change this audit to GO only when every blocking row passes.
+3. Refresh release-bridge PR #46 from `main` so its tree exactly equals the
+   audited `develop` commit, require green CI and resolved conversations, verify
+   both commit IDs and tree equality, then squash-merge through the protected
+   workflow.
 4. Create annotated tag `v0.2.0` from the resulting `main` commit and publish the
    GitHub release using [the prepared release notes](V0_2_RELEASE_NOTES.md).
 5. Create `V0_2_BASELINE.md` from the actual tag object, peeled commit, release
