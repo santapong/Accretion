@@ -436,6 +436,54 @@ class AuthSessionRow(Base):
     __table_args__ = (Index("ix_auth_sessions_principal", "principal_id", "revoked"),)
 
 
+class OAuthTransactionRow(Base):
+    """Short-lived connector authorization state, single-use by state."""
+
+    __tablename__ = "oauth_transactions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    state: Mapped[str] = mapped_column(String(255), unique=True)
+    connector_id: Mapped[str] = mapped_column(String(255))
+    principal_id: Mapped[str] = mapped_column(String(255))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class TokenHandleRow(Base):
+    """Opaque handle metadata. Carries no token material (SDD 18: secrets stay outside)."""
+
+    __tablename__ = "token_handles"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    token_handle_id: Mapped[str] = mapped_column(String(255), unique=True)
+    connector_id: Mapped[str] = mapped_column(String(255))
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    principal_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(32))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_token_handles_owner", "connector_id", "principal_id"),
+        Index("ix_token_handles_status", "status", "expires_at"),
+    )
+
+
+class SecretRecordRow(Base):
+    """Ciphertext envelope. The master key lives outside PostgreSQL (SDD 13.3)."""
+
+    __tablename__ = "secret_records"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    secret_store_key: Mapped[str] = mapped_column(String(255), unique=True)
+    key_id: Mapped[str] = mapped_column(String(64))
+    nonce: Mapped[str] = mapped_column(String(64))
+    ciphertext: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
 class AuthTransactionRow(Base):
     __tablename__ = "auth_transactions"
 
