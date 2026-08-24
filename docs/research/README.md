@@ -35,6 +35,11 @@ SHA-256 is
 `f378db0cd06fc1e95cfe5527496ea98e12c216a9ebb2d1d59bebdb389c2fe76c`.
 This remains calibration evidence, not a frozen benchmark replacement.
 
+The v0.2.0 release used a documented maintainer exception because no supported
+browser instance was connected. No rendered browser or accessibility PASS is
+part of the research evidence; [issue #52](https://github.com/santapong/Accretion/issues/52)
+tracks that separate post-release validation.
+
 ## Reproduce the experiments
 
 Run commands from the repository root after `uv sync --all-groups` and

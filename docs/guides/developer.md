@@ -9,8 +9,9 @@ implemented route map and React data model, use the
 
 ## 1. Choose a baseline
 
-- Evaluate the current release and frozen static control from `v0.1.0`.
-- Evaluate the v0.2 candidate or build the next release from the latest `develop`.
+- Evaluate the current release from `v0.2.0` and the frozen static control from
+  `v0.1.0`.
+- Build the next release from the latest `develop`.
 - Do not base work on the historical `codex/v0.1-local-control-plane` prototype.
 
 ```bash
@@ -49,7 +50,7 @@ Claude sessions remain opt-in and are not required for local development.
 
 <img src="../assets/operator-ui-map.svg" alt="Implemented Accretion operator frontend routes and their authoritative FastAPI snapshot, React Query, and resumable event flow" width="100%" />
 
-The UI is complete for the P0–P7 v0.2 candidate scope. It renders API-backed
+The UI is complete for the P0–P7 v0.2 release scope. It renders API-backed
 evidence across eleven routes; it does not own run state or acceptance. The
 v0.2 clean-checkout evidence is recorded in the release audit.
 
