@@ -292,7 +292,9 @@ class RunManager:
             current_decision=decision or planning.current_decision,
         )
 
-    async def start_run(self, task_id: str, provider: Provider) -> Run:
+    async def start_run(
+        self, task_id: str, provider: Provider, principal_id: str | None = None
+    ) -> Run:
         task = await self.store.get_task(task_id)
         if task is None:
             raise KeyError(task_id)
@@ -373,6 +375,7 @@ class RunManager:
             project_id=task.envelope.project_id,
             provider=provider,
             state=RunState.PENDING,
+            principal_id=principal_id,
             strategy_decision_id=decision.decision_id,
             execution_mode=decision.selected_mode,
             workflow_template_id=decision.selected_template_id,

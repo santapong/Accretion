@@ -38,6 +38,7 @@ from accretion.contracts import (
     IdempotencyMode,
     MetaPlugin,
     MetaSkill,
+    PrincipalStatus,
     RiskLevel,
     Task,
 )
@@ -313,6 +314,15 @@ class CapabilityGateway:
         task = await self.store.get_task(run.task_id)
         if task is None:
             raise KeyError(run.task_id)
+        # AC3-ID-05. The HTTP boundary gates route access, but capability invocation
+        # happens in the gateway subprocess, which authenticates nobody. An in-flight
+        # run must stop spending authority the moment its owner is disabled.
+        if run.principal_id:
+            owner = await self.store.get_principal(run.principal_id)
+            if owner is None or owner.status is PrincipalStatus.DISABLED:
+                raise PermissionError(
+                    f"principal {run.principal_id} may not invoke capabilities"
+                )
         capability = await self.store.get_capability(
             request.capability_id, request.capability_version
         )
