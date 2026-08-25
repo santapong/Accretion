@@ -10,7 +10,7 @@ dependencies = [
   "asyncpg>=0.30,<1",
   # Direct: the token broker seals credentials with AES-GCM. It already arrived
   # transitively through pyjwt[crypto]; depending on it explicitly keeps that honest.
-  "cryptography>=46,<51",
+  "cryptography>=50.0.0,<51",
   "fastapi>=0.116,<1",
   "httpx>=0.28",
   "jsonschema>=4.26.0,<5",
