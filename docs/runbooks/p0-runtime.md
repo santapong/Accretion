@@ -20,6 +20,36 @@ so user hooks, plugins, and project customization cannot silently change the
 provider protocol; Accretion's explicit MCP configuration remains authoritative.
 `SessionConfig.model` is passed through when the caller pins a compatible model.
 
+## Egress posture, and where the adapters differ
+
+The three live adapters deny network egress by different means, and the
+difference matters before trusting one with an untrusted task.
+
+| Runtime | Mechanism | Strength |
+|---|---|---|
+| Codex | `sandbox: workspace-write` with `network_access: False` | Refused by the sandbox, outside the agent's reach |
+| opencode | Inline config: `bash` deny-by-default with a named allowlist; `webfetch` and `external_directory` denied | Refused by the provider before a command runs |
+| Claude Code | `--allowedTools` narrowed to concrete subcommands, plus `--disallowedTools` for every direct egress path | Refused by policy |
+
+**Claude Code's is the weakest of the three, and deliberately so rather than by
+oversight.** The pinned version exposes no OS-level network switch, so egress is
+narrowed by tool policy instead: deny rules take precedence over allow rules;
+direct clients (`curl`, `wget`, `nc`, `ssh`), remote git operations, and package
+installers are denied; and no allow prefix names a bare interpreter.
+
+That is defence in depth, not equivalence. A deny list enumerates, and an
+interpreter reached through an allowed command can still open a socket. Two
+consequences follow:
+
+- Prefer Codex or opencode for a task whose input is untrusted.
+- If Claude Code gains a sandbox switch, adopt it and narrow this section. The
+  version pin in `runtimes/claude.py` is what will notice first.
+
+The allowlist previously included `Bash(uv run*)` and `Bash(npm run*)`. Both
+match an arbitrary interpreter — `uv run python -c "..."` satisfies the first —
+so the allowlist did not constrain what actually ran.
+`tests/test_v01_p4_sandbox_parity.py` fails if a rule that broad returns.
+
 opencode runs against one headless `opencode serve` process shared by all sessions,
 reading its normalized events from the `/global/event` bus. `GET /event` publishes
 only `server.connected` and heartbeats, so the global bus is the only usable stream.
