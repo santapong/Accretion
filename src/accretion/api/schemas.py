@@ -158,6 +158,18 @@ class WorkflowTemplateSummary(BaseModel):
     checksum: str
 
 
+class ConnectCreate(BaseModel):
+    """Start an authorization. Scopes default to the connector's declared minimum."""
+
+    workspace_id: str = "workspace_local"
+    scopes: list[str] | None = None
+    redirect_target: str = "/"
+
+
+class AuthorizationStart(BaseModel):
+    authorization_url: str
+
+
 class ConnectionSummary(BaseModel):
     """Read-only connection listing; token handles never enter the API (INV3-002)."""
 

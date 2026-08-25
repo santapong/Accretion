@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     # Base64 32-byte master key for the token broker's envelope encryption. Kept
     # outside PostgreSQL (SDD 13.3); empty means the broker cannot store credentials.
     token_encryption_key: str = ""
+    github_client_id: str = ""
+    github_client_secret: str = ""
+    github_redirect_url: str = "http://localhost:8000/api/v1/oauth/callback/conndef_github"
+    # Overridable so tests and GitHub Enterprise Server can point elsewhere.
+    github_authorization_server: str = "https://github.com"
     auth_mode: Literal["LOCAL_PRINCIPAL", "OIDC"] = "LOCAL_PRINCIPAL"
     oidc_issuer: str = ""
     oidc_client_id: str = ""

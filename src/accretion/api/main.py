@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager, suppress
 from typing import Any, cast
 from uuid import uuid4
 
+import httpx
 from fastapi import FastAPI, Header, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
@@ -21,9 +22,11 @@ from accretion.api.auth import (
 from accretion.api.auth import principal as current_principal
 from accretion.api.schemas import (
     ApprovalDecisionCreate,
+    AuthorizationStart,
     AuthProviderInfo,
     BenchmarkRunCreate,
     CapabilityResolveRequest,
+    ConnectCreate,
     ConnectionSummary,
     ErrorEnvelope,
     ExperienceMaterializeCreate,
@@ -49,6 +52,9 @@ from accretion.benchmark import (
 )
 from accretion.concurrency import ConcurrencyLimiter
 from accretion.config import get_settings
+from accretion.connections import ConnectionError as ConnectionServiceError
+from accretion.connections import ConnectionService
+from accretion.connectors import GITHUB_CONNECTOR_ID, github_connector, github_endpoints
 from accretion.contracts import (
     TERMINAL_RUN_STATES,
     AcrArchSummary,
@@ -60,6 +66,7 @@ from accretion.contracts import (
     BenchmarkRun,
     BenchmarkTaskDetail,
     Capability,
+    Connection,
     ConnectionScope,
     ConnectorDefinition,
     EventType,
@@ -107,6 +114,7 @@ from accretion.experience_benchmark import (
 )
 from accretion.governance import seed_governance
 from accretion.identity import AuthenticationError, AuthorizationError
+from accretion.oauth import OAuthClient
 from accretion.orchestration.models import (
     CandidateScore,
     CandidateTrajectory,
@@ -138,12 +146,14 @@ from accretion.persistence.store import PostgresStore
 from accretion.resolver import CapabilityResolver
 from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime, OpencodeRuntime
 from accretion.search_benchmark import SearchBenchmarkRunner, SearchBenchmarkSummary
+from accretion.secrets_store import EnvelopeSecretStore
 from accretion.services.run_manager import (
     ProjectionUnavailableError,
     RunManager,
     WorkflowTemplateError,
 )
 from accretion.templates import seed_templates
+from accretion.token_broker import EncryptedTokenBroker
 from accretion.verifiers.registry import VerifierUnavailableError
 from accretion.workspace import WorktreeManager
 
@@ -185,6 +195,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             model=settings.opencode_model,
         ),
     }
+    if settings.token_encryption_key and settings.github_client_id:
+        github = github_connector(
+            authorization_server=settings.github_authorization_server
+        )
+        await store.upsert_connector_definition(github)
+        app.state.connections = ConnectionService(
+            store=store,
+            broker=EncryptedTokenBroker(store, EnvelopeSecretStore()),
+            clients={
+                GITHUB_CONNECTOR_ID: OAuthClient(
+                    client_id=settings.github_client_id,
+                    client_secret=settings.github_client_secret,
+                    redirect_url=settings.github_redirect_url,
+                    endpoints=github_endpoints(settings.github_authorization_server),
+                    http=httpx.AsyncClient(),
+                )
+            },
+        )
     manager = RunManager(
         store=store,
         worktrees=WorktreeManager(settings.worktree_dir, settings.artifact_dir),
@@ -305,6 +333,15 @@ async def authorization_error_handler(
     request: Request, exc: AuthorizationError
 ) -> JSONResponse:
     return _error(403, "FORBIDDEN", str(exc))
+
+
+@app.exception_handler(ConnectionServiceError)
+async def connection_error_handler(
+    request: Request, exc: ConnectionServiceError
+) -> JSONResponse:
+    # One shape for unknown, replayed, expired, and cross-principal states, so a
+    # caller cannot probe which of those it hit (AC3-SEC-04).
+    return _error(400, "CONNECTION_REJECTED", str(exc))
 
 
 @app.exception_handler(WorkflowTemplateError)
@@ -506,7 +543,9 @@ async def create_strategy_override(
 
 @app.post("/api/v1/tasks/{task_id}/runs", response_model=Run, status_code=202)
 async def start_run(task_id: str, payload: RunCreate, request: Request) -> Run:
-    return await manager(request).start_run(task_id, payload.provider)
+    return await manager(request).start_run(
+        task_id, payload.provider, current_principal(request).principal_id
+    )
 
 
 @app.get("/api/v1/runs", response_model=list[Run])
@@ -1046,6 +1085,23 @@ async def list_capabilities(request: Request) -> list[Capability]:
     return await manager(request).store.list_capabilities()
 
 
+def _connection_summary(connection: Connection) -> ConnectionSummary:
+    """Project a stored connection for the API. Never carries the token handle."""
+
+    return ConnectionSummary(
+        connection_id=connection.connection_id,
+        connector_id=connection.connector_id,
+        workspace_id=connection.workspace_id,
+        principal_id=connection.principal_id,
+        scope=connection.scope,
+        status=connection.status,
+        granted_scopes=connection.granted_scopes,
+        workspace_shareable=connection.workspace_shareable,
+        created_at=connection.created_at,
+        last_health_check=connection.last_health_check,
+    )
+
+
 @app.get("/api/v1/connectors", response_model=list[ConnectorDefinition])
 async def list_connectors(request: Request) -> list[ConnectorDefinition]:
     return await manager(request).store.list_connector_definitions()
@@ -1064,24 +1120,95 @@ async def list_connections(request: Request) -> list[ConnectionSummary]:
     memberships = await store.list_workspace_memberships(principal_id=who.principal_id)
     workspaces = {item.workspace_id for item in memberships}
     return [
-        ConnectionSummary(
-            connection_id=item.connection_id,
-            connector_id=item.connector_id,
-            workspace_id=item.workspace_id,
-            principal_id=item.principal_id,
-            scope=item.scope,
-            status=item.status,
-            granted_scopes=item.granted_scopes,
-            workspace_shareable=item.workspace_shareable,
-            created_at=item.created_at,
-            last_health_check=item.last_health_check,
-        )
+        _connection_summary(item)
         for item in await store.list_connections()
         # A user connection is private to its owner (INV3-008); a workspace
         # connection is visible only to members of that workspace.
         if item.principal_id == who.principal_id
         or (item.scope is ConnectionScope.WORKSPACE and item.workspace_id in workspaces)
     ]
+
+
+def connections(request: Request) -> ConnectionService:
+    service = getattr(request.app.state, "connections", None)
+    if service is None:
+        raise ValueError("no OAuth connector is configured")
+    return cast(ConnectionService, service)
+
+
+@app.post("/api/v1/connectors/{connector_id}/connect", response_model=AuthorizationStart)
+async def connect_connector(
+    connector_id: str, payload: ConnectCreate, request: Request
+) -> AuthorizationStart:
+    """Begin an OAuth authorization for the calling principal."""
+
+    url = await connections(request).begin(
+        connector_id=connector_id,
+        principal=current_principal(request),
+        workspace_id=payload.workspace_id,
+        scopes=payload.scopes,
+        redirect_target=payload.redirect_target,
+    )
+    return AuthorizationStart(authorization_url=url)
+
+
+@app.get("/api/v1/oauth/callback/{connector_id}", response_model=ConnectionSummary)
+async def oauth_callback(
+    connector_id: str, state: str, code: str, request: Request
+) -> ConnectionSummary:
+    """Redeem an authorization code.
+
+    Deliberately *not* exempt from the session middleware. The cookie is SameSite=Lax,
+    so it accompanies this top-level redirect, and requiring it gives a second binding
+    beyond ``state``: the returning browser must be the session that began the flow.
+    """
+
+    connection = await connections(request).complete(
+        connector_id=connector_id,
+        state=state,
+        code=code,
+        principal=current_principal(request),
+    )
+    return _connection_summary(connection)
+
+
+@app.post(
+    "/api/v1/connections/{connection_id}/reauthorize", response_model=AuthorizationStart
+)
+async def reauthorize_connection(
+    connection_id: str, payload: ConnectCreate, request: Request
+) -> AuthorizationStart:
+    """Re-consent, the only way scopes ever widen (SDD 6.3)."""
+
+    service = connections(request)
+    who = current_principal(request)
+    existing = await service.store.get_connection(connection_id)
+    if existing is None or existing.principal_id != who.principal_id:
+        raise KeyError(connection_id)
+    url = await service.begin(
+        connector_id=existing.connector_id,
+        principal=who,
+        workspace_id=existing.workspace_id,
+        scopes=payload.scopes,
+        connection_id=connection_id,
+        redirect_target=payload.redirect_target,
+    )
+    return AuthorizationStart(authorization_url=url)
+
+
+@app.post("/api/v1/connections/{connection_id}/revoke", response_model=ConnectionSummary)
+async def revoke_connection(connection_id: str, request: Request) -> ConnectionSummary:
+    connection = await connections(request).revoke(
+        connection_id=connection_id, principal=current_principal(request)
+    )
+    return _connection_summary(connection)
+
+
+@app.get("/api/v1/connections/{connection_id}/health")
+async def connection_health(connection_id: str, request: Request) -> dict[str, Any]:
+    return await connections(request).health(
+        connection_id=connection_id, principal=current_principal(request)
+    )
 
 
 @app.post("/api/v1/capabilities/resolve", response_model=ResolvedCapability)

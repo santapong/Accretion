@@ -214,6 +214,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/connections/{connection_id}/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Connection Health */
+        get: operations["connection_health_api_v1_connections__connection_id__health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connections/{connection_id}/reauthorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reauthorize Connection
+         * @description Re-consent, the only way scopes ever widen (SDD 6.3).
+         */
+        post: operations["reauthorize_connection_api_v1_connections__connection_id__reauthorize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connections/{connection_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Connection */
+        post: operations["revoke_connection_api_v1_connections__connection_id__revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/connectors": {
         parameters: {
             query?: never;
@@ -231,6 +285,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/connectors/{connector_id}/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Connect Connector
+         * @description Begin an OAuth authorization for the calling principal.
+         */
+        post: operations["connect_connector_api_v1_connectors__connector_id__connect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/me": {
         parameters: {
             query?: never;
@@ -240,6 +314,30 @@ export interface paths {
         };
         /** Get Me */
         get: operations["get_me_api_v1_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/oauth/callback/{connector_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Oauth Callback
+         * @description Redeem an authorization code.
+         *
+         *     Deliberately *not* exempt from the session middleware. The cookie is SameSite=Lax,
+         *     so it accompanies this top-level redirect, and requiring it gives a second binding
+         *     beyond ``state``: the returning browser must be the session that began the flow.
+         */
+        get: operations["oauth_callback_api_v1_oauth_callback__connector_id__get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1595,6 +1693,11 @@ export interface components {
          * @enum {string}
          */
         AuthorizationOutcome: "ALLOW" | "DENY" | "REQUIRE_APPROVAL";
+        /** AuthorizationStart */
+        AuthorizationStart: {
+            /** Authorization Url */
+            authorization_url: string;
+        };
         /**
          * BenchmarkCategory
          * @enum {string}
@@ -2101,6 +2204,24 @@ export interface components {
          * @enum {string}
          */
         ConditionOperator: "ALL" | "ANY" | "NOT" | "EQ" | "NE" | "LT" | "LTE" | "GT" | "GTE" | "IN";
+        /**
+         * ConnectCreate
+         * @description Start an authorization. Scopes default to the connector's declared minimum.
+         */
+        ConnectCreate: {
+            /**
+             * Redirect Target
+             * @default /
+             */
+            redirect_target: string;
+            /** Scopes */
+            scopes?: string[] | null;
+            /**
+             * Workspace Id
+             * @default workspace_local
+             */
+            workspace_id: string;
+        };
         /** ConnectionRef */
         ConnectionRef: {
             /** Connection Id */
@@ -3851,6 +3972,8 @@ export interface components {
             last_sequence: number;
             /** Loop Execution Id */
             loop_execution_id?: string | null;
+            /** Principal Id */
+            principal_id?: string | null;
             /** Project Id */
             project_id: string;
             provider: components["schemas"]["Provider"];
@@ -5498,6 +5621,105 @@ export interface operations {
             };
         };
     };
+    connection_health_api_v1_connections__connection_id__health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reauthorize_connection_api_v1_connections__connection_id__reauthorize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizationStart"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_connection_api_v1_connections__connection_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_connectors_api_v1_connectors_get: {
         parameters: {
             query?: never;
@@ -5518,6 +5740,41 @@ export interface operations {
             };
         };
     };
+    connect_connector_api_v1_connectors__connector_id__connect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizationStart"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_me_api_v1_me_get: {
         parameters: {
             query?: never;
@@ -5534,6 +5791,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+        };
+    };
+    oauth_callback_api_v1_oauth_callback__connector_id__get: {
+        parameters: {
+            query: {
+                state: string;
+                code: string;
+            };
+            header?: never;
+            path: {
+                connector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

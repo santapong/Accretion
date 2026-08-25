@@ -1525,6 +1525,9 @@ class Run(StrictModel):
     project_id: str
     provider: Provider
     state: RunState
+    # Who the run acts for. Capability invocation is refused when this principal is
+    # disabled, so authority does not end at the HTTP boundary (AC3-ID-05).
+    principal_id: str | None = None
     last_sequence: int = 0
     revision: int = 0
     session_id: str | None = None
