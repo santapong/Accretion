@@ -542,6 +542,65 @@ class CapabilityBindingRow(Base):
     )
 
 
+class McpServerRow(Base):
+    __tablename__ = "mcp_servers"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    mcp_server_id: Mapped[str] = mapped_column(String(255), unique=True)
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    connector_id: Mapped[str] = mapped_column(String(255))
+    state: Mapped[str] = mapped_column(String(32))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_mcp_servers_workspace_state", "workspace_id", "state"),
+        Index("ix_mcp_servers_connector", "connector_id", "enabled"),
+    )
+
+
+class McpDiscoverySnapshotRow(Base):
+    __tablename__ = "mcp_server_discovery_snapshots"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    discovery_snapshot_id: Mapped[str] = mapped_column(String(255), unique=True)
+    mcp_server_id: Mapped[str] = mapped_column(String(255))
+    connection_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    valid: Mapped[bool] = mapped_column(Boolean)
+    content_sha256: Mapped[str] = mapped_column(String(64))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index(
+            "ix_mcp_snapshots_server_connection_created",
+            "mcp_server_id",
+            "connection_id",
+            "created_at",
+        ),
+    )
+
+
+class McpServerEventRow(Base):
+    __tablename__ = "mcp_server_events"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    mcp_event_id: Mapped[str] = mapped_column(String(255), unique=True)
+    mcp_server_id: Mapped[str] = mapped_column(String(255))
+    event_type: Mapped[str] = mapped_column(String(64))
+    correlation_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_mcp_events_server_created", "mcp_server_id", "created_at"),
+        Index("ix_mcp_events_correlation", "correlation_id"),
+    )
+
+
 class CapabilityPolicyRow(Base):
     __tablename__ = "policies"
 

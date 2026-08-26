@@ -33,6 +33,7 @@ from accretion.api.schemas import (
     ExperienceQueryCreate,
     ExperienceRetractCreate,
     ExperienceSelectionCreate,
+    McpServerCreate,
     MeResponse,
     ProjectCreate,
     ProjectFeatureUpdate,
@@ -74,6 +75,8 @@ from accretion.contracts import (
     ExecutionTrace,
     GraphProjection,
     LoopExecution,
+    McpDiscoverySnapshot,
+    McpServerDefinition,
     MetaPlugin,
     MetaSkill,
     Project,
@@ -91,6 +94,7 @@ from accretion.contracts import (
     TemplateStatus,
     VerificationResult,
     WorkspaceEntity,
+    WorkspaceRole,
 )
 from accretion.dynamic_benchmark import (
     DynamicWorkflowBenchmarkRunner,
@@ -114,6 +118,14 @@ from accretion.experience_benchmark import (
 )
 from accretion.governance import seed_governance
 from accretion.identity import AuthenticationError, AuthorizationError
+from accretion.ids import new_id
+from accretion.mcp.endpoint_policy import McpEndpointPolicy, McpEndpointPolicyError
+from accretion.mcp.manager import (
+    McpManagerError,
+    McpServerAuthRequired,
+    RemoteMcpManager,
+)
+from accretion.mcp.remote_client import SdkRemoteMcpClient
 from accretion.oauth import OAuthClient
 from accretion.orchestration.models import (
     CandidateScore,
@@ -195,14 +207,19 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             model=settings.opencode_model,
         ),
     }
-    if settings.token_encryption_key and settings.github_client_id:
+    token_broker = (
+        EncryptedTokenBroker(store, EnvelopeSecretStore())
+        if settings.token_encryption_key
+        else None
+    )
+    if token_broker is not None and settings.github_client_id:
         github = github_connector(
             authorization_server=settings.github_authorization_server
         )
         await store.upsert_connector_definition(github)
         app.state.connections = ConnectionService(
             store=store,
-            broker=EncryptedTokenBroker(store, EnvelopeSecretStore()),
+            broker=token_broker,
             clients={
                 GITHUB_CONNECTOR_ID: OAuthClient(
                     client_id=settings.github_client_id,
@@ -213,6 +230,16 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
                 )
             },
         )
+    app.state.remote_mcp = RemoteMcpManager(
+        store=store,
+        client=SdkRemoteMcpClient(),
+        endpoint_policy=McpEndpointPolicy(
+            allowed_hosts=settings.mcp_allowed_hosts,
+            allowed_ports=settings.mcp_allowed_ports,
+            allow_local_http=settings.mcp_allow_local_http,
+        ),
+        token_broker=token_broker,
+    )
     manager = RunManager(
         store=store,
         worktrees=WorktreeManager(settings.worktree_dir, settings.artifact_dir),
@@ -273,7 +300,7 @@ app.add_middleware(
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["Content-Type", "Last-Event-ID"],
+    allow_headers=["Content-Type", "Last-Event-ID", "X-Request-ID"],
 )
 
 
@@ -304,6 +331,13 @@ def candidate_search(request: Request) -> SearchService:
 
 def experience_service(request: Request) -> ExperienceService:
     return cast(ExperienceService, request.app.state.experience)
+
+
+def remote_mcp(request: Request) -> RemoteMcpManager:
+    service = getattr(request.app.state, "remote_mcp", None)
+    if service is None:
+        raise ValueError("remote MCP manager is unavailable")
+    return cast(RemoteMcpManager, service)
 
 
 @app.exception_handler(KeyError)
@@ -342,6 +376,27 @@ async def connection_error_handler(
     # One shape for unknown, replayed, expired, and cross-principal states, so a
     # caller cannot probe which of those it hit (AC3-SEC-04).
     return _error(400, "CONNECTION_REJECTED", str(exc))
+
+
+@app.exception_handler(McpEndpointPolicyError)
+async def mcp_endpoint_policy_handler(
+    request: Request, exc: McpEndpointPolicyError
+) -> JSONResponse:
+    return _error(400, "MCP_ENDPOINT_BLOCKED", str(exc))
+
+
+@app.exception_handler(McpServerAuthRequired)
+async def mcp_auth_required_handler(
+    request: Request, exc: McpServerAuthRequired
+) -> JSONResponse:
+    return _error(409, "MCP_AUTH_REQUIRED", str(exc))
+
+
+@app.exception_handler(McpManagerError)
+async def mcp_manager_error_handler(
+    request: Request, exc: McpManagerError
+) -> JSONResponse:
+    return _error(409, "MCP_SERVER_REJECTED", str(exc))
 
 
 @app.exception_handler(WorkflowTemplateError)
@@ -1083,6 +1138,137 @@ async def auth_logout(request: Request) -> Response:
 @app.get("/api/v1/capabilities", response_model=list[Capability])
 async def list_capabilities(request: Request) -> list[Capability]:
     return await manager(request).store.list_capabilities()
+
+
+async def _require_workspace_access(
+    request: Request,
+    workspace_id: str,
+    *,
+    administer: bool = False,
+) -> None:
+    who = current_principal(request)
+    memberships = await manager(request).store.list_workspace_memberships(
+        workspace_id=workspace_id,
+        principal_id=who.principal_id,
+    )
+    if not memberships:
+        raise AuthorizationError("principal is not a member of the requested workspace")
+    if administer and memberships[0].role not in {WorkspaceRole.OWNER, WorkspaceRole.ADMIN}:
+        raise AuthorizationError("workspace owner or admin role is required")
+
+
+@app.get("/api/v1/mcp/servers", response_model=list[McpServerDefinition])
+async def list_mcp_servers(
+    request: Request, workspace_id: str | None = None
+) -> list[McpServerDefinition]:
+    who = current_principal(request)
+    memberships = await manager(request).store.list_workspace_memberships(
+        principal_id=who.principal_id
+    )
+    visible = {item.workspace_id for item in memberships}
+    if workspace_id is not None:
+        if workspace_id not in visible:
+            raise AuthorizationError("principal is not a member of the requested workspace")
+        visible = {workspace_id}
+    return [
+        server
+        for server in await remote_mcp(request).store.list_mcp_servers(workspace_id)
+        if server.workspace_id in visible
+    ]
+
+
+@app.post("/api/v1/mcp/servers", response_model=McpServerDefinition, status_code=201)
+async def register_mcp_server(
+    payload: McpServerCreate, request: Request
+) -> McpServerDefinition:
+    await _require_workspace_access(request, payload.workspace_id, administer=True)
+    who = current_principal(request)
+    return await remote_mcp(request).register(
+        McpServerDefinition(
+            mcp_server_id=new_id("mcp_server"),
+            workspace_id=payload.workspace_id,
+            connector_id=payload.connector_id,
+            name=payload.name,
+            endpoint=payload.endpoint,
+            protocol_versions=payload.protocol_versions,
+            auth_profile_ref=payload.auth_profile_ref,
+            trust_level=payload.trust_level,
+            owner_principal_id=who.principal_id,
+            health_policy=payload.health_policy,
+            discovery_policy=payload.discovery_policy,
+            allowed_tool_patterns=payload.allowed_tool_patterns,
+            denied_tool_patterns=payload.denied_tool_patterns,
+            tool_mappings=payload.tool_mappings,
+        )
+    )
+
+
+async def _mcp_server_for_request(
+    mcp_server_id: str, request: Request, *, administer: bool = False
+) -> McpServerDefinition:
+    server = await remote_mcp(request).store.get_mcp_server(mcp_server_id)
+    if server is None:
+        raise KeyError(mcp_server_id)
+    await _require_workspace_access(request, server.workspace_id, administer=administer)
+    return server
+
+
+@app.get("/api/v1/mcp/servers/{mcp_server_id}", response_model=McpServerDefinition)
+async def get_mcp_server(mcp_server_id: str, request: Request) -> McpServerDefinition:
+    return await _mcp_server_for_request(mcp_server_id, request)
+
+
+@app.post(
+    "/api/v1/mcp/servers/{mcp_server_id}/refresh-discovery",
+    response_model=McpDiscoverySnapshot,
+)
+async def refresh_mcp_discovery(
+    mcp_server_id: str,
+    request: Request,
+    force: bool = Query(default=False),
+) -> McpDiscoverySnapshot:
+    server = await _mcp_server_for_request(mcp_server_id, request, administer=True)
+    who = current_principal(request)
+    return await remote_mcp(request).refresh_discovery(
+        server.mcp_server_id,
+        principal_id=who.principal_id,
+        workspace_id=server.workspace_id,
+        force=force,
+        correlation_id=request.headers.get("x-request-id"),
+    )
+
+
+@app.post("/api/v1/mcp/servers/{mcp_server_id}/enable", response_model=McpServerDefinition)
+async def enable_mcp_server(mcp_server_id: str, request: Request) -> McpServerDefinition:
+    server = await _mcp_server_for_request(mcp_server_id, request, administer=True)
+    return await remote_mcp(request).enable(
+        server.mcp_server_id,
+        principal_id=current_principal(request).principal_id,
+        workspace_id=server.workspace_id,
+    )
+
+
+@app.post("/api/v1/mcp/servers/{mcp_server_id}/disable", response_model=McpServerDefinition)
+async def disable_mcp_server(mcp_server_id: str, request: Request) -> McpServerDefinition:
+    server = await _mcp_server_for_request(mcp_server_id, request, administer=True)
+    return await remote_mcp(request).disable(
+        server.mcp_server_id,
+        principal_id=current_principal(request).principal_id,
+        workspace_id=server.workspace_id,
+    )
+
+
+@app.get(
+    "/api/v1/mcp/servers/{mcp_server_id}/capabilities",
+    response_model=list[Capability],
+)
+async def list_mcp_server_capabilities(
+    mcp_server_id: str, request: Request
+) -> list[Capability]:
+    server = await _mcp_server_for_request(mcp_server_id, request)
+    return await remote_mcp(request).capabilities(
+        server.mcp_server_id, workspace_id=server.workspace_id
+    )
 
 
 def _connection_summary(connection: Connection) -> ConnectionSummary:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any, Literal, Protocol
@@ -635,6 +635,139 @@ class ResolvedCapability(StrictModel):
     binding: CapabilityBinding | None = None
     connection: ConnectionRef | None = None
     reason: str = ""
+
+
+class McpTransport(StrEnum):
+    STDIO = "STDIO"
+    HTTP = "HTTP"
+
+
+class McpTrustLevel(StrEnum):
+    TRUSTED = "TRUSTED"
+    RESTRICTED = "RESTRICTED"
+    UNTRUSTED = "UNTRUSTED"
+
+
+class McpServerState(StrEnum):
+    DISABLED = "DISABLED"
+    READY = "READY"
+    DEGRADED = "DEGRADED"
+    UNREACHABLE = "UNREACHABLE"
+    AUTH_REQUIRED = "AUTH_REQUIRED"
+    SCHEMA_ERROR = "SCHEMA_ERROR"
+    BLOCKED = "BLOCKED"
+
+
+class McpCacheScope(StrEnum):
+    PUBLIC = "PUBLIC"
+    PRIVATE = "PRIVATE"
+
+
+class McpHealthPolicy(StrictModel):
+    timeout_ms: int = Field(default=10_000, ge=100, le=120_000)
+    max_discovery_retries: int = Field(default=1, ge=0, le=3)
+    failure_threshold: int = Field(default=3, ge=1, le=20)
+    cooldown_seconds: int = Field(default=30, ge=1, le=3600)
+    max_response_bytes: int = Field(default=2_000_000, ge=1024, le=10_000_000)
+
+
+class McpDiscoveryPolicy(StrictModel):
+    tools: bool = True
+    resources: bool = True
+    prompts: bool = True
+    max_items_per_kind: int = Field(default=1000, ge=1, le=10_000)
+    default_ttl_ms: int = Field(default=300_000, ge=0, le=86_400_000)
+
+
+class McpToolMapping(StrictModel):
+    """An explicit canonical capability-to-remote-tool publication decision."""
+
+    capability_id: str = Field(pattern=r"^[a-z][a-z0-9._-]*$", max_length=255)
+    tool_name: str = Field(min_length=1, max_length=255)
+    version: str = Field(default="1.0.0", pattern=r"^\d+\.\d+\.\d+$")
+    risk: RiskLevel = RiskLevel.LOW
+    side_effects: list[str] = Field(default_factory=list)
+    required_permissions: list[str] = Field(default_factory=list)
+    idempotency: IdempotencyMode = IdempotencyMode.NONE
+
+
+class McpServerDefinition(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    mcp_server_id: str
+    workspace_id: str
+    connector_id: str
+    name: str = Field(min_length=1, max_length=255)
+    transport: McpTransport = McpTransport.HTTP
+    endpoint: str | None = None
+    command: list[str] = Field(default_factory=list)
+    protocol_versions: list[str] = Field(
+        default_factory=lambda: ["2026-07-28"], min_length=1
+    )
+    auth_profile_ref: str | None = None
+    trust_level: McpTrustLevel = McpTrustLevel.RESTRICTED
+    owner_principal_id: str
+    enabled: bool = False
+    state: McpServerState = McpServerState.DISABLED
+    health_policy: McpHealthPolicy = Field(default_factory=McpHealthPolicy)
+    discovery_policy: McpDiscoveryPolicy = Field(default_factory=McpDiscoveryPolicy)
+    allowed_tool_patterns: list[str] = Field(default_factory=lambda: ["*"])
+    denied_tool_patterns: list[str] = Field(default_factory=list)
+    tool_mappings: list[McpToolMapping] = Field(default_factory=list)
+    consecutive_failures: int = Field(default=0, ge=0)
+    circuit_open_until: datetime | None = None
+    revision: int = Field(default=1, ge=1)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    last_health_check: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_transport_target(self) -> McpServerDefinition:
+        if self.transport is McpTransport.HTTP and not self.endpoint:
+            raise ValueError("HTTP MCP servers require an endpoint")
+        if self.transport is McpTransport.STDIO and not self.command:
+            raise ValueError("STDIO MCP servers require a command")
+        return self
+
+
+class McpCacheHint(StrictModel):
+    ttl_ms: int = Field(ge=0, le=86_400_000)
+    scope: McpCacheScope = McpCacheScope.PRIVATE
+
+
+class McpDiscoverySnapshot(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    discovery_snapshot_id: str
+    mcp_server_id: str
+    connection_id: str | None = None
+    protocol_version: str
+    server_info: dict[str, Any] = Field(default_factory=dict)
+    tools: list[dict[str, Any]] = Field(default_factory=list)
+    resources: list[dict[str, Any]] = Field(default_factory=list)
+    resource_templates: list[dict[str, Any]] = Field(default_factory=list)
+    prompts: list[dict[str, Any]] = Field(default_factory=list)
+    cache_hints: dict[str, McpCacheHint] = Field(default_factory=dict)
+    schema_errors: list[str] = Field(default_factory=list)
+    valid: bool = True
+    content_sha256: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    def is_fresh(self, kind: str, *, now: datetime | None = None) -> bool:
+        hint = self.cache_hints.get(kind)
+        if hint is None:
+            return False
+        current = now or datetime.now(UTC)
+        return current < self.created_at + timedelta(milliseconds=hint.ttl_ms)
+
+
+class McpServerEvent(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    mcp_event_id: str
+    mcp_server_id: str
+    event_type: str
+    actor_principal_id: str | None = None
+    correlation_id: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class PromptContract(StrictModel):

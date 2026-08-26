@@ -37,6 +37,9 @@ from accretion.contracts import (
     LoopIteration,
     LoopState,
     LoopStopReason,
+    McpDiscoverySnapshot,
+    McpServerDefinition,
+    McpServerEvent,
     MetaPlugin,
     MetaSkill,
     OAuthTransaction,
@@ -114,6 +117,9 @@ from accretion.persistence.models import (
     GraphValidationResultRow,
     LoopExecutionRow,
     LoopIterationRow,
+    McpDiscoverySnapshotRow,
+    McpServerEventRow,
+    McpServerRow,
     OAuthTransactionRow,
     PluginRow,
     PrincipalRow,
@@ -381,6 +387,21 @@ class StateStore(Protocol):
         connector_id: str | None = None,
         enabled_only: bool = True,
     ) -> list[CapabilityBinding]: ...
+    async def upsert_mcp_server(self, server: McpServerDefinition) -> McpServerDefinition: ...
+    async def get_mcp_server(self, mcp_server_id: str) -> McpServerDefinition | None: ...
+    async def list_mcp_servers(
+        self, workspace_id: str | None = None
+    ) -> list[McpServerDefinition]: ...
+    async def save_mcp_discovery_snapshot(
+        self, snapshot: McpDiscoverySnapshot
+    ) -> McpDiscoverySnapshot: ...
+    async def list_mcp_discovery_snapshots(
+        self,
+        mcp_server_id: str,
+        connection_id: str | None = None,
+    ) -> list[McpDiscoverySnapshot]: ...
+    async def append_mcp_server_event(self, event: McpServerEvent) -> McpServerEvent: ...
+    async def list_mcp_server_events(self, mcp_server_id: str) -> list[McpServerEvent]: ...
     async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy: ...
     async def get_capability_policy(
         self, policy_id: str, version: str | None = None
@@ -525,6 +546,9 @@ class MemoryStore:
         self.connector_definitions: dict[str, ConnectorDefinition] = {}
         self.connections: dict[str, Connection] = {}
         self.capability_bindings: dict[str, CapabilityBinding] = {}
+        self.mcp_servers: dict[str, McpServerDefinition] = {}
+        self.mcp_discovery_snapshots: dict[str, list[McpDiscoverySnapshot]] = {}
+        self.mcp_server_events: dict[str, list[McpServerEvent]] = {}
         self.capability_results: dict[str, CapabilityExecutionResult] = {}
         self.benchmark_tasks: dict[tuple[str, str], BenchmarkTask] = {}
         self.benchmark_runs: dict[str, BenchmarkRun] = {}
@@ -1516,6 +1540,51 @@ class MemoryStore:
                 and (item.enabled or not enabled_only)
             ),
             key=lambda item: item.binding_id,
+        )
+
+    async def upsert_mcp_server(self, server: McpServerDefinition) -> McpServerDefinition:
+        self.mcp_servers[server.mcp_server_id] = server
+        return server
+
+    async def get_mcp_server(self, mcp_server_id: str) -> McpServerDefinition | None:
+        return self.mcp_servers.get(mcp_server_id)
+
+    async def list_mcp_servers(
+        self, workspace_id: str | None = None
+    ) -> list[McpServerDefinition]:
+        return sorted(
+            (
+                server
+                for server in self.mcp_servers.values()
+                if workspace_id is None or server.workspace_id == workspace_id
+            ),
+            key=lambda server: server.mcp_server_id,
+        )
+
+    async def save_mcp_discovery_snapshot(
+        self, snapshot: McpDiscoverySnapshot
+    ) -> McpDiscoverySnapshot:
+        self.mcp_discovery_snapshots.setdefault(snapshot.mcp_server_id, []).append(snapshot)
+        return snapshot
+
+    async def list_mcp_discovery_snapshots(
+        self,
+        mcp_server_id: str,
+        connection_id: str | None = None,
+    ) -> list[McpDiscoverySnapshot]:
+        snapshots = self.mcp_discovery_snapshots.get(mcp_server_id, [])
+        if connection_id is not None:
+            snapshots = [item for item in snapshots if item.connection_id == connection_id]
+        return sorted(snapshots, key=lambda item: item.created_at, reverse=True)
+
+    async def append_mcp_server_event(self, event: McpServerEvent) -> McpServerEvent:
+        self.mcp_server_events.setdefault(event.mcp_server_id, []).append(event)
+        return event
+
+    async def list_mcp_server_events(self, mcp_server_id: str) -> list[McpServerEvent]:
+        return sorted(
+            self.mcp_server_events.get(mcp_server_id, []),
+            key=lambda item: item.created_at,
         )
 
     async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy:
@@ -3728,6 +3797,114 @@ class PostgresStore:
         async with self.sessions() as session:
             rows = (await session.scalars(query)).all()
         return [CapabilityBinding.model_validate(row.definition) for row in rows]
+
+    async def upsert_mcp_server(self, server: McpServerDefinition) -> McpServerDefinition:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(McpServerRow).where(McpServerRow.mcp_server_id == server.mcp_server_id)
+            )
+            definition = server.model_dump(mode="json")
+            if row is not None:
+                row.workspace_id = server.workspace_id
+                row.connector_id = server.connector_id
+                row.state = server.state.value
+                row.enabled = server.enabled
+                row.revision = server.revision
+                row.definition = definition
+                row.updated_at = server.updated_at
+            else:
+                session.add(
+                    McpServerRow(
+                        id=new_id("mcp_server"),
+                        mcp_server_id=server.mcp_server_id,
+                        workspace_id=server.workspace_id,
+                        connector_id=server.connector_id,
+                        state=server.state.value,
+                        enabled=server.enabled,
+                        revision=server.revision,
+                        definition=definition,
+                        created_at=server.created_at,
+                        updated_at=server.updated_at,
+                    )
+                )
+        return server
+
+    async def get_mcp_server(self, mcp_server_id: str) -> McpServerDefinition | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(McpServerRow).where(McpServerRow.mcp_server_id == mcp_server_id)
+            )
+        return McpServerDefinition.model_validate(row.definition) if row else None
+
+    async def list_mcp_servers(
+        self, workspace_id: str | None = None
+    ) -> list[McpServerDefinition]:
+        query = select(McpServerRow).order_by(McpServerRow.mcp_server_id)
+        if workspace_id is not None:
+            query = query.where(McpServerRow.workspace_id == workspace_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [McpServerDefinition.model_validate(row.definition) for row in rows]
+
+    async def save_mcp_discovery_snapshot(
+        self, snapshot: McpDiscoverySnapshot
+    ) -> McpDiscoverySnapshot:
+        async with self.sessions.begin() as session:
+            session.add(
+                McpDiscoverySnapshotRow(
+                    id=new_id("mcp_snapshot"),
+                    discovery_snapshot_id=snapshot.discovery_snapshot_id,
+                    mcp_server_id=snapshot.mcp_server_id,
+                    connection_id=snapshot.connection_id,
+                    valid=snapshot.valid,
+                    content_sha256=snapshot.content_sha256,
+                    definition=snapshot.model_dump(mode="json"),
+                    created_at=snapshot.created_at,
+                )
+            )
+        return snapshot
+
+    async def list_mcp_discovery_snapshots(
+        self,
+        mcp_server_id: str,
+        connection_id: str | None = None,
+    ) -> list[McpDiscoverySnapshot]:
+        query = (
+            select(McpDiscoverySnapshotRow)
+            .where(McpDiscoverySnapshotRow.mcp_server_id == mcp_server_id)
+            .order_by(McpDiscoverySnapshotRow.created_at.desc())
+        )
+        if connection_id is not None:
+            query = query.where(McpDiscoverySnapshotRow.connection_id == connection_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [McpDiscoverySnapshot.model_validate(row.definition) for row in rows]
+
+    async def append_mcp_server_event(self, event: McpServerEvent) -> McpServerEvent:
+        async with self.sessions.begin() as session:
+            session.add(
+                McpServerEventRow(
+                    id=new_id("mcp_event"),
+                    mcp_event_id=event.mcp_event_id,
+                    mcp_server_id=event.mcp_server_id,
+                    event_type=event.event_type,
+                    correlation_id=event.correlation_id,
+                    definition=event.model_dump(mode="json"),
+                    created_at=event.created_at,
+                )
+            )
+        return event
+
+    async def list_mcp_server_events(self, mcp_server_id: str) -> list[McpServerEvent]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(McpServerEventRow)
+                    .where(McpServerEventRow.mcp_server_id == mcp_server_id)
+                    .order_by(McpServerEventRow.created_at)
+                )
+            ).all()
+        return [McpServerEvent.model_validate(row.definition) for row in rows]
 
     async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy:
         async with self.sessions.begin() as session:

@@ -247,13 +247,35 @@ async def test_no_token_reaches_any_surface_a_token_could_reach() -> None:
 
 
 def test_the_scan_covers_every_surface_the_criterion_names() -> None:
-    """OpenTelemetry is absent from the repository; record that rather than imply it."""
+    """OpenTelemetry is only a transitive dependency of the MCP SDK; Accretion
+    never instruments it, so no span export surface exists to scan. Record that
+    rather than imply it, and fail the moment either fact changes."""
 
     import importlib.util
+    from pathlib import Path
 
-    assert importlib.util.find_spec("opentelemetry") is None, (
-        "OpenTelemetry is now installed: add its span export to the surfaces scanned "
-        "by test_no_token_reaches_any_surface_a_token_could_reach"
+    src = Path(__file__).resolve().parents[1] / "src" / "accretion"
+    importers = sorted(
+        str(path.relative_to(src.parent))
+        for path in src.rglob("*.py")
+        if "opentelemetry" in path.read_text(encoding="utf-8")
+    )
+    assert not importers, (
+        f"Accretion now instruments OpenTelemetry in {importers}: add its span export "
+        "to the surfaces scanned by test_no_token_reaches_any_surface_a_token_could_reach"
+    )
+    if importlib.util.find_spec("opentelemetry") is None:
+        return
+    from opentelemetry import trace
+
+    provider = trace.get_tracer_provider()
+    assert type(provider).__name__ in {"ProxyTracerProvider", "NoOpTracerProvider"}, (
+        f"a real tracer provider ({type(provider).__name__}) is configured: add its span "
+        "export to the surfaces scanned by test_no_token_reaches_any_surface_a_token_could_reach"
+    )
+    assert importlib.util.find_spec("opentelemetry.sdk") is None, (
+        "opentelemetry-sdk is installed, so spans can be exported: add span export to the "
+        "surfaces scanned by test_no_token_reaches_any_surface_a_token_could_reach"
     )
 
 

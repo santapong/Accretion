@@ -4,6 +4,35 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- Added the v0.3 M3 remote MCP manager with authenticated MCP SDK v2 HTTP
+  discovery and invocation, explicit canonical capability mappings, durable
+  per-connection discovery snapshots, server lifecycle/audit records, health
+  state and circuit breaking, and workspace-admin lifecycle APIs.
+- Added executable acceptance coverage for `AC3-MCP-02` through
+  `AC3-MCP-08`, plus a real SDK v2 ASGI server test and PostgreSQL migration
+  round-trip coverage. Existing local stdio coverage continues to prove
+  `AC3-MCP-01`.
+
+### Changed
+
+- Capability resolution now treats disabled remote bindings and unavailable MCP
+  server lifecycle states as non-executable, and remote calls pass through the
+  existing Accretion authorization and credential boundaries.
+- Generated frontend API types now include the M3 MCP server lifecycle routes.
+
+### Security
+
+- Remote endpoint registration now requires HTTPS (except explicitly enabled
+  loopback development endpoints), rejects credentials/query fragments, checks
+  hostname and port policy, and rejects every non-public DNS answer before each
+  network operation. Redirects and ambient proxy credentials are disabled.
+- Discovered tool schemas are checked before publication; credentials remain
+  ephemeral; authorization failures atomically expose `AUTH_REQUIRED` and
+  `REAUTH_REQUIRED`; remote listings and results are bounded by configured item,
+  time, and response-size limits.
+
 ## [0.2.0] - 2026-08-24
 
 ### Added

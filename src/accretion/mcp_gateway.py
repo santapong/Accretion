@@ -21,6 +21,9 @@ from accretion.governance import (
     seed_governance,
 )
 from accretion.ids import new_id
+from accretion.mcp.endpoint_policy import McpEndpointPolicy
+from accretion.mcp.manager import RemoteMcpManager
+from accretion.mcp.remote_client import SdkRemoteMcpClient
 from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore, StateStore
@@ -97,7 +100,9 @@ class StdioMcpGateway:
                         "idempotentHint": resolved.capability.idempotency.value != "NONE",
                     },
                 }
-                for resolved in await self.resolver.list_resolved()
+                for resolved in await self.resolver.list_resolved(
+                    principal_id=self.principal_id
+                )
                 if resolved.outcome
                 in {
                     CapabilityResolutionOutcome.OK,
@@ -147,7 +152,9 @@ class StdioMcpGateway:
                 # The resolver already chose the connection; handing it to the gateway
                 # is what lets a connector-backed capability spend a token at all.
                 result = await self.gateway.execute(
-                    request, resolved.connection if resolved else None
+                    request,
+                    resolved.connection if resolved else None,
+                    resolved.binding if resolved else None,
                 )
             except Exception as exc:
                 return _error(request_id, -32000, str(exc))
@@ -181,6 +188,17 @@ async def _serve() -> None:
     sessions = create_session_factory(engine)
     store = PostgresStore(sessions)
     await seed_governance(store)
+    token_broker = (
+        EncryptedTokenBroker(store, EnvelopeSecretStore())
+        if settings.token_encryption_key
+        else None
+    )
+    remote_mcp = RemoteMcpManager(
+        store=store,
+        client=SdkRemoteMcpClient(),
+        endpoint_policy=McpEndpointPolicy(),
+        token_broker=token_broker,
+    )
     gateway = CapabilityGateway(
         store=store,
         side_effects=PostgresSideEffectLedger(sessions),
@@ -188,9 +206,8 @@ async def _serve() -> None:
         executor=CapabilityExecutor(default_capability_handlers()),
         policy_engine=CapabilityPolicyEngine(set(settings.granted_permissions)),
         policy_id=settings.capability_policy_id,
-        token_broker=EncryptedTokenBroker(store, EnvelopeSecretStore())
-        if settings.token_encryption_key
-        else None,
+        token_broker=token_broker,
+        remote_mcp=remote_mcp,
     )
     server = StdioMcpGateway(
         gateway, store, run_id, os.getenv("ACCRETION_GATEWAY_PRINCIPAL_ID") or None

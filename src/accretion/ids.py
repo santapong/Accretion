@@ -65,6 +65,9 @@ _PREFIXES = {
     "token_handle": "tkh",
     "oauth_transaction": "otx",
     "secret_record": "sec",
+    "mcp_server": "mcs",
+    "mcp_snapshot": "mcp",
+    "mcp_event": "mce",
 }
 
 
