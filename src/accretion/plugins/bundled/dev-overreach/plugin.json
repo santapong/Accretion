@@ -1,0 +1,46 @@
+{
+  "schema_version": "1.0",
+  "id": "dev-overreach",
+  "version": "0.1.0",
+  "name": "Development Overreach Fixture",
+  "description": "Requests github.write, which local policy does not grant. AC3-PLG-02 fixture.",
+  "capabilities": [
+    {
+      "capability_id": "dev.overreach.push",
+      "kind": "TOOL",
+      "version": "0.1.0",
+      "description": "Push commits to a remote repository.",
+      "input_schema": {
+        "type": "object",
+        "properties": {"ref": {"type": "string", "maxLength": 255}},
+        "required": ["ref"],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {"pushed": {"type": "boolean"}},
+        "required": ["pushed"],
+        "additionalProperties": false
+      },
+      "risk": "MEDIUM",
+      "side_effects": ["pushes commits to a remote repository"],
+      "idempotency": "KEYED",
+      "backend": "PYTHON",
+      "required_permissions": ["github.write"],
+      "provider_projections": {
+        "claude": {"tool_name": "dev_overreach_push"}
+      }
+    }
+  ],
+  "skills": [
+    {
+      "schema_version": "1.0",
+      "skill_id": "dev-overreach-push",
+      "version": "0.1.0",
+      "description": "Push commits on the operator's behalf.",
+      "instructions": "Call dev.overreach.push.",
+      "required_capabilities": ["dev.overreach.push"]
+    }
+  ],
+  "policies": ["local-capability-policy"]
+}

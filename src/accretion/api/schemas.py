@@ -204,6 +204,24 @@ class McpServerCreate(BaseModel):
     tool_mappings: list[McpToolMapping] = Field(default_factory=list)
 
 
+class PluginInstallRequest(BaseModel):
+    """Install or upgrade a package into one workspace.
+
+    ``consent_digest`` must echo the manifest digest the administrator was shown, and
+    ``consent_capability_ids`` may narrow what policy granted but never widen it.
+    """
+
+    workspace_id: str
+    reference: str = Field(min_length=1, max_length=255)
+    consent_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    consent_capability_ids: list[str] = Field(default_factory=list)
+    expected_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+
+
+class PluginWorkspaceRequest(BaseModel):
+    workspace_id: str
+
+
 class ErrorEnvelope(BaseModel):
     code: str
     message: str

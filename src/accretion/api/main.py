@@ -35,6 +35,8 @@ from accretion.api.schemas import (
     ExperienceSelectionCreate,
     McpServerCreate,
     MeResponse,
+    PluginInstallRequest,
+    PluginWorkspaceRequest,
     ProjectCreate,
     ProjectFeatureUpdate,
     ReplanCreate,
@@ -79,6 +81,8 @@ from accretion.contracts import (
     McpServerDefinition,
     MetaPlugin,
     MetaSkill,
+    PluginAuditEvent,
+    PluginInstallation,
     Project,
     Provider,
     ResolvedCapability,
@@ -116,7 +120,7 @@ from accretion.experience_benchmark import (
     ExperienceBenchmarkRunner,
     ExperienceBenchmarkSummary,
 )
-from accretion.governance import seed_governance
+from accretion.governance import CapabilityPolicyEngine, seed_governance
 from accretion.identity import AuthenticationError, AuthorizationError
 from accretion.ids import new_id
 from accretion.mcp.endpoint_policy import McpEndpointPolicy, McpEndpointPolicyError
@@ -155,6 +159,17 @@ from accretion.orchestration.service import (
 from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore
+from accretion.plugins.errors import (
+    PluginDependencyError,
+    PluginManagerError,
+    PluginManifestError,
+    PluginPolicyDenied,
+    PluginSignatureError,
+    PluginTrustError,
+)
+from accretion.plugins.manager import PluginManager
+from accretion.plugins.registration import PluginDetail
+from accretion.plugins.trust import PluginTrustVerifier, load_trusted_keys
 from accretion.resolver import CapabilityResolver
 from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime, OpencodeRuntime
 from accretion.search_benchmark import SearchBenchmarkRunner, SearchBenchmarkSummary
@@ -239,6 +254,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             allow_local_http=settings.mcp_allow_local_http,
         ),
         token_broker=token_broker,
+    )
+    app.state.plugins = PluginManager(
+        store=store,
+        trust_verifier=PluginTrustVerifier(
+            trusted_keys=load_trusted_keys(settings.plugin_trusted_keys),
+            allow_unverified_dev=settings.plugin_allow_unverified_dev,
+            builtin_ids=settings.plugin_builtin_ids,
+        ),
+        policy_engine=CapabilityPolicyEngine(set(settings.granted_permissions)),
+        remote_mcp=app.state.remote_mcp,
+        policy_id=settings.capability_policy_id,
     )
     manager = RunManager(
         store=store,
@@ -340,6 +366,13 @@ def remote_mcp(request: Request) -> RemoteMcpManager:
     return cast(RemoteMcpManager, service)
 
 
+def plugins(request: Request) -> PluginManager:
+    service = getattr(request.app.state, "plugins", None)
+    if service is None:
+        raise ValueError("plugin manager is unavailable")
+    return cast(PluginManager, service)
+
+
 @app.exception_handler(KeyError)
 async def key_error_handler(request: Request, exc: KeyError) -> JSONResponse:
     return _error(404, "NOT_FOUND", f"Resource {exc.args[0]} was not found")
@@ -397,6 +430,48 @@ async def mcp_manager_error_handler(
     request: Request, exc: McpManagerError
 ) -> JSONResponse:
     return _error(409, "MCP_SERVER_REJECTED", str(exc))
+
+
+@app.exception_handler(PluginManifestError)
+async def plugin_manifest_handler(
+    request: Request, exc: PluginManifestError
+) -> JSONResponse:
+    return _error(400, "PLUGIN_MANIFEST_INVALID", str(exc))
+
+
+@app.exception_handler(PluginSignatureError)
+async def plugin_signature_handler(
+    request: Request, exc: PluginSignatureError
+) -> JSONResponse:
+    return _error(400, "PLUGIN_SIGNATURE_INVALID", str(exc))
+
+
+@app.exception_handler(PluginTrustError)
+async def plugin_trust_handler(request: Request, exc: PluginTrustError) -> JSONResponse:
+    return _error(403, "PLUGIN_TRUST_INSUFFICIENT", str(exc))
+
+
+@app.exception_handler(PluginPolicyDenied)
+async def plugin_policy_denied_handler(
+    request: Request, exc: PluginPolicyDenied
+) -> JSONResponse:
+    return _error(403, "PLUGIN_POLICY_DENIED", str(exc))
+
+
+@app.exception_handler(PluginDependencyError)
+async def plugin_dependency_handler(
+    request: Request, exc: PluginDependencyError
+) -> JSONResponse:
+    return _error(409, "PLUGIN_DEPENDENCY_UNSATISFIED", str(exc))
+
+
+# Registered last on purpose: the specific plugin failures above keep their own
+# status codes, and only what none of them matched falls through to this one.
+@app.exception_handler(PluginManagerError)
+async def plugin_manager_error_handler(
+    request: Request, exc: PluginManagerError
+) -> JSONResponse:
+    return _error(409, "PLUGIN_REJECTED", str(exc))
 
 
 @app.exception_handler(WorkflowTemplateError)
@@ -1427,9 +1502,170 @@ async def list_skills(request: Request) -> list[MetaSkill]:
     return await manager(request).store.list_skills()
 
 
+async def _visible_workspaces(request: Request) -> set[str]:
+    who = current_principal(request)
+    memberships = await manager(request).store.list_workspace_memberships(
+        principal_id=who.principal_id
+    )
+    return {item.workspace_id for item in memberships}
+
+
 @app.get("/api/v1/plugins", response_model=list[MetaPlugin])
 async def list_plugins(request: Request) -> list[MetaPlugin]:
-    return await manager(request).store.list_plugins()
+    """Built-in plugins, plus whatever is installed in the caller's workspaces.
+
+    The v0.1 shape is unchanged so the console keeps rendering, but the listing is no
+    longer global: before M4 every authenticated principal saw every registry row,
+    including rows contributed by another tenant's installation.
+    """
+
+    visible = await _visible_workspaces(request)
+    installations = await plugins(request).list_installations()
+    installed_anywhere = {item.plugin_id for item in installations}
+    installed_here = {
+        item.plugin_id for item in installations if item.workspace_id in visible
+    }
+    return [
+        entry
+        for entry in await manager(request).store.list_plugins()
+        # A registry row nobody installed is a seeded built-in and belongs to everyone;
+        # anything a workspace installed belongs only to that workspace's members.
+        if entry.plugin_id not in installed_anywhere or entry.plugin_id in installed_here
+    ]
+
+
+@app.get("/api/v1/plugins/installations", response_model=list[PluginInstallation])
+async def list_plugin_installations(
+    request: Request, workspace_id: str | None = None
+) -> list[PluginInstallation]:
+    visible = await _visible_workspaces(request)
+    if workspace_id is not None:
+        if workspace_id not in visible:
+            raise AuthorizationError("principal is not a member of the requested workspace")
+        visible = {workspace_id}
+    return [
+        installation
+        for installation in await plugins(request).list_installations(workspace_id)
+        if installation.workspace_id in visible
+    ]
+
+
+@app.get("/api/v1/audit/plugins", response_model=list[PluginAuditEvent])
+async def list_plugin_audit_events(
+    request: Request,
+    plugin_id: str | None = None,
+    workspace_id: str | None = None,
+) -> list[PluginAuditEvent]:
+    visible = await _visible_workspaces(request)
+    if workspace_id is not None:
+        if workspace_id not in visible:
+            raise AuthorizationError("principal is not a member of the requested workspace")
+        visible = {workspace_id}
+    return [
+        event
+        for event in await plugins(request).store.list_plugin_audit_events(plugin_id=plugin_id)
+        if event.workspace_id is not None and event.workspace_id in visible
+    ]
+
+
+@app.post("/api/v1/plugins/install", response_model=PluginInstallation, status_code=201)
+async def install_plugin(
+    payload: PluginInstallRequest, request: Request
+) -> PluginInstallation:
+    await _require_workspace_access(request, payload.workspace_id, administer=True)
+    return await plugins(request).install(
+        payload.reference,
+        workspace_id=payload.workspace_id,
+        principal_id=current_principal(request).principal_id,
+        consent_digest=payload.consent_digest,
+        consent_capability_ids=payload.consent_capability_ids,
+        expected_digest=payload.expected_digest,
+        correlation_id=request.headers.get("x-request-id"),
+    )
+
+
+@app.get("/api/v1/plugins/{plugin_id}", response_model=PluginDetail)
+async def get_plugin_detail(
+    plugin_id: str, request: Request, workspace_id: str | None = None
+) -> PluginDetail:
+    if workspace_id is not None:
+        await _require_workspace_access(request, workspace_id)
+    return await plugins(request).detail(plugin_id, workspace_id=workspace_id)
+
+
+@app.post("/api/v1/plugins/{plugin_id}/enable", response_model=PluginInstallation)
+async def enable_plugin(
+    plugin_id: str, payload: PluginWorkspaceRequest, request: Request
+) -> PluginInstallation:
+    await _require_workspace_access(request, payload.workspace_id, administer=True)
+    return await plugins(request).enable(
+        plugin_id,
+        workspace_id=payload.workspace_id,
+        principal_id=current_principal(request).principal_id,
+        correlation_id=request.headers.get("x-request-id"),
+    )
+
+
+@app.post("/api/v1/plugins/{plugin_id}/disable", response_model=PluginInstallation)
+async def disable_plugin(
+    plugin_id: str, payload: PluginWorkspaceRequest, request: Request
+) -> PluginInstallation:
+    await _require_workspace_access(request, payload.workspace_id, administer=True)
+    return await plugins(request).disable(
+        plugin_id,
+        workspace_id=payload.workspace_id,
+        principal_id=current_principal(request).principal_id,
+        correlation_id=request.headers.get("x-request-id"),
+    )
+
+
+@app.post("/api/v1/plugins/{plugin_id}/upgrade", response_model=PluginInstallation)
+async def upgrade_plugin(
+    plugin_id: str, payload: PluginInstallRequest, request: Request
+) -> PluginInstallation:
+    await _require_workspace_access(request, payload.workspace_id, administer=True)
+    return await plugins(request).upgrade(
+        plugin_id,
+        payload.reference,
+        workspace_id=payload.workspace_id,
+        principal_id=current_principal(request).principal_id,
+        consent_digest=payload.consent_digest,
+        consent_capability_ids=payload.consent_capability_ids,
+        expected_digest=payload.expected_digest,
+        correlation_id=request.headers.get("x-request-id"),
+    )
+
+
+@app.post("/api/v1/plugins/{plugin_id}/rollback", response_model=PluginInstallation)
+async def rollback_plugin(
+    plugin_id: str, payload: PluginWorkspaceRequest, request: Request
+) -> PluginInstallation:
+    await _require_workspace_access(request, payload.workspace_id, administer=True)
+    return await plugins(request).rollback(
+        plugin_id,
+        workspace_id=payload.workspace_id,
+        principal_id=current_principal(request).principal_id,
+        correlation_id=request.headers.get("x-request-id"),
+    )
+
+
+@app.delete("/api/v1/plugins/{plugin_id}", response_model=PluginInstallation)
+async def remove_plugin(
+    plugin_id: str,
+    request: Request,
+    workspace_id: str,
+    force: bool = Query(default=False),
+) -> PluginInstallation:
+    """Retire an installation. Prior-run evidence is never touched (AC3-PLG-05)."""
+
+    await _require_workspace_access(request, workspace_id, administer=True)
+    return await plugins(request).remove(
+        plugin_id,
+        workspace_id=workspace_id,
+        principal_id=current_principal(request).principal_id,
+        force=force,
+        correlation_id=request.headers.get("x-request-id"),
+    )
 
 
 @app.get("/api/v1/benchmarks/acr-arch", response_model=AcrArchSummary)
