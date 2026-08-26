@@ -1,8 +1,9 @@
 # v0.3 prioritized backlog
 
-Status: post-v0.2 planning handoff only. No v0.3 feature is included in
-v0.2.0; implementation begins from `develop` only after the v0.2.0 tag is
-published.
+Status: M0–M3 delivered on `develop` (2026-08-26, `c0c7270`); work is parked
+before M4. Every M0–M3 acceptance criterion is proven by a claiming test
+(`make acceptance`); the remaining uncovered criteria are inherited v0.1/v0.2
+items listed in the [acceptance baseline](acceptance-baseline.md).
 
 The normative contract remains [Accretion SDD v0.3](../../sdd/Accretion_SDD_v0.3.md).
 This ledger orders its existing milestones without changing acceptance criteria
@@ -12,11 +13,11 @@ or unlocking the hash-manifested v0.4+ designs.
 
 | Priority | Milestone | Outcome required before continuing |
 |---:|---|---|
-| 1 | M0 capability/connection refactor | Existing v0.1/v0.2 capabilities resolve unchanged through additive connection-aware contracts |
-| 2 | M1 identity and SSO | Issuer/subject principals, workspace membership, OIDC Authorization Code + PKCE, and multi-user tests |
-| 3 | M2 token broker and OAuth connections | Encrypted refresh/revoke lifecycle with no token values in model, API, UI, events, or logs. Partially delivered; see [M2 remainder](#v03-m2-remainder) |
-| 4 | M3 remote MCP manager | Authenticated remote discovery, schema validation, health/circuit breaking, SSRF controls, and canonical capability bindings |
-| 5 | M4 plugin manager | Versioned manifest validation, permission requests without grants, enable/disable/upgrade, and historical provenance |
+| 1 | M0 capability/connection refactor — **delivered** (#57) | Existing v0.1/v0.2 capabilities resolve unchanged through additive connection-aware contracts |
+| 2 | M1 identity and SSO — **delivered** (#58) | Issuer/subject principals, workspace membership, OIDC Authorization Code + PKCE, and multi-user tests |
+| 3 | M2 token broker and OAuth connections — **delivered** (#62, #75, #77) | Encrypted refresh/revoke lifecycle with no token values in model, API, UI, events, or logs |
+| 4 | M3 remote MCP manager — **delivered** (#79) | Authenticated remote discovery, schema validation, health/circuit breaking, SSRF controls, and canonical capability bindings |
+| 5 | M4 plugin manager — **next** | Versioned manifest validation, permission requests without grants, enable/disable/upgrade, and historical provenance |
 | 6 | M5 research intelligence plugin | Provider-neutral research capabilities, normalized evidence, provenance, and citation verification |
 | 7 | M6 frontend and administration | Plugins, Connections, MCP Servers, capability resolution, identity, and roles without exposing secrets |
 | 8 | M7 enterprise authorization | Optional EMA integration behind a feature flag after the standard OAuth path is stable |
@@ -89,43 +90,38 @@ cannot satisfy.
   runtime that shares one provider server across concurrent runs can carry
   governed capabilities without misattributing side effects.
 
-### v0.3 M2 remainder
+### v0.3 M2 and M3 — closed
 
-M2 delivered the token broker, the encrypted secret store, the connector OAuth client,
-single-use transaction state, and broker-backed capability invocation. Six acceptance
-criteria remain open, so the milestone is **not** closed. Each is verifiable with
-`make acceptance`, which reports them as uncovered rather than assuming them.
+M2 shipped in three steps: the token broker core (#62), the broker in the
+execution path (#75), and the GitHub connector, section 17 connection routes,
+principal-bound runs, role enforcement, and the automated secret scan (#77),
+which closed AC3-CON-01, AC3-CON-02, AC3-ID-04, AC3-ID-05, AC3-SEC-01, and
+AC3-SEC-04. "Encrypted outside normal relational state" (AC3-CON-02) is
+proven as a property of the database dump rather than argued; the deviation
+from an OS keyring for the master key stays recorded in the token broker
+runbook.
 
-- Build the first OAuth connector and the SDD section 17 connection routes
-  (`connect`, `oauth/callback`, `reauthorize`, `revoke`, `health`). Without a callback
-  route the CSRF and replay defences are proven only at the store layer, and no
-  operator can create a connection at all. Closes AC3-CON-01 and AC3-SEC-04.
-- Add an automated secret scan across `AgentEvent`, `TaskEnvelope`, `ContextBundle`,
-  frontend payloads, and OpenTelemetry export. The repository has no OpenTelemetry, so
-  one of the five named surfaces must exist before it can be scanned. Closes
-  AC3-SEC-01.
-- Enforce `WorkspaceRole` somewhere it can change an outcome. It is stored, projected,
-  and displayed today, but no route, resolver, or policy branches on it, so "role
-  changes take effect" is true only of the identity projection. Closes AC3-ID-04.
-- Carry the owning principal into a run so a disabled principal is refused at the
-  capability boundary rather than only at the HTTP boundary. `Run` and `Task` hold no
-  `principal_id`, and the gateway subprocess authenticates nobody, so an in-flight run
-  keeps invoking capabilities after its owner is disabled. Closes AC3-ID-05.
-- Decide whether ciphertext in a dedicated table in the operational database satisfies
-  "encrypted outside normal relational state", or whether the secret store must move to
-  a separate backend. Only the master key is external today, which the token broker
-  runbook already records as a deviation from the preferred OS keyring. Closes
-  AC3-CON-02 either by an accepted rationale or by a new backend.
+M3 shipped as one change (#79) and proved AC3-MCP-02 through AC3-MCP-08. Two
+facts worth carrying forward:
+
+- The MCP SDK makes `opentelemetry-api` a transitive dependency. Accretion does
+  not instrument it and no tracer provider is configured, and the secret-scan
+  guard now asserts exactly that; if OpenTelemetry is ever wired up, span export
+  becomes a scanned surface.
+- Remote endpoint policy is configured by `ACCRETION_MCP_ALLOWED_HOSTS`,
+  `ACCRETION_MCP_ALLOWED_PORTS`, and `ACCRETION_MCP_ALLOW_LOCAL_HTTP`; the
+  defaults admit any public HTTPS host on 443. An M6 administration surface
+  should expose the resulting server states without exposing credentials.
 
 ### Manifest and release hygiene
 
 - Make `runtime_compatibility.toml` authoritative or remove it. Nothing reads
   it, while the version ranges that actually gate `DEGRADED` live inside each
   adapter's health check, so the two can drift without any signal.
-- Record the v0.3 M0 capability/connection layer, the M1 identity layer, and the
-  opencode runtime adapter in the changelog; the unreleased section is empty.
-- Add the identity settings introduced by M1 to `.env.example`, which documents
-  no authentication mode and no identity-provider keys.
+- ~~Record the v0.3 M0–M3 layers and the opencode runtime adapter in the
+  changelog.~~ Done at the 2026-08-26 park.
+- ~~Add the identity settings introduced by M1 to `.env.example`.~~ Done at the
+  2026-08-26 park, together with the M3 endpoint-policy settings.
 
 ## Locked boundary
 
