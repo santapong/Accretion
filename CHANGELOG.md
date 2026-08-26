@@ -4,12 +4,32 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
+Status: v0.3 milestones M0–M3 delivered on `develop`; parked 2026-08-26 before M4.
+
 ### Added
 
+- Added the v0.3 M0 connection-aware capability layer: connector, connection,
+  and binding contracts, the capability resolver, and migration 0010, with
+  every v0.1/v0.2 capability resolving unchanged (#57).
+- Added the v0.3 M1 identity layer: principals keyed by issuer and subject,
+  workspaces and memberships, an OIDC Authorization Code + PKCE client with a
+  fake IdP for tests, session middleware with a `LOCAL_PRINCIPAL` default mode,
+  `/me` and `/auth` routes, and migration 0011 (#58).
+- Added the opencode runtime adapter as the third governed runtime (#59).
+- Added the acceptance-criteria harness: `docs/acceptance/criteria.toml`
+  records how each SDD criterion is verified, tests claim criteria with
+  `@pytest.mark.acceptance`, and `make acceptance` computes the status instead
+  of documents asserting it (#63, #74).
+- Added the v0.3 M2 token broker and OAuth connections: the encrypted secret
+  store and master key, single-use OAuth transactions, broker-backed capability
+  invocation, the GitHub connector with the `connect`, `oauth/callback`,
+  `reauthorize`, `revoke`, and `health` routes, principal-bound runs, and
+  migration 0012 (#62, #75, #77).
 - Added the v0.3 M3 remote MCP manager with authenticated MCP SDK v2 HTTP
   discovery and invocation, explicit canonical capability mappings, durable
   per-connection discovery snapshots, server lifecycle/audit records, health
-  state and circuit breaking, and workspace-admin lifecycle APIs.
+  state and circuit breaking, workspace-admin lifecycle APIs, and migration
+  0013 (#79).
 - Added executable acceptance coverage for `AC3-MCP-02` through
   `AC3-MCP-08`, plus a real SDK v2 ASGI server test and PostgreSQL migration
   round-trip coverage. Existing local stdio coverage continues to prove
@@ -20,11 +40,23 @@ All notable changes to Accretion are documented in this file.
 - Capability resolution now treats disabled remote bindings and unavailable MCP
   server lifecycle states as non-executable, and remote calls pass through the
   existing Accretion authorization and credential boundaries.
-- Generated frontend API types now include the M3 MCP server lifecycle routes.
+- `WorkspaceRole` and principal status now change outcomes: a disabled
+  principal is refused at the capability boundary, not only at HTTP (#77).
+- Generated frontend API types now include the connection, identity, and M3
+  MCP server lifecycle routes.
+- `.env.example` documents the identity (`AUTH_MODE`, OIDC, session) and remote
+  MCP endpoint-policy settings.
 
 ### Security
 
-- Remote endpoint registration now requires HTTPS (except explicitly enabled
+- Claude Code runs now carry a sandbox and a meaningful tool allowlist, closing
+  the runtime egress asymmetry with Codex and opencode (`V01-P4-001`, #78).
+- Hardened the connection surface and made the token audience/issuer guard
+  fail closed (#61, #77).
+- The OAuth callback stays behind the session middleware so the returning
+  browser must be the session that began the flow; unknown, replayed, and
+  expired states return one indistinguishable response (#77).
+- Remote MCP endpoint registration requires HTTPS (except explicitly enabled
   loopback development endpoints), rejects credentials/query fragments, checks
   hostname and port policy, and rejects every non-public DNS answer before each
   network operation. Redirects and ambient proxy credentials are disabled.
@@ -32,6 +64,9 @@ All notable changes to Accretion are documented in this file.
   ephemeral; authorization failures atomically expose `AUTH_REQUIRED` and
   `REAUTH_REQUIRED`; remote listings and results are bounded by configured item,
   time, and response-size limits.
+- The M2 secret scan's OpenTelemetry guard now verifies that Accretion does not
+  instrument OpenTelemetry and no tracer provider or SDK is configured, since
+  the MCP SDK makes `opentelemetry-api` a transitive dependency.
 
 ## [0.2.0] - 2026-08-24
 

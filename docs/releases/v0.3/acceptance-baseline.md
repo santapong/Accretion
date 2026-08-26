@@ -1,6 +1,7 @@
 # Acceptance baseline
 
 > Computed: 2026-08-25 · Base: `develop` at `519ab2b`
+> Numbers refreshed: 2026-08-26 · `develop` at `c0c7270` (after M2 completion and M3)
 >
 > Produced by `make acceptance`. This document records a **starting position**, not a
 > release decision. It supersedes hand-written status claims.
@@ -22,16 +23,26 @@ only *how* each is verified; and a test claims a criterion with
 | | Count |
 |---|---:|
 | Criteria in the three SDDs | 110 |
-| Not yet due (M3–M6) | 22 |
-| **In scope** | **88** |
-| Proven by a passing claiming test | 61 |
+| Not yet due (M4–M6) | 15 |
+| **In scope** | **95** |
+| Proven by a passing claiming test | 75 |
 | Proven by the frontend suite | 3 |
-| Uncovered | 24 |
+| Uncovered | 17 |
 
-Coverage is 73% of in-scope criteria (64 of 88). The first computed figure was 37;
+Coverage is 82% of in-scope criteria (78 of 95). The first computed figure was 37;
 the annotation sweep raised it to 59 without changing any runtime behaviour, because
 the inherited gap was traceability rather than implementation. Putting the token broker
-into the execution path then closed five more.
+into the execution path then closed five more (#75); completing M2 closed six (#77);
+closing the Claude egress asymmetry closed `V01-P4-001` (#78); and M3 brought seven
+MCP criteria into scope and proved all of them (#79). Every v0.3 M0–M3 criterion is
+now proven; all 17 uncovered criteria are inherited v0.1/v0.2 items.
+
+### Movement since the baseline
+
+Findings below that were open at `519ab2b` and are now closed, so a reader does not
+act on them twice: `V01-P4-001` (#78), and `AC3-CON-06` and `AC3-SEC-03` (#75, #77).
+The remaining findings stand, including the `command_result` child-environment
+inheritance.
 
 Three criteria are proven by **vitest** rather than pytest. This gate reads pytest
 markers, so those record a pointer to the test that proves them; `npm run test` runs
