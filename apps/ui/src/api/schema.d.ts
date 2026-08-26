@@ -801,6 +801,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/runs/{run_id}/research-evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Run Research Evidence
+         * @description Read a run's Evidence Store, in the store's own deterministic order.
+         *
+         *     Read-only by construction: evidence is written on the gateway's execution path,
+         *     where the trust label is assigned, and there is deliberately no HTTP way to put a
+         *     record here or to relabel one.
+         *
+         *     ``workspace_id`` is a required parameter rather than something derived from the
+         *     run because ``Run`` carries no workspace: it links to a task, a project and a
+         *     principal, and none of the three reaches a workspace today. Requiring the caller
+         *     to name a workspace they are a member of is therefore the strongest gate available
+         *     at this boundary, and narrowing it to the run's own workspace is M6 work that
+         *     needs the missing link first.
+         *
+         *     Ordering is ``(created_at, evidence_id)`` in all three store implementations, so a
+         *     caller may page or diff two responses without re-sorting.
+         */
+        get: operations["list_run_research_evidence_api_v1_runs__run_id__research_evidence_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs/{run_id}/resume": {
         parameters: {
             query?: never;
@@ -2324,8 +2358,14 @@ export interface components {
         /** CapabilityExecutionResult */
         CapabilityExecutionResult: {
             authorization: components["schemas"]["CapabilityAuthorization"];
+            /** Binding Id */
+            binding_id?: string | null;
             /** Completed At */
             completed_at?: string | null;
+            /** Connection Id */
+            connection_id?: string | null;
+            /** Connector Id */
+            connector_id?: string | null;
             error?: components["schemas"]["ErrorSummary"] | null;
             /** Output */
             output?: {
@@ -2334,6 +2374,8 @@ export interface components {
             request: components["schemas"]["CapabilityRequest"];
             /** Side Effect Operation Id */
             side_effect_operation_id?: string | null;
+            /** Source Ids */
+            source_ids?: string[];
             status: components["schemas"]["CapabilityExecutionStatus"];
         };
         /**
@@ -2414,6 +2456,40 @@ export interface components {
             schema_version: "1.0";
             /** Sequence */
             sequence: number;
+        };
+        /**
+         * CitationCheck
+         * @description One deterministic verification of a claimed citation against a resolver.
+         *
+         *     The check is the *evidence about the evidence*: it records what the candidate
+         *     claimed, what the resolver actually returned, and whether they agree.
+         */
+        CitationCheck: {
+            /** Check Id */
+            check_id: string;
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at?: string;
+            /** Claimed Identifier */
+            claimed_identifier: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Resolved Identifier */
+            resolved_identifier?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            status: components["schemas"]["VerificationStatus"];
+            /** Verifier Id */
+            verifier_id: string;
         };
         /** CompatibilityAssessment */
         CompatibilityAssessment: {
@@ -2916,6 +2992,134 @@ export interface components {
          * @enum {string}
          */
         EventType: "RUN_CREATED" | "WORKFLOW_PROPOSAL_CREATED" | "WORKFLOW_PROPOSAL_REPAIRED" | "GRAPH_VALIDATION_STARTED" | "GRAPH_VALIDATION_RESULT" | "GRAPH_REVISION_ACTIVATED" | "REPLAN_REQUESTED" | "REPLAN_STARTED" | "REPLAN_COMPLETED" | "RUNTIME_DECISION" | "SEARCH_STARTED" | "SEARCH_CANDIDATE_STARTED" | "SEARCH_CANDIDATE_COMPLETED" | "SEARCH_CANDIDATE_PRUNED" | "SEARCH_SELECTION" | "SEARCH_PROMOTION_STARTED" | "SEARCH_PROMOTION_COMPLETED" | "SEARCH_STOPPED" | "EXPERIENCE_QUERY" | "EXPERIENCE_RETRIEVED" | "TRAJECTORY_REPLAY_STARTED" | "TRAJECTORY_REPLAY_REJECTED" | "RUN_STARTED" | "RUN_PROGRESS" | "NODE_ENTERED" | "NODE_EXITED" | "TOOL_REQUESTED" | "TOOL_STARTED" | "TOOL_COMPLETED" | "TOOL_FAILED" | "FILE_CHANGED" | "DIFF_AVAILABLE" | "APPROVAL_REQUIRED" | "APPROVAL_RESOLVED" | "ARTIFACT_CREATED" | "CHECKPOINT_SAVED" | "RUNTIME_CALL_STARTED" | "RUNTIME_CALL_COMPLETED" | "RUNTIME_CALL_FAILED" | "RUNTIME_CALL_CANCELLED" | "LOOP_ITERATION_STARTED" | "LOOP_ITERATION_COMPLETED" | "VERIFICATION_STARTED" | "VERIFICATION_RESULT" | "RUN_PAUSED" | "RUN_RESUMED" | "RUN_COMPLETED" | "RUN_FAILED" | "RUN_CANCELLED";
+        /**
+         * EvidenceCandidate
+         * @description One normalized result (SDD 10.1), before any verifier has looked at it.
+         *
+         *     Backend-specific wire shapes are flattened here, which is what lets the
+         *     connector swap without the workflow's capability ids moving.
+         */
+        EvidenceCandidate: {
+            /** Authors */
+            authors?: string[];
+            /** Candidate Id */
+            candidate_id: string;
+            /** Content Digest */
+            content_digest: string;
+            /** @default EXTERNAL_SOURCE */
+            evidence_class: components["schemas"]["EvidenceClass"];
+            /** Identifiers */
+            identifiers?: {
+                [key: string]: string;
+            };
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+            provenance: components["schemas"]["EvidenceProvenance"];
+            /** Published At */
+            published_at?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /**
+             * Snippet
+             * @default
+             */
+            snippet: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * EvidenceClass
+         * @description How the world was observed. Names are pinned by the v0.4 cross-release registry.
+         * @enum {string}
+         */
+        EvidenceClass: "DIGITAL" | "SIMULATION" | "PHYSICAL" | "HUMAN_ATTESTATION" | "EXTERNAL_SOURCE";
+        /**
+         * EvidenceProvenance
+         * @description AC3-RES-03 as a type.
+         *
+         *     Connector, capability, query, timestamp and source identifier are required and
+         *     non-optional, so evidence that cannot say where it came from cannot be
+         *     constructed at all — the criterion is enforced by validation rather than by
+         *     reviewer discipline. ``binding_id`` and ``connection_id`` are optional because
+         *     a deterministic local source has neither.
+         */
+        EvidenceProvenance: {
+            /** Binding Id */
+            binding_id?: string | null;
+            /** Capability Id */
+            capability_id: string;
+            /** Connection Id */
+            connection_id?: string | null;
+            /** Connector Id */
+            connector_id: string;
+            /** Query */
+            query: string;
+            /**
+             * Retrieved At
+             * Format: date-time
+             */
+            retrieved_at: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Source Id */
+            source_id: string;
+            /** Source Uri */
+            source_uri?: string | null;
+        };
+        /**
+         * EvidenceRecord
+         * @description A stored, trust-labelled candidate — the unit the Evidence Store persists.
+         *
+         *     ``trust_score`` mirrors ``CandidateScore.total_score``: it is ``None`` unless
+         *     verifiers accepted the candidate, so unverified evidence is structurally
+         *     unrankable rather than merely low-scored (AC3-RES-04).
+         */
+        EvidenceRecord: {
+            candidate: components["schemas"]["EvidenceCandidate"];
+            /** Citation Checks */
+            citation_checks?: components["schemas"]["CitationCheck"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** @default EXTERNAL_SOURCE */
+            evidence_class: components["schemas"]["EvidenceClass"];
+            /** Evidence Id */
+            evidence_id: string;
+            /** Node Id */
+            node_id?: string | null;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** @default UNVERIFIED */
+            trust: components["schemas"]["EvidenceTrust"];
+            /** Trust Score */
+            trust_score?: number | null;
+            /** Verification Ids */
+            verification_ids?: string[];
+        };
+        /**
+         * EvidenceTrust
+         * @description Ordered low to high. Assigned by the normalizer, never read from connector output.
+         * @enum {string}
+         */
+        EvidenceTrust: "QUARANTINED" | "UNVERIFIED" | "CORROBORATED" | "VERIFIED";
         /**
          * ExecutionMode
          * @enum {string}
@@ -5945,6 +6149,8 @@ export interface components {
         };
         /** WorkflowNodeSpec */
         WorkflowNodeSpec: {
+            /** Capability Refs */
+            capability_refs?: string[];
             /** Instruction */
             instruction?: string | null;
             /** Key */
@@ -7584,6 +7790,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_run_research_evidence_api_v1_runs__run_id__research_evidence_get: {
+        parameters: {
+            query: {
+                workspace_id: string;
+                capability_id?: string | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceRecord"][];
                 };
             };
             /** @description Validation Error */

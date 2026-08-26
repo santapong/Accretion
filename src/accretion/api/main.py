@@ -73,6 +73,7 @@ from accretion.contracts import (
     ConnectionScope,
     ConnectorDefinition,
     EventType,
+    EvidenceRecord,
     ExecutionMode,
     ExecutionTrace,
     GraphProjection,
@@ -120,7 +121,15 @@ from accretion.experience_benchmark import (
     ExperienceBenchmarkRunner,
     ExperienceBenchmarkSummary,
 )
-from accretion.governance import CapabilityPolicyEngine, seed_governance
+from accretion.governance import (
+    CapabilityExecutor,
+    CapabilityGateway,
+    CapabilityPolicyEngine,
+    CredentialBroker,
+    GatewayCapabilityInvoker,
+    default_capability_handlers,
+    seed_governance,
+)
 from accretion.identity import AuthenticationError, AuthorizationError
 from accretion.ids import new_id
 from accretion.mcp.endpoint_policy import McpEndpointPolicy, McpEndpointPolicyError
@@ -170,6 +179,7 @@ from accretion.plugins.errors import (
 from accretion.plugins.manager import PluginManager
 from accretion.plugins.registration import PluginDetail
 from accretion.plugins.trust import PluginTrustVerifier, load_trusted_keys
+from accretion.research.transforms import default_transform_registry
 from accretion.resolver import CapabilityResolver
 from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime, OpencodeRuntime
 from accretion.search_benchmark import SearchBenchmarkRunner, SearchBenchmarkSummary
@@ -181,7 +191,11 @@ from accretion.services.run_manager import (
 )
 from accretion.templates import seed_templates
 from accretion.token_broker import EncryptedTokenBroker
-from accretion.verifiers.registry import VerifierUnavailableError
+from accretion.verifiers.git_diff import GitDiffVerifier
+from accretion.verifiers.output_contract import OutputContractVerifier
+from accretion.verifiers.registry import VerifierRegistry, VerifierUnavailableError
+from accretion.verifiers.research import research_verifiers
+from accretion.verifiers.trajectory import TrajectoryPolicyVerifier
 from accretion.workspace import WorktreeManager
 
 SSE_TERMINAL_EVENTS = {
@@ -278,10 +292,45 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         live_providers_enabled=settings.enable_live_providers,
         side_effect_ledger=PostgresSideEffectLedger(sessions),
         operator_identity=settings.operator_identity,
+        # Built explicitly rather than left to RunManager's default. The default is
+        # the hardcoded three, so until M5 the API process resolved every research
+        # verifier id to VerifierUnavailableError in production while the same ids
+        # resolved fine in tests that passed their own registry — a gap visible only
+        # once a policy actually required one. The registry is now assembled in one
+        # place and the research verifiers read evidence from the real store.
+        verifier_registry=VerifierRegistry(
+            [
+                GitDiffVerifier(),
+                OutputContractVerifier(),
+                TrajectoryPolicyVerifier(),
+                *research_verifiers(store),
+            ]
+        ),
         auto_resume_on_reconcile=settings.auto_resume_on_reconcile,
     )
     app.state.engine = engine
     app.state.manager = manager
+    # The section 27 exit seam, wired for the API process. Without this the scheduler
+    # holds a `capability_invoker` of `None` in production and a real one only in
+    # tests --- the same asymmetry the verifier registry above had until M5. The
+    # gateway is the governed path: policy engine, token broker and side-effect ledger
+    # are all the production objects, and the transform registry is supplied so the
+    # research bindings' `output_transform_ref` resolves here as it does in the MCP
+    # gateway process.
+    manager.capability_invoker = GatewayCapabilityInvoker(
+        resolver=CapabilityResolver(store),
+        gateway=CapabilityGateway(
+            store=store,
+            side_effects=PostgresSideEffectLedger(sessions),
+            broker=CredentialBroker(settings.credential_env_map),
+            executor=CapabilityExecutor(default_capability_handlers()),
+            policy_engine=CapabilityPolicyEngine(set(settings.granted_permissions)),
+            policy_id=settings.capability_policy_id,
+            token_broker=token_broker,
+            remote_mcp=app.state.remote_mcp,
+            transforms=default_transform_registry(),
+        ),
+    )
     app.state.dynamic_workflows = DynamicWorkflowService(
         manager,
         globally_enabled=settings.enable_dynamic_workflows,
@@ -1230,6 +1279,41 @@ async def _require_workspace_access(
         raise AuthorizationError("principal is not a member of the requested workspace")
     if administer and memberships[0].role not in {WorkspaceRole.OWNER, WorkspaceRole.ADMIN}:
         raise AuthorizationError("workspace owner or admin role is required")
+
+
+@app.get(
+    "/api/v1/runs/{run_id}/research-evidence",
+    response_model=list[EvidenceRecord],
+)
+async def list_run_research_evidence(
+    run_id: str,
+    request: Request,
+    workspace_id: str,
+    capability_id: str | None = None,
+) -> list[EvidenceRecord]:
+    """Read a run's Evidence Store, in the store's own deterministic order.
+
+    Read-only by construction: evidence is written on the gateway's execution path,
+    where the trust label is assigned, and there is deliberately no HTTP way to put a
+    record here or to relabel one.
+
+    ``workspace_id`` is a required parameter rather than something derived from the
+    run because ``Run`` carries no workspace: it links to a task, a project and a
+    principal, and none of the three reaches a workspace today. Requiring the caller
+    to name a workspace they are a member of is therefore the strongest gate available
+    at this boundary, and narrowing it to the run's own workspace is M6 work that
+    needs the missing link first.
+
+    Ordering is ``(created_at, evidence_id)`` in all three store implementations, so a
+    caller may page or diff two responses without re-sorting.
+    """
+
+    await _require_workspace_access(request, workspace_id)
+    if await manager(request).store.get_run(run_id) is None:
+        raise KeyError(run_id)
+    return await manager(request).store.list_research_evidence(
+        run_id, capability_id=capability_id
+    )
 
 
 @app.get("/api/v1/mcp/servers", response_model=list[McpServerDefinition])

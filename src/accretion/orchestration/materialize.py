@@ -73,6 +73,11 @@ def _condition_guard(edge: DynamicWorkflowEdgeSpec) -> EdgeGuard:
 
 def _materialize_node(node: DynamicWorkflowNodeSpec) -> list[WorkflowNodeSpec]:
     kind = _executor_kind(node.kind)
+    # The proposal has always carried the capability ids the node needs; before v0.3 M5
+    # every one of them was dropped on the floor here, so a validated, authorized
+    # capability reference never reached the executor. Carrying it is the whole of the
+    # section 27 exit criterion on this side of the seam.
+    capability_refs = list(node.capability_refs)
     if kind is not GraphNodeKind.LOOP:
         return [
             WorkflowNodeSpec(
@@ -80,6 +85,7 @@ def _materialize_node(node: DynamicWorkflowNodeSpec) -> list[WorkflowNodeSpec]:
                 kind=kind,
                 label=_label(node.objective),
                 instruction=node.objective if kind is GraphNodeKind.AGENT else None,
+                capability_refs=capability_refs,
             )
         ]
     assert node.loop_spec is not None
@@ -109,6 +115,10 @@ def _materialize_node(node: DynamicWorkflowNodeSpec) -> list[WorkflowNodeSpec]:
             label=f"{_label(node.objective)} — act",
             parent_key=node.local_id,
             instruction=node.objective,
+            # The act child, not the LOOP parent: the parent is a region marker that
+            # executes nothing, so hanging capability references from it would name
+            # authority no step ever spends.
+            capability_refs=capability_refs,
         ),
         WorkflowNodeSpec(
             key=observe_key,

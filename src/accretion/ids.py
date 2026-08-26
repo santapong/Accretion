@@ -71,6 +71,9 @@ _PREFIXES = {
     "plugin_version": "plv",
     "plugin_installation": "pli",
     "plugin_event": "ple",
+    "evidence": "evd",
+    "evidence_candidate": "evc",
+    "citation_check": "cck",
 }
 
 

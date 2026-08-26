@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Protocol
+from typing import Any, Protocol
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -31,6 +31,7 @@ from accretion.contracts import (
     ConnectorDefinition,
     ContextBundle,
     ErrorSummary,
+    EvidenceRecord,
     ExecutionMode,
     LoopExecution,
     LoopExecutionStatus,
@@ -133,6 +134,7 @@ from accretion.persistence.models import (
     ProjectRow,
     PromptContractRow,
     ReplanRequestRow,
+    ResearchEvidenceRow,
     RunGraphEdgeRow,
     RunGraphNodeRow,
     RunGraphRevisionRow,
@@ -176,6 +178,28 @@ _APPROVAL_DECISION_STATUS = {
     ApprovalDecisionValue.DENY: ApprovalStatus.DENIED,
     ApprovalDecisionValue.CANCEL: ApprovalStatus.CANCELLED,
 }
+
+
+def _result_provenance(result: CapabilityExecutionResult) -> dict[str, Any] | None:
+    """Serialize the M5 connector provenance, or ``None`` when the call had none.
+
+    Written to a nullable column so that results stored before v0.3 M5 read back
+    with the contract's own defaults rather than an invented empty connector.
+    """
+
+    if (
+        result.connector_id is None
+        and result.binding_id is None
+        and result.connection_id is None
+        and not result.source_ids
+    ):
+        return None
+    return {
+        "connector_id": result.connector_id,
+        "binding_id": result.binding_id,
+        "connection_id": result.connection_id,
+        "source_ids": list(result.source_ids),
+    }
 
 
 def _ordered_context_history(contexts: Sequence[ContextBundle]) -> list[ContextBundle]:
@@ -438,6 +462,13 @@ class StateStore(Protocol):
         self, result: CapabilityExecutionResult
     ) -> CapabilityExecutionResult: ...
     async def list_capability_results(self, run_id: str) -> list[CapabilityExecutionResult]: ...
+    async def save_research_evidence(self, record: EvidenceRecord) -> EvidenceRecord: ...
+    async def list_research_evidence(
+        self, run_id: str, capability_id: str | None = None
+    ) -> list[EvidenceRecord]: ...
+    async def get_research_evidence_by_digest(
+        self, run_id: str, content_digest: str
+    ) -> EvidenceRecord | None: ...
     async def upsert_benchmark_task(self, task: BenchmarkTask) -> BenchmarkTask: ...
     async def get_benchmark_task(self, task_id: str) -> BenchmarkTask | None: ...
     async def list_benchmark_tasks(self) -> list[BenchmarkTask]: ...
@@ -581,6 +612,7 @@ class MemoryStore:
         self.plugin_installations: dict[tuple[str, str], PluginInstallation] = {}
         self.plugin_audit_events: list[PluginAuditEvent] = []
         self.capability_results: dict[str, CapabilityExecutionResult] = {}
+        self.research_evidence: dict[str, EvidenceRecord] = {}
         self.benchmark_tasks: dict[tuple[str, str], BenchmarkTask] = {}
         self.benchmark_runs: dict[str, BenchmarkRun] = {}
         self.architecture_metrics: dict[str, list[ArchitectureMetric]] = {}
@@ -1713,6 +1745,38 @@ class MemoryStore:
         return sorted(
             (item for item in self.capability_results.values() if item.request.run_id == run_id),
             key=lambda item: item.request.created_at,
+        )
+
+    async def save_research_evidence(self, record: EvidenceRecord) -> EvidenceRecord:
+        self.research_evidence[record.evidence_id] = record
+        return record
+
+    async def list_research_evidence(
+        self, run_id: str, capability_id: str | None = None
+    ) -> list[EvidenceRecord]:
+        return sorted(
+            (
+                record
+                for record in self.research_evidence.values()
+                if record.run_id == run_id
+                and (
+                    capability_id is None
+                    or record.candidate.provenance.capability_id == capability_id
+                )
+            ),
+            key=lambda record: (record.created_at, record.evidence_id),
+        )
+
+    async def get_research_evidence_by_digest(
+        self, run_id: str, content_digest: str
+    ) -> EvidenceRecord | None:
+        return next(
+            (
+                record
+                for record in await self.list_research_evidence(run_id)
+                if record.content_digest == content_digest
+            ),
+            None,
         )
 
     async def upsert_benchmark_task(self, task: BenchmarkTask) -> BenchmarkTask:
@@ -4201,6 +4265,7 @@ class PostgresStore:
                     output=result.output,
                     error=result.error.model_dump(mode="json") if result.error else None,
                     side_effect_operation_id=result.side_effect_operation_id,
+                    provenance=_result_provenance(result),
                     created_at=result.request.created_at,
                     completed_at=result.completed_at,
                 )
@@ -4211,6 +4276,7 @@ class PostgresStore:
                 row.output = result.output
                 row.error = result.error.model_dump(mode="json") if result.error else None
                 row.side_effect_operation_id = result.side_effect_operation_id
+                row.provenance = _result_provenance(result)
                 row.completed_at = result.completed_at
         return result
 
@@ -4232,9 +4298,75 @@ class PostgresStore:
                 error=row.error,
                 side_effect_operation_id=row.side_effect_operation_id,
                 completed_at=row.completed_at,
+                connector_id=(row.provenance or {}).get("connector_id"),
+                binding_id=(row.provenance or {}).get("binding_id"),
+                connection_id=(row.provenance or {}).get("connection_id"),
+                source_ids=(row.provenance or {}).get("source_ids", []),
             )
             for row in rows
         ]
+
+    async def save_research_evidence(self, record: EvidenceRecord) -> EvidenceRecord:
+        provenance = record.candidate.provenance
+        definition = record.model_dump(mode="json")
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(ResearchEvidenceRow).where(
+                    ResearchEvidenceRow.evidence_id == record.evidence_id
+                )
+            )
+            if row is None:
+                session.add(
+                    ResearchEvidenceRow(
+                        id=new_id("evidence"),
+                        evidence_id=record.evidence_id,
+                        run_id=record.run_id,
+                        capability_id=provenance.capability_id,
+                        connector_id=provenance.connector_id,
+                        source_id=provenance.source_id,
+                        content_digest=record.content_digest,
+                        trust=record.trust.value,
+                        trust_score=record.trust_score,
+                        definition=definition,
+                        created_at=record.created_at,
+                    )
+                )
+            else:
+                # Trust is re-labelled after verification, so the row is mutable in
+                # its trust columns; identity and digest are not rewritten.
+                row.trust = record.trust.value
+                row.trust_score = record.trust_score
+                row.definition = definition
+        return record
+
+    async def list_research_evidence(
+        self, run_id: str, capability_id: str | None = None
+    ) -> list[EvidenceRecord]:
+        query = (
+            select(ResearchEvidenceRow)
+            .where(ResearchEvidenceRow.run_id == run_id)
+            .order_by(ResearchEvidenceRow.created_at, ResearchEvidenceRow.evidence_id)
+        )
+        if capability_id is not None:
+            query = query.where(ResearchEvidenceRow.capability_id == capability_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [EvidenceRecord.model_validate(row.definition) for row in rows]
+
+    async def get_research_evidence_by_digest(
+        self, run_id: str, content_digest: str
+    ) -> EvidenceRecord | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(ResearchEvidenceRow)
+                .where(
+                    ResearchEvidenceRow.run_id == run_id,
+                    ResearchEvidenceRow.content_digest == content_digest,
+                )
+                .order_by(ResearchEvidenceRow.created_at, ResearchEvidenceRow.evidence_id)
+                .limit(1)
+            )
+        return EvidenceRecord.model_validate(row.definition) if row else None
 
     async def upsert_benchmark_task(self, task: BenchmarkTask) -> BenchmarkTask:
         async with self.sessions.begin() as session:

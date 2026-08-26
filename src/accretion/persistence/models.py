@@ -660,6 +660,38 @@ class McpServerEventRow(Base):
     )
 
 
+class ResearchEvidenceRow(Base):
+    """v0.3 M5 Evidence Store.
+
+    Deliberately not the orphaned ``evidence`` table: the v0.4 registry pins
+    ``EvidenceRef`` identity there, and squatting it would force a Major
+    migration later. No foreign key to ``runs``: evidence must outlive the run
+    it was gathered for, and a cascading delete would destroy it.
+    """
+
+    __tablename__ = "research_evidence"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    evidence_id: Mapped[str] = mapped_column(String(255), unique=True)
+    run_id: Mapped[str] = mapped_column(String(255))
+    capability_id: Mapped[str] = mapped_column(String(255))
+    connector_id: Mapped[str] = mapped_column(String(255))
+    source_id: Mapped[str] = mapped_column(String(1024))
+    content_digest: Mapped[str] = mapped_column(String(64))
+    trust: Mapped[str] = mapped_column(String(32))
+    trust_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_research_evidence_run_created", "run_id", "created_at"),
+        Index("ix_research_evidence_run_digest", "run_id", "content_digest"),
+        Index("ix_research_evidence_connector_capability", "connector_id", "capability_id"),
+        Index("ix_research_evidence_source", "source_id"),
+        Index("ix_research_evidence_trust", "trust"),
+    )
+
+
 class CapabilityPolicyRow(Base):
     __tablename__ = "policies"
 
@@ -687,6 +719,9 @@ class CapabilityRequestRow(Base):
     side_effect_operation_id: Mapped[str | None] = mapped_column(
         ForeignKey("side_effect_operations.id", ondelete="SET NULL"), nullable=True
     )
+    # v0.3 M5: which connector, binding and connection served the call, and the
+    # source ids it yielded. Nullable because every row written before M5 has none.
+    provenance: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

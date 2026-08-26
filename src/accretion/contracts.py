@@ -174,6 +174,7 @@ class VerificationTargetKind(StrEnum):
     GIT_DIFF = "GIT_DIFF"
     COMMAND_SUITE = "COMMAND_SUITE"
     TRAJECTORY_POLICY = "TRAJECTORY_POLICY"
+    EXTERNAL_EVIDENCE = "EXTERNAL_EVIDENCE"
 
 
 class IterationDirectiveKind(StrEnum):
@@ -581,6 +582,13 @@ class CapabilityExecutionResult(StrictModel):
     error: ErrorSummary | None = None
     side_effect_operation_id: str | None = None
     completed_at: datetime | None = None
+    # Which connector actually served the call. Additive-optional on purpose:
+    # results persisted before v0.3 M5 carry none of these keys and must still
+    # validate, so every field defaults and none may become required.
+    connector_id: str | None = None
+    binding_id: str | None = None
+    connection_id: str | None = None
+    source_ids: list[str] = Field(default_factory=list)
 
 
 class PrincipalType(StrEnum):
@@ -1324,6 +1332,13 @@ class VerificationTarget(StrictModel):
     require_git_changes: bool = True
     expected_diff_sha256: str | None = None
     command_suite_refs: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
+    """Evidence ids an EXTERNAL_EVIDENCE target is scoped to.
+
+    Additive and optional, so every persisted pre-M5 target still deserializes and
+    every non-research verifier sees a byte-identical target. Empty means "every
+    evidence record this run gathered", which is what the run manager builds.
+    """
 
 
 class VerificationContext(StrictModel):
@@ -1512,6 +1527,14 @@ class WorkflowNodeSpec(StrictModel):
     parent_key: str | None = None
     instruction: str | None = None
     loop: NodeLoopPolicy | None = None
+    # The section 27 exit seam: canonical capability ids the executor invokes when it
+    # reaches this node. Additive and optional on purpose --- every template persisted
+    # before v0.3 M5 carries no such key, and ``extra="forbid"`` would reject every one
+    # of them if this field were required. An empty list is the pre-M5 behaviour
+    # exactly, so a template that never mentions capabilities executes byte for byte as
+    # it did before. Ids are canonical, so a node names *what* it needs and never which
+    # connector serves it (AC3-RES-02).
+    capability_refs: list[str] = Field(default_factory=list)
 
 
 class WorkflowEdgeSpec(StrictModel):
@@ -1616,7 +1639,6 @@ class Checkpoint(StrictModel):
     workspace_diff_sha256: str | None = None
     side_effect_operation_id: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-
 
 
 
@@ -1895,3 +1917,113 @@ class AgentRuntime(Protocol):
     async def artifacts(self, run: RunRef) -> list[ArtifactRef]: ...
     async def usage(self, run: RunRef) -> UsageSnapshot: ...
     async def terminate(self, run: RunRef) -> None: ...
+
+
+class EvidenceClass(StrEnum):
+    """How the world was observed. Names are pinned by the v0.4 cross-release registry."""
+
+    DIGITAL = "DIGITAL"
+    SIMULATION = "SIMULATION"
+    PHYSICAL = "PHYSICAL"
+    HUMAN_ATTESTATION = "HUMAN_ATTESTATION"
+    EXTERNAL_SOURCE = "EXTERNAL_SOURCE"
+
+
+class EvidenceTrust(StrEnum):
+    """Ordered low to high. Assigned by the normalizer, never read from connector output."""
+
+    QUARANTINED = "QUARANTINED"
+    UNVERIFIED = "UNVERIFIED"
+    CORROBORATED = "CORROBORATED"
+    VERIFIED = "VERIFIED"
+
+
+class EvidenceProvenance(StrictModel):
+    """AC3-RES-03 as a type.
+
+    Connector, capability, query, timestamp and source identifier are required and
+    non-optional, so evidence that cannot say where it came from cannot be
+    constructed at all — the criterion is enforced by validation rather than by
+    reviewer discipline. ``binding_id`` and ``connection_id`` are optional because
+    a deterministic local source has neither.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    connector_id: str = Field(min_length=1, max_length=255)
+    capability_id: str = Field(min_length=1, max_length=255)
+    query: str = Field(min_length=1, max_length=4_000)
+    retrieved_at: datetime
+    source_id: str = Field(min_length=1, max_length=1_024)
+    binding_id: str | None = None
+    connection_id: str | None = None
+    source_uri: str | None = Field(default=None, max_length=2_048)
+
+
+class EvidenceCandidate(StrictModel):
+    """One normalized result (SDD 10.1), before any verifier has looked at it.
+
+    Backend-specific wire shapes are flattened here, which is what lets the
+    connector swap without the workflow's capability ids moving.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    candidate_id: str
+    evidence_class: EvidenceClass = EvidenceClass.EXTERNAL_SOURCE
+    title: str = Field(min_length=1, max_length=2_000)
+    snippet: str = Field(default="", max_length=8_000)
+    authors: list[str] = Field(default_factory=list)
+    identifiers: dict[str, str] = Field(default_factory=dict)
+    published_at: datetime | None = None
+    content_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    provenance: EvidenceProvenance
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class CitationCheck(StrictModel):
+    """One deterministic verification of a claimed citation against a resolver.
+
+    The check is the *evidence about the evidence*: it records what the candidate
+    claimed, what the resolver actually returned, and whether they agree.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    check_id: str
+    verifier_id: str = Field(min_length=1, max_length=255)
+    claimed_identifier: str = Field(min_length=1, max_length=1_024)
+    resolved_identifier: str | None = Field(default=None, max_length=1_024)
+    status: VerificationStatus
+    detail: str = Field(default="", max_length=4_000)
+    checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class EvidenceRecord(StrictModel):
+    """A stored, trust-labelled candidate — the unit the Evidence Store persists.
+
+    ``trust_score`` mirrors ``CandidateScore.total_score``: it is ``None`` unless
+    verifiers accepted the candidate, so unverified evidence is structurally
+    unrankable rather than merely low-scored (AC3-RES-04).
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    evidence_id: str
+    run_id: str
+    node_id: str | None = None
+    evidence_class: EvidenceClass = EvidenceClass.EXTERNAL_SOURCE
+    candidate: EvidenceCandidate
+    trust: EvidenceTrust = EvidenceTrust.UNVERIFIED
+    trust_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    citation_checks: list[CitationCheck] = Field(default_factory=list)
+    verification_ids: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @property
+    def content_digest(self) -> str:
+        """Promoted to an indexed column; the candidate remains the single source."""
+        return self.candidate.content_digest
+
+    @model_validator(mode="after")
+    def _unverified_is_unrankable(self) -> EvidenceRecord:
+        if self.trust in (EvidenceTrust.QUARANTINED, EvidenceTrust.UNVERIFIED):
+            if self.trust_score is not None:
+                raise ValueError(f"{self.trust.value} evidence must not carry a trust score")
+        return self
