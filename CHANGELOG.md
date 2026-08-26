@@ -4,7 +4,7 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
-Status: v0.3 milestones M0–M3 delivered on `develop`; parked 2026-08-26 before M4.
+Status: v0.3 milestones M0–M4 delivered on `develop`; parked 2026-08-26 before M5.
 
 ### Added
 
@@ -34,6 +34,22 @@ Status: v0.3 milestones M0–M3 delivered on `develop`; parked 2026-08-26 before
   `AC3-MCP-08`, plus a real SDK v2 ASGI server test and PostgreSQL migration
   round-trip coverage. Existing local stdio coverage continues to prove
   `AC3-MCP-01`.
+- Added the v0.3 M4 plugin manager: `MetaPluginManifest` alongside the unchanged
+  `MetaPlugin` registry projection, the SDD §20.3 nine-state lifecycle behind a
+  single audited transition, Ed25519 and digest-pinned trust levels with a
+  risk-to-trust floor, connector dependency resolution, workspace-scoped
+  installations over a global immutable version registry, install / enable /
+  disable / upgrade / rollback / remove routes, an append-only
+  `GET /api/v1/audit/plugins` trail, two bundled fixture packages, and migration
+  0014.
+- Added executable acceptance coverage for `AC3-PLG-01` through `AC3-PLG-06`,
+  including a structural test asserting `StateStore` exposes no deletion method
+  beyond `delete_secret_record`, so "removal cannot delete evidence" fails the
+  moment one is added.
+- Added the `docs/runbooks/v03-plugins.md` operator runbook, carrying ADR3-M4-001
+  (SDD §20.3 adopted over §9.2 for the plugin state machine).
+- Added milestone acceptance gates to CI: `check_acceptance.py --stage M1`
+  through `--stage M4` now run after the backend test suite.
 
 ### Changed
 
@@ -44,8 +60,16 @@ Status: v0.3 milestones M0–M3 delivered on `develop`; parked 2026-08-26 before
   principal is refused at the capability boundary, not only at HTTP (#77).
 - Generated frontend API types now include the connection, identity, and M3
   MCP server lifecycle routes.
-- `.env.example` documents the identity (`AUTH_MODE`, OIDC, session) and remote
-  MCP endpoint-policy settings.
+- `.env.example` documents the identity (`AUTH_MODE`, OIDC, session), remote
+  MCP endpoint-policy, and plugin trust settings.
+- `GET /api/v1/plugins` now filters by workspace membership. Built-in registry
+  rows stay visible to everyone; a row contributed by an installation is visible
+  only to members of the workspace that installed it. Before M4 every
+  authenticated principal saw every registry row, including another tenant's.
+- Capability resolution now treats a disabled plugin's capabilities as
+  non-executable. The resolver gates on the owning installation's state, so a
+  capability re-flagged `enabled=True` by hand still does not resolve while its
+  plugin is disabled, removed, or awaiting connector setup.
 
 ### Security
 
@@ -67,6 +91,29 @@ Status: v0.3 milestones M0–M3 delivered on `develop`; parked 2026-08-26 before
 - The M2 secret scan's OpenTelemetry guard now verifies that Accretion does not
   instrument OpenTelemetry and no tracer provider or SDK is configured, since
   the MCP SDK makes `opentelemetry-api` a transitive dependency.
+- Plugin manifests are requests, not grants (ADR3-006). Every capability a
+  package declares is put through the existing `CapabilityPolicyEngine`; the
+  complete grant set is computed before anything is registered; a denied
+  capability is never registered at all, and a package whose requests are only
+  partly granted installs `DISABLED` while one whose requests are wholly denied
+  installs `FAILED`. No plugin gains authority automatically.
+- Upgrade and rollback re-run the full policy evaluation against the new
+  manifest rather than inheriting the previous verdict, so a later version that
+  adds a permission must earn it on its own merits.
+- MCP servers declared by a plugin manifest are registered disabled and pass the
+  same M3 endpoint policy as operator-registered servers, so a manifest cannot
+  reach an endpoint the M3 routes would have refused.
+- Packages are verified before installation: the canonical manifest digest is
+  checked against the pinned digest, detached Ed25519 signatures are verified
+  against operator-configured keys, and a capability's risk level sets a minimum
+  trust floor. Unsigned packages install only when explicitly permitted, and a
+  `SHA256_PIN` alone never confers authorship.
+- Consent must echo the manifest digest the administrator was shown and may
+  narrow but never widen what policy granted.
+- Removal never deletes evidence. Disable and remove flip capability and binding
+  flags without deleting rows; `StateStore` exposes exactly one deletion method
+  in the whole interface (`delete_secret_record`), a structural test asserts it
+  gains no second, and migration 0014 introduces no `ON DELETE CASCADE`.
 
 ## [0.2.0] - 2026-08-24
 

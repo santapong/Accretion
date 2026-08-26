@@ -1,9 +1,10 @@
 # v0.3 prioritized backlog
 
-Status: M0–M3 delivered on `develop` (2026-08-26, `c0c7270`); work is parked
-before M4. Every M0–M3 acceptance criterion is proven by a claiming test
-(`make acceptance`); the remaining uncovered criteria are inherited v0.1/v0.2
-items listed in the [acceptance baseline](acceptance-baseline.md).
+Status: M0–M4 delivered on `develop` (M0–M3 at `ae97952`, M4 on
+`feature/v03-m4-plugin-manager`); work is parked before M5. Every M0–M4 acceptance
+criterion is proven by a claiming test (`make acceptance`); the remaining uncovered
+criteria are inherited v0.1/v0.2 items listed in the
+[acceptance baseline](acceptance-baseline.md).
 
 The normative contract remains [Accretion SDD v0.3](../../sdd/Accretion_SDD_v0.3.md).
 This ledger orders its existing milestones without changing acceptance criteria
@@ -17,8 +18,8 @@ or unlocking the hash-manifested v0.4+ designs.
 | 2 | M1 identity and SSO — **delivered** (#58) | Issuer/subject principals, workspace membership, OIDC Authorization Code + PKCE, and multi-user tests |
 | 3 | M2 token broker and OAuth connections — **delivered** (#62, #75, #77) | Encrypted refresh/revoke lifecycle with no token values in model, API, UI, events, or logs |
 | 4 | M3 remote MCP manager — **delivered** (#79) | Authenticated remote discovery, schema validation, health/circuit breaking, SSRF controls, and canonical capability bindings |
-| 5 | M4 plugin manager — **next** | Versioned manifest validation, permission requests without grants, enable/disable/upgrade, and historical provenance |
-| 6 | M5 research intelligence plugin | Provider-neutral research capabilities, normalized evidence, provenance, and citation verification |
+| 5 | M4 plugin manager — **delivered** | Versioned manifest validation, permission requests without grants, enable/disable/upgrade, and historical provenance |
+| 6 | M5 research intelligence plugin — **next** | Provider-neutral research capabilities, normalized evidence, provenance, and citation verification |
 | 7 | M6 frontend and administration | Plugins, Connections, MCP Servers, capability resolution, identity, and roles without exposing secrets |
 | 8 | M7 enterprise authorization | Optional EMA integration behind a feature flag after the standard OAuth path is stable |
 | 9 | M8 release hardening | Clean-checkout reproduction of every inherited v0.1, v0.2, and v0.3 MUST criterion |
@@ -122,6 +123,40 @@ facts worth carrying forward:
   changelog.~~ Done at the 2026-08-26 park.
 - ~~Add the identity settings introduced by M1 to `.env.example`.~~ Done at the
   2026-08-26 park, together with the M3 endpoint-policy settings.
+
+### v0.3 M4 — closed
+
+M4 shipped the plugin manager and proved AC3-PLG-01 through AC3-PLG-06. What a
+later reader needs to know without re-deriving it:
+
+- **The SDD names the plugin states twice and the lists differ.** §20.3 was adopted
+  over §9.2 and recorded as ADR3-M4-001 in the
+  [plugin manager runbook](../../runbooks/v03-plugins.md). §9.2's
+  `CONFIGURATION_REQUIRED` is the single dissenting token and `SETUP_REQUIRED` names
+  the same condition; only §20.3 carries `FAILED`, which AC3-PLG-02's policy-denial
+  branch needs as a terminal state. `docs/sdd/` is hash-manifested, so §9.2 keeps the
+  dissenting token until someone decides whether to correct it upstream or annotate it
+  as superseded.
+- **Installations are workspace-scoped; the version registry is global.**
+  `plugin_installations` is unique on `(workspace_id, plugin_id)`, mirroring M3's
+  remote MCP servers, while `plugin_versions` holds one immutable row per
+  `(plugin_id, version)` so a historical trace dereferences the version that actually
+  ran regardless of who still has it installed. The SDD states neither.
+- **Deferrals, stated rather than silent.** First-class `consent_records` and
+  `scope_grants` tables → M6 (consent is embedded in `PluginInstallation`, and the
+  lift is additive). YAML manifests → indefinite; JSON keeps digests consistent with
+  the governance checksum convention and adds no parser dependency, with the package
+  source as the single seam. Live plugin health probing → M5. `ui.pages` and
+  `node_badges` rendering → M6, validated and persisted here but drawn nowhere. Key
+  rotation/revocation and archive ingestion (zip-slip, quarantine) → v0.4. A real
+  `capability_policy_bypass` counter — §24.8 is currently a number with no counter
+  behind it — → M8.
+- **Open product question.** `allowlisted` means "trusted" while installation state
+  means "enabled", and `ExperienceService` filters replay on
+  `list_plugins(allowlisted_only=True)`. M4 deliberately pinned that behaviour with
+  regression tests rather than changing it: AC3-PLG-03 is about capability execution,
+  not replay. Whether a disabled-but-allowlisted plugin should block experience replay
+  is a product call for M6/M8.
 
 ## Locked boundary
 
