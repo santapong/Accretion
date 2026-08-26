@@ -55,8 +55,22 @@ class Settings(BaseSettings):
     plugin_trusted_keys: dict[str, str] = Field(default_factory=dict)
     plugin_allow_unverified_dev: bool = False
     plugin_builtin_ids: list[str] = Field(
-        default_factory=lambda: ["accretion-core-governance", "accretion-sample-plugin"]
+        default_factory=lambda: [
+            "accretion-core-governance",
+            "accretion-sample-plugin",
+            "accretion-research",
+        ]
     )
+    # Research intelligence (v0.3 M5). Off by default: the bundled connectors are
+    # faked, and a real upstream must not be reachable until an operator says so.
+    enable_research_plugin: bool = False
+    # Canonical connector the research workflow binds to. AC3-RES-02 swaps this
+    # without any workflow capability id changing.
+    research_connector_id: str = "research-openalex"
+    research_max_results: int = Field(default=25, ge=1, le=200)
+    # Upstream hosts the research adapter may reach. Empty means none, so enabling
+    # the plugin alone cannot open egress; the allowlist is the second gate.
+    research_allowed_hosts: list[str] = Field(default_factory=list)
 
     @property
     def worktree_dir(self) -> Path:

@@ -28,6 +28,7 @@ from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore, StateStore
 from accretion.redaction import redact_text
+from accretion.research.transforms import default_transform_registry
 from accretion.resolver import CapabilityResolver
 from accretion.secrets_store import EnvelopeSecretStore
 from accretion.token_broker import EncryptedTokenBroker
@@ -208,6 +209,10 @@ async def _serve() -> None:
         policy_id=settings.capability_policy_id,
         token_broker=token_broker,
         remote_mcp=remote_mcp,
+        # Without a registry no binding may name a transform, so every research
+        # binding's `output_transform_ref` would be unresolvable in the one process
+        # that actually serves capability calls to a running agent.
+        transforms=default_transform_registry(),
     )
     server = StdioMcpGateway(
         gateway, store, run_id, os.getenv("ACCRETION_GATEWAY_PRINCIPAL_ID") or None

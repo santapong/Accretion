@@ -5,6 +5,7 @@ import hashlib
 import json
 import os
 from collections.abc import Awaitable, Callable, Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
@@ -25,6 +26,7 @@ from accretion.contracts import (
     CapabilityKind,
     CapabilityPolicy,
     CapabilityRequest,
+    CapabilityResolutionOutcome,
     Connection,
     ConnectionRef,
     ConnectionScope,
@@ -35,6 +37,9 @@ from accretion.contracts import (
     CredentialReference,
     ErrorSummary,
     EventType,
+    EvidenceCandidate,
+    EvidenceRecord,
+    EvidenceTrust,
     IdempotencyMode,
     MetaPlugin,
     MetaSkill,
@@ -46,6 +51,13 @@ from accretion.ids import new_id
 from accretion.persistence.side_effects import SideEffectLedger, SideEffectStatus
 from accretion.persistence.store import StateStore
 from accretion.redaction import redact, redact_text, scrub_values
+from accretion.research.transforms import (
+    CANDIDATES_KEY,
+    TransformContext,
+    TransformRegistry,
+    request_query,
+)
+from accretion.resolver import CapabilityResolver
 from accretion.runtimes.common import make_event
 from accretion.token_broker import TokenBroker, TokenBrokerError
 
@@ -225,6 +237,27 @@ class CapabilityExecutor:
         return decoded
 
 
+SOURCE_IDS_KEY = "source_ids"
+"""Canonical key a normalized capability output uses to name the sources it cited."""
+
+
+def _output_source_ids(output: dict[str, Any] | None) -> list[str]:
+    """Read the source identifiers a capability's normalized output declares.
+
+    Capability output is untrusted, so only a list of non-empty strings under the
+    canonical key is accepted and anything else yields nothing. Capabilities that
+    declare no sources — every capability that predates v0.3 M5 — yield an empty
+    list, which is why the field could be added without touching a call site.
+    """
+
+    if not isinstance(output, dict):
+        return []
+    declared = output.get(SOURCE_IDS_KEY)
+    if not isinstance(declared, list):
+        return []
+    return [item for item in declared if isinstance(item, str) and item]
+
+
 def approval_binding(request: CapabilityRequest) -> str:
     bound = {
         "run_id": request.run_id,
@@ -255,6 +288,8 @@ class CapabilityGateway:
         notify: EventNotifier | None = None,
         token_broker: TokenBroker | None = None,
         remote_mcp: RemoteMcpManager | None = None,
+        transforms: TransformRegistry | None = None,
+        clock: Callable[[], datetime] | None = None,
     ) -> None:
         self.store = store
         self.side_effects = side_effects
@@ -268,6 +303,29 @@ class CapabilityGateway:
         # v0.1-style `credential_refs` and is deliberately left in place.
         self.token_broker = token_broker
         self.remote_mcp = remote_mcp
+        # SDD 7.6's per-binding transform seam. ``None`` means no binding may name
+        # a transform, which is exactly the pre-v0.3-M5 behaviour.
+        self.transforms = transforms
+        # Injectable so evidence timestamps come from one place and a test can
+        # bracket ``retrieved_at`` without patching the clock globally.
+        self.clock = clock or (lambda: datetime.now(UTC))
+
+    async def _connector_needs_credential(self, connection: ConnectionRef) -> bool:
+        """Whether the resolved connection's connector declares a credential at all.
+
+        Some connectors are credential-free by definition --- a local MCP adapter, for
+        instance --- and have no token handle to mint from. Demanding one would make
+        them unexecutable, so the question is asked of the *connector definition*,
+        which is exactly the test ``RemoteMcpManager.execute`` already applies before
+        deciding whether a missing token is an authorization failure.
+
+        Fails closed in both directions that matter: an unknown connector is treated
+        as needing a credential, and a connector declaring any auth type other than
+        ``NONE`` still goes through the Token Broker.
+        """
+
+        connector = await self.store.get_connector_definition(connection.connector_id)
+        return connector is None or connector.auth_type is not ConnectorAuthType.NONE
 
     async def _connection_credentials(
         self, connection: ConnectionRef, capability: Capability
@@ -316,6 +374,16 @@ class CapabilityGateway:
         connection: ConnectionRef | None = None,
         binding: CapabilityBinding | None = None,
     ) -> CapabilityExecutionResult:
+        # The resolved connection and binding say which backend actually served the
+        # call. They were previously read for credentials and then dropped, which
+        # left the stored result unable to name its own connector.
+        connector_id = (
+            connection.connector_id
+            if connection is not None
+            else (binding.connector_id if binding is not None else None)
+        )
+        binding_id = binding.binding_id if binding is not None else None
+        connection_id = connection.connection_id if connection is not None else None
         run = await self.store.get_run(request.run_id)
         if run is None:
             raise KeyError(request.run_id)
@@ -350,6 +418,9 @@ class CapabilityGateway:
                 authorization,
                 CapabilityExecutionStatus.DENIED,
                 ErrorSummary(code="CAPABILITY_UNKNOWN", message=authorization.reason),
+                connector_id=connector_id,
+                binding_id=binding_id,
+                connection_id=connection_id,
             )
         try:
             validate(instance=request.arguments, schema=capability.input_schema)
@@ -378,6 +449,9 @@ class CapabilityGateway:
                 authorization,
                 CapabilityExecutionStatus.DENIED,
                 ErrorSummary(code="CAPABILITY_DENIED", message=authorization.reason),
+                connector_id=connector_id,
+                binding_id=binding_id,
+                connection_id=connection_id,
             )
         if authorization.outcome is AuthorizationOutcome.REQUIRE_APPROVAL:
             approval = await self._ensure_approval(request)
@@ -386,6 +460,9 @@ class CapabilityGateway:
                 request=request,
                 authorization=authorization,
                 status=CapabilityExecutionStatus.REQUIRES_APPROVAL,
+                connector_id=connector_id,
+                binding_id=binding_id,
+                connection_id=connection_id,
             )
             await self.store.save_capability_result(result)
             if not await self._approval_event_exists(request.run_id, approval.approval_id):
@@ -402,7 +479,7 @@ class CapabilityGateway:
             return result
 
         credentials = self.broker.resolve(capability.credential_refs)
-        if connection is not None:
+        if connection is not None and await self._connector_needs_credential(connection):
             # AC3-SEC-03: connector-backed capabilities take their credential from the
             # broker, never from the resolver, the request, or the agent.
             try:
@@ -431,12 +508,23 @@ class CapabilityGateway:
             )
             operation_id = operation.operation_id
             if not created:
-                return await self._duplicate_result(run.provider, request, authorization, operation)
+                return await self._duplicate_result(
+                    run.provider,
+                    request,
+                    authorization,
+                    operation,
+                    connector_id=connector_id,
+                    binding_id=binding_id,
+                    connection_id=connection_id,
+                )
         executing = CapabilityExecutionResult(
             request=request,
             authorization=authorization,
             status=CapabilityExecutionStatus.EXECUTING,
             side_effect_operation_id=operation_id,
+            connector_id=connector_id,
+            binding_id=binding_id,
+            connection_id=connection_id,
         )
         await self.store.save_capability_result(executing)
         await self._event(
@@ -447,6 +535,10 @@ class CapabilityGateway:
             {"side_effect_operation_id": operation_id},
         )
         try:
+            # SDD 7.6: the canonical arguments have already been validated against the
+            # capability's own input_schema above, so the canonical schema stays
+            # authoritative and the transform maps -- it cannot widen or bypass.
+            arguments = self._transform_input(binding, request)
             # Scrub by value as well as by key: a capability can return its own
             # injected credential under a harmless key, which key-name redaction
             # cannot see (AC3-SEC-02).
@@ -456,16 +548,29 @@ class CapabilityGateway:
                 raw_output = await self.remote_mcp.execute(
                     binding,
                     connection,
-                    request.arguments,
+                    arguments,
                     credentials,
                     correlation_id=request.request_id,
                 )
             else:
                 raw_output = await self.executor.execute(
-                    capability, request.arguments, credentials
+                    capability, arguments, credentials
                 )
-            output = scrub_values(redact(raw_output), credentials.values())
+            # The output transform runs *before* the scrub / redact / validate chain,
+            # and that chain's order is unchanged: the transform only decides what the
+            # chain is handed. Normalized output is still redacted, still scrubbed of
+            # injected credential values, and still validated against the capability's
+            # declared output_schema -- a backend cannot buy leniency with a transform.
+            normalized = self._transform_output(
+                binding,
+                request,
+                raw_output,
+                connector_id=connector_id,
+                connection_id=connection_id,
+            )
+            output = scrub_values(redact(normalized), credentials.values())
             validate(instance=output, schema=capability.output_schema)
+            await self._record_evidence(request, output)
             if request.idempotency_key:
                 await self.side_effects.finish(
                     request.idempotency_key, succeeded=True, result=output
@@ -477,6 +582,10 @@ class CapabilityGateway:
                 CapabilityExecutionStatus.SUCCEEDED,
                 output=output,
                 operation_id=operation_id,
+                connector_id=connector_id,
+                binding_id=binding_id,
+                connection_id=connection_id,
+                source_ids=_output_source_ids(output),
             )
         except Exception as exc:
             error = ErrorSummary(
@@ -497,6 +606,102 @@ class CapabilityGateway:
                 CapabilityExecutionStatus.FAILED,
                 error,
                 operation_id=operation_id,
+                connector_id=connector_id,
+                binding_id=binding_id,
+                connection_id=connection_id,
+            )
+
+    def _transform_input(
+        self, binding: CapabilityBinding | None, request: CapabilityRequest
+    ) -> dict[str, Any]:
+        """Map canonical arguments onto the resolved backend's wire arguments.
+
+        A binding that names no transform -- every binding that predates v0.3 M5 --
+        returns the canonical arguments unchanged, so this is a no-op for them.
+        """
+
+        if self.transforms is None or binding is None:
+            return request.arguments
+        return self.transforms.apply_input(binding.input_transform_ref, request.arguments)
+
+    def _transform_output(
+        self,
+        binding: CapabilityBinding | None,
+        request: CapabilityRequest,
+        raw_output: Any,
+        *,
+        connector_id: str | None,
+        connection_id: str | None,
+    ) -> dict[str, Any]:
+        """Map the backend's wire result onto the canonical capability output.
+
+        Every value in the provenance context comes from the real execution path: the
+        resolved binding and connection, the canonical request, and the gateway clock.
+        Nothing is read back from connector output, so a connector cannot author the
+        record that says where it came from.
+        """
+
+        if self.transforms is None or binding is None:
+            if not isinstance(raw_output, dict):
+                raise RuntimeError("capability output must be an object")
+            return raw_output
+        return self.transforms.apply_output(
+            binding.output_transform_ref,
+            raw_output,
+            TransformContext(
+                capability_id=request.capability_id,
+                connector_id=connector_id or binding.connector_id,
+                query=request_query(request.arguments),
+                retrieved_at=self.clock(),
+                binding_id=binding.binding_id,
+                connection_id=connection_id,
+            ),
+        )
+
+    async def _record_evidence(
+        self, request: CapabilityRequest, output: dict[str, Any] | None
+    ) -> None:
+        """Persist normalized candidates as evidence, from the real execution path.
+
+        Written after validation, so the Evidence Store only ever holds output the
+        capability's own schema accepted. The trust label is a literal assigned here
+        and is never read from connector-supplied data: ``EvidenceCandidate`` carries
+        no trust field, so a payload claiming ``"trust": "VERIFIED"`` has nowhere to
+        land. Verifiers relabel the record later (AC3-RES-04); until then it is
+        UNVERIFIED and, by ``EvidenceRecord``'s own validator, unrankable.
+
+        Records are content-addressed: a candidate whose digest is already stored for
+        this run is not written twice, so the same paper reached through two backends
+        collapses to one piece of evidence with the provenance of the first.
+
+        Capabilities that return no ``candidates`` array -- every capability outside
+        the research package -- fall straight through.
+        """
+
+        if not isinstance(output, dict):
+            return
+        candidates = output.get(CANDIDATES_KEY)
+        if not isinstance(candidates, list):
+            return
+        for item in candidates:
+            if not isinstance(item, dict):
+                continue
+            candidate = EvidenceCandidate.model_validate(item)
+            existing = await self.store.get_research_evidence_by_digest(
+                request.run_id, candidate.content_digest
+            )
+            if existing is not None:
+                continue
+            await self.store.save_research_evidence(
+                EvidenceRecord(
+                    evidence_id=new_id("evidence"),
+                    run_id=request.run_id,
+                    node_id=request.node_id,
+                    evidence_class=candidate.evidence_class,
+                    candidate=candidate,
+                    trust=EvidenceTrust.UNVERIFIED,
+                    trust_score=None,
+                )
             )
 
     async def _approval_for(self, request: CapabilityRequest) -> ApprovalRecord | None:
@@ -540,6 +745,10 @@ class CapabilityGateway:
         request: CapabilityRequest,
         authorization: CapabilityAuthorization,
         operation: Any,
+        *,
+        connector_id: str | None = None,
+        binding_id: str | None = None,
+        connection_id: str | None = None,
     ) -> CapabilityExecutionResult:
         if operation.status is SideEffectStatus.SUCCEEDED:
             return await self._terminal(
@@ -549,6 +758,10 @@ class CapabilityGateway:
                 CapabilityExecutionStatus.SUCCEEDED,
                 output=redact(operation.result_payload or {}),
                 operation_id=operation.operation_id,
+                connector_id=connector_id,
+                binding_id=binding_id,
+                connection_id=connection_id,
+                source_ids=_output_source_ids(operation.result_payload),
             )
         if operation.status is SideEffectStatus.FAILED:
             return await self._terminal(
@@ -558,6 +771,9 @@ class CapabilityGateway:
                 CapabilityExecutionStatus.FAILED,
                 ErrorSummary(code="SIDE_EFFECT_PREVIOUSLY_FAILED", message="prior call failed"),
                 operation_id=operation.operation_id,
+                connector_id=connector_id,
+                binding_id=binding_id,
+                connection_id=connection_id,
             )
         return await self._terminal(
             provider,
@@ -569,6 +785,9 @@ class CapabilityGateway:
                 message="existing side-effect intent has no safe terminal result",
             ),
             operation_id=operation.operation_id,
+            connector_id=connector_id,
+            binding_id=binding_id,
+            connection_id=connection_id,
         )
 
     async def _terminal(
@@ -581,6 +800,10 @@ class CapabilityGateway:
         *,
         output: dict[str, Any] | None = None,
         operation_id: str | None = None,
+        connector_id: str | None = None,
+        binding_id: str | None = None,
+        connection_id: str | None = None,
+        source_ids: list[str] | None = None,
     ) -> CapabilityExecutionResult:
         result = CapabilityExecutionResult(
             request=request,
@@ -590,6 +813,10 @@ class CapabilityGateway:
             error=error,
             side_effect_operation_id=operation_id,
             completed_at=datetime.now(UTC),
+            connector_id=connector_id,
+            binding_id=binding_id,
+            connection_id=connection_id,
+            source_ids=list(source_ids) if source_ids else [],
         )
         await self.store.save_capability_result(result)
         event_type = (
@@ -638,6 +865,67 @@ class CapabilityGateway:
         )
         if self.notify is not None:
             await self.notify(request.run_id)
+
+
+@dataclass(slots=True)
+class GatewayCapabilityInvoker:
+    """Resolve a canonical capability id and execute it through the gateway.
+
+    This is the executor-side half of the section 27 exit criterion. A workflow node
+    names *what* it needs --- a capability id and nothing else --- and this object
+    turns that into a governed execution: the resolver picks the connection and the
+    binding, so the call site never learns which connector served it, and swapping
+    backends stays a binding change (AC3-RES-02).
+
+    Evidence is *not* normalized or persisted here. ``CapabilityGateway`` already does
+    both on its own execution path, after output-schema validation, which is the only
+    place a trust label is ever assigned. Duplicating it here would create a second
+    writer of the Evidence Store and a second opinion about trust.
+
+    Failures are returned, never raised: a research lookup that cannot resolve must
+    leave the node's existing outcome untouched rather than abort a run that was not
+    asking for research in the first place.
+    """
+
+    resolver: CapabilityResolver
+    gateway: CapabilityGateway
+    principal_id: str | None = None
+    workspace_id: str | None = None
+    declared_reason: str = "workflow capability reference"
+
+    async def __call__(
+        self,
+        *,
+        run_id: str,
+        node_id: str,
+        capability_id: str,
+        arguments: dict[str, Any],
+    ) -> CapabilityExecutionResult | None:
+        resolved = await self.resolver.resolve(
+            capability_id,
+            principal_id=self.principal_id,
+            workspace_id=self.workspace_id,
+        )
+        if resolved is None:
+            return None
+        if resolved.outcome not in {
+            CapabilityResolutionOutcome.OK,
+            CapabilityResolutionOutcome.NO_CONNECTOR_REQUIRED,
+        }:
+            return None
+        return await self.gateway.execute(
+            CapabilityRequest(
+                request_id=new_id("capability_request"),
+                run_id=run_id,
+                node_id=node_id,
+                capability_id=capability_id,
+                capability_version=resolved.capability.version,
+                arguments=arguments,
+                declared_reason=self.declared_reason,
+            ),
+            resolved.connection,
+            resolved.binding,
+        )
 
 
 async def _echo_handler(
