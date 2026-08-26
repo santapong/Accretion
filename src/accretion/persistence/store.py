@@ -43,6 +43,9 @@ from accretion.contracts import (
     MetaPlugin,
     MetaSkill,
     OAuthTransaction,
+    PluginAuditEvent,
+    PluginInstallation,
+    PluginVersionRecord,
     Principal,
     Project,
     PromptContract,
@@ -121,7 +124,10 @@ from accretion.persistence.models import (
     McpServerEventRow,
     McpServerRow,
     OAuthTransactionRow,
+    PluginAuditEventRow,
+    PluginInstallationRow,
     PluginRow,
+    PluginVersionRow,
     PrincipalRow,
     ProjectFeatureSettingsRow,
     ProjectRow,
@@ -402,6 +408,28 @@ class StateStore(Protocol):
     ) -> list[McpDiscoverySnapshot]: ...
     async def append_mcp_server_event(self, event: McpServerEvent) -> McpServerEvent: ...
     async def list_mcp_server_events(self, mcp_server_id: str) -> list[McpServerEvent]: ...
+    async def upsert_plugin_version(self, record: PluginVersionRecord) -> PluginVersionRecord: ...
+    async def get_plugin_version(
+        self, plugin_id: str, version: str
+    ) -> PluginVersionRecord | None: ...
+    async def list_plugin_versions(
+        self, plugin_id: str | None = None
+    ) -> list[PluginVersionRecord]: ...
+    async def upsert_plugin_installation(
+        self, installation: PluginInstallation
+    ) -> PluginInstallation: ...
+    async def get_plugin_installation(
+        self, workspace_id: str, plugin_id: str
+    ) -> PluginInstallation | None: ...
+    async def list_plugin_installations(
+        self, workspace_id: str | None = None
+    ) -> list[PluginInstallation]: ...
+    async def append_plugin_audit_event(self, event: PluginAuditEvent) -> PluginAuditEvent: ...
+    async def list_plugin_audit_events(
+        self,
+        plugin_id: str | None = None,
+        installation_id: str | None = None,
+    ) -> list[PluginAuditEvent]: ...
     async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy: ...
     async def get_capability_policy(
         self, policy_id: str, version: str | None = None
@@ -549,6 +577,9 @@ class MemoryStore:
         self.mcp_servers: dict[str, McpServerDefinition] = {}
         self.mcp_discovery_snapshots: dict[str, list[McpDiscoverySnapshot]] = {}
         self.mcp_server_events: dict[str, list[McpServerEvent]] = {}
+        self.plugin_versions: dict[tuple[str, str], PluginVersionRecord] = {}
+        self.plugin_installations: dict[tuple[str, str], PluginInstallation] = {}
+        self.plugin_audit_events: list[PluginAuditEvent] = []
         self.capability_results: dict[str, CapabilityExecutionResult] = {}
         self.benchmark_tasks: dict[tuple[str, str], BenchmarkTask] = {}
         self.benchmark_runs: dict[str, BenchmarkRun] = {}
@@ -1585,6 +1616,73 @@ class MemoryStore:
         return sorted(
             self.mcp_server_events.get(mcp_server_id, []),
             key=lambda item: item.created_at,
+        )
+
+    async def upsert_plugin_version(self, record: PluginVersionRecord) -> PluginVersionRecord:
+        key = (record.plugin_id, record.version)
+        current = self.plugin_versions.get(key)
+        if current is not None and current != record:
+            raise ValueError(f"plugin version {record.plugin_id}@{record.version} is immutable")
+        self.plugin_versions[key] = record
+        return record
+
+    async def get_plugin_version(self, plugin_id: str, version: str) -> PluginVersionRecord | None:
+        return self.plugin_versions.get((plugin_id, version))
+
+    async def list_plugin_versions(
+        self, plugin_id: str | None = None
+    ) -> list[PluginVersionRecord]:
+        return sorted(
+            (
+                record
+                for record in self.plugin_versions.values()
+                if plugin_id is None or record.plugin_id == plugin_id
+            ),
+            key=lambda record: (record.plugin_id, record.version),
+        )
+
+    async def upsert_plugin_installation(
+        self, installation: PluginInstallation
+    ) -> PluginInstallation:
+        self.plugin_installations[(installation.workspace_id, installation.plugin_id)] = (
+            installation
+        )
+        return installation
+
+    async def get_plugin_installation(
+        self, workspace_id: str, plugin_id: str
+    ) -> PluginInstallation | None:
+        return self.plugin_installations.get((workspace_id, plugin_id))
+
+    async def list_plugin_installations(
+        self, workspace_id: str | None = None
+    ) -> list[PluginInstallation]:
+        return sorted(
+            (
+                installation
+                for installation in self.plugin_installations.values()
+                if workspace_id is None or installation.workspace_id == workspace_id
+            ),
+            key=lambda installation: installation.installation_id,
+        )
+
+    async def append_plugin_audit_event(self, event: PluginAuditEvent) -> PluginAuditEvent:
+        self.plugin_audit_events.append(event)
+        return event
+
+    async def list_plugin_audit_events(
+        self,
+        plugin_id: str | None = None,
+        installation_id: str | None = None,
+    ) -> list[PluginAuditEvent]:
+        return sorted(
+            (
+                event
+                for event in self.plugin_audit_events
+                if (plugin_id is None or event.plugin_id == plugin_id)
+                and (installation_id is None or event.installation_id == installation_id)
+            ),
+            key=lambda event: (event.created_at, event.plugin_event_id),
         )
 
     async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy:
@@ -3905,6 +4003,148 @@ class PostgresStore:
                 )
             ).all()
         return [McpServerEvent.model_validate(row.definition) for row in rows]
+
+    async def upsert_plugin_version(self, record: PluginVersionRecord) -> PluginVersionRecord:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(PluginVersionRow).where(
+                    PluginVersionRow.plugin_id == record.plugin_id,
+                    PluginVersionRow.version == record.version,
+                )
+            )
+            definition = record.model_dump(mode="json")
+            if row is not None:
+                if row.definition != definition:
+                    raise ValueError(
+                        f"plugin version {record.plugin_id}@{record.version} is immutable"
+                    )
+                return PluginVersionRecord.model_validate(row.definition)
+            session.add(
+                PluginVersionRow(
+                    id=new_id("plugin_version"),
+                    plugin_version_id=record.plugin_version_id,
+                    plugin_id=record.plugin_id,
+                    version=record.version,
+                    manifest_digest=record.manifest_digest,
+                    trust_level=record.trust_level.value,
+                    definition=definition,
+                    created_at=record.created_at,
+                )
+            )
+        return record
+
+    async def get_plugin_version(self, plugin_id: str, version: str) -> PluginVersionRecord | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(PluginVersionRow).where(
+                    PluginVersionRow.plugin_id == plugin_id,
+                    PluginVersionRow.version == version,
+                )
+            )
+        return PluginVersionRecord.model_validate(row.definition) if row else None
+
+    async def list_plugin_versions(
+        self, plugin_id: str | None = None
+    ) -> list[PluginVersionRecord]:
+        query = select(PluginVersionRow).order_by(
+            PluginVersionRow.plugin_id, PluginVersionRow.version
+        )
+        if plugin_id is not None:
+            query = query.where(PluginVersionRow.plugin_id == plugin_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [PluginVersionRecord.model_validate(row.definition) for row in rows]
+
+    async def upsert_plugin_installation(
+        self, installation: PluginInstallation
+    ) -> PluginInstallation:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(PluginInstallationRow).where(
+                    PluginInstallationRow.workspace_id == installation.workspace_id,
+                    PluginInstallationRow.plugin_id == installation.plugin_id,
+                )
+            )
+            definition = installation.model_dump(mode="json")
+            if row is not None:
+                row.installation_id = installation.installation_id
+                row.version = installation.version
+                row.state = installation.state.value
+                row.trust_level = installation.trust_level.value
+                row.revision = installation.revision
+                row.definition = definition
+                row.updated_at = installation.updated_at
+            else:
+                session.add(
+                    PluginInstallationRow(
+                        id=new_id("plugin_installation"),
+                        installation_id=installation.installation_id,
+                        workspace_id=installation.workspace_id,
+                        plugin_id=installation.plugin_id,
+                        version=installation.version,
+                        state=installation.state.value,
+                        trust_level=installation.trust_level.value,
+                        revision=installation.revision,
+                        definition=definition,
+                        created_at=installation.created_at,
+                        updated_at=installation.updated_at,
+                    )
+                )
+        return installation
+
+    async def get_plugin_installation(
+        self, workspace_id: str, plugin_id: str
+    ) -> PluginInstallation | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(PluginInstallationRow).where(
+                    PluginInstallationRow.workspace_id == workspace_id,
+                    PluginInstallationRow.plugin_id == plugin_id,
+                )
+            )
+        return PluginInstallation.model_validate(row.definition) if row else None
+
+    async def list_plugin_installations(
+        self, workspace_id: str | None = None
+    ) -> list[PluginInstallation]:
+        query = select(PluginInstallationRow).order_by(PluginInstallationRow.installation_id)
+        if workspace_id is not None:
+            query = query.where(PluginInstallationRow.workspace_id == workspace_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [PluginInstallation.model_validate(row.definition) for row in rows]
+
+    async def append_plugin_audit_event(self, event: PluginAuditEvent) -> PluginAuditEvent:
+        async with self.sessions.begin() as session:
+            session.add(
+                PluginAuditEventRow(
+                    id=new_id("plugin_event"),
+                    plugin_event_id=event.plugin_event_id,
+                    plugin_id=event.plugin_id,
+                    installation_id=event.installation_id,
+                    event_type=event.event_type,
+                    correlation_id=event.correlation_id,
+                    definition=event.model_dump(mode="json"),
+                    created_at=event.created_at,
+                )
+            )
+        return event
+
+    async def list_plugin_audit_events(
+        self,
+        plugin_id: str | None = None,
+        installation_id: str | None = None,
+    ) -> list[PluginAuditEvent]:
+        query = select(PluginAuditEventRow).order_by(
+            PluginAuditEventRow.created_at, PluginAuditEventRow.plugin_event_id
+        )
+        if plugin_id is not None:
+            query = query.where(PluginAuditEventRow.plugin_id == plugin_id)
+        if installation_id is not None:
+            query = query.where(PluginAuditEventRow.installation_id == installation_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [PluginAuditEvent.model_validate(row.definition) for row in rows]
 
     async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy:
         async with self.sessions.begin() as session:

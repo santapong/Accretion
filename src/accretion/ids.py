@@ -68,6 +68,9 @@ _PREFIXES = {
     "mcp_server": "mcs",
     "mcp_snapshot": "mcp",
     "mcp_event": "mce",
+    "plugin_version": "plv",
+    "plugin_installation": "pli",
+    "plugin_event": "ple",
 }
 
 
