@@ -23,11 +23,15 @@ from accretion.contracts import (
     ConnectorAuthType,
     ConnectorDefinition,
     McpServerState,
+    PluginState,
     ResolvedCapability,
 )
 from accretion.persistence.store import StateStore
 
 _USABLE_STATUSES = {ConnectionStatus.ACTIVE, ConnectionStatus.DEGRADED}
+
+_PLUGIN_PROJECTION_KEY = "accretion"
+"""Where the plugin manager records the installation that owns a capability."""
 
 
 def _connection_ref(connection: Connection) -> ConnectionRef:
@@ -100,6 +104,84 @@ class CapabilityResolver:
                 return attempt
         return attempts[0]
 
+    async def _plugin_gate(
+        self,
+        capability: Capability,
+        binding: CapabilityBinding,
+        workspace_id: str | None,
+    ) -> ResolvedCapability | None:
+        """Refuse a plugin-contributed capability whose installation is not enabled.
+
+        Defence in depth for AC3-PLG-03. Disabling a plugin flips both the capability
+        and its bindings off, but a capability someone re-enables by hand — or one
+        left behind by a removed installation — must still not resolve. The gate is
+        keyed off the ``"accretion"`` provider projection the plugin manager writes,
+        so capabilities from every other source pass straight through.
+        """
+
+        projection = capability.provider_projections.get(_PLUGIN_PROJECTION_KEY)
+        if not isinstance(projection, dict):
+            return None
+        plugin_id = projection.get("plugin_id")
+        installation_id = projection.get("installation_id")
+        if not (isinstance(plugin_id, str) and isinstance(installation_id, str)):
+            # Not a plugin contribution. M3 writes this same key with an
+            # ``mcp_server_id`` instead, and passes straight through.
+            return None
+        # The capability registry is global; authority is not. Gate on the installation
+        # in the *resolving* workspace, falling back to the one that contributed the row
+        # when the caller named no workspace.
+        scope = workspace_id or projection.get("workspace_id")
+        installation = (
+            await self.store.get_plugin_installation(scope, plugin_id)
+            if isinstance(scope, str)
+            else None
+        )
+        if installation is None:
+            return ResolvedCapability(
+                capability=capability,
+                outcome=CapabilityResolutionOutcome.DISABLED,
+                binding=binding,
+                reason=f"plugin {plugin_id} is not installed in workspace {scope}",
+            )
+        if (
+            installation.workspace_id == projection.get("workspace_id")
+            and installation.installation_id != installation_id
+        ):
+            # A stale projection: the installation that contributed this row was
+            # replaced by a different one.
+            return ResolvedCapability(
+                capability=capability,
+                outcome=CapabilityResolutionOutcome.DISABLED,
+                binding=binding,
+                reason=f"plugin {plugin_id} was reinstalled since this capability was registered",
+            )
+        if installation.state is PluginState.SETUP_REQUIRED:
+            return ResolvedCapability(
+                capability=capability,
+                outcome=CapabilityResolutionOutcome.NO_CONNECTION,
+                binding=binding,
+                reason=f"plugin {plugin_id} still needs connector setup",
+            )
+        if installation.state is not PluginState.ENABLED:
+            return ResolvedCapability(
+                capability=capability,
+                outcome=CapabilityResolutionOutcome.DISABLED,
+                binding=binding,
+                reason=f"plugin {plugin_id} is {installation.state.value}",
+            )
+        if capability.capability_id not in installation.registered_capability_ids:
+            return ResolvedCapability(
+                capability=capability,
+                outcome=CapabilityResolutionOutcome.DISABLED,
+                binding=binding,
+                reason=(
+                    f"capability {capability.capability_id} is not registered by the "
+                    f"current installation of {plugin_id}"
+                ),
+            )
+        return None
+
     async def _resolve_binding(
         self,
         capability: Capability,
@@ -108,6 +190,9 @@ class CapabilityResolver:
         principal_id: str | None,
         workspace_id: str | None,
     ) -> ResolvedCapability:
+        plugin_gate = await self._plugin_gate(capability, binding, workspace_id)
+        if plugin_gate is not None:
+            return plugin_gate
         if binding.backend.type is CapabilityBackend.MCP:
             server = (
                 await self.store.get_mcp_server(binding.backend.server_ref)

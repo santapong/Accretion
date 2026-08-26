@@ -38,6 +38,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit/plugins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Plugin Audit Events */
+        get: operations["list_plugin_audit_events_api_v1_audit_plugins_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/callback": {
         parameters: {
             query?: never;
@@ -456,10 +473,140 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Plugins */
+        /**
+         * List Plugins
+         * @description Built-in plugins, plus whatever is installed in the caller's workspaces.
+         *
+         *     The v0.1 shape is unchanged so the console keeps rendering, but the listing is no
+         *     longer global: before M4 every authenticated principal saw every registry row,
+         *     including rows contributed by another tenant's installation.
+         */
         get: operations["list_plugins_api_v1_plugins_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Install Plugin */
+        post: operations["install_plugin_api_v1_plugins_install_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/installations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Plugin Installations */
+        get: operations["list_plugin_installations_api_v1_plugins_installations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/{plugin_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Plugin Detail */
+        get: operations["get_plugin_detail_api_v1_plugins__plugin_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Remove Plugin
+         * @description Retire an installation. Prior-run evidence is never touched (AC3-PLG-05).
+         */
+        delete: operations["remove_plugin_api_v1_plugins__plugin_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/{plugin_id}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable Plugin */
+        post: operations["disable_plugin_api_v1_plugins__plugin_id__disable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/{plugin_id}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enable Plugin */
+        post: operations["enable_plugin_api_v1_plugins__plugin_id__enable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/{plugin_id}/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rollback Plugin */
+        post: operations["rollback_plugin_api_v1_plugins__plugin_id__rollback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/{plugin_id}/upgrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upgrade Plugin */
+        post: operations["upgrade_plugin_api_v1_plugins__plugin_id__upgrade_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3936,6 +4083,51 @@ export interface components {
             /** Version */
             version: string;
         };
+        /**
+         * MetaPluginManifest
+         * @description SDD 9.1 package declaration. ``MetaPlugin`` stays its narrow registry projection.
+         */
+        MetaPluginManifest: {
+            /** Capabilities */
+            capabilities?: components["schemas"]["Capability"][];
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Id */
+            id: string;
+            /** Mcp Servers */
+            mcp_servers?: {
+                [key: string]: unknown;
+            }[];
+            /** Name */
+            name: string;
+            /** Optional Connectors */
+            optional_connectors?: components["schemas"]["PluginConnectorRequirement"][];
+            /** Policies */
+            policies?: string[];
+            /** Provider Projections */
+            provider_projections?: {
+                [key: string]: string;
+            };
+            /** Required Connectors */
+            required_connectors?: components["schemas"]["PluginConnectorRequirement"][];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            signature?: components["schemas"]["PluginSignature"] | null;
+            /** Skills */
+            skills?: components["schemas"]["MetaSkill"][];
+            ui?: components["schemas"]["PluginUiContribution"];
+            /** Verifiers */
+            verifiers?: string[];
+            /** Version */
+            version: string;
+        };
         /** MetaSkill */
         MetaSkill: {
             /** Activation Criteria */
@@ -4048,6 +4240,312 @@ export interface components {
          * @enum {string}
          */
         PlannerRuntime: "AUTO" | "CLAUDE" | "CODEX" | "DETERMINISTIC";
+        /**
+         * PluginAuditEvent
+         * @description Append-only lifecycle record (SDD 20.3). Written for every state transition.
+         */
+        PluginAuditEvent: {
+            /** Actor Principal Id */
+            actor_principal_id?: string | null;
+            /** Correlation Id */
+            correlation_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Details */
+            details?: {
+                [key: string]: unknown;
+            };
+            /** Event Type */
+            event_type: string;
+            from_state?: components["schemas"]["PluginState"] | null;
+            /** Installation Id */
+            installation_id?: string | null;
+            /** Plugin Event Id */
+            plugin_event_id: string;
+            /** Plugin Id */
+            plugin_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            to_state?: components["schemas"]["PluginState"] | null;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
+        /**
+         * PluginCapabilityDecision
+         * @enum {string}
+         */
+        PluginCapabilityDecision: "GRANTED" | "DENIED" | "DOWNGRADED_READ_ONLY";
+        /**
+         * PluginCapabilityGrant
+         * @description What the manifest requested next to what policy actually granted.
+         */
+        PluginCapabilityGrant: {
+            /** Capability Id */
+            capability_id: string;
+            /** @default GRANTED */
+            decision: components["schemas"]["PluginCapabilityDecision"];
+            /** Granted Permissions */
+            granted_permissions?: string[];
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /** Requested Permissions */
+            requested_permissions?: string[];
+        };
+        /**
+         * PluginConnectorRequirement
+         * @description A connector a plugin asks for; policy decides whether it is ever satisfied.
+         */
+        PluginConnectorRequirement: {
+            /** Connector Id */
+            connector_id: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /** Scopes */
+            scopes?: string[];
+        };
+        /** PluginConnectorResolution */
+        PluginConnectorResolution: {
+            /** Connection Id */
+            connection_id?: string | null;
+            /** Connector Id */
+            connector_id: string;
+            /** Missing Scopes */
+            missing_scopes?: string[];
+            /**
+             * Required
+             * @default true
+             */
+            required: boolean;
+            /**
+             * Satisfied
+             * @default false
+             */
+            satisfied: boolean;
+        };
+        /**
+         * PluginConsent
+         * @description Administrator consent, bound to the exact digest that was shown.
+         */
+        PluginConsent: {
+            /**
+             * Granted At
+             * Format: date-time
+             */
+            granted_at?: string;
+            /** Granted By Principal Id */
+            granted_by_principal_id: string;
+            /** Granted Capability Ids */
+            granted_capability_ids?: string[];
+            /** Manifest Digest */
+            manifest_digest: string;
+        };
+        /**
+         * PluginDetail
+         * @description The SDD 16.1 plugin detail projection, assembled from stored state.
+         */
+        PluginDetail: {
+            installation?: components["schemas"]["PluginInstallation"] | null;
+            /** Known Versions */
+            known_versions?: components["schemas"]["PluginRef"][];
+            /** Plugin Id */
+            plugin_id: string;
+            /** Recent Events */
+            recent_events?: components["schemas"]["PluginAuditEvent"][];
+            registry_entry?: components["schemas"]["MetaPlugin"] | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            version_record?: components["schemas"]["PluginVersionRecord"] | null;
+        };
+        /**
+         * PluginInstallRequest
+         * @description Install or upgrade a package into one workspace.
+         *
+         *     ``consent_digest`` must echo the manifest digest the administrator was shown, and
+         *     ``consent_capability_ids`` may narrow what policy granted but never widen it.
+         */
+        PluginInstallRequest: {
+            /** Consent Capability Ids */
+            consent_capability_ids?: string[];
+            /** Consent Digest */
+            consent_digest: string;
+            /** Expected Digest */
+            expected_digest?: string | null;
+            /** Reference */
+            reference: string;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * PluginInstallation
+         * @description Mutable, workspace-scoped lifecycle state. Never stored in ``MetaPlugin``.
+         */
+        PluginInstallation: {
+            /** Capability Grants */
+            capability_grants?: components["schemas"]["PluginCapabilityGrant"][];
+            /** Connector Resolutions */
+            connector_resolutions?: components["schemas"]["PluginConnectorResolution"][];
+            consent?: components["schemas"]["PluginConsent"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Failure Reason */
+            failure_reason?: string | null;
+            /** Installation Id */
+            installation_id: string;
+            /** Installed By Principal Id */
+            installed_by_principal_id?: string | null;
+            /** Manifest Digest */
+            manifest_digest: string;
+            /** Plugin Id */
+            plugin_id: string;
+            /** Previous Version */
+            previous_version?: string | null;
+            /** Registered Capability Ids */
+            registered_capability_ids?: string[];
+            /** Registered Mcp Server Ids */
+            registered_mcp_server_ids?: string[];
+            /** Registered Skill Ids */
+            registered_skill_ids?: string[];
+            /** Requested Capability Ids */
+            requested_capability_ids?: string[];
+            /**
+             * Revision
+             * @default 1
+             */
+            revision: number;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** @default DISCOVERED */
+            state: components["schemas"]["PluginState"];
+            /** @default UNVERIFIED_DEV */
+            trust_level: components["schemas"]["PluginTrustLevel"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at?: string;
+            /** Version */
+            version: string;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * PluginRef
+         * @description The locked v0.4 historical reference triple. Nothing may be added to it.
+         */
+        PluginRef: {
+            /** Manifest Digest */
+            manifest_digest: string;
+            /** Plugin Id */
+            plugin_id: string;
+            /** Version */
+            version: string;
+        };
+        /**
+         * PluginSignature
+         * @description Detached authenticity claim over the manifest digest.
+         */
+        PluginSignature: {
+            /** @default SHA256_PIN */
+            algorithm: components["schemas"]["PluginSignatureAlgorithm"];
+            /**
+             * Key Id
+             * @default
+             */
+            key_id: string;
+            /** Signed At */
+            signed_at?: string | null;
+            /** Value */
+            value: string;
+        };
+        /**
+         * PluginSignatureAlgorithm
+         * @enum {string}
+         */
+        PluginSignatureAlgorithm: "SHA256_PIN" | "ED25519";
+        /**
+         * PluginState
+         * @description SDD 20.3 plugin lifecycle states, adopted verbatim (ADR3-M4-001).
+         * @enum {string}
+         */
+        PluginState: "DISCOVERED" | "VALIDATING" | "INSTALLED" | "SETUP_REQUIRED" | "READY" | "ENABLED" | "DISABLED" | "FAILED" | "REMOVED";
+        /**
+         * PluginTrustLevel
+         * @enum {string}
+         */
+        PluginTrustLevel: "BUILTIN" | "WORKSPACE_APPROVED" | "SIGNED_THIRD_PARTY" | "UNVERIFIED_DEV" | "BLOCKED";
+        /**
+         * PluginUiContribution
+         * @description Declarative-only UI surface (OQ3-09); validated and persisted, rendered in M6.
+         */
+        PluginUiContribution: {
+            /** Node Badges */
+            node_badges?: {
+                [key: string]: unknown;
+            }[];
+            /** Pages */
+            pages?: {
+                [key: string]: unknown;
+            }[];
+        };
+        /**
+         * PluginVersionRecord
+         * @description Immutable global registry entry for one ``(plugin_id, version)`` manifest.
+         */
+        PluginVersionRecord: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            manifest: components["schemas"]["MetaPluginManifest"];
+            /** Manifest Digest */
+            manifest_digest: string;
+            /** Plugin Id */
+            plugin_id: string;
+            /** Plugin Version Id */
+            plugin_version_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Source Uri */
+            source_uri?: string | null;
+            /** @default UNVERIFIED_DEV */
+            trust_level: components["schemas"]["PluginTrustLevel"];
+            /** Version */
+            version: string;
+        };
+        /** PluginWorkspaceRequest */
+        PluginWorkspaceRequest: {
+            /** Workspace Id */
+            workspace_id: string;
+        };
         /** Principal */
         Principal: {
             /**
@@ -5718,6 +6216,38 @@ export interface operations {
             };
         };
     };
+    list_plugin_audit_events_api_v1_audit_plugins_get: {
+        parameters: {
+            query?: {
+                plugin_id?: string | null;
+                workspace_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginAuditEvent"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     auth_callback_api_v1_auth_callback_get: {
         parameters: {
             query: {
@@ -6425,6 +6955,277 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MetaPlugin"][];
+                };
+            };
+        };
+    };
+    install_plugin_api_v1_plugins_install_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginInstallRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginInstallation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_plugin_installations_api_v1_plugins_installations_get: {
+        parameters: {
+            query?: {
+                workspace_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginInstallation"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plugin_detail_api_v1_plugins__plugin_id__get: {
+        parameters: {
+            query?: {
+                workspace_id?: string | null;
+            };
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_plugin_api_v1_plugins__plugin_id__delete: {
+        parameters: {
+            query: {
+                workspace_id: string;
+                force?: boolean;
+            };
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginInstallation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disable_plugin_api_v1_plugins__plugin_id__disable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginWorkspaceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginInstallation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enable_plugin_api_v1_plugins__plugin_id__enable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginWorkspaceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginInstallation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rollback_plugin_api_v1_plugins__plugin_id__rollback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginWorkspaceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginInstallation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upgrade_plugin_api_v1_plugins__plugin_id__upgrade_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginInstallRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginInstallation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

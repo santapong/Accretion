@@ -1,0 +1,88 @@
+{
+  "schema_version": "1.0",
+  "id": "accretion-sample-plugin",
+  "version": "0.1.0",
+  "name": "Accretion Sample Plugin",
+  "description": "A conformant SDD 9.1 package used to exercise the plugin manager end to end.",
+  "capabilities": [
+    {
+      "capability_id": "accretion.sample.echo",
+      "kind": "TOOL",
+      "version": "0.1.0",
+      "description": "Echo a message through a plugin-contributed capability.",
+      "input_schema": {
+        "type": "object",
+        "properties": {"message": {"type": "string", "maxLength": 2000}},
+        "required": ["message"],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {"message": {"type": "string"}},
+        "required": ["message"],
+        "additionalProperties": false
+      },
+      "risk": "LOW",
+      "idempotency": "NONE",
+      "backend": "PYTHON",
+      "required_permissions": ["accretion.sample.read"],
+      "provider_projections": {
+        "claude": {"tool_name": "accretion_sample_echo", "surface": "tool"},
+        "codex": {"function_name": "accretionSampleEcho", "surface": "function"}
+      }
+    },
+    {
+      "capability_id": "accretion.sample.record",
+      "kind": "TOOL",
+      "version": "0.1.0",
+      "description": "Record a sample value, exercising the side-effecting grant path.",
+      "input_schema": {
+        "type": "object",
+        "properties": {"value": {"type": "string", "maxLength": 2000}},
+        "required": ["value"],
+        "additionalProperties": false
+      },
+      "output_schema": {
+        "type": "object",
+        "properties": {"recorded": {"type": "boolean"}, "value": {"type": "string"}},
+        "required": ["recorded", "value"],
+        "additionalProperties": false
+      },
+      "risk": "MEDIUM",
+      "side_effects": ["writes a durable sample record"],
+      "idempotency": "KEYED",
+      "backend": "PYTHON",
+      "required_permissions": ["accretion.sample.read", "accretion.sample.write"],
+      "provider_projections": {
+        "claude": {"tool_name": "accretion_sample_record", "surface": "tool"},
+        "codex": {"function_name": "accretionSampleRecord", "surface": "function"}
+      }
+    }
+  ],
+  "skills": [
+    {
+      "schema_version": "1.0",
+      "skill_id": "accretion-sample-usage",
+      "version": "0.1.0",
+      "description": "Use the sample plugin's echo and record capabilities.",
+      "instructions": "Call accretion.sample.echo to read and accretion.sample.record to write.",
+      "required_capabilities": ["accretion.sample.echo", "accretion.sample.record"]
+    },
+    {
+      "schema_version": "1.0",
+      "skill_id": "accretion-sample-read-only",
+      "version": "0.1.0",
+      "description": "Read-only use of the sample plugin.",
+      "instructions": "Call accretion.sample.echo.",
+      "required_capabilities": ["accretion.sample.echo"]
+    }
+  ],
+  "optional_connectors": [
+    {"connector_id": "slack", "scopes": [], "reason": "Optional notification target."}
+  ],
+  "policies": ["local-capability-policy"],
+  "provider_projections": {
+    "claude": "projections/claude.json",
+    "codex": "projections/codex.json"
+  }
+}
