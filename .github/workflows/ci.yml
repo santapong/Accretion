@@ -39,6 +39,13 @@ jobs:
       - run: uv run --no-sync alembic downgrade base
       - run: uv run --no-sync alembic upgrade head
       - run: uv run --no-sync pytest -p pytest_asyncio.plugin
+      # Milestone acceptance gates. Stage-scoped on purpose: the full harness still
+      # reports 16 unmet MUSTs, all inherited v0.1/v0.2 criteria, and gating on it is
+      # M8's job. Each stage below passes today.
+      - run: uv run --no-sync python scripts/check_acceptance.py --stage M1
+      - run: uv run --no-sync python scripts/check_acceptance.py --stage M2
+      - run: uv run --no-sync python scripts/check_acceptance.py --stage M3
+      - run: uv run --no-sync python scripts/check_acceptance.py --stage M4
 
   frontend:
     runs-on: ubuntu-latest
