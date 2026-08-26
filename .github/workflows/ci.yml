@@ -46,6 +46,7 @@ jobs:
       - run: uv run --no-sync python scripts/check_acceptance.py --stage M2
       - run: uv run --no-sync python scripts/check_acceptance.py --stage M3
       - run: uv run --no-sync python scripts/check_acceptance.py --stage M4
+      - run: uv run --no-sync python scripts/check_acceptance.py --stage M5
 
   frontend:
     runs-on: ubuntu-latest

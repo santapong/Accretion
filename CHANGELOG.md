@@ -4,7 +4,7 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
-Status: v0.3 milestones M0–M4 delivered on `develop`; parked 2026-08-26 before M5.
+Status: v0.3 milestones M0–M5 delivered on `develop`; parked 2026-08-26 before M6.
 
 ### Added
 
@@ -49,9 +49,51 @@ Status: v0.3 milestones M0–M4 delivered on `develop`; parked 2026-08-26 before
 - Added the `docs/runbooks/v03-plugins.md` operator runbook, carrying ADR3-M4-001
   (SDD §20.3 adopted over §9.2 for the plugin state machine).
 - Added milestone acceptance gates to CI: `check_acceptance.py --stage M1`
-  through `--stage M4` now run after the backend test suite.
+  through `--stage M5` now run after the backend test suite.
+- Added the v0.3 M5 research intelligence plugin: the bundled
+  `accretion-research` package declaring five skills and five canonical
+  capabilities over two deliberately divergent MCP backends, the SDD §7.6
+  transform seam that normalizes both wire shapes into one `EvidenceCandidate`
+  stream, the `research_evidence` Evidence Store with content-addressed
+  deduplication and migration 0015, three research verifiers behind a new
+  `EXTERNAL_EVIDENCE` verification target, and the `EvidenceClass` /
+  `EvidenceTrust` / `EvidenceProvenance` / `EvidenceCandidate` /
+  `EvidenceRecord` / `CitationCheck` contracts.
+- Added `WorkflowNodeSpec.capability_refs` and carried it through
+  `_materialize_node` into `RunManager`, closing SDD §27's exit criterion: a
+  dynamic workflow now names a canonical capability id and nothing else, and
+  the resolver and gateway decide which connector serves it. The field is
+  additive and optional, so every template persisted before M5 still
+  deserializes and an empty list is the pre-M5 execution path unchanged.
+- Added `GET /api/v1/runs/{run_id}/research-evidence`, a read-only projection
+  of a run's Evidence Store in the store's deterministic
+  `(created_at, evidence_id)` order, gated by workspace membership.
+- Added executable acceptance coverage for `AC3-RES-01` through `AC3-RES-04`,
+  including a backend swap proven to change exactly the `enabled` field on two
+  binding rows, a poisoning test in which a payload claiming
+  `"trust": "VERIFIED"` still stores as unverified, and a ranking test in which
+  an unverified record with `similarity = 1.0` still sorts below a verified
+  record with `similarity = 0.01`.
+- Added the `docs/runbooks/v03-research.md` operator runbook, carrying
+  ADR3-M5-001 (SDD §10 adopted over §9.1 for the research capability surface,
+  because §9.1's `research.citation.resolve` resolves rather than verifies and
+  so cannot satisfy `AC3-RES-01`) and ADR3-M5-002 (`github.search` in,
+  `python.execute` out, enforced by a test rather than by prose).
+- Added the research settings to `.env.example` and `config.py`. The plugin is
+  off by default behind two independent gates:
+  `ACCRETION_ENABLE_RESEARCH_PLUGIN` and an
+  `ACCRETION_RESEARCH_ALLOWED_HOSTS` allowlist that starts empty, so enabling
+  the plugin alone opens no upstream egress.
 
 ### Changed
+
+- The API process now builds its `VerifierRegistry` explicitly, including
+  `research_verifiers(store)`, and wires a `GatewayCapabilityInvoker` onto the
+  run manager. Both closed the same class of gap: a component that resolved in
+  tests and raised in production because only the test supplied it.
+- The MCP gateway process now passes `default_transform_registry()` to
+  `CapabilityGateway`, so a binding's `output_transform_ref` resolves in the one
+  process that actually serves capability calls to a running agent.
 
 - Capability resolution now treats disabled remote bindings and unavailable MCP
   server lifecycle states as non-executable, and remote calls pass through the
