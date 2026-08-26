@@ -47,6 +47,9 @@ class Settings(BaseSettings):
     enable_dynamic_workflows: bool = False
     enable_candidate_search: bool = False
     enable_experience_retrieval: bool = False
+    mcp_allowed_hosts: list[str] = Field(default_factory=list)
+    mcp_allowed_ports: list[int] = Field(default_factory=lambda: [443])
+    mcp_allow_local_http: bool = False
 
     @property
     def worktree_dir(self) -> Path:

@@ -22,14 +22,7 @@ V01-P4-004 = { verification = "frontend", evidence = "apps/ui/src/App.test.tsx (
 V02-P6-008 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:314 renders P6 candidate lineage, provenance, scores, spend, and selection reason" }
 V02-P7-007 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:373 renders P7 experience provenance, compatibility, transfer risk, and reused segments" }
 
-# --- Not yet due: milestones M3-M6 have not started -------------------------
-AC3-MCP-02 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
-AC3-MCP-03 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
-AC3-MCP-04 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
-AC3-MCP-05 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
-AC3-MCP-06 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
-AC3-MCP-07 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
-AC3-MCP-08 = { verification = "not_yet_due", reason = "M3 remote MCP manager" }
+# --- Not yet due: milestones M4-M6 have not started -------------------------
 AC3-PLG-01 = { verification = "not_yet_due", reason = "M4 plugin manager" }
 AC3-PLG-02 = { verification = "not_yet_due", reason = "M4 plugin manager" }
 AC3-PLG-03 = { verification = "not_yet_due", reason = "M4 plugin manager" }

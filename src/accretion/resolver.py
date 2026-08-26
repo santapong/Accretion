@@ -9,8 +9,11 @@ the M0 compatibility guarantee. Runtimes only ever see `ConnectionRef`
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 from accretion.contracts import (
     Capability,
+    CapabilityBackend,
     CapabilityBinding,
     CapabilityResolutionOutcome,
     Connection,
@@ -19,6 +22,7 @@ from accretion.contracts import (
     ConnectionStatus,
     ConnectorAuthType,
     ConnectorDefinition,
+    McpServerState,
     ResolvedCapability,
 )
 from accretion.persistence.store import StateStore
@@ -67,13 +71,20 @@ class CapabilityResolver:
                 reason="capability is disabled",
             )
         bindings = await self.store.list_capability_bindings(
-            capability_id=capability.capability_id
+            capability_id=capability.capability_id, enabled_only=False
         )
         if not bindings:
             return ResolvedCapability(
                 capability=capability,
                 outcome=CapabilityResolutionOutcome.NO_CONNECTOR_REQUIRED,
                 reason="capability has no connector binding",
+            )
+        enabled_bindings = [binding for binding in bindings if binding.enabled]
+        if not enabled_bindings:
+            return ResolvedCapability(
+                capability=capability,
+                outcome=CapabilityResolutionOutcome.DISABLED,
+                reason="all capability bindings are disabled",
             )
         # A capability may be bound to several connectors. Try each in the store's
         # deterministic order and take the first that fully resolves, rather than
@@ -82,7 +93,7 @@ class CapabilityResolver:
             await self._resolve_binding(
                 capability, binding, principal_id=principal_id, workspace_id=workspace_id
             )
-            for binding in bindings
+            for binding in enabled_bindings
         ]
         for attempt in attempts:
             if attempt.outcome is CapabilityResolutionOutcome.OK:
@@ -97,6 +108,35 @@ class CapabilityResolver:
         principal_id: str | None,
         workspace_id: str | None,
     ) -> ResolvedCapability:
+        if binding.backend.type is CapabilityBackend.MCP:
+            server = (
+                await self.store.get_mcp_server(binding.backend.server_ref)
+                if binding.backend.server_ref
+                else None
+            )
+            if (
+                server is None
+                or not server.enabled
+                or server.state not in {
+                McpServerState.READY,
+                McpServerState.DEGRADED,
+                }
+                or (
+                    server.circuit_open_until is not None
+                    and server.circuit_open_until > datetime.now(UTC)
+                )
+            ):
+                outcome = (
+                    CapabilityResolutionOutcome.REQUIRE_REAUTH
+                    if server is not None and server.state is McpServerState.AUTH_REQUIRED
+                    else CapabilityResolutionOutcome.DISABLED
+                )
+                return ResolvedCapability(
+                    capability=capability,
+                    outcome=outcome,
+                    binding=binding,
+                    reason="remote MCP server is not ready",
+                )
         connector = await self.store.get_connector_definition(binding.connector_id)
         if connector is None:
             return ResolvedCapability(

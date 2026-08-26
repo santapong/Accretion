@@ -6,7 +6,7 @@ import json
 import os
 from collections.abc import Awaitable, Callable, Mapping
 from datetime import UTC, datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from jsonschema import ValidationError, validate
 
@@ -48,6 +48,9 @@ from accretion.persistence.store import StateStore
 from accretion.redaction import redact, redact_text, scrub_values
 from accretion.runtimes.common import make_event
 from accretion.token_broker import TokenBroker, TokenBrokerError
+
+if TYPE_CHECKING:
+    from accretion.mcp.manager import RemoteMcpManager
 
 CapabilityHandler = Callable[[dict[str, Any], Mapping[str, str]], Awaitable[dict[str, Any]]]
 EventNotifier = Callable[[str], Awaitable[None]]
@@ -251,6 +254,7 @@ class CapabilityGateway:
         policy_id: str = "local-capability-policy",
         notify: EventNotifier | None = None,
         token_broker: TokenBroker | None = None,
+        remote_mcp: RemoteMcpManager | None = None,
     ) -> None:
         self.store = store
         self.side_effects = side_effects
@@ -263,6 +267,7 @@ class CapabilityGateway:
         # capabilities (ADR3-004). The env-var CredentialBroker above still serves
         # v0.1-style `credential_refs` and is deliberately left in place.
         self.token_broker = token_broker
+        self.remote_mcp = remote_mcp
 
     async def _connection_credentials(
         self, connection: ConnectionRef, capability: Capability
@@ -306,7 +311,10 @@ class CapabilityGateway:
         return {f"connection:{stored.connector_id}": material.reveal()}
 
     async def execute(
-        self, request: CapabilityRequest, connection: ConnectionRef | None = None
+        self,
+        request: CapabilityRequest,
+        connection: ConnectionRef | None = None,
+        binding: CapabilityBinding | None = None,
     ) -> CapabilityExecutionResult:
         run = await self.store.get_run(request.run_id)
         if run is None:
@@ -397,10 +405,21 @@ class CapabilityGateway:
         if connection is not None:
             # AC3-SEC-03: connector-backed capabilities take their credential from the
             # broker, never from the resolver, the request, or the agent.
-            credentials = {
-                **credentials,
-                **await self._connection_credentials(connection, capability),
-            }
+            try:
+                connection_credentials = await self._connection_credentials(
+                    connection, capability
+                )
+            except CredentialUnavailableError:
+                if (
+                    capability.backend is CapabilityBackend.MCP
+                    and binding is not None
+                    and self.remote_mcp is not None
+                ):
+                    await self.remote_mcp.mark_auth_required(
+                        binding, connection, correlation_id=request.request_id
+                    )
+                raise
+            credentials = {**credentials, **connection_credentials}
         operation_id: str | None = None
         if capability.side_effects:
             assert request.idempotency_key is not None
@@ -431,10 +450,21 @@ class CapabilityGateway:
             # Scrub by value as well as by key: a capability can return its own
             # injected credential under a harmless key, which key-name redaction
             # cannot see (AC3-SEC-02).
-            output = scrub_values(
-                redact(await self.executor.execute(capability, request.arguments, credentials)),
-                credentials.values(),
-            )
+            if capability.backend is CapabilityBackend.MCP:
+                if binding is None or self.remote_mcp is None:
+                    raise RuntimeError("remote MCP execution is not configured")
+                raw_output = await self.remote_mcp.execute(
+                    binding,
+                    connection,
+                    request.arguments,
+                    credentials,
+                    correlation_id=request.request_id,
+                )
+            else:
+                raw_output = await self.executor.execute(
+                    capability, request.arguments, credentials
+                )
+            output = scrub_values(redact(raw_output), credentials.values())
             validate(instance=output, schema=capability.output_schema)
             if request.idempotency_key:
                 await self.side_effects.finish(

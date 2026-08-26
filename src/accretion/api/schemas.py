@@ -12,6 +12,10 @@ from accretion.contracts import (
     ConnectionScope,
     ConnectionStatus,
     ExecutionMode,
+    McpDiscoveryPolicy,
+    McpHealthPolicy,
+    McpToolMapping,
+    McpTrustLevel,
     Principal,
     Provider,
     RiskLevel,
@@ -183,6 +187,21 @@ class ConnectionSummary(BaseModel):
     workspace_shareable: bool = False
     created_at: datetime
     last_health_check: datetime | None = None
+
+
+class McpServerCreate(BaseModel):
+    workspace_id: str
+    connector_id: str
+    name: str = Field(min_length=1, max_length=255)
+    endpoint: str
+    protocol_versions: list[str] = Field(default_factory=lambda: ["2026-07-28"])
+    auth_profile_ref: str | None = None
+    trust_level: McpTrustLevel = McpTrustLevel.RESTRICTED
+    health_policy: McpHealthPolicy = Field(default_factory=McpHealthPolicy)
+    discovery_policy: McpDiscoveryPolicy = Field(default_factory=McpDiscoveryPolicy)
+    allowed_tool_patterns: list[str] = Field(default_factory=lambda: ["*"])
+    denied_tool_patterns: list[str] = Field(default_factory=list)
+    tool_mappings: list[McpToolMapping] = Field(default_factory=list)
 
 
 class ErrorEnvelope(BaseModel):
