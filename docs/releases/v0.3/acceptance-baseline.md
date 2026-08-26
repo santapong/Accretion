@@ -1,7 +1,7 @@
 # Acceptance baseline
 
 > Computed: 2026-08-25 · Base: `develop` at `519ab2b`
-> Numbers refreshed: 2026-08-26 · `develop` at `ae97952` plus M4 (plugin manager)
+> Numbers refreshed: 2026-08-26 · `develop` at `b77b221` plus M5 (research intelligence)
 >
 > Produced by `make acceptance`. This document records a **starting position**, not a
 > release decision. It supersedes hand-written status claims.
@@ -23,26 +23,42 @@ only *how* each is verified; and a test claims a criterion with
 | | Count |
 |---|---:|
 | Criteria in the three SDDs | 110 |
-| Not yet due (M5–M6) | 9 |
-| **In scope** | **101** |
-| Proven by a passing claiming test | 81 |
+| Not yet due (M6) | 5 |
+| **In scope** | **105** |
+| Proven by a passing claiming test | 85 |
 | Proven by the frontend suite | 3 |
 | Uncovered | 17 |
 
-Coverage is 83% of in-scope criteria (84 of 101). The first computed figure was 37;
+Coverage is 84% of in-scope criteria (88 of 105). The first computed figure was 37;
 the annotation sweep raised it to 59 without changing any runtime behaviour, because
 the inherited gap was traceability rather than implementation. Putting the token broker
 into the execution path then closed five more (#75); completing M2 closed six (#77);
 closing the Claude egress asymmetry closed `V01-P4-001` (#78); M3 brought seven
-MCP criteria into scope and proved all of them (#79); and M4 brought the six AC3-PLG
-plugin-manager criteria into scope and proved all of them. Every v0.3 M0–M4 criterion
-is now proven; all 17 uncovered criteria are inherited v0.1/v0.2 items.
+MCP criteria into scope and proved all of them (#79); M4 brought the six AC3-PLG
+plugin-manager criteria into scope and proved all of them; and M5 brought the four
+AC3-RES research criteria into scope and proved all of them. Every v0.3 M0–M5
+criterion is now proven; all 17 uncovered criteria are inherited v0.1/v0.2 items, and
+the five still not due are M6's `AC3-UI-01` through `AC3-UI-05`.
 
 Reproduce this table with `make acceptance`; the run behind these numbers reported
-`PROVEN: 81`, `FRONTEND: 3`, `UNCOVERED: 17`, `NOT_YET_DUE: 9`, and
-`in scope: 101   proven: 81   unmet MUST: 16`. The full harness still exits `FAIL`
+`PROVEN: 85`, `FRONTEND: 3`, `UNCOVERED: 17`, `NOT_YET_DUE: 5`, and
+`in scope: 105   proven: 85   unmet MUST: 16`. The full harness still exits `FAIL`
 because those 16 unmet MUSTs are the inherited v0.1/v0.2 items below; the per-stage
-gates `--stage M1` through `--stage M4` all pass and are what CI enforces today.
+gates `--stage M1` through `--stage M5` all pass and are what CI enforces today, each
+reporting `unmet MUST: 0` over 5, 11, 8, 6 and 4 in-scope criteria respectively.
+
+### What M5's numbers do and do not measure
+
+The four AC3-RES criteria are proven against `tests/fake_research_api.py`, an
+in-process fake literature service. Everything between that fake and each assertion is
+the real thing — the real MCP client over `ASGITransport`, M3's real `RemoteMcpManager`
+behind its real endpoint policy, the real `PluginManager` installing the bundled
+package from disk, and the real `CapabilityGateway` — and no test in the suite touches
+the network. What the numbers therefore establish is that the *pipeline* behaves
+correctly, not that any real literature source has been queried. This is also why M5
+shipped no research benchmark: a benchmark over these connectors would report the
+quality of the fixture in the register of a system measurement, which is the exact
+failure this document exists to prevent.
 
 ### Movement since the baseline
 
@@ -65,6 +81,9 @@ that suite in CI on every pull request. They are reported as `FRONTEND` rather t
 | v0.1 (P0–P4, BENCH) | 33 | 5 | 0 |
 | v0.2 (P5–P7, UI) | 18 | 15 | 0 |
 | v0.3 (M0–M2) | 5 | 6 | 4 |
+
+Those audits predate M3–M5; the v0.3 row is a historical record of the tree at
+`519ab2b`, not a current status. The table above is the current status.
 
 **No inherited criterion is unimplemented.** The v0.1 suite is intact — no v0.1-era
 test or source file was deleted between `v0.1.0` and HEAD — and the v0.2 P6 isolation,
