@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import uuid
 
 import pytest
 
@@ -27,9 +28,12 @@ async def test_v03_m3_server_snapshot_and_event_round_trip() -> None:
     assert POSTGRES_URL is not None
     engine = create_engine(POSTGRES_URL)
     store = PostgresStore(create_session_factory(engine))
+    # Uuid-suffixed so the test is re-runnable against a database it already wrote to.
+    # M4's acceptance stage gates re-run the whole suite in-process, so a fixed
+    # workspace id made this fail on every run after the first.
     server = McpServerDefinition(
         mcp_server_id=new_id("mcp_server"),
-        workspace_id="workspace_m3_postgres",
+        workspace_id=f"workspace_m3_postgres_{uuid.uuid4().hex[:12]}",
         connector_id=new_id("conndef"),
         name="M3 PostgreSQL fixture",
         endpoint="https://mcp.example.test/mcp",

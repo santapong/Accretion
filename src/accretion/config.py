@@ -50,6 +50,13 @@ class Settings(BaseSettings):
     mcp_allowed_hosts: list[str] = Field(default_factory=list)
     mcp_allowed_ports: list[int] = Field(default_factory=lambda: [443])
     mcp_allow_local_http: bool = False
+    # Plugin trust (v0.3 M4). Keys are ``{key_id: "[<TRUST_LEVEL>:]<base64 Ed25519 key>"}``;
+    # the level defaults to SIGNED_THIRD_PARTY. Builtin ids are pinned by digest instead.
+    plugin_trusted_keys: dict[str, str] = Field(default_factory=dict)
+    plugin_allow_unverified_dev: bool = False
+    plugin_builtin_ids: list[str] = Field(
+        default_factory=lambda: ["accretion-core-governance", "accretion-sample-plugin"]
+    )
 
     @property
     def worktree_dir(self) -> Path:

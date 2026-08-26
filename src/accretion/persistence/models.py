@@ -379,6 +379,65 @@ class PluginRow(Base):
     )
 
 
+class PluginVersionRow(Base):
+    __tablename__ = "plugin_versions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    plugin_version_id: Mapped[str] = mapped_column(String(255), unique=True)
+    plugin_id: Mapped[str] = mapped_column(String(255))
+    version: Mapped[str] = mapped_column(String(64))
+    manifest_digest: Mapped[str] = mapped_column(String(64))
+    trust_level: Mapped[str] = mapped_column(String(32))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("plugin_id", "version", name="uq_plugin_versions_id_version"),
+        Index("ix_plugin_versions_digest", "manifest_digest"),
+    )
+
+
+class PluginInstallationRow(Base):
+    __tablename__ = "plugin_installations"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    installation_id: Mapped[str] = mapped_column(String(255), unique=True)
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    plugin_id: Mapped[str] = mapped_column(String(255))
+    version: Mapped[str] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(String(32))
+    trust_level: Mapped[str] = mapped_column(String(32))
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "plugin_id", name="uq_plugin_installations_ws_plugin"),
+        Index("ix_plugin_installations_workspace_state", "workspace_id", "state"),
+    )
+
+
+class PluginAuditEventRow(Base):
+    """Append-only: no ``updated_at``, and nothing in the store ever deletes a row."""
+
+    __tablename__ = "plugin_audit_events"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    plugin_event_id: Mapped[str] = mapped_column(String(255), unique=True)
+    plugin_id: Mapped[str] = mapped_column(String(255))
+    installation_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    event_type: Mapped[str] = mapped_column(String(64))
+    correlation_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_plugin_audit_events_plugin_created", "plugin_id", "created_at"),
+        Index("ix_plugin_audit_events_installation", "installation_id"),
+    )
+
+
 class PrincipalRow(Base):
     __tablename__ = "principals"
 

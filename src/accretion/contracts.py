@@ -349,6 +349,194 @@ class MetaPlugin(StrictModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
+class PluginState(StrEnum):
+    """SDD 20.3 plugin lifecycle states, adopted verbatim (ADR3-M4-001)."""
+
+    DISCOVERED = "DISCOVERED"
+    VALIDATING = "VALIDATING"
+    INSTALLED = "INSTALLED"
+    SETUP_REQUIRED = "SETUP_REQUIRED"
+    READY = "READY"
+    ENABLED = "ENABLED"
+    DISABLED = "DISABLED"
+    FAILED = "FAILED"
+    REMOVED = "REMOVED"
+
+
+class PluginTrustLevel(StrEnum):
+    BUILTIN = "BUILTIN"
+    WORKSPACE_APPROVED = "WORKSPACE_APPROVED"
+    SIGNED_THIRD_PARTY = "SIGNED_THIRD_PARTY"
+    UNVERIFIED_DEV = "UNVERIFIED_DEV"
+    BLOCKED = "BLOCKED"
+
+
+class PluginCapabilityDecision(StrEnum):
+    GRANTED = "GRANTED"
+    DENIED = "DENIED"
+    DOWNGRADED_READ_ONLY = "DOWNGRADED_READ_ONLY"
+
+
+class PluginSignatureAlgorithm(StrEnum):
+    SHA256_PIN = "SHA256_PIN"
+    ED25519 = "ED25519"
+
+
+class PluginConnectorRequirement(StrictModel):
+    """A connector a plugin asks for; policy decides whether it is ever satisfied."""
+
+    connector_id: str = Field(pattern=r"^[a-z][a-z0-9._-]*$", max_length=255)
+    scopes: list[str] = Field(default_factory=list)
+    reason: str = Field(default="", max_length=2_000)
+
+
+class PluginUiContribution(StrictModel):
+    """Declarative-only UI surface (OQ3-09); validated and persisted, rendered in M6."""
+
+    pages: list[dict[str, Any]] = Field(default_factory=list)
+    node_badges: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class PluginSignature(StrictModel):
+    """Detached authenticity claim over the manifest digest."""
+
+    algorithm: PluginSignatureAlgorithm = PluginSignatureAlgorithm.SHA256_PIN
+    key_id: str = Field(default="", max_length=255)
+    value: str = Field(min_length=1, max_length=4_096)
+    signed_at: datetime | None = None
+
+
+class MetaPluginManifest(StrictModel):
+    """SDD 9.1 package declaration. ``MetaPlugin`` stays its narrow registry projection."""
+
+    schema_version: Literal["1.0"] = "1.0"
+    id: str = Field(pattern=r"^[a-z][a-z0-9-]*$", max_length=255)
+    version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
+    name: str = Field(min_length=1, max_length=255)
+    description: str = Field(default="", max_length=4_000)
+    skills: list[MetaSkill] = Field(default_factory=list)
+    required_connectors: list[PluginConnectorRequirement] = Field(default_factory=list)
+    optional_connectors: list[PluginConnectorRequirement] = Field(default_factory=list)
+    mcp_servers: list[dict[str, Any]] = Field(default_factory=list)
+    capabilities: list[Capability] = Field(default_factory=list)
+    verifiers: list[str] = Field(default_factory=list)
+    policies: list[str] = Field(default_factory=list)
+    ui: PluginUiContribution = Field(default_factory=PluginUiContribution)
+    # Provider -> package-relative projection path. Deliberately narrower than
+    # ``Capability.provider_projections`` (dict[str, Any]); the plugin registration
+    # layer owns the conversion between the two.
+    provider_projections: dict[str, str] = Field(default_factory=dict)
+    # Beyond the literal 9.1 field list: trust verification needs a detached
+    # signature and M4 defines no package envelope to carry one.
+    signature: PluginSignature | None = None
+
+
+class PluginRef(StrictModel):
+    """The locked v0.4 historical reference triple. Nothing may be added to it."""
+
+    plugin_id: str
+    version: str
+    manifest_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class PluginVersionRecord(StrictModel):
+    """Immutable global registry entry for one ``(plugin_id, version)`` manifest."""
+
+    schema_version: Literal["1.0"] = "1.0"
+    plugin_version_id: str
+    plugin_id: str
+    version: str
+    manifest_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    trust_level: PluginTrustLevel = PluginTrustLevel.UNVERIFIED_DEV
+    manifest: MetaPluginManifest
+    source_uri: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    def to_ref(self) -> PluginRef:
+        return PluginRef(
+            plugin_id=self.plugin_id,
+            version=self.version,
+            manifest_digest=self.manifest_digest,
+        )
+
+
+class PluginCapabilityGrant(StrictModel):
+    """What the manifest requested next to what policy actually granted."""
+
+    capability_id: str
+    requested_permissions: list[str] = Field(default_factory=list)
+    granted_permissions: list[str] = Field(default_factory=list)
+    decision: PluginCapabilityDecision = PluginCapabilityDecision.GRANTED
+    reason: str = Field(default="", max_length=2_000)
+
+
+class PluginConsent(StrictModel):
+    """Administrator consent, bound to the exact digest that was shown."""
+
+    granted_by_principal_id: str
+    manifest_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    granted_capability_ids: list[str] = Field(default_factory=list)
+    granted_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class PluginConnectorResolution(StrictModel):
+    connector_id: str
+    required: bool = True
+    satisfied: bool = False
+    connection_id: str | None = None
+    missing_scopes: list[str] = Field(default_factory=list)
+
+
+class PluginInstallation(StrictModel):
+    """Mutable, workspace-scoped lifecycle state. Never stored in ``MetaPlugin``."""
+
+    schema_version: Literal["1.0"] = "1.0"
+    installation_id: str
+    workspace_id: str
+    plugin_id: str
+    version: str
+    manifest_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    state: PluginState = PluginState.DISCOVERED
+    trust_level: PluginTrustLevel = PluginTrustLevel.UNVERIFIED_DEV
+    requested_capability_ids: list[str] = Field(default_factory=list)
+    capability_grants: list[PluginCapabilityGrant] = Field(default_factory=list)
+    connector_resolutions: list[PluginConnectorResolution] = Field(default_factory=list)
+    consent: PluginConsent | None = None
+    registered_skill_ids: list[str] = Field(default_factory=list)
+    registered_capability_ids: list[str] = Field(default_factory=list)
+    registered_mcp_server_ids: list[str] = Field(default_factory=list)
+    previous_version: str | None = None
+    failure_reason: str | None = None
+    installed_by_principal_id: str | None = None
+    revision: int = Field(default=1, ge=1)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    def to_ref(self) -> PluginRef:
+        return PluginRef(
+            plugin_id=self.plugin_id,
+            version=self.version,
+            manifest_digest=self.manifest_digest,
+        )
+
+
+class PluginAuditEvent(StrictModel):
+    """Append-only lifecycle record (SDD 20.3). Written for every state transition."""
+
+    schema_version: Literal["1.0"] = "1.0"
+    plugin_event_id: str
+    plugin_id: str
+    installation_id: str | None = None
+    workspace_id: str | None = None
+    event_type: str = Field(min_length=1, max_length=64)
+    from_state: PluginState | None = None
+    to_state: PluginState | None = None
+    actor_principal_id: str | None = None
+    correlation_id: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 class CapabilityPolicy(StrictModel):
     schema_version: Literal["1.0"] = "1.0"
     policy_id: str
