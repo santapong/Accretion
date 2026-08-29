@@ -40,6 +40,11 @@ class FakeEnterpriseAuthorizationServer:
     #: Grant fewer scopes than requested, as real servers do.
     downgrade_scopes_to: list[str] | None = None
     should_reject: bool = False
+    #: Mint this exact access token instead of a random one. The secret scan needs a
+    #: credential it can recognise as a literal string anywhere it might have leaked,
+    #: and a token whose value the test chose is the only kind that gives a
+    #: substring search a definite answer.
+    access_token_override: str | None = None
     #: Requests that reached the token endpoint, refused ones included.
     grant_calls: int = 0
     #: Requests that reached the end-user authorization endpoint. The whole point of
@@ -108,7 +113,7 @@ class FakeEnterpriseAuthorizationServer:
                 if self.downgrade_scopes_to is not None
                 else requested
             )
-            access = f"ema_{secrets.token_urlsafe(16)}"
+            access = self.access_token_override or f"ema_{secrets.token_urlsafe(16)}"
             self.issued.append(access)
             return JSONResponse(
                 {

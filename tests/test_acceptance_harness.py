@@ -249,7 +249,11 @@ def test_a_stage_that_selects_criteria_still_reports_them() -> None:
     # selection: exit code 2 with nothing reported.
     assert result.returncode != 2, result.stderr
     assert "selected no criteria" not in result.stderr
-    assert "NOT_YET_DUE: 1" in result.stdout
+    # All seven §24.9 rows are now in scope, so the stage must report seven — an
+    # empty selection would report none and still exit 0 without the guard.
+    assert "in scope: 7" in result.stdout
+    for index in range(1, 8):
+        assert f"AC3-EMA-0{index}" in result.stdout
 
 
 def test_the_sdds_still_parse_and_the_policy_is_well_formed() -> None:
@@ -478,7 +482,7 @@ def test_the_seven_ema_rows_load_from_the_sdd_as_m7_musts() -> None:
     Reads the criteria the gate itself builds, not the markdown, so a row that parses
     into the wrong stage (the ``unassigned`` fallback for an unmapped category) or a
     policy line that never landed fails here. A row leaves the deferred list exactly
-    when the M7 PR proving it lands, so the split below moves as M7 is built.
+    when the M7 PR proving it lands; with PR5 in, the deferred list is empty.
     """
 
     criteria = harness.load_criteria()
@@ -489,25 +493,17 @@ def test_the_seven_ema_rows_load_from_the_sdd_as_m7_musts() -> None:
     assert {c.stage for c in ema.values()} == {"M7"}
     assert {c.priority for c in ema.values()} == {"MUST"}
     # AC3-EMA-03 is claimed by tests/test_v03_m7_enterprise_auth.py, AC3-EMA-01 and
-    # the session-ending half of -04 by tests/test_v03_m7_identity_retention.py, and
+    # the session-ending half of -04 by tests/test_v03_m7_identity_retention.py,
     # -02, the revocation half of -04, -06 and -07 by
-    # tests/test_v03_m7_enterprise_mcp.py; AC3-EMA-05 is still deferred, and
-    # therefore out of scope and unclaimable.
-    claimed = (
-        "AC3-EMA-01",
-        "AC3-EMA-02",
-        "AC3-EMA-03",
-        "AC3-EMA-04",
-        "AC3-EMA-06",
-        "AC3-EMA-07",
-    )
+    # tests/test_v03_m7_enterprise_mcp.py, and -05 by
+    # tests/test_v03_m7_enterprise_secret_scan.py. The deferred list is now empty:
+    # every §24.9 row is in scope and claimed.
+    claimed = tuple(f"AC3-EMA-0{index}" for index in range(1, 8))
     for name in claimed:
         assert ema[name].verification == "test"
         assert ema[name].in_scope
     deferred = [c for name, c in ema.items() if name not in claimed]
-    assert {c.verification for c in deferred} == {"not_yet_due"}
-    assert {harness.classify(c) for c in deferred} == {"NOT_YET_DUE"}
-    assert not any(c.in_scope for c in deferred)
+    assert deferred == []
 
 
 def ci_gate_stages() -> list[str]:

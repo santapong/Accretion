@@ -22,6 +22,8 @@ import type {
   ConnectCreate,
   ConnectionSummary,
   ConnectorDefinition,
+  EnterpriseAuthGrant,
+  EnterpriseAuthProfileResponse,
   McpDiscoverySnapshot,
   McpServerDefinition,
   MeResponse,
@@ -73,6 +75,12 @@ export type { MeResponse };
 
 export interface PluginAuditFilters {
   plugin_id?: string;
+  workspace_id?: string;
+}
+
+export interface EnterpriseAuthAuditFilters {
+  connector_id?: string;
+  principal_id?: string;
   workspace_id?: string;
 }
 
@@ -260,6 +268,19 @@ export const api = {
     );
     return getJson<PluginAuditEvent[]>(`/api/v1/audit/plugins?${query}`);
   },
+  enterpriseAuthProfile: () =>
+    getJson<EnterpriseAuthProfileResponse>("/api/v1/enterprise-auth/profile"),
+  enterpriseAuthAudit: (filters: EnterpriseAuthAuditFilters = {}) => {
+    const query = new URLSearchParams(
+      Object.entries(filters).filter((entry): entry is [string, string] => Boolean(entry[1])),
+    );
+    return getJson<EnterpriseAuthGrant[]>(`/api/v1/audit/enterprise-auth?${query}`);
+  },
+  enterpriseAuthorizeMcpServer: (mcpServerId: string) =>
+    postJson<ConnectionSummary>(
+      `/api/v1/mcp/servers/${mcpServerId}/enterprise-authorize`,
+      {},
+    ),
   connectors: () => getJson<ConnectorDefinition[]>("/api/v1/connectors"),
   connections: () => getJson<ConnectionSummary[]>("/api/v1/connections"),
   connect: (connectorId: string, payload: ConnectCreate) =>

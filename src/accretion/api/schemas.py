@@ -189,6 +189,25 @@ class ConnectionSummary(BaseModel):
     last_health_check: datetime | None = None
 
 
+class EnterpriseAuthProfileResponse(BaseModel):
+    """What the caller may know about enterprise-managed authorization (M7).
+
+    Deliberately a description of *configuration and state*, never of material:
+    the retained identity assertion, its ``secret_store_key``, the identity
+    assertion grant and the enterprise-issued access token are all absent by
+    construction, and AC3-EMA-05 scans this response to keep it that way. The
+    only thing said about the assertion is whether the caller currently holds a
+    live one and when it expires, which an operator needs in order to understand
+    why an enterprise authorization would or would not succeed right now.
+    """
+
+    enabled: bool
+    token_exchange_configured: bool
+    audiences: dict[str, str] = Field(default_factory=dict)
+    has_live_assertion: bool = False
+    assertion_expires_at: datetime | None = None
+
+
 class McpServerCreate(BaseModel):
     workspace_id: str
     connector_id: str
