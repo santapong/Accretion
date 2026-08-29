@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
 import { authModeText, discoveredLabel, healthText, patternList, targetText } from "./mcpHealth";
-import type { McpServerDefinition } from "../types";
+import { enterpriseBlockedReason } from "./enterpriseAuth";
+import type { ConnectorDefinition, McpServerDefinition } from "../types";
 
 function ServerDetail({ server }: { server: McpServerDefinition }) {
   const capabilities = useQuery({
@@ -99,8 +100,43 @@ function ServerDetail({ server }: { server: McpServerDefinition }) {
 }
 
 export function McpServersPage() {
+  const queryClient = useQueryClient();
   const [selected, setSelected] = useState<McpServerDefinition>();
+  const [status, setStatus] = useState<string>();
   const servers = useQuery({ queryKey: ["mcp-servers"], queryFn: () => api.mcpServers() });
+  const connectors = useQuery({ queryKey: ["connectors"], queryFn: api.connectors });
+  const profile = useQuery({
+    queryKey: ["enterprise-auth-profile"],
+    queryFn: api.enterpriseAuthProfile,
+  });
+  const blocked = enterpriseBlockedReason(profile.data);
+
+  function connectorOf(server: McpServerDefinition): ConnectorDefinition | undefined {
+    return (connectors.data ?? []).find(
+      (connector) => connector.connector_id === server.connector_id,
+    );
+  }
+
+  // No mutation API is in use in this app: a POST is an async handler that calls the
+  // client and then invalidates what the POST changed. Enterprise authorization mints a
+  // connection and moves the server out of AUTH_REQUIRED, so both are re-read.
+  async function authorize(server: McpServerDefinition) {
+    setStatus(`Authorizing ${server.name} with the enterprise authorization manager…`);
+    try {
+      const connection = await api.enterpriseAuthorizeMcpServer(server.mcp_server_id);
+      setStatus(
+        `${server.name}: connection ${connection.connection_id} is ${connection.status}.`,
+      );
+    } catch (error) {
+      setStatus(
+        error instanceof Error
+          ? `${server.name}: ${error.message}`
+          : `${server.name}: enterprise authorization failed.`,
+      );
+    }
+    await queryClient.invalidateQueries({ queryKey: ["mcp-servers"] });
+    await queryClient.invalidateQueries({ queryKey: ["connections"] });
+  }
 
   return (
     <section className="page-panel">
@@ -117,7 +153,7 @@ export function McpServersPage() {
           <thead>
             <tr>
               <th>Server</th><th>State</th><th>Health</th><th>Failures</th>
-              <th>Trust</th><th>Transport</th><th>Inspect</th>
+              <th>Trust</th><th>Transport</th><th>Authorization</th><th>Inspect</th>
             </tr>
           </thead>
           <tbody>
@@ -129,6 +165,27 @@ export function McpServersPage() {
                 <td>{server.consecutive_failures}</td>
                 <td>{server.trust_level}</td>
                 <td>{server.transport} · {targetText(server)}</td>
+                <td aria-label={`authorization ${server.mcp_server_id}`}>
+                  {connectorOf(server)?.auth_type === "EMA" ? (
+                    <>
+                      <span>EMA</span>{" "}
+                      <button
+                        type="button"
+                        disabled={Boolean(blocked)}
+                        aria-label={
+                          blocked
+                            ? `Authorize (enterprise) ${server.name} — unavailable: ${blocked}`
+                            : `Authorize (enterprise) ${server.name}`
+                        }
+                        onClick={() => void authorize(server)}
+                      >
+                        Authorize (enterprise)
+                      </button>
+                    </>
+                  ) : (
+                    connectorOf(server)?.auth_type ?? "unknown"
+                  )}
+                </td>
                 <td>
                   <button type="button" onClick={() => setSelected(server)}>
                     Inspect {server.name}
@@ -139,6 +196,10 @@ export function McpServersPage() {
           </tbody>
         </table>
       </section>
+
+      <p aria-label="Enterprise authorization status" role="status">
+        {status ?? "No enterprise authorization has been attempted in this session."}
+      </p>
 
       {selected ? <ServerDetail server={selected} /> : null}
     </section>
