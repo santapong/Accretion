@@ -763,6 +763,24 @@ class EnterpriseAuthOutcome(StrEnum):
     REFUSED_AUDIENCE = "REFUSED_AUDIENCE"
     REFUSED_EXPIRED = "REFUSED_EXPIRED"
     REFUSED_DISABLED = "REFUSED_DISABLED"
+    #: No identity assertion is retained for the principal at all — distinct from
+    #: one that was retained and has since expired, so the audit trail never
+    #: claims an expiry that did not happen.
+    REFUSED_MISSING = "REFUSED_MISSING"
+    #: An upstream party — the identity provider's token-exchange endpoint or the
+    #: connector's authorization server — could not be reached, or refused. Kept
+    #: apart from REFUSED_ISSUER so that an upstream outage is never recorded as an
+    #: issuer-policy violation, and apart from REFUSED_CONFIGURATION so that a local
+    #: misconfiguration is never recorded as an outage.
+    REFUSED_UPSTREAM = "REFUSED_UPSTREAM"
+    #: The deployment itself is misconfigured — a connector that names no
+    #: authorization server, or a retained token with no usable expiry. Nothing
+    #: travelled, so this is never an upstream fault.
+    REFUSED_CONFIGURATION = "REFUSED_CONFIGURATION"
+    #: The principal's connection was revoked by an operator. Enterprise
+    #: acquisition refuses rather than resurrecting it, so a revocation is durable
+    #: beyond one token lifetime.
+    REFUSED_REVOKED = "REFUSED_REVOKED"
     REVOKED = "REVOKED"
 
 

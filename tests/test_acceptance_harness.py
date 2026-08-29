@@ -244,8 +244,12 @@ def test_a_stage_that_selects_criteria_still_reports_them() -> None:
     """The empty-selection guard must not fire on a real stage."""
 
     result = run_stage_gate("M7")
-    assert result.returncode == 0, result.stderr
-    assert "NOT_YET_DUE: 7" in result.stdout
+    # ``--no-tests`` cannot see pytest claims, so a stage part-way through its build
+    # reports its in-scope criteria as unmet. What must not happen is the *empty*
+    # selection: exit code 2 with nothing reported.
+    assert result.returncode != 2, result.stderr
+    assert "selected no criteria" not in result.stderr
+    assert "NOT_YET_DUE: 6" in result.stdout
 
 
 def test_the_sdds_still_parse_and_the_policy_is_well_formed() -> None:
@@ -468,12 +472,13 @@ def test_an_unknown_verification_mode_is_rejected(
 # --- The M7 governance surface ----------------------------------------------
 
 
-def test_the_seven_ema_rows_load_from_the_sdd_as_not_yet_due_m7_musts() -> None:
-    """§24.9 must reach the harness: seven ids, all MUST, all M7, all deferred.
+def test_the_seven_ema_rows_load_from_the_sdd_as_m7_musts() -> None:
+    """§24.9 must reach the harness: seven ids, all MUST, all M7.
 
     Reads the criteria the gate itself builds, not the markdown, so a row that parses
     into the wrong stage (the ``unassigned`` fallback for an unmapped category) or a
-    policy line that never landed fails here.
+    policy line that never landed fails here. A row leaves the deferred list exactly
+    when the M7 PR proving it lands, so the split below moves as M7 is built.
     """
 
     criteria = harness.load_criteria()
@@ -483,10 +488,14 @@ def test_the_seven_ema_rows_load_from_the_sdd_as_not_yet_due_m7_musts() -> None:
     assert sorted(ema) == [f"AC3-EMA-0{index}" for index in range(1, 8)]
     assert {c.stage for c in ema.values()} == {"M7"}
     assert {c.priority for c in ema.values()} == {"MUST"}
-    assert {c.verification for c in ema.values()} == {"not_yet_due"}
-    assert {harness.classify(c) for c in ema.values()} == {"NOT_YET_DUE"}
-    # Deferred, therefore out of scope: this PR must not be able to claim them.
-    assert not any(c.in_scope for c in ema.values())
+    # AC3-EMA-03 is claimed by tests/test_v03_m7_enterprise_auth.py; the rest are
+    # still deferred, and therefore out of scope and unclaimable.
+    assert ema["AC3-EMA-03"].verification == "test"
+    assert ema["AC3-EMA-03"].in_scope
+    deferred = [c for name, c in ema.items() if name != "AC3-EMA-03"]
+    assert {c.verification for c in deferred} == {"not_yet_due"}
+    assert {harness.classify(c) for c in deferred} == {"NOT_YET_DUE"}
+    assert not any(c.in_scope for c in deferred)
 
 
 def ci_gate_stages() -> list[str]:
