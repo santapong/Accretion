@@ -41,6 +41,7 @@ from accretion.contracts import (
     Connection,
     ConnectionScope,
     ConnectionStatus,
+    ConnectorAuthType,
     ConnectorDefinition,
     EnterpriseAuthGrant,
     EnterpriseAuthOutcome,
@@ -237,6 +238,14 @@ class EnterpriseAuthManager:
         self.settings = settings
         self.assertion_client = assertion_client
         self.grant_client = grant_client
+        # A jwt-bearer grant returns no refresh token, so the broker would otherwise
+        # expire every enterprise handle at the end of its first lifetime. Nominating
+        # this manager as the connector's re-acquisition authority is what makes
+        # AC3-EMA-07 hold, and it is declared up front — at wiring time, for every
+        # connector the operator configured an audience for — so that renewal does
+        # not depend on an earlier acquisition having happened in this process.
+        for connector_id in settings.enterprise_auth_audiences:
+            broker.register_reacquirer(connector_id, self.reacquire)
 
     @property
     def enabled(self) -> bool:
@@ -402,13 +411,50 @@ class EnterpriseAuthManager:
         connector = await self.store.get_connector_definition(handle.connector_id)
         if connector is None:
             raise EnterpriseAuthError(f"connector {handle.connector_id} is not registered")
+        # The hook is registered per configured audience, at wiring time, before any
+        # connector definition is known — so it can be reached for a connector whose
+        # auth_type is not EMA. Renewing such a handle would silently convert a
+        # user-delegated authorization into an enterprise-delegated one, so refuse.
+        if connector.auth_type is not ConnectorAuthType.EMA:
+            detail = (
+                "enterprise re-acquisition refused: connector "
+                f"{connector.connector_id} is not an enterprise-managed connector"
+            )
+            await self._record(
+                principal_id=handle.principal_id,
+                workspace_id=handle.workspace_id,
+                connector_id=connector.connector_id,
+                outcome=EnterpriseAuthOutcome.REFUSED_CONFIGURATION,
+                mcp_server_id=None,
+                detail=detail,
+            )
+            raise EnterpriseAuthError(detail)
         # Refuses (and records) when the connection behind this handle was revoked,
         # so renewal cannot outlive an operator's revocation either.
-        await self._connection_for(
+        connection = await self._connection_for(
             connector,
             principal_id=handle.principal_id,
             workspace_id=handle.workspace_id,
         )
+        # And renew only material this manager minted: the resolved connection must
+        # already point at exactly this handle. Otherwise a handle sealed by another
+        # acquisition path — an interactive OAuth consent, say — would be resealed
+        # with enterprise authority the user never delegated.
+        if connection.token_handle_ref != handle.token_handle_id:
+            detail = (
+                "enterprise re-acquisition refused: the handle was not issued for "
+                f"connection {connection.connection_id}"
+            )
+            await self._record(
+                principal_id=handle.principal_id,
+                workspace_id=handle.workspace_id,
+                connector_id=connector.connector_id,
+                outcome=EnterpriseAuthOutcome.REFUSED_CONFIGURATION,
+                connection_id=connection.connection_id,
+                mcp_server_id=None,
+                detail=detail,
+            )
+            raise EnterpriseAuthError(detail)
         return await self._acquire(
             connector,
             principal_id=handle.principal_id,

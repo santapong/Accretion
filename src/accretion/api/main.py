@@ -275,6 +275,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             allow_local_http=settings.mcp_allow_local_http,
         ),
         token_broker=token_broker,
+        enterprise_auth=enterprise_auth,
     )
     app.state.plugins = PluginManager(
         store=store,

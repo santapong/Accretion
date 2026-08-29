@@ -12,6 +12,7 @@ from accretion.contracts import (
     CapabilityRequest,
     CapabilityResolutionOutcome,
 )
+from accretion.enterprise_auth import build_enterprise_auth_manager
 from accretion.governance import (
     CapabilityExecutor,
     CapabilityGateway,
@@ -189,16 +190,23 @@ async def _serve() -> None:
     sessions = create_session_factory(engine)
     store = PostgresStore(sessions)
     await seed_governance(store)
+    secrets_store = EnvelopeSecretStore()
     token_broker = (
-        EncryptedTokenBroker(store, EnvelopeSecretStore())
+        EncryptedTokenBroker(store, secrets_store)
         if settings.token_encryption_key
         else None
+    )
+    # The gateway process is a second front door onto the same capabilities, so the
+    # optional enterprise-authorization subsystem is wired here exactly as in the API.
+    enterprise_auth = build_enterprise_auth_manager(
+        store, secrets_store, token_broker, settings
     )
     remote_mcp = RemoteMcpManager(
         store=store,
         client=SdkRemoteMcpClient(),
         endpoint_policy=McpEndpointPolicy(),
         token_broker=token_broker,
+        enterprise_auth=enterprise_auth,
     )
     gateway = CapabilityGateway(
         store=store,

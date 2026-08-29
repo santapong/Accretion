@@ -34,13 +34,13 @@ V02-P7-007 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.t
 # The seven AC3-EMA criteria (SDD v0.3 §24.9) cover optional enterprise-managed
 # authorization. Each leaves this list as the M7 PR that proves it lands.
 # AC3-EMA-01 left this list in M7: tests/test_v03_m7_identity_retention.py claims it.
-AC3-EMA-02 = { verification = "not_yet_due", reason = "M7 enterprise-managed authorization" }
+# AC3-EMA-02 left this list in M7: tests/test_v03_m7_enterprise_mcp.py claims it.
 # AC3-EMA-03 left this list in M7: tests/test_v03_m7_enterprise_auth.py claims it.
 # AC3-EMA-04 left this list in M7: tests/test_v03_m7_identity_retention.py claims its
-# session-ending half; the connection-revocation half joins it in the same milestone.
+# session-ending half and tests/test_v03_m7_enterprise_mcp.py the revocation half.
 AC3-EMA-05 = { verification = "not_yet_due", reason = "M7 enterprise-managed authorization" }
-AC3-EMA-06 = { verification = "not_yet_due", reason = "M7 enterprise-managed authorization" }
-AC3-EMA-07 = { verification = "not_yet_due", reason = "M7 enterprise-managed authorization" }
+# AC3-EMA-06 and AC3-EMA-07 left this list in M7:
+# tests/test_v03_m7_enterprise_mcp.py claims both.
 
 # --- Not yet due: milestone M6 has not started ------------------------------
 # The six AC3-PLG criteria left this list in M4 and the four AC3-RES criteria left it

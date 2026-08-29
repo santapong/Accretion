@@ -20,7 +20,7 @@ from urllib.parse import parse_qs
 
 import jwt
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 ISSUER = "https://enterprise-as.test"
 JWT_BEARER_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer"
@@ -42,6 +42,9 @@ class FakeEnterpriseAuthorizationServer:
     should_reject: bool = False
     #: Requests that reached the token endpoint, refused ones included.
     grant_calls: int = 0
+    #: Requests that reached the end-user authorization endpoint. The whole point of
+    #: enterprise-managed authorization is that this stays at zero.
+    authorize_calls: int = 0
     #: The Authorization header of the most recent request to this server.
     last_authorization_header: str | None = None
     #: Assertions the token endpoint has been handed, newest last.
@@ -76,6 +79,18 @@ class FakeEnterpriseAuthorizationServer:
         async def record_authorization(request: Request, call_next: Any) -> Any:
             self.last_authorization_header = request.headers.get("authorization")
             return await call_next(request)
+
+        @server.get("/authorize")
+        async def authorize(request: Request) -> Response:
+            """The end-user consent step enterprise authorization is meant to remove."""
+
+            self.authorize_calls += 1
+            params = dict(request.query_params)
+            location = (
+                f"{params.get('redirect_uri', '')}?code={secrets.token_urlsafe(8)}"
+                f"&state={params.get('state', '')}"
+            )
+            return RedirectResponse(location, status_code=302)
 
         @server.post("/token")
         async def token(request: Request) -> JSONResponse:

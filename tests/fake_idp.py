@@ -18,7 +18,7 @@ from urllib.parse import parse_qs
 import jwt
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response
 
 ISSUER = "https://idp.test"
 CLIENT_ID = "accretion-test-client"
@@ -81,6 +81,10 @@ class FakeIdp:
     #: of a real provider quirk reaching an optional subsystem.
     exp_as_string: bool = False
     exchange_calls: int = 0
+    #: Requests that reached the end-user authorization endpoint. Enterprise-managed
+    #: authorization exists to remove that step, so this counter staying at zero is
+    #: the evidence, and the endpoint below is real so that zero is not vacuous.
+    authorize_calls: int = 0
 
     def mint_id_token(
         self,
@@ -132,6 +136,22 @@ class FakeIdp:
                     "jwks_uri": f"{self.issuer}/jwks",
                 }
             )
+
+        @idp.get("/authorize")
+        async def authorize(request: Request) -> Response:
+            """The interactive step: consent, then a redirect carrying a code."""
+
+            self.authorize_calls += 1
+            params = dict(request.query_params)
+            subject = params.get("sub", "alice")
+            code = self.issue_code(
+                FakeUser(subject, email=f"{subject}@test"), params.get("nonce", "")
+            )
+            location = (
+                f"{params.get('redirect_uri', '')}?code={code}"
+                f"&state={params.get('state', '')}"
+            )
+            return RedirectResponse(location, status_code=302)
 
         @idp.get("/jwks")
         async def jwks() -> JSONResponse:

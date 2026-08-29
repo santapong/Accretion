@@ -11,6 +11,7 @@ serializable into an ``AgentEvent`` or model-facing context (§13.2), so it has 
 from __future__ import annotations
 
 import json
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Protocol
@@ -27,6 +28,13 @@ from accretion.secrets_store import SecretRecord, SecretStore, SecretStoreError
 
 # Refresh a little before expiry so a call cannot start with a token that dies mid-flight.
 _REFRESH_SKEW = timedelta(seconds=120)
+
+#: A re-acquisition hook: given an expiring handle, obtain fresh access material for it
+#: without any end-user interaction. Registered per connector by a subsystem that holds
+#: a durable authority of its own — enterprise-managed authorization holds a retained
+#: identity assertion (v0.3 M7) — and consulted only when the stored response carries no
+#: refresh token, which is exactly the case for an RFC 7523 ``jwt-bearer`` grant.
+Reacquirer = Callable[[TokenHandle], Awaitable[OAuthTokenResponse]]
 
 
 class TokenBrokerError(RuntimeError):
@@ -80,6 +88,8 @@ class TokenBroker(Protocol):
 
     async def refresh(self, handle: TokenHandle) -> TokenHandle: ...
 
+    def register_reacquirer(self, connector_id: str, reacquire: Reacquirer) -> None: ...
+
     async def revoke(self, handle: TokenHandle) -> None: ...
 
     async def status(self, handle: TokenHandle) -> TokenStatus: ...
@@ -97,6 +107,18 @@ class EncryptedTokenBroker:
         self.store = store
         self.secrets = secrets
         self.clients = clients or {}
+        self._reacquirers: dict[str, Reacquirer] = {}
+
+    def register_reacquirer(self, connector_id: str, reacquire: Reacquirer) -> None:
+        """Nominate the authority that can renew this connector's tokens unattended.
+
+        Last registration wins, so re-registering the same connector is idempotent
+        and cannot accumulate stale hooks. The broker stays the single expiry
+        authority (ADR3-004): it decides *when* material is stale, and the hook only
+        answers *how* to obtain more.
+        """
+
+        self._reacquirers[connector_id] = reacquire
 
     # ------------------------------------------------------------------ storing
 
@@ -173,8 +195,25 @@ class EncryptedTokenBroker:
     async def refresh(self, handle: TokenHandle) -> TokenHandle:
         response = await self._open(handle)
         if not response.refresh_token:
-            await self._mark(handle, TokenStatus.EXPIRED)
-            raise TokenBrokerError("token handle has no refresh token")
+            # No refresh token is not automatically the end of the credential: a
+            # connector may have registered an authority that can re-acquire without
+            # the end user. Only when there is none — or when it declines — does the
+            # handle die, exactly as it did before (v0.3 M2 behaviour is unchanged
+            # for every connector that registers nothing).
+            reacquire = self._reacquirers.get(handle.connector_id)
+            if reacquire is None:
+                await self._mark(handle, TokenStatus.EXPIRED)
+                raise TokenBrokerError("token handle has no refresh token")
+            try:
+                reacquired = await reacquire(handle)
+            except Exception as exc:
+                # The hook failed closed: the handle is as dead as it would have been
+                # without one, and the reason stays with the subsystem that raised it.
+                await self._mark(handle, TokenStatus.EXPIRED)
+                raise TokenBrokerError(
+                    "token handle could not be re-acquired without the end user"
+                ) from exc
+            return await self._reseal(handle, reacquired)
         client = self._client(handle.connector_id)
         try:
             refreshed = await client.refresh(response.refresh_token)
@@ -186,16 +225,25 @@ class EncryptedTokenBroker:
             refreshed.refresh_token = response.refresh_token
         if not refreshed.granted_scopes:
             refreshed.granted_scopes = list(handle.scopes)
+        return await self._reseal(handle, refreshed)
+
+    async def _reseal(
+        self, handle: TokenHandle, response: OAuthTokenResponse
+    ) -> TokenHandle:
+        """Replace a handle's sealed material in place, keeping its identity."""
+
+        if not response.granted_scopes:
+            response.granted_scopes = list(handle.scopes)
         record = await self.secrets.seal(
-            _serialize(refreshed), associated_id=handle.token_handle_id
+            _serialize(response), associated_id=handle.token_handle_id
         )
         await self.store.upsert_secret_record(record)
         return await self.store.upsert_token_handle(
             handle.model_copy(
                 update={
                     "secret_store_key": record.secret_store_key,
-                    "scopes": list(refreshed.granted_scopes),
-                    "expires_at": _expiry(refreshed.expires_in),
+                    "scopes": list(response.granted_scopes),
+                    "expires_at": _expiry(response.expires_in),
                     "status": TokenStatus.ACTIVE,
                     "refreshed_at": datetime.now(UTC),
                 }
@@ -288,6 +336,7 @@ __all__ = [
     "EncryptedTokenBroker",
     "EphemeralCredential",
     "SecretRecord",
+    "Reacquirer",
     "TokenBroker",
     "TokenBrokerError",
 ]

@@ -249,7 +249,7 @@ def test_a_stage_that_selects_criteria_still_reports_them() -> None:
     # selection: exit code 2 with nothing reported.
     assert result.returncode != 2, result.stderr
     assert "selected no criteria" not in result.stderr
-    assert "NOT_YET_DUE: 4" in result.stdout
+    assert "NOT_YET_DUE: 1" in result.stdout
 
 
 def test_the_sdds_still_parse_and_the_policy_is_well_formed() -> None:
@@ -488,10 +488,19 @@ def test_the_seven_ema_rows_load_from_the_sdd_as_m7_musts() -> None:
     assert sorted(ema) == [f"AC3-EMA-0{index}" for index in range(1, 8)]
     assert {c.stage for c in ema.values()} == {"M7"}
     assert {c.priority for c in ema.values()} == {"MUST"}
-    # AC3-EMA-03 is claimed by tests/test_v03_m7_enterprise_auth.py, and AC3-EMA-01
-    # and -04 by tests/test_v03_m7_identity_retention.py; the rest are still
-    # deferred, and therefore out of scope and unclaimable.
-    claimed = ("AC3-EMA-01", "AC3-EMA-03", "AC3-EMA-04")
+    # AC3-EMA-03 is claimed by tests/test_v03_m7_enterprise_auth.py, AC3-EMA-01 and
+    # the session-ending half of -04 by tests/test_v03_m7_identity_retention.py, and
+    # -02, the revocation half of -04, -06 and -07 by
+    # tests/test_v03_m7_enterprise_mcp.py; AC3-EMA-05 is still deferred, and
+    # therefore out of scope and unclaimable.
+    claimed = (
+        "AC3-EMA-01",
+        "AC3-EMA-02",
+        "AC3-EMA-03",
+        "AC3-EMA-04",
+        "AC3-EMA-06",
+        "AC3-EMA-07",
+    )
     for name in claimed:
         assert ema[name].verification == "test"
         assert ema[name].in_scope
