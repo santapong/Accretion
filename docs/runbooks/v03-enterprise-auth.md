@@ -11,9 +11,20 @@ policy, connection isolation and the audit trail unchanged (INV3-002, AC3-SEC-01
 
 ## Acceptance criteria
 
-Seven MUST criteria, `AC3-EMA-01..07`, recorded in SDD §24.9. Until the milestone's
-implementation PRs land they are `not_yet_due` in `docs/acceptance/criteria.toml`, and
-CI runs `scripts/check_acceptance.py --stage M7` on every pull request.
+Seven MUST criteria, `AC3-EMA-01..07`, recorded in SDD §24.9. All seven are now claimed
+by a marked, passing test: `scripts/check_acceptance.py --stage M7` reports
+`in scope: 7   proven: 7   unmet MUST: 0`, and CI runs it on every pull request. Nothing
+in `docs/acceptance/criteria.toml` is `not_yet_due` any more.
+
+| Criterion | Claimed by |
+|---|---|
+| `AC3-EMA-01` | `tests/test_v03_m7_identity_retention.py` (+ a checked vitest pointer) |
+| `AC3-EMA-02` | `tests/test_v03_m7_enterprise_mcp.py` (+ a checked vitest pointer) |
+| `AC3-EMA-03` | `tests/test_v03_m7_enterprise_auth.py` |
+| `AC3-EMA-04` | `tests/test_v03_m7_identity_retention.py` (logout half) and `tests/test_v03_m7_enterprise_mcp.py` (revocation half) |
+| `AC3-EMA-05` | `tests/test_v03_m7_enterprise_secret_scan.py` |
+| `AC3-EMA-06` | `tests/test_v03_m7_enterprise_mcp.py` |
+| `AC3-EMA-07` | `tests/test_v03_m7_enterprise_mcp.py` |
 
 ## Decisions
 
@@ -129,20 +140,160 @@ is append-only in the same sense — no update and no delete path exists in any 
 a duplicate `grant_id` is refused identically by `MemoryStore` and by the Postgres unique
 constraint.
 
-## Operating
+## Configuring it
 
-| Setting | Default | Effect |
+### Settings
+
+| Setting (`ACCRETION_` env var) | Default | Effect |
 |---|---|---|
-| `enable_enterprise_auth` | `False` | Master switch. Off ⇒ EMA connectors report `AUTH_REQUIRED`. |
-| `enterprise_auth_token_exchange_url` | `""` | Empty ⇒ inert even with the flag on. |
-| `enterprise_auth_audiences` | `{}` | Per-connector audience for the identity assertion. |
-
-Turning the flag on without an exchange URL is deliberately inert rather than an error,
-so the flag can be enabled ahead of the enterprise deployment that backs it.
-
-## Verification
+| `enable_enterprise_auth` | `False` | Master switch. Off ⇒ an `EMA` connector reports `AUTH_REQUIRED`, nothing is retained at login, and no exchange or grant call is made. |
+| `enterprise_auth_token_exchange_url` | `""` | The identity provider's RFC 8693 token-exchange endpoint. Empty ⇒ the subsystem is inert even with the flag raised. |
+| `enterprise_auth_audiences` | `{}` | `connector_id -> audience`. A connector absent from this map cannot be enterprise-authorized (`REFUSED_AUDIENCE`). |
 
 ```bash
-uv run --no-sync python scripts/check_acceptance.py --stage M7
+ACCRETION_ENABLE_ENTERPRISE_AUTH=true
+ACCRETION_ENTERPRISE_AUTH_TOKEN_EXCHANGE_URL=https://login.example.com/oauth2/v2.0/token
+ACCRETION_ENTERPRISE_AUTH_AUDIENCES={"github-enterprise":"https://mcp.example.com"}
+```
+
+Both gates must be open before anything happens: `build_enterprise_auth_manager` returns
+`None` unless the flag is on *and* an exchange URL is set *and* a token broker exists.
+Returning `None` rather than a disabled instance keeps a flag-down deployment
+byte-identical to the pre-M7 one — no collaborator, no outbound HTTP client, no
+retention. Turning the flag on ahead of the enterprise deployment that backs it is
+therefore deliberately inert rather than an error.
+
+EMA reuses the existing OIDC settings for the sign-in half: `oidc_issuer` and
+`oidc_client_id` are the current authority on a retained assertion, checked locally on
+every acquisition (see "IdP trust" below). It reuses the connector definition for the
+authorization-server half: `authorization_server` is the issuer whose `/token` endpoint
+receives the jwt-bearer grant, `resource_server` (falling back to the configured
+audience) is sent as the exchange `resource`, and `default_scopes` are the scopes
+requested. A connector must have `auth_type = EMA` — the re-acquisition hook refuses any
+other, so an interactively consented handle can never be resealed with enterprise
+authority the user did not delegate.
+
+### The two hops
+
+1. **Token exchange (RFC 8693)** at `enterprise_auth_token_exchange_url`:
+   `grant_type=urn:ietf:params:oauth:grant-type:token-exchange`,
+   `subject_token` = the retained `id_token`,
+   `subject_token_type=urn:ietf:params:oauth:token-type:id_token`,
+   `requested_token_type=urn:ietf:params:oauth:token-type:id-jag`,
+   `audience` = the connector's configured audience,
+   `resource` = `resource_server` or that audience. A response whose
+   `issued_token_type` is not the ID-JAG type is refused.
+2. **JWT bearer (RFC 7523)** at the connector's authorization server:
+   `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer`, `assertion` = the ID-JAG,
+   `scope` = the connector's default scopes. The answer is parsed by
+   `OAuthClient.parse_token_response` into the M2 `OAuthTokenResponse`, so sealing and
+   the redacting `__repr__` apply to enterprise tokens unchanged.
+
+The ID-JAG's `iss`, `aud` and `exp` are validated **locally, between the two hops**: an
+assertion grant the operator's policy rejects never reaches the authorization server, so
+a refusal costs the authorization server nothing and cannot be laundered into an access
+token. Each refusal is one appended `EnterpriseAuthGrant` row with a distinct outcome
+(`REFUSED_ISSUER`, `REFUSED_AUDIENCE`, `REFUSED_EXPIRED`, `REFUSED_MISSING`,
+`REFUSED_DISABLED`, `REFUSED_CONFIGURATION`, `REFUSED_UPSTREAM`), readable at
+`GET /api/v1/audit/enterprise-auth`. `detail` is prose only — a test asserts no row
+carries token material.
+
+### IdP trust requirements
+
+On the **Accretion** side:
+
+- `oidc_issuer` must be the enterprise IdP. It, not the issuer stored on the assertion
+  row, is the expectation on every acquisition, so rotating `oidc_issuer` immediately
+  invalidates every assertion minted under the old one.
+- `oidc_client_id` must be present if you want the audience of the retained `id_token`
+  checked; with no client id configured there is no audience to expect.
+
+On the **MCP authorization server** side, EMA only holds if the AS is configured to:
+
+- accept `urn:ietf:params:oauth:grant-type:jwt-bearer` from this deployment;
+- trust the IdP named by `oidc_issuer` as an assertion issuer, and verify ID-JAG
+  signatures against that IdP's JWKS;
+- require `aud` to equal the audience the operator recorded in
+  `enterprise_auth_audiences` for that connector, and reject any other;
+- honour the ID-JAG `exp` and issue access tokens no longer-lived than the enterprise
+  policy allows — Accretion renews them without user interaction, so a short access
+  token lifetime is cheap and a long one is the risk;
+- issue **no refresh token** (none is expected; renewal is a fresh grant), and return
+  the granted scopes it actually issued, which are what the `Connection` records.
+
+The control plane presents **no client credentials** on either hop by default
+(`IdentityAssertionClient` and `JwtBearerClient` take an optional `client_id`/
+`client_secret` that the wiring leaves empty), so the exchange endpoint and the
+authorization server must authenticate this deployment by other means — a private
+network path or mutual TLS. Deployments needing client authentication on the exchange
+should not enable EMA until that is wired; there is no egress allowlist for the exchange
+URL in v0.3 either (deferred to M8).
+
+### Protocol references
+
+- RFC 8693 — OAuth 2.0 Token Exchange (the `subject_token` → ID-JAG hop).
+- RFC 7523 — JSON Web Token Profile for OAuth 2.0 Client Authentication and
+  Authorization Grants (the ID-JAG → access token hop).
+- RFC 6749 §4 / §5 — the token endpoint and token response shape both hops speak.
+- MCP Enterprise-Managed Authorization SEP (`SEP-991`, the enterprise-managed
+  authorization proposal against the MCP authorization specification), which is where
+  the ID-JAG token type `urn:ietf:params:oauth:token-type:id-jag` and the sign-in-once
+  model come from. SDD v0.3 §8 is the normative statement for Accretion; the SEP is the
+  interoperability target.
+
+## Operating
+
+### Routes
+
+| Route | Purpose |
+|---|---|
+| `GET /api/v1/enterprise-auth/profile` | Whether the deployment has EMA on, the configured audiences, and whether the caller holds a live assertion. Never the token. |
+| `POST /api/v1/mcp/servers/{mcp_server_id}/enterprise-authorize` | Mint the caller's own enterprise-authorized connection to one server. `409` when the flag is off. |
+| `GET /api/v1/audit/enterprise-auth` | The append-only grant trail, prose `detail` only. |
+
+The routes live under `/api/v1/enterprise-auth/`, not `/api/v1/auth/`, because the latter
+prefix is exempt from the session middleware and an EMA route must know its caller.
+
+### Revoking
+
+- **Logout** destroys the sealed assertion (`delete_secret_record`) and marks the row
+  `REVOKED` before the auth session is revoked.
+- **Revoking the connection** uses the M2 path unchanged; the next acquisition is refused
+  before anything is exchanged.
+
+In both cases the `identity_assertions` row survives as evidence — see ADR3-M7-004.
+
+## Verifying the milestone
+
+```bash
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync python scripts/check_acceptance.py --stage M7
 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync pytest -p pytest_asyncio.plugin
+make check && make test
+uv run --no-sync python scripts/check_docs.py
+cd apps/ui && npm run check && npm run test && npm run build
+git diff --exit-code apps/ui/src/api/schema.d.ts
+```
+
+`--stage M7` reports `in scope: 7   proven: 7   unmet MUST: 0` and runs in CI after
+`--stage M6`. The full `make acceptance` still reports
+`in scope: 117   proven: 103   unmet MUST: 10` — M7 added seven in-scope criteria and
+proved all seven; the ten unmet MUSTs are the inherited v0.1/v0.2 items in the
+[acceptance baseline](../releases/v0.3/acceptance-baseline.md), which M8 owns.
+
+Migration `0016_v03_m7_enterprise_auth` must be reversible, against PostgreSQL on port
+5433:
+
+```bash
+uv run --no-sync alembic upgrade head
+uv run --no-sync alembic downgrade 0015_v03_m5_research_evidence
+uv run --no-sync alembic upgrade head
+```
+
+The Postgres store round-trip and migration tests skip unless
+`ACCRETION_TEST_POSTGRES_URL` is set, so set it before reading their result as evidence:
+
+```bash
+ACCRETION_TEST_POSTGRES_URL=postgresql+asyncpg://accretion:accretion@localhost:5433/accretion \
+  PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync pytest -p pytest_asyncio.plugin \
+  tests/test_v03_m7_postgres_store.py tests/test_v03_m7_postgres_migration.py
 ```

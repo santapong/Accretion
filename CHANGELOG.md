@@ -4,7 +4,7 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
-Status: v0.3 milestones M0–M6 delivered on `develop`; parked 2026-08-29 before M7.
+Status: v0.3 milestones M0–M7 delivered on `develop`; parked 2026-08-30 before M8.
 
 ### Added
 
@@ -120,8 +120,72 @@ Status: v0.3 milestones M0–M6 delivered on `develop`; parked 2026-08-29 before
   (a node badge names the plugin from its synthetic connector; manifest-declared
   `node_badges` is M8).
 
+- Added the v0.3 M7 enterprise-managed authorization path, optional and off by
+  default behind `ACCRETION_ENABLE_ENTERPRISE_AUTH` plus a configured
+  `ACCRETION_ENTERPRISE_AUTH_TOKEN_EXCHANGE_URL`: signing in once retains the
+  principal's `id_token`, sealed against its own auth session and bounded by the
+  token's own `exp`; an invocation of a centrally managed MCP server exchanges it
+  for an identity assertion grant (RFC 8693 `id-jag`) and presents that grant to
+  the connector's authorization server (RFC 7523 `jwt-bearer`), minting a real
+  `Connection` and `TokenHandle` so revocation, isolation, health and audit are
+  the unchanged M2 implementations. With the flag down the deployment is
+  byte-identical to the pre-M7 one: no manager is constructed, nothing is
+  retained, and no exchange or grant call is made.
+- Added the `IdentityAssertion` and append-only `EnterpriseAuthGrant` contracts,
+  their `identity_assertions` and `enterprise_auth_grants` tables, and migration
+  0016. No field was added to any existing persisted model, and the store gained
+  no deletion surface: revocation destroys the sealed assertion through the
+  existing `delete_secret_record` and marks the row `REVOKED`, so the row remains
+  as evidence (AC3-PLG-05 stays a closed structural fact).
+- Added `GET /api/v1/enterprise-auth/profile`,
+  `POST /api/v1/mcp/servers/{mcp_server_id}/enterprise-authorize`, and the
+  append-only `GET /api/v1/audit/enterprise-auth` trail, all under
+  `/api/v1/enterprise-auth/` or the existing MCP prefix rather than
+  `/api/v1/auth/`, which is exempt from the session middleware. None of them can
+  return an identity assertion, an enterprise grant, or an access token.
+- Added the enterprise authorization panel to the Identity admin page and an
+  "Authorize (enterprise)" action to the MCP servers page, both of which state a
+  disabled deployment outright rather than rendering an empty panel.
+- Added executable acceptance coverage for `AC3-EMA-01` through `AC3-EMA-07`,
+  including a flag-off run proving zero exchange and grant calls after a real
+  sign-in, three deliberately malformed assertions producing three distinct
+  `REFUSED_*` outcomes before the authorization server is contacted, a
+  second principal receiving his own connection and handle rather than the
+  first's, a mid-session token expiry renewing with `grant_calls == 2` and a
+  `REFRESHED` row, and a three-sentinel secret scan over events, envelopes,
+  bundles, the three new routes, grant `detail`, and the OpenTelemetry export.
+  `make acceptance` now reports `in scope: 117   proven: 103   unmet MUST: 10` —
+  the ten unchanged inherited v0.1/v0.2 items.
+- Added the `docs/runbooks/v03-enterprise-auth.md` operator runbook, carrying
+  ADR3-M7-001 (the EMA criteria are SDD §24.9, appended rather than renumbering
+  the release gate), ADR3-M7-002 (the retained `id_token`, its accepted risk and
+  its five tested mitigations), ADR3-M7-003 (EMA mints a real connection, and
+  re-acquisition lives in the broker so `get_access_material` stays the single
+  expiry authority), and ADR3-M7-004 (the assertion row is evidence and
+  revocation never deletes it), plus the configuration guide and the exact
+  verification commands.
+- Added the enterprise settings to `.env.example` and `config.py`. The flag alone
+  opens nothing: without a token-exchange URL the subsystem is inert, and a
+  connector absent from `ACCRETION_ENTERPRISE_AUTH_AUDIENCES` cannot be
+  enterprise-authorized.
+- Added `--stage M7` to CI, and made an empty stage selection an explicit
+  non-zero error, so a stage gate can no longer pass by selecting no criteria.
+
 ### Changed
 
+- `EncryptedTokenBroker` gained `register_reacquirer(connector_id, fn)`, consulted
+  inside `refresh()` before the no-refresh-token failure. A jwt-bearer grant returns
+  no refresh token, so without the hook every enterprise handle would expire at the
+  end of its first lifetime; with it, `get_access_material` remains the single
+  authority on expiry and a mid-session expiry renews with no user interaction. The
+  hook refuses any connector whose `auth_type` is not `EMA`, so an interactively
+  consented handle can never be resealed with enterprise authority.
+- `RemoteMcpManager._authorization()` gained one additive branch: an `EMA` connector
+  with no `ACTIVE` connection mints one, and a refusal marks the server
+  `AUTH_REQUIRED` exactly as an unauthorized OAuth connector does. Everything below
+  it is untouched, and the flag-off event sequence is byte-identical to M6's.
+- `IdentityService.complete_login` retains the assertion when the flag is on, and
+  `logout` destroys it before revoking the auth session row.
 - `apps/ui/src/api.ts` gained the M6 client functions (plugin detail,
   installations and audit, connectors and connections with connect / reauthorize
   / revoke / health, MCP servers with capabilities and discovery, capability
