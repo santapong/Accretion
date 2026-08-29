@@ -10,6 +10,11 @@ import {
 } from "react-router-dom";
 import { api, type AcrArchFilters } from "./api";
 import { RunExecution } from "./RunExecution";
+import { ConnectionsPage } from "./pages/ConnectionsPage";
+import { PluginsPage } from "./pages/PluginsPage";
+import { McpServersPage } from "./pages/McpServersPage";
+import { CapabilityInspectorPage } from "./pages/CapabilityInspectorPage";
+import { IdentityPage } from "./pages/IdentityPage";
 import type {
   AgentEvent,
   ExperienceDetail,
@@ -784,6 +789,7 @@ function CapabilitiesPage() {
   return (
     <section className="page-panel">
       <header className="section-heading"><div><p className="eyebrow">Read-only registry</p><h2>Capabilities, skills, and plugins</h2></div></header>
+      <p className="page-status">A capability listed here may still be unusable. <Link to="/admin/capabilities/inspect">Inspect a capability</Link> to see the binding and connection a run would really use.</p>
       <div className="registry-grid">
         <article className="registry-card"><h3>Capabilities</h3><ul className="registry-list">{(capabilities.data ?? []).map((item) => <li key={`${item.capability_id}:${item.version}`}><strong>{item.capability_id}@{item.version}</strong><span>{item.kind} · {item.risk} · {item.backend}</span></li>)}</ul></article>
         <article className="registry-card"><h3>Skills</h3><ul className="registry-list">{(skills.data ?? []).map((item) => <li key={`${item.skill_id}:${item.version}`}><strong>{item.skill_id}@{item.version}</strong><span>{(item.required_capabilities ?? []).join(", ")}</span></li>)}</ul></article>
@@ -1018,6 +1024,9 @@ function ExperienceBenchmarkPage() {
 const navigation = [
   ["/", "Dashboard"], ["/tasks/new", "New task"], ["/runtimes", "Runtimes"],
   ["/history", "History"], ["/approvals", "Approvals"], ["/capabilities", "Capabilities"],
+  ["/admin/connections", "Connections"], ["/admin/plugins", "Plugins"],
+  ["/admin/mcp", "MCP servers"], ["/admin/capabilities/inspect", "Capability inspector"],
+  ["/admin/identity", "Identity"],
   ["/benchmarks/acr-arch", "ACR-ARCH"], ["/benchmarks/dynamic", "P5 Dynamic"],
   ["/benchmarks/search", "P6 Search"],
   ["/benchmarks/experience", "P7 Experience"],
@@ -1045,6 +1054,11 @@ function OperatorShell() {
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/capabilities" element={<CapabilitiesPage />} />
+          <Route path="/admin/connections" element={<ConnectionsPage />} />
+          <Route path="/admin/plugins" element={<PluginsPage />} />
+          <Route path="/admin/mcp" element={<McpServersPage />} />
+          <Route path="/admin/capabilities/inspect" element={<CapabilityInspectorPage />} />
+          <Route path="/admin/identity" element={<IdentityPage />} />
           <Route path="/benchmarks/acr-arch" element={<BenchmarkPage />} />
           <Route path="/benchmarks/dynamic" element={<DynamicBenchmarkPage />} />
           <Route path="/benchmarks/search" element={<SearchBenchmarkPage />} />

@@ -1397,6 +1397,29 @@ async def refresh_mcp_discovery(
     )
 
 
+@app.get(
+    "/api/v1/mcp/servers/{mcp_server_id}/discovery",
+    response_model=McpDiscoverySnapshot,
+)
+async def get_mcp_server_discovery(
+    mcp_server_id: str, request: Request
+) -> McpDiscoverySnapshot:
+    """The most recent discovery snapshot for one server.
+
+    Read-only: unlike ``refresh-discovery`` this never contacts the server, so any
+    workspace member may call it. A server with no snapshot yet is a 404, which is
+    also what a non-existent server returns.
+    """
+
+    server = await _mcp_server_for_request(mcp_server_id, request)
+    snapshots = await remote_mcp(request).store.list_mcp_discovery_snapshots(
+        server.mcp_server_id
+    )
+    if not snapshots:
+        raise KeyError(mcp_server_id)
+    return snapshots[0]
+
+
 @app.post("/api/v1/mcp/servers/{mcp_server_id}/enable", response_model=McpServerDefinition)
 async def enable_mcp_server(mcp_server_id: str, request: Request) -> McpServerDefinition:
     server = await _mcp_server_for_request(mcp_server_id, request, administer=True)
