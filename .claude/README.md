@@ -37,8 +37,9 @@ milestone-plan    planner ∥ risk analyst  ──▶  reconcile by hand  ──
 milestone-build   per PR: implement → author evidence
                           → spec ∥ evidence ∥ contracts, then gates
                           → repair, loop until clean
-                  leaves everything in the working tree  ──────────── human gate ────
-                  review the diff, open the PRs, merge
+                          → checkpoint commit on feat/v03-<m>, stop at the first PR that never comes clean
+                  never pushes or merges  ─────────────────────────── human gate ────
+                  review the checkpoint commits, split into PRs, merge
 ```
 
 ```bash
@@ -51,10 +52,17 @@ Workflow({ name: "milestone-build", args: {
   planPath: "/path/to/plan.md",
   prs: [{ name: "plugins-page", kind: "frontend", scope: "…", criteria: ["AC3-UI-01"] }]
 }})
+# a governance PR may authorise exactly one SDD edit:
+#   { name: "governance", kind: "docs", scope: "…", criteria: [],
+#     allowSdd: "append section 24.9 to docs/sdd/Accretion_SDD_v0.3.md" }
 ```
 
 Gates sit **between milestones**, not between PRs, so a bad plan costs one milestone
 rather than the whole release.
+
+Verifiers are read-only against git: `git checkout`, `restore`, `stash`, `reset` and
+`clean` are forbidden to every agent in the build, because one auditor once reverted two
+PRs of uncommitted work. Mutation checks copy to the scratchpad and restore with `cp`.
 
 ## Two traps every agent here is told about
 
