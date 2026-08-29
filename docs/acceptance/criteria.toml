@@ -30,6 +30,17 @@ V01-P4-004 = { verification = "frontend", evidence = "apps/ui/src/App.test.tsx:1
 V02-P6-008 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:490 renders P6 candidate lineage, provenance, scores, spend, and selection reason" }
 V02-P7-007 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:549 renders P7 experience provenance, compatibility, transfer risk, and reused segments" }
 
+# --- Not yet due: milestone M7 has not started ------------------------------
+# The seven AC3-EMA criteria (SDD v0.3 §24.9) cover optional enterprise-managed
+# authorization. Each leaves this list as the M7 PR that proves it lands.
+AC3-EMA-01 = { verification = "not_yet_due", reason = "M7 enterprise-managed authorization" }
+AC3-EMA-02 = { verification = "not_yet_due", reason = "M7 enterprise-managed authorization" }
+AC3-EMA-03 = { verification = "not_yet_due", reason = "M7 enterprise-managed authorization" }
+AC3-EMA-04 = { verification = "not_yet_due", reason = "M7 enterprise-managed authorization" }
+AC3-EMA-05 = { verification = "not_yet_due", reason = "M7 enterprise-managed authorization" }
+AC3-EMA-06 = { verification = "not_yet_due", reason = "M7 enterprise-managed authorization" }
+AC3-EMA-07 = { verification = "not_yet_due", reason = "M7 enterprise-managed authorization" }
+
 # --- Not yet due: milestone M6 has not started ------------------------------
 # The six AC3-PLG criteria left this list in M4 and the four AC3-RES criteria left it
 # in M5: each is now proven by a marked test in tests/test_v03_m4_plugins.py or

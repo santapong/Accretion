@@ -43,6 +43,15 @@ def main() -> int:
         for criterion in criteria.values()
         if not options.stage or criterion.stage == options.stage
     ]
+    if options.stage and not selected:
+        print(
+            f"\nERROR: --stage {options.stage} selected no criteria. A stage that matches"
+            "\nnothing is a typo or a milestone that does not exist yet; reporting PASS"
+            "\nfor it would be a vacuous gate.",
+            file=sys.stderr,
+        )
+        return 2
+
     statuses = {criterion.id: classify(criterion) for criterion in selected}
 
     by_status: dict[str, list[Criterion]] = defaultdict(list)

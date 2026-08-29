@@ -7,11 +7,17 @@ expired waiver, and stale manual evidence.
 
 from __future__ import annotations
 
+import re
+import subprocess
+import sys
 from datetime import date, timedelta
+from pathlib import Path
 
 import pytest
 
 from accretion import acceptance as harness
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def criterion(**overrides: object) -> object:
@@ -201,18 +207,53 @@ def test_not_yet_due_is_out_of_scope_rather_than_failing() -> None:
         ("V02-UI-003", "v0.2-ui"),
         ("AC3-CON-06", "M2"),
         ("AC3-UI-01", "M6"),
+        ("AC3-EMA-01", "M7"),
     ],
 )
 def test_every_id_shape_maps_to_a_stage(identifier: str, expected: str) -> None:
     assert harness.stage_of(identifier) == expected
 
 
+def run_stage_gate(stage: str) -> subprocess.CompletedProcess[str]:
+    """Invoke the real CLI the way CI does, without running the pytest suite."""
+
+    return subprocess.run(
+        [
+            sys.executable,
+            str(REPO_ROOT / "scripts" / "check_acceptance.py"),
+            "--no-tests",
+            "--stage",
+            stage,
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+    )
+
+
+def test_a_stage_that_selects_no_criteria_is_an_error_rather_than_a_vacuous_pass() -> None:
+    """A gate that matches nothing must go red: an empty selection is a typo."""
+
+    result = run_stage_gate("M9")
+    assert result.returncode != 0, result.stdout
+    assert "PASS" not in result.stdout
+    assert "selected no criteria" in result.stderr
+
+
+def test_a_stage_that_selects_criteria_still_reports_them() -> None:
+    """The empty-selection guard must not fire on a real stage."""
+
+    result = run_stage_gate("M7")
+    assert result.returncode == 0, result.stderr
+    assert "NOT_YET_DUE: 7" in result.stdout
+
+
 def test_the_sdds_still_parse_and_the_policy_is_well_formed() -> None:
     """Guards against an SDD edit that silently drops criteria from the gate."""
 
     criteria = harness.load_criteria()
-    assert len(criteria) == 110, "expected 110 criteria across the three SDDs"
-    assert sum(1 for c in criteria.values() if c.priority == "MUST") == 108
+    assert len(criteria) == 117, "expected 117 criteria across the three SDDs"
+    assert sum(1 for c in criteria.values() if c.priority == "MUST") == 115
     assert harness.apply_policy(criteria) == []
 
 
@@ -422,3 +463,49 @@ def test_an_unknown_verification_mode_is_rejected(
         "AC3-UI-04: unknown verification 'manul' "
         "(expected one of frontend, manual, not_yet_due, test, waived)"
     ]
+
+
+# --- The M7 governance surface ----------------------------------------------
+
+
+def test_the_seven_ema_rows_load_from_the_sdd_as_not_yet_due_m7_musts() -> None:
+    """§24.9 must reach the harness: seven ids, all MUST, all M7, all deferred.
+
+    Reads the criteria the gate itself builds, not the markdown, so a row that parses
+    into the wrong stage (the ``unassigned`` fallback for an unmapped category) or a
+    policy line that never landed fails here.
+    """
+
+    criteria = harness.load_criteria()
+    assert harness.apply_policy(criteria) == []
+    ema = {name: c for name, c in criteria.items() if name.startswith("AC3-EMA-")}
+
+    assert sorted(ema) == [f"AC3-EMA-0{index}" for index in range(1, 8)]
+    assert {c.stage for c in ema.values()} == {"M7"}
+    assert {c.priority for c in ema.values()} == {"MUST"}
+    assert {c.verification for c in ema.values()} == {"not_yet_due"}
+    assert {harness.classify(c) for c in ema.values()} == {"NOT_YET_DUE"}
+    # Deferred, therefore out of scope: this PR must not be able to claim them.
+    assert not any(c.in_scope for c in ema.values())
+
+
+def ci_gate_stages() -> list[str]:
+    """Every ``--stage`` argument the acceptance job runs in CI, in order."""
+
+    workflow = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    return re.findall(r"check_acceptance\.py --stage (\S+)", workflow)
+
+
+def test_ci_runs_a_stage_gate_for_every_stage_the_criteria_declare() -> None:
+    """A milestone whose criteria exist but whose gate is not in CI is ungated.
+
+    Derived from the loaded criteria rather than a hard-coded list, so adding M8 rows
+    without adding the CI line fails, and dropping the M7 line fails today.
+    """
+
+    declared = {c.stage for c in harness.load_criteria().values() if c.release == "v0.3"}
+    gated = ci_gate_stages()
+
+    assert "M7" in declared
+    assert declared - set(gated) == set(), f"stages with no CI gate: {declared - set(gated)}"
+    assert len(gated) == len(set(gated)), f"duplicate stage gates in CI: {gated}"
