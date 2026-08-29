@@ -728,11 +728,46 @@ class EnterpriseAuthManager:
         )
 
 
+def build_enterprise_auth_manager(
+    store: StateStore,
+    secrets: SecretStore,
+    broker: TokenBroker | None,
+    settings: Settings,
+    *,
+    http: httpx.AsyncClient | None = None,
+) -> EnterpriseAuthManager | None:
+    """Construct the manager, or ``None`` when the deployment has not asked for it.
+
+    Both gates must be open — the feature flag and a configured exchange endpoint —
+    and a token broker must exist, because an enterprise connection is a real
+    ``Connection`` with a real ``TokenHandle`` (ADR3-M7-003). Returning ``None``
+    rather than a disabled instance keeps the flag-down deployment byte-identical
+    to the pre-M7 one: no collaborator, no outbound client, no retention.
+    """
+
+    if (
+        not settings.enable_enterprise_auth
+        or not settings.enterprise_auth_token_exchange_url
+        or broker is None
+    ):
+        return None
+    client = http if http is not None else httpx.AsyncClient()
+    return EnterpriseAuthManager(
+        store,
+        secrets,
+        broker,
+        settings,
+        IdentityAssertionClient(settings=settings, http=client),
+        JwtBearerClient(http=client),
+    )
+
+
 __all__ = [
     "EnterpriseAuthDisabled",
     "EnterpriseAuthError",
     "EnterpriseAuthManager",
     "IdentityAssertionClient",
     "JwtBearerClient",
+    "build_enterprise_auth_manager",
     "token_endpoint_for",
 ]

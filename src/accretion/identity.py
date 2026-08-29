@@ -14,7 +14,7 @@ import hashlib
 import secrets
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlencode
 
 import httpx
@@ -32,6 +32,9 @@ from accretion.contracts import (
 )
 from accretion.ids import new_id
 from accretion.persistence.store import StateStore
+
+if TYPE_CHECKING:  # pragma: no cover - import cycle: enterprise_auth imports this module
+    from accretion.enterprise_auth import EnterpriseAuthManager
 
 LOCAL_ISSUER = "accretion-local"
 LOCAL_WORKSPACE_ID = "workspace_local"
@@ -170,11 +173,18 @@ class IdentityService:
         *,
         session_ttl_seconds: int = 28_800,
         local_subject: str = "local-operator",
+        enterprise_auth: EnterpriseAuthManager | None = None,
     ) -> None:
         self.store = store
         self.oidc = oidc
         self.session_ttl = timedelta(seconds=session_ttl_seconds)
         self.local_subject = local_subject
+        # Optional and off by default (OQ3-08). When absent, sign-in and sign-out
+        # behave exactly as they did before M7: nothing is retained, nothing is
+        # exchanged. The manager gates itself on the feature flag as well, so the
+        # deployment can carry the collaborator with the flag down and still retain
+        # nothing at all (AC3-EMA-01).
+        self.enterprise_auth = enterprise_auth
 
     def _require_oidc(self) -> OidcClient:
         if self.oidc is None:
@@ -227,6 +237,13 @@ class IdentityService:
                 expires_at=datetime.now(UTC) + self.session_ttl,
             )
         )
+        if self.enterprise_auth is not None:
+            # Retention happens only after the id_token has been fully verified, so
+            # nothing unverified is ever sealed. It is bounded by the token's own
+            # ``exp``, never by the session TTL.
+            await self.enterprise_auth.retain_assertion(
+                id_token, session=session, claims=claims
+            )
         return principal, session
 
     async def resolve_session(self, auth_session_id: str) -> Principal | None:
@@ -236,6 +253,12 @@ class IdentityService:
         return await self.store.get_principal(session.principal_id)
 
     async def logout(self, auth_session_id: str) -> None:
+        # The retained assertion is destroyed *before* the session row is revoked:
+        # if the process dies between the two steps, the surviving state is a live
+        # session with no assertion (harmless) rather than a dead session whose
+        # sealed identity assertion outlived it (AC3-EMA-04).
+        if self.enterprise_auth is not None:
+            await self.enterprise_auth.revoke_for_session(auth_session_id)
         await self.store.revoke_auth_session(auth_session_id)
 
     async def local_principal(self) -> Principal:

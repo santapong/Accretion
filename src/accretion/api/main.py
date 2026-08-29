@@ -105,6 +105,7 @@ from accretion.dynamic_benchmark import (
     DynamicWorkflowBenchmarkRunner,
     DynamicWorkflowBenchmarkSummary,
 )
+from accretion.enterprise_auth import build_enterprise_auth_manager
 from accretion.experience.models import (
     Experience,
     ExperienceDetail,
@@ -236,11 +237,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             model=settings.opencode_model,
         ),
     }
+    secrets_store = EnvelopeSecretStore()
     token_broker = (
-        EncryptedTokenBroker(store, EnvelopeSecretStore())
+        EncryptedTokenBroker(store, secrets_store)
         if settings.token_encryption_key
         else None
     )
+    # Optional, off by default, and inert without an exchange endpoint (OQ3-08).
+    enterprise_auth = build_enterprise_auth_manager(
+        store, secrets_store, token_broker, settings
+    )
+    app.state.enterprise_auth = enterprise_auth
     if token_broker is not None and settings.github_client_id:
         github = github_connector(
             authorization_server=settings.github_authorization_server
@@ -349,7 +356,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         experience_service=experience,
     )
     app.state.candidate_search = search_service
-    app.state.auth = build_auth_runtime(store, settings)
+    app.state.auth = build_auth_runtime(store, settings, enterprise_auth=enterprise_auth)
     await seed_templates(store)
     await seed_governance(store)
     await seed_acr_arch(store)
