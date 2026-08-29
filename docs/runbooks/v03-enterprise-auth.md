@@ -97,6 +97,38 @@ registers its own hook at wiring time. `get_access_material` therefore remains t
 single authority on expiry, and a mid-session token expiry renews with no user
 interaction (AC3-EMA-07).
 
+### ADR3-M7-004 — the assertion row is evidence; revocation never deletes it
+
+**Context.** `tests/test_v03_m4_plugin_primitives.py` turns AC3-PLG-05 into a structural
+fact: the state store may expose no deletion method outside a closed allowlist.
+
+> `docs/sdd/Accretion_SDD_v0.3.md:1399`
+> `| AC3-PLG-05 | MUST | Plugin removal cannot delete evidence/artifacts from prior runs. |`
+
+M7 must nevertheless destroy the retained assertion:
+
+> `docs/sdd/Accretion_SDD_v0.3.md:1449`
+> `| AC3-EMA-04 | MUST | Ending the session or revoking the connection prevents subsequent enterprise-authorized invocation and destroys the retained assertion. |`
+
+**Decision.** The allowlist stays exactly `{"delete_secret_record"}`. The store gains no
+deletion surface of any kind for M7. What AC3-EMA-04 requires destroyed is the *assertion
+material*, and that material lives only in the secret store; the `identity_assertions`
+row holds no token and is evidence of who was authorized and when. Revocation is
+therefore two existing operations:
+
+1. `upsert_identity_assertion(assertion.model_copy(update={"status": REVOKED}))`
+2. `delete_secret_record(assertion.secret_store_key)`
+
+After step 2 the sealed assertion is unrecoverable — proven by reading
+`get_secret_record` back as `None` — while the row remains as an audit trail.
+
+**Consequences.** The allowlist remains **closed**, not advisory: adding
+`delete_identity_assertion` or `delete_enterprise_auth_grant` fails the M4 structural
+test, which scans `StateStore`, `MemoryStore` and `PostgresStore`. `enterprise_auth_grants`
+is append-only in the same sense — no update and no delete path exists in any layer, and
+a duplicate `grant_id` is refused identically by `MemoryStore` and by the Postgres unique
+constraint.
+
 ## Operating
 
 | Setting | Default | Effect |

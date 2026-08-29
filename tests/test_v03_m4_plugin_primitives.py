@@ -25,7 +25,7 @@ from accretion.governance import (
     seed_governance,
 )
 from accretion.ids import new_id
-from accretion.persistence.store import MemoryStore, StateStore
+from accretion.persistence.store import MemoryStore, PostgresStore, StateStore
 from accretion.plugins.dependencies import (
     check_constraints,
     parse_version,
@@ -150,7 +150,7 @@ def test_state_store_exposes_no_deletion_method_beyond_secrets() -> None:
 
 
 def test_store_implementations_expose_no_extra_deletion_methods() -> None:
-    for implementation in (MemoryStore, StateStore):
+    for implementation in (MemoryStore, PostgresStore, StateStore):
         offenders = {
             name
             for name in dir(implementation)

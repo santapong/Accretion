@@ -692,6 +692,56 @@ class ResearchEvidenceRow(Base):
     )
 
 
+class IdentityAssertionRow(Base):
+    """Retained identity assertion metadata (v0.3 M7).
+
+    Carries no assertion material: the sealed assertion lives in
+    ``secret_records`` under ``secret_store_key``.
+    """
+
+    __tablename__ = "identity_assertions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    assertion_id: Mapped[str] = mapped_column(String(255), unique=True)
+    auth_session_id: Mapped[str] = mapped_column(String(255))
+    principal_id: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(32))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_identity_assertions_session", "auth_session_id"),
+        Index("ix_identity_assertions_principal_status", "principal_id", "status"),
+        Index("ix_identity_assertions_status_expires", "status", "expires_at"),
+    )
+
+
+class EnterpriseAuthGrantRow(Base):
+    """Append-only: no ``updated_at``, and nothing in the store ever updates or
+    deletes a row."""
+
+    __tablename__ = "enterprise_auth_grants"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    grant_id: Mapped[str] = mapped_column(String(255), unique=True)
+    principal_id: Mapped[str] = mapped_column(String(255))
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    connector_id: Mapped[str] = mapped_column(String(255))
+    mcp_server_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    connection_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    outcome: Mapped[str] = mapped_column(String(32))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_enterprise_grants_principal_created", "principal_id", "created_at"),
+        Index("ix_enterprise_grants_connector_created", "connector_id", "created_at"),
+        Index("ix_enterprise_grants_outcome", "outcome"),
+    )
+
+
 class CapabilityPolicyRow(Base):
     __tablename__ = "policies"
 
