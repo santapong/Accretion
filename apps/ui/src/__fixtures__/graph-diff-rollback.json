@@ -1,0 +1,27 @@
+{
+  "added_edges": [
+    "act-verify"
+  ],
+  "added_nodes": [],
+  "changed_edges": [
+    "verify-complete"
+  ],
+  "changed_nodes": [
+    "act",
+    "verify"
+  ],
+  "from_revision": 2,
+  "protected_state_refs": [
+    "run_m6_01:start"
+  ],
+  "removed_edges": [
+    "act-review",
+    "review-verify"
+  ],
+  "removed_nodes": [
+    "review"
+  ],
+  "run_id": "run_m6_01",
+  "schema_version": "2.0",
+  "to_revision": 3
+}

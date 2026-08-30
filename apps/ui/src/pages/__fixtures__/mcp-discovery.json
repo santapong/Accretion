@@ -1,0 +1,192 @@
+{
+  "cache_hints": {
+    "prompts": {
+      "scope": "PRIVATE",
+      "ttl_ms": 0
+    },
+    "resource_templates": {
+      "scope": "PRIVATE",
+      "ttl_ms": 0
+    },
+    "resources": {
+      "scope": "PRIVATE",
+      "ttl_ms": 0
+    },
+    "tools": {
+      "scope": "PRIVATE",
+      "ttl_ms": 300000
+    }
+  },
+  "connection_id": null,
+  "content_sha256": "70b96ae794b471f7ed4149cc2314d8dc978903188f686b88f62e8ecbf707ed2a",
+  "created_at": "2026-08-28T00:00:00Z",
+  "discovery_snapshot_id": "mcp_m6_01",
+  "mcp_server_id": "mcs_m6_01",
+  "prompts": [],
+  "protocol_version": "2026-07-28",
+  "resource_templates": [],
+  "resources": [],
+  "schema_errors": [],
+  "schema_version": "1.0",
+  "server_info": {
+    "description": null,
+    "icons": null,
+    "name": "fake-research-openalex",
+    "title": null,
+    "version": "1.0.0",
+    "websiteUrl": null
+  },
+  "tools": [
+    {
+      "_meta": null,
+      "annotations": null,
+      "description": "Search literature by free-text query.",
+      "execution": null,
+      "icons": null,
+      "inputSchema": {
+        "properties": {
+          "per_page": {
+            "default": 10,
+            "title": "Per Page",
+            "type": "integer"
+          },
+          "q": {
+            "title": "Q",
+            "type": "string"
+          }
+        },
+        "required": [
+          "q"
+        ],
+        "title": "works_searchArguments",
+        "type": "object"
+      },
+      "name": "openalex_works_search",
+      "outputSchema": {
+        "additionalProperties": true,
+        "title": "works_searchDictOutput",
+        "type": "object"
+      },
+      "title": null
+    },
+    {
+      "_meta": null,
+      "annotations": null,
+      "description": "Fetch one work by its opaque work identifier.",
+      "execution": null,
+      "icons": null,
+      "inputSchema": {
+        "properties": {
+          "work_id": {
+            "title": "Work Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "work_id"
+        ],
+        "title": "work_getArguments",
+        "type": "object"
+      },
+      "name": "openalex_work_get",
+      "outputSchema": {
+        "additionalProperties": true,
+        "title": "work_getDictOutput",
+        "type": "object"
+      },
+      "title": null
+    },
+    {
+      "_meta": null,
+      "annotations": null,
+      "description": "Resolve an entity identifier to its metadata record.",
+      "execution": null,
+      "icons": null,
+      "inputSchema": {
+        "properties": {
+          "entity_id": {
+            "title": "Entity Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "entity_id"
+        ],
+        "title": "entity_metadataArguments",
+        "type": "object"
+      },
+      "name": "openalex_entity_metadata",
+      "outputSchema": {
+        "additionalProperties": true,
+        "title": "entity_metadataDictOutput",
+        "type": "object"
+      },
+      "title": null
+    },
+    {
+      "_meta": null,
+      "annotations": null,
+      "description": "Resolve a work and report the identifier actually registered for it.",
+      "execution": null,
+      "icons": null,
+      "inputSchema": {
+        "properties": {
+          "claimed_doi": {
+            "title": "Claimed Doi",
+            "type": "string"
+          },
+          "work_id": {
+            "title": "Work Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "work_id",
+          "claimed_doi"
+        ],
+        "title": "citation_resolveArguments",
+        "type": "object"
+      },
+      "name": "openalex_citation_resolve",
+      "outputSchema": {
+        "additionalProperties": true,
+        "title": "citation_resolveDictOutput",
+        "type": "object"
+      },
+      "title": null
+    },
+    {
+      "_meta": null,
+      "annotations": null,
+      "description": "Search source repositories associated with published work.",
+      "execution": null,
+      "icons": null,
+      "inputSchema": {
+        "properties": {
+          "per_page": {
+            "default": 10,
+            "title": "Per Page",
+            "type": "integer"
+          },
+          "q": {
+            "title": "Q",
+            "type": "string"
+          }
+        },
+        "required": [
+          "q"
+        ],
+        "title": "repository_searchArguments",
+        "type": "object"
+      },
+      "name": "openalex_repository_search",
+      "outputSchema": {
+        "additionalProperties": true,
+        "title": "repository_searchDictOutput",
+        "type": "object"
+      },
+      "title": null
+    }
+  ],
+  "valid": true
+}

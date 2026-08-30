@@ -391,6 +391,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/mcp/servers/{mcp_server_id}/discovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Mcp Server Discovery
+         * @description The most recent discovery snapshot for one server.
+         *
+         *     Read-only: unlike ``refresh-discovery`` this never contacts the server, so any
+         *     workspace member may call it. A server with no snapshot yet is a 404, which is
+         *     also what a non-existent server returns.
+         */
+        get: operations["get_mcp_server_discovery_api_v1_mcp_servers__mcp_server_id__discovery_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mcp/servers/{mcp_server_id}/enable": {
         parameters: {
             query?: never;
@@ -7014,6 +7038,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["McpServerDefinition"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mcp_server_discovery_api_v1_mcp_servers__mcp_server_id__discovery_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpDiscoverySnapshot"];
                 };
             };
             /** @description Validation Error */

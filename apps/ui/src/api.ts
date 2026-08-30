@@ -5,6 +5,7 @@ import type {
   BenchmarkRun,
   BenchmarkTaskDetail,
   Capability,
+  CapabilityResolveRequest,
   ExecutionTrace,
   ExperienceBenchmarkSummary,
   ExperienceDetail,
@@ -16,6 +17,19 @@ import type {
   LoopExecution,
   MetaPlugin,
   MetaSkill,
+  AuthProviderInfo,
+  AuthorizationStart,
+  ConnectCreate,
+  ConnectionSummary,
+  ConnectorDefinition,
+  McpDiscoverySnapshot,
+  McpServerDefinition,
+  MeResponse,
+  PluginAuditEvent,
+  PluginDetail,
+  PluginInstallation,
+  ResolvedCapability,
+  WorkspaceEntity,
   Project,
   ProjectCreate,
   ProjectFeatureSettings,
@@ -53,6 +67,13 @@ export interface AcrArchFilters {
   task_type?: string;
   verifier?: string;
   selector_version?: string;
+}
+
+export type { MeResponse };
+
+export interface PluginAuditFilters {
+  plugin_id?: string;
+  workspace_id?: string;
 }
 
 const API_ROOT = import.meta.env.VITE_API_URL ?? "";
@@ -100,12 +121,6 @@ async function patchJson<T>(path: string, payload: unknown): Promise<T> {
     throw new Error(body?.message ?? `Request failed (${response.status})`);
   }
   return response.json() as Promise<T>;
-}
-
-export interface MeResponse {
-  principal: { principal_id: string; display_name: string | null; subject: string; status: string };
-  memberships: { workspace_id: string; role: string; revision: number }[];
-  auth_mode: string;
 }
 
 export const api = {
@@ -231,6 +246,45 @@ export const api = {
   capabilities: () => getJson<Capability[]>("/api/v1/capabilities"),
   skills: () => getJson<MetaSkill[]>("/api/v1/skills"),
   plugins: () => getJson<MetaPlugin[]>("/api/v1/plugins"),
+  pluginDetail: (pluginId: string, workspaceId?: string) =>
+    getJson<PluginDetail>(
+      `/api/v1/plugins/${pluginId}${workspaceId ? `?workspace_id=${workspaceId}` : ""}`,
+    ),
+  pluginInstallations: (workspaceId?: string) =>
+    getJson<PluginInstallation[]>(
+      `/api/v1/plugins/installations${workspaceId ? `?workspace_id=${workspaceId}` : ""}`,
+    ),
+  pluginAudit: (filters: PluginAuditFilters = {}) => {
+    const query = new URLSearchParams(
+      Object.entries(filters).filter((entry): entry is [string, string] => Boolean(entry[1])),
+    );
+    return getJson<PluginAuditEvent[]>(`/api/v1/audit/plugins?${query}`);
+  },
+  connectors: () => getJson<ConnectorDefinition[]>("/api/v1/connectors"),
+  connections: () => getJson<ConnectionSummary[]>("/api/v1/connections"),
+  connect: (connectorId: string, payload: ConnectCreate) =>
+    postJson<AuthorizationStart>(`/api/v1/connectors/${connectorId}/connect`, payload),
+  reauthorize: (connectionId: string, payload: ConnectCreate) =>
+    postJson<AuthorizationStart>(
+      `/api/v1/connections/${connectionId}/reauthorize`,
+      payload,
+    ),
+  revoke: (connectionId: string) =>
+    postJson<ConnectionSummary>(`/api/v1/connections/${connectionId}/revoke`, {}),
+  connectionHealth: (connectionId: string) =>
+    getJson<Record<string, unknown>>(`/api/v1/connections/${connectionId}/health`),
+  mcpServers: (workspaceId?: string) =>
+    getJson<McpServerDefinition[]>(
+      `/api/v1/mcp/servers${workspaceId ? `?workspace_id=${workspaceId}` : ""}`,
+    ),
+  mcpServerCapabilities: (mcpServerId: string) =>
+    getJson<Capability[]>(`/api/v1/mcp/servers/${mcpServerId}/capabilities`),
+  mcpServerDiscovery: (mcpServerId: string) =>
+    getJson<McpDiscoverySnapshot>(`/api/v1/mcp/servers/${mcpServerId}/discovery`),
+  resolveCapability: (payload: CapabilityResolveRequest) =>
+    postJson<ResolvedCapability>("/api/v1/capabilities/resolve", payload),
+  workspaces: () => getJson<WorkspaceEntity[]>("/api/v1/workspaces"),
+  authProviders: () => getJson<AuthProviderInfo[]>("/api/v1/auth/providers"),
   acrArch: (filters: AcrArchFilters = {}) => {
     const query = new URLSearchParams(
       Object.entries(filters).filter((entry): entry is [string, string] => Boolean(entry[1])),
