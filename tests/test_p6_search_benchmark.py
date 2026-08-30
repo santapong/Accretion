@@ -47,7 +47,12 @@ def test_frozen_search_replay_produces_monotonic_n_1_2_4_curve() -> None:
 
 
 async def test_search_benchmark_api_replays_but_rejects_implicit_live_run() -> None:
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    # Enter the app lifespan here rather than relying on another test having
+    # initialised the module-level `app` singleton: the session middleware reads
+    # `app.state.manager`, which only `lifespan()` sets.
+    async with app.router.lifespan_context(app), AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         summary = await client.get("/api/v2/benchmarks/search")
         replay = await client.post(
             "/api/v2/benchmarks/search/run", json={"execution_source": "REPLAY"}

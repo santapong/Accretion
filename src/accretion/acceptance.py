@@ -17,7 +17,7 @@ import re
 import tomllib
 from collections import defaultdict
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -184,12 +184,45 @@ def apply_policy(criteria: dict[str, Criterion]) -> list[str]:
             # A waiver without an owner or an end date becomes permanent silence.
             if not criterion.reason or not criterion.issue or not criterion.expires:
                 errors.append(f"{identifier}: waiver needs reason, issue, and expires")
+            elif criterion.expires:
+                errors.extend(waiver_expiry_errors(identifier, criterion.expires))
         if criterion.verification == "manual":
             if not criterion.evidence or not criterion.last_verified:
                 errors.append(f"{identifier}: manual needs evidence and last_verified")
         if criterion.verification == "frontend":
             errors.extend(frontend_evidence_errors(identifier, criterion.evidence))
     return errors
+
+
+MAX_WAIVER_DAYS = 180
+
+
+def waiver_expiry_errors(identifier: str, value: str) -> list[str]:
+    """Check that a waiver ends on a real, near-enough date.
+
+    ``expires`` is the only thing that makes a waiver temporary, and it is checked
+    here rather than at classification time so that an unusable value is a policy
+    error a human must fix instead of a silent grant. A release name --- ``expires =
+    "v0.4.0"`` --- is not a date any calendar can pass, and a date decades out is a
+    waiver in name only, so both are refused. The horizon matches the staleness
+    window for manual evidence: whatever was believed today must be re-argued within
+    half a year.
+    """
+
+    try:
+        expires = date.fromisoformat(value)
+    except ValueError:
+        return [
+            f"{identifier}: waiver expires {value!r} is not an ISO-8601 date "
+            f"(YYYY-MM-DD); a release name never comes due"
+        ]
+    horizon = date.today() + timedelta(days=MAX_WAIVER_DAYS)
+    if expires > horizon:
+        return [
+            f"{identifier}: waiver expires {value} is more than {MAX_WAIVER_DAYS} "
+            f"days out (at most {horizon.isoformat()})"
+        ]
+    return []
 
 
 def frontend_evidence_errors(identifier: str, evidence: str) -> list[str]:
@@ -279,10 +312,25 @@ class AcceptancePlugin:
                     self.claims[identifier].append(item.nodeid)
 
     def pytest_runtest_logreport(self, report: Any) -> None:
+        """Record the outcome, including the phases that never reach the test body.
+
+        A fixture that raises produces a ``setup`` report and no ``call`` report at
+        all, so a claim whose setup blew up would otherwise leave no outcome behind
+        and be indistinguishable from a test that was never collected. A teardown
+        failure is equally load-bearing: it can mean the assertion passed only
+        because the resource it was asserting on was never really there. Both are
+        recorded as ``error`` and classify as FAILING.
+        """
+
         if report.when == "call":
             self.outcomes[report.nodeid] = report.outcome
-        elif report.when == "setup" and report.outcome == "skipped":
-            self.outcomes[report.nodeid] = "skipped"
+        elif report.when == "setup":
+            if report.outcome == "skipped":
+                self.outcomes[report.nodeid] = "skipped"
+            elif report.outcome == "failed":
+                self.outcomes[report.nodeid] = "error"
+        elif report.when == "teardown" and report.outcome == "failed":
+            self.outcomes[report.nodeid] = "error"
 
 
 def run_tests(quiet: bool) -> AcceptancePlugin:
@@ -297,9 +345,22 @@ def run_tests(quiet: bool) -> AcceptancePlugin:
     return plugin
 
 
+# An outcome that is not a clean pass. ``missing`` is what the CLI records for a
+# claimed node that reported nothing at all --- deselected, collected but never run,
+# or crashed before pytest could file a report --- and ``error`` is a setup or
+# teardown failure. Neither is evidence of anything.
+FAILED_OUTCOMES = frozenset({"failed", "error", "missing"})
+
+
 def classify(criterion: Criterion) -> str:
     if criterion.verification == "not_yet_due":
         return "NOT_YET_DUE"
+    if any(outcome in FAILED_OUTCOMES for outcome in criterion.outcomes):
+        # Checked before the verification mode, not after: a manual record or a
+        # waiver describes what a human believed, and it must not silence a test
+        # that claims the same criterion and is failing right now. The failing test
+        # is the newer, more specific evidence.
+        return "FAILING"
     if criterion.verification == "waived":
         if criterion.expires and _expired(criterion.expires):
             return "WAIVER_EXPIRED"
@@ -314,8 +375,6 @@ def classify(criterion: Criterion) -> str:
         return "FRONTEND"
     if not criterion.tests:
         return "UNCOVERED"
-    if any(outcome == "failed" for outcome in criterion.outcomes):
-        return "FAILING"
     if all(outcome == "skipped" for outcome in criterion.outcomes):
         # A skipped test proves nothing.
         return "SKIPPED_ONLY"
@@ -326,8 +385,11 @@ def _expired(value: str) -> bool:
     try:
         return date.fromisoformat(value) < date.today()
     except ValueError:
-        # A release name rather than a date; a human must retire it.
-        return False
+        # Not a date any calendar can compare --- a release name, a typo, an empty
+        # string. Failing open here would turn `expires = "v0.4.0"` into a permanent
+        # waiver, so an unreadable end date counts as already past. `apply_policy`
+        # refuses the same value as a policy error; this is the second door.
+        return True
 
 
 def _stale(value: str, max_age_days: int = 180) -> bool:

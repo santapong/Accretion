@@ -7,11 +7,13 @@ expired waiver, and stale manual evidence.
 
 from __future__ import annotations
 
+import json
 import re
 import subprocess
 import sys
 from datetime import date, timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -526,3 +528,272 @@ def test_ci_runs_a_stage_gate_for_every_stage_the_criteria_declare() -> None:
     assert "M7" in declared
     assert declared - set(gated) == set(), f"stages with no CI gate: {declared - set(gated)}"
     assert len(gated) == len(set(gated)), f"duplicate stage gates in CI: {gated}"
+
+
+# --- The escape hatches must not be able to outlive or outrank a test -------
+
+
+def test_a_waiver_whose_end_date_is_not_a_date_counts_as_expired() -> None:
+    """`_expired` fails closed, so an unreadable end date never grants silence.
+
+    Differential: a real ISO date in the future still classifies WAIVED, while
+    `expires = "v0.4.0"` --- a release name no calendar can compare --- classifies
+    WAIVER_EXPIRED instead of being waived forever.
+    """
+
+    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+    honest = criterion(
+        verification="waived", reason="deferred", issue="#52", expires=tomorrow
+    )
+    assert harness.classify(honest) == "WAIVED"
+
+    for abusive in ("v0.4.0", "next release", "2026-13-01", "soon"):
+        entry = criterion(
+            verification="waived", reason="deferred", issue="#52", expires=abusive
+        )
+        assert harness.classify(entry) == "WAIVER_EXPIRED", abusive
+    assert harness._expired("v0.4.0") is True
+
+
+def test_a_waiver_needs_an_iso_end_date_inside_the_180_day_horizon(
+    tmp_path: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`apply_policy` refuses a waiver that never really comes due.
+
+    Differential: a waiver expiring in 30 days is accepted; a release name and a
+    date ten years out are both reported as policy errors, because a waiver that
+    outlives the release it was written for is a permanent grant with paperwork.
+    """
+
+    def policy_file(expires: str) -> object:
+        path = tmp_path / f"criteria-waiver-{abs(hash(expires))}.toml"  # type: ignore[operator]
+        path.write_text(
+            "[criteria]\n"
+            'AC3-UI-04 = { verification = "waived", reason = "deferred", '
+            f'issue = "#52", expires = "{expires}" }}\n'
+        )
+        return path
+
+    def fresh() -> dict[str, object]:
+        return {"AC3-UI-04": criterion(id="AC3-UI-04", release="v0.3", stage="M6")}
+
+    soon = (date.today() + timedelta(days=30)).isoformat()
+    monkeypatch.setattr(harness, "POLICY_PATH", policy_file(soon))
+    assert harness.apply_policy(fresh()) == []  # type: ignore[arg-type]
+
+    monkeypatch.setattr(harness, "POLICY_PATH", policy_file("v0.4.0"))
+    assert harness.apply_policy(fresh()) == [  # type: ignore[arg-type]
+        "AC3-UI-04: waiver expires 'v0.4.0' is not an ISO-8601 date "
+        "(YYYY-MM-DD); a release name never comes due"
+    ]
+
+    far = (date.today() + timedelta(days=3650)).isoformat()
+    horizon = (date.today() + timedelta(days=harness.MAX_WAIVER_DAYS)).isoformat()
+    monkeypatch.setattr(harness, "POLICY_PATH", policy_file(far))
+    assert harness.apply_policy(fresh()) == [  # type: ignore[arg-type]
+        f"AC3-UI-04: waiver expires {far} is more than 180 days out "
+        f"(at most {horizon})"
+    ]
+
+
+def test_a_manual_or_waived_record_does_not_silence_its_own_failing_test() -> None:
+    """A recorded belief must not outrank a test claiming the same criterion.
+
+    Differential: with a passing claim the recorded mode still shows (MANUAL /
+    WAIVED); the moment the claiming test fails, the criterion reports FAILING
+    rather than hiding behind the record.
+    """
+
+    recent = (date.today() - timedelta(days=10)).isoformat()
+    tomorrow = (date.today() + timedelta(days=1)).isoformat()
+
+    honest_manual = criterion(
+        verification="manual",
+        evidence="docs/releases/v0.3/evidence/live-acceptance.md",
+        last_verified=recent,
+        tests=["t::manual_guard"],
+        outcomes=["passed"],
+    )
+    assert harness.classify(honest_manual) == "MANUAL"
+
+    abusive_manual = criterion(
+        verification="manual",
+        evidence="docs/releases/v0.3/evidence/live-acceptance.md",
+        last_verified=recent,
+        tests=["t::manual_guard"],
+        outcomes=["failed"],
+    )
+    assert harness.classify(abusive_manual) == "FAILING"
+
+    honest_waiver = criterion(
+        verification="waived",
+        reason="deferred",
+        issue="#52",
+        expires=tomorrow,
+        tests=["t::waiver_guard"],
+        outcomes=["passed"],
+    )
+    assert harness.classify(honest_waiver) == "WAIVED"
+
+    abusive_waiver = criterion(
+        verification="waived",
+        reason="deferred",
+        issue="#52",
+        expires=tomorrow,
+        tests=["t::waiver_guard"],
+        outcomes=["failed"],
+    )
+    assert harness.classify(abusive_waiver) == "FAILING"
+
+
+def run_plugin_over(
+    directory: Path, extra: list[str], suite: str | None = None
+) -> dict[str, Any]:
+    """Run a real pytest over a throwaway suite with the real AcceptancePlugin.
+
+    Hand-rolled report objects would only prove that the plugin reads the fields
+    this test decided to hand it; the phases and outcomes pytest actually files for
+    a raising fixture are the thing under test, so a real pytest run produces them.
+    A subprocess keeps that run out of the enclosing session.
+    """
+
+    (directory / "t_claims.py").write_text(suite if suite is not None else CLAIMING_SUITE)
+    runner = directory / "run_plugin.py"
+    runner.write_text(PLUGIN_RUNNER)
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(runner),
+            str(directory / "t_claims.py"),
+            "-p",
+            "no:cacheprovider",
+            "-q",
+            *extra,
+        ],
+        capture_output=True,
+        text=True,
+        cwd=REPO_ROOT,
+    )
+    results = [row for row in completed.stdout.splitlines() if row.startswith("RESULT ")]
+    assert results, f"plugin run produced nothing:\n{completed.stdout}\n{completed.stderr}"
+    return json.loads(results[-1][len("RESULT ") :])
+
+
+PLUGIN_RUNNER = """
+import json, sys
+import pytest
+from accretion.acceptance import AcceptancePlugin
+
+plugin = AcceptancePlugin()
+pytest.main(sys.argv[1:], plugins=[plugin])
+print("RESULT " + json.dumps({"claims": dict(plugin.claims), "outcomes": plugin.outcomes}))
+"""
+
+CLAIMING_SUITE = '''
+import pytest
+
+
+@pytest.fixture
+def broken_setup():
+    raise RuntimeError("fixture blew up")
+
+
+@pytest.fixture
+def broken_teardown():
+    yield "ok"
+    raise RuntimeError("teardown blew up")
+
+
+@pytest.mark.acceptance("FAKE-CLEAN")
+def test_clean():
+    assert True
+
+
+@pytest.mark.acceptance("FAKE-SETUP")
+def test_setup_error(broken_setup):
+    assert True
+
+
+@pytest.mark.acceptance("FAKE-TEARDOWN")
+def test_teardown_error(broken_teardown):
+    assert broken_teardown == "ok"
+
+
+@pytest.mark.acceptance("FAKE-DESELECTED")
+def test_never_runs():
+    assert True
+'''
+
+
+def test_a_fixture_that_raises_is_recorded_as_an_error_and_classifies_failing(
+    tmp_path: Path,
+) -> None:
+    """Setup and teardown failures must reach the gate rather than vanish.
+
+    A fixture that raises files a ``setup`` report and no ``call`` report at all,
+    and a teardown that raises files a ``call`` report saying ``passed`` --- so
+    without this the first would leave no outcome behind and the second would read
+    as clean evidence. Differential, inside one real pytest run: the honest test
+    records ``passed`` and classifies PROVEN, while the broken-fixture and
+    broken-teardown claims both record ``error`` and classify FAILING.
+    """
+
+    result = run_plugin_over(tmp_path, [])
+    outcomes = result["outcomes"]
+
+    assert outcomes["t_claims.py::test_clean"] == "passed"
+    assert harness.classify(criterion(tests=["t::clean"], outcomes=["passed"])) == "PROVEN"
+
+    assert outcomes["t_claims.py::test_setup_error"] == "error"
+    assert outcomes["t_claims.py::test_teardown_error"] == "error"
+    for node in ("t_claims.py::test_setup_error", "t_claims.py::test_teardown_error"):
+        entry = criterion(tests=[node], outcomes=[outcomes[node]])
+        assert harness.classify(entry) == "FAILING", node
+
+
+def test_a_claim_that_never_reported_an_outcome_is_failing_not_proven(
+    tmp_path: Path,
+) -> None:
+    """A collected claim with no outcome proves nothing.
+
+    Differential: two claiming nodes that both passed are PROVEN; a criterion with
+    one unreported node is FAILING. The unreported node is produced for real --- the
+    throwaway suite is run under ``-k``, so ``FAKE-DESELECTED`` is claimed at
+    collection and never reports --- and the CLI is what turns exactly that gap into
+    the ``missing`` outcome.
+    """
+
+    honest = criterion(tests=["t::a", "t::b"], outcomes=["passed", "passed"])
+    assert harness.classify(honest) == "PROVEN"
+
+    result = run_plugin_over(tmp_path, ["-k", "not never_runs"])
+    claimed = result["claims"]["FAKE-DESELECTED"]
+    assert claimed == ["t_claims.py::test_never_runs"]
+    assert claimed[0] not in result["outcomes"]
+    assert result["outcomes"]["t_claims.py::test_clean"] == "passed"
+
+    cli = (REPO_ROOT / "scripts" / "check_acceptance.py").read_text()
+    assert 'plugin.outcomes.get(node, "missing")' in cli
+    outcomes = [result["outcomes"].get(node, "missing") for node in claimed]
+    assert outcomes == ["missing"]
+    assert harness.classify(criterion(tests=claimed, outcomes=outcomes)) == "FAILING"
+
+
+def test_a_skip_recorded_at_setup_still_classifies_skipped_only(tmp_path: Path) -> None:
+    """Recording setup failures must not swallow the existing skip signal.
+
+    A skip is also filed at ``setup`` and with no ``call`` report, so the branch that
+    now records errors sits next to the one that records skips. Differential: the
+    skipped claim still reads ``skipped`` and classifies SKIPPED_ONLY --- never
+    ``error``, and never PROVEN.
+    """
+
+    suite = CLAIMING_SUITE + (
+        '\n\n@pytest.mark.acceptance("FAKE-SKIPPED")\n'
+        '@pytest.mark.skip(reason="live provider only")\n'
+        "def test_skipped():\n    assert True\n"
+    )
+    result = run_plugin_over(tmp_path, [], suite=suite)
+    node = result["claims"]["FAKE-SKIPPED"][0]
+    assert result["outcomes"][node] == "skipped"
+    assert harness.classify(criterion(tests=[node], outcomes=["skipped"])) == "SKIPPED_ONLY"
