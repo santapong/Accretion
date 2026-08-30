@@ -50,6 +50,7 @@ jobs:
       - run: uv run --no-sync python scripts/check_acceptance.py --stage M6
       # The inherited v0.2 run-page criteria M6 took over and proved.
       - run: uv run --no-sync python scripts/check_acceptance.py --stage v0.2-ui
+      - run: uv run --no-sync python scripts/check_acceptance.py --stage M7
 
   frontend:
     runs-on: ubuntu-latest

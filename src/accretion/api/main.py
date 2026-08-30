@@ -4,6 +4,7 @@ import asyncio
 import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
+from datetime import UTC, datetime
 from typing import Any, cast
 from uuid import uuid4
 
@@ -28,6 +29,7 @@ from accretion.api.schemas import (
     CapabilityResolveRequest,
     ConnectCreate,
     ConnectionSummary,
+    EnterpriseAuthProfileResponse,
     ErrorEnvelope,
     ExperienceMaterializeCreate,
     ExperienceQueryCreate,
@@ -72,6 +74,7 @@ from accretion.contracts import (
     Connection,
     ConnectionScope,
     ConnectorDefinition,
+    EnterpriseAuthGrant,
     EventType,
     EvidenceRecord,
     ExecutionMode,
@@ -104,6 +107,13 @@ from accretion.contracts import (
 from accretion.dynamic_benchmark import (
     DynamicWorkflowBenchmarkRunner,
     DynamicWorkflowBenchmarkSummary,
+)
+from accretion.enterprise_auth import (
+    UNSCOPED,
+    EnterpriseAuthDisabled,
+    EnterpriseAuthError,
+    EnterpriseAuthManager,
+    build_enterprise_auth_manager,
 )
 from accretion.experience.models import (
     Experience,
@@ -236,11 +246,17 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             model=settings.opencode_model,
         ),
     }
+    secrets_store = EnvelopeSecretStore()
     token_broker = (
-        EncryptedTokenBroker(store, EnvelopeSecretStore())
+        EncryptedTokenBroker(store, secrets_store)
         if settings.token_encryption_key
         else None
     )
+    # Optional, off by default, and inert without an exchange endpoint (OQ3-08).
+    enterprise_auth = build_enterprise_auth_manager(
+        store, secrets_store, token_broker, settings
+    )
+    app.state.enterprise_auth = enterprise_auth
     if token_broker is not None and settings.github_client_id:
         github = github_connector(
             authorization_server=settings.github_authorization_server
@@ -268,6 +284,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
             allow_local_http=settings.mcp_allow_local_http,
         ),
         token_broker=token_broker,
+        enterprise_auth=enterprise_auth,
     )
     app.state.plugins = PluginManager(
         store=store,
@@ -349,7 +366,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         experience_service=experience,
     )
     app.state.candidate_search = search_service
-    app.state.auth = build_auth_runtime(store, settings)
+    app.state.auth = build_auth_runtime(store, settings, enterprise_auth=enterprise_auth)
     await seed_templates(store)
     await seed_governance(store)
     await seed_acr_arch(store)
@@ -422,6 +439,21 @@ def plugins(request: Request) -> PluginManager:
     return cast(PluginManager, service)
 
 
+def enterprise_auth(request: Request) -> EnterpriseAuthManager | None:
+    """The enterprise authorization manager, or ``None`` when it was not built.
+
+    Unlike every other service accessor this one may legitimately answer ``None``:
+    enterprise-managed authorization is optional (OQ3-08), and a deployment that
+    never switched it on has no manager at all. Callers turn that into a 409 rather
+    than a 500, because "off" is a configuration answer, not a fault.
+    """
+
+    return cast(
+        "EnterpriseAuthManager | None",
+        getattr(request.app.state, "enterprise_auth", None),
+    )
+
+
 @app.exception_handler(KeyError)
 async def key_error_handler(request: Request, exc: KeyError) -> JSONResponse:
     return _error(404, "NOT_FOUND", f"Resource {exc.args[0]} was not found")
@@ -479,6 +511,22 @@ async def mcp_manager_error_handler(
     request: Request, exc: McpManagerError
 ) -> JSONResponse:
     return _error(409, "MCP_SERVER_REJECTED", str(exc))
+
+
+@app.exception_handler(EnterpriseAuthDisabled)
+async def enterprise_auth_disabled_handler(
+    request: Request, exc: EnterpriseAuthDisabled
+) -> JSONResponse:
+    return _error(409, "ENTERPRISE_AUTH_DISABLED", str(exc))
+
+
+@app.exception_handler(EnterpriseAuthError)
+async def enterprise_auth_error_handler(
+    request: Request, exc: EnterpriseAuthError
+) -> JSONResponse:
+    # The refusal reason is already recorded as an EnterpriseAuthGrant row; the
+    # caller gets one shape for every refusal so it cannot probe which one it hit.
+    return _error(409, "ENTERPRISE_AUTH_REFUSED", str(exc))
 
 
 @app.exception_handler(PluginManifestError)
@@ -1470,6 +1518,72 @@ def _connection_summary(connection: Connection) -> ConnectionSummary:
     )
 
 
+@app.get(
+    "/api/v1/enterprise-auth/profile", response_model=EnterpriseAuthProfileResponse
+)
+async def get_enterprise_auth_profile(request: Request) -> EnterpriseAuthProfileResponse:
+    """What enterprise-managed authorization can do for the calling principal.
+
+    Lives under ``/api/v1/enterprise-auth/`` rather than ``/api/v1/auth/`` because
+    the latter prefix is exempt from the session middleware, and this answer is
+    per-principal. No token, no ``secret_store_key``, no assertion id.
+    """
+
+    service = enterprise_auth(request)
+    config = service.settings if service is not None else settings
+    expires_at: datetime | None = None
+    if service is not None:
+        assertion = await service.store.get_identity_assertion_for_principal(
+            current_principal(request).principal_id
+        )
+        # A row can outlive the token it addresses, so "live" means unexpired as
+        # well as ACTIVE — the same reading acquisition uses.
+        if assertion is not None and assertion.expires_at > datetime.now(UTC):
+            expires_at = assertion.expires_at
+    return EnterpriseAuthProfileResponse(
+        enabled=service is not None,
+        token_exchange_configured=bool(config.enterprise_auth_token_exchange_url),
+        audiences=dict(config.enterprise_auth_audiences),
+        has_live_assertion=expires_at is not None,
+        assertion_expires_at=expires_at,
+    )
+
+
+@app.post(
+    "/api/v1/mcp/servers/{mcp_server_id}/enterprise-authorize",
+    response_model=ConnectionSummary,
+)
+async def enterprise_authorize_mcp_server(
+    mcp_server_id: str, request: Request
+) -> ConnectionSummary:
+    """Mint the caller's own enterprise-authorized connection to one MCP server.
+
+    Workspace membership is required and nothing more: the connection is USER
+    scoped and belongs to the caller alone (INV3-008), so demanding an
+    administrator here would make AC3-EMA-02 unreachable for ordinary members
+    while granting them nothing they could not obtain by invoking a tool. A
+    non-member never gets this far — ``_mcp_server_for_request`` raises, and a
+    server in an invisible workspace 404s rather than 403s.
+    """
+
+    server = await _mcp_server_for_request(mcp_server_id, request)
+    service = enterprise_auth(request)
+    if service is None:
+        raise EnterpriseAuthDisabled(
+            "enterprise-managed authorization is not enabled for this deployment"
+        )
+    connector = await service.store.get_connector_definition(server.connector_id)
+    if connector is None:
+        raise KeyError(server.connector_id)
+    connection = await service.ensure_access(
+        connector,
+        server,
+        principal_id=current_principal(request).principal_id,
+        workspace_id=server.workspace_id,
+    )
+    return _connection_summary(connection)
+
+
 @app.get("/api/v1/connectors", response_model=list[ConnectorDefinition])
 async def list_connectors(request: Request) -> list[ConnectorDefinition]:
     return await manager(request).store.list_connector_definitions()
@@ -1672,6 +1786,43 @@ async def list_plugin_audit_events(
         event
         for event in await plugins(request).store.list_plugin_audit_events(plugin_id=plugin_id)
         if event.workspace_id is not None and event.workspace_id in visible
+    ]
+
+
+@app.get("/api/v1/audit/enterprise-auth", response_model=list[EnterpriseAuthGrant])
+async def list_enterprise_auth_audit_events(
+    request: Request,
+    connector_id: str | None = None,
+    principal_id: str | None = None,
+    workspace_id: str | None = None,
+) -> list[EnterpriseAuthGrant]:
+    """Every enterprise authorization decision the caller may see.
+
+    Mirrors ``/api/v1/audit/plugins``: naming a workspace the caller is not a
+    member of is a 403, and naming none falls back to the workspaces they can
+    see. Session-wide rows — retention and revocation, which belong to no single
+    workspace — are recorded against ``UNSCOPED`` and are shown only to the
+    principal they are about, and only when no workspace was named.
+
+    ``detail`` is prose written by the enterprise auth manager and never carries
+    assertion or token material; AC3-EMA-05 scans every row returned here.
+    """
+
+    visible = await _visible_workspaces(request)
+    unscoped_for: str | None = current_principal(request).principal_id
+    if workspace_id is not None:
+        if workspace_id not in visible:
+            raise AuthorizationError("principal is not a member of the requested workspace")
+        visible = {workspace_id}
+        unscoped_for = None
+    grants = await manager(request).store.list_enterprise_auth_grants(
+        principal_id=principal_id, connector_id=connector_id
+    )
+    return [
+        grant
+        for grant in grants
+        if grant.workspace_id in visible
+        or (grant.workspace_id == UNSCOPED and grant.principal_id == unscoped_for)
     ]
 
 

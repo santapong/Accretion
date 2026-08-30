@@ -1,8 +1,8 @@
 # v0.3 prioritized backlog
 
-Status: M0–M6 delivered; work is parked before M7. Every M0–M6 acceptance
+Status: M0–M7 delivered; work is parked before M8. Every M0–M7 acceptance
 criterion is proven by a claiming test (`make acceptance`), and the per-stage gates
-`--stage M1` through `--stage M6`, plus `--stage v0.2-ui`, all report
+`--stage M1` through `--stage M7`, plus `--stage v0.2-ui`, all report
 `in scope: n   proven: n   unmet MUST: 0`. No criterion is `not_yet_due` any more.
 The remaining uncovered criteria are inherited v0.1/v0.2 items listed in the
 [acceptance baseline](acceptance-baseline.md).
@@ -22,8 +22,32 @@ or unlocking the hash-manifested v0.4+ designs.
 | 5 | M4 plugin manager — **delivered** | Versioned manifest validation, permission requests without grants, enable/disable/upgrade, and historical provenance |
 | 6 | M5 research intelligence plugin — **delivered** | Provider-neutral research capabilities, normalized evidence, provenance, and citation verification |
 | 7 | M6 frontend and administration — **delivered** | Plugins, Connections, MCP Servers, capability resolution, identity, and roles without exposing secrets |
-| 8 | M7 enterprise authorization — **next** | Optional EMA integration behind a feature flag after the standard OAuth path is stable |
-| 9 | M8 release hardening | Clean-checkout reproduction of every inherited v0.1, v0.2, and v0.3 MUST criterion |
+| 8 | M7 enterprise authorization — **delivered** | Optional EMA behind `enable_enterprise_auth`: sign in once, RFC 8693 exchange to an ID-JAG, RFC 7523 jwt-bearer grant, a real `Connection` + `TokenHandle`, broker-driven renewal without user interaction, and destruction of the retained assertion on logout or revoke |
+| 9 | M8 release hardening — **next** | Clean-checkout reproduction of every inherited v0.1, v0.2, and v0.3 MUST criterion |
+
+## M7 deferrals
+
+Recorded here rather than in the runbook because they are backlog items, not operating
+instructions. Each is out of scope for M7 by decision, not by omission:
+
+- **Workspace-shared and `SERVICE_ACCOUNT` EMA → M8/v0.4.** M7 mints `USER`-scoped
+  connections only. INV3-009 requires admin policy for a shared connection, and that
+  policy surface does not exist yet; shipping shared EMA without it would let one
+  principal's enterprise grant serve another's invocation.
+- **Session enumeration UI → M8.** The identity page reports whether *the caller* holds
+  a live assertion. Listing and ending another principal's sessions is an administrative
+  surface with its own authorization questions (ADR3-M6-003 deferred the same thing).
+- **Real identity-provider interoperability (Entra, Okta) → M8, as an expiring `manual`
+  record if at all.** The seven criteria are proven against in-process fakes; no
+  commercial IdP has been exercised. If it is recorded, it must be a `manual` entry with
+  a `last_verified` date that goes stale in 180 days, never a test.
+- **Token-exchange egress allowlist → M8.** `enterprise_auth_token_exchange_url` is
+  reached without a host allowlist of the kind M3 applies to MCP endpoints and M5 to
+  research upstreams. The URL is operator-supplied and the flag is off by default, so it
+  is a hardening gap rather than a live exposure — but it is the one place in the M7 path
+  where configuration alone decides where a credential travels. Related: the control
+  plane presents no client credentials on either hop, so the exchange endpoint must
+  authenticate it by network path or mutual TLS today.
 
 ## M8 inherited UI findings (F1–F4)
 

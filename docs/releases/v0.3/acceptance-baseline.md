@@ -1,7 +1,8 @@
 # Acceptance baseline
 
 > Computed: 2026-08-25 · Base: `develop` at `519ab2b`
-> Numbers refreshed: 2026-08-29 · `develop` at `3e7f9c1` plus M6 (frontend and administration)
+> Numbers refreshed: 2026-08-30 · `develop` at `3e7f9c1` plus M6 (frontend and
+> administration) and M7 (enterprise-managed authorization)
 >
 > Produced by `make acceptance`. This document records a **starting position**, not a
 > release decision. It supersedes hand-written status claims.
@@ -22,14 +23,14 @@ only *how* each is verified; and a test claims a criterion with
 
 | | Count |
 |---|---:|
-| Criteria in the three SDDs | 110 |
+| Criteria in the three SDDs | 117 |
 | Not yet due | 0 |
-| **In scope** | **110** |
-| Proven by a passing claiming test | 96 |
+| **In scope** | **117** |
+| Proven by a passing claiming test | 103 |
 | Proven by the frontend suite | 3 |
 | Uncovered | 11 |
 
-Coverage is 90% of in-scope criteria (99 of 110). The first computed figure was 37;
+Coverage is 91% of in-scope criteria (106 of 117). The first computed figure was 37;
 the annotation sweep raised it to 59 without changing any runtime behaviour, because
 the inherited gap was traceability rather than implementation. Putting the token broker
 into the execution path then closed five more (#75); completing M2 closed six (#77);
@@ -38,17 +39,38 @@ MCP criteria into scope and proved all of them (#79); M4 brought the six AC3-PLG
 plugin-manager criteria into scope and proved all of them; M5 brought the four
 AC3-RES research criteria into scope and proved all of them; and M6 brought the five
 AC3-UI criteria into scope, proved all of them, and additionally closed the six
-inherited `V02-UI-001..006` run-page criteria. **Nothing is `not_yet_due` any more** —
-every criterion in the three SDDs is now in scope. All 11 uncovered criteria are
-inherited v0.1/v0.2 items.
+inherited `V02-UI-001..006` run-page criteria. M7 then added the seven `AC3-EMA`
+enterprise-authorization criteria to the SDD (§24.9) and proved all seven, which is
+why the SDD total moves from 110 to 117 and `PROVEN` from 96 to 103.
+**Nothing is `not_yet_due`** — every criterion in the three SDDs is in scope. All 11
+uncovered criteria are inherited v0.1/v0.2 items.
+
+The unmet-MUST count is unchanged at **10**, and that is the derivation: 117 in scope
+− 103 proven − 3 proven by the frontend suite = 11 uncovered, of which 10 are MUST and
+one (`V01-P4-008`, a SHOULD) is not. M7 added seven in-scope MUSTs and seven proofs, so it
+moved both sides of that subtraction by the same amount and contributed nothing to the
+unmet total. The 10 are the inherited v0.1/v0.2 items, unchanged since M3.
 
 Reproduce this table with `make acceptance`; the run behind these numbers reported
-`PROVEN: 96`, `FRONTEND: 3`, `UNCOVERED: 11`, no `NOT_YET_DUE` bucket at all, and
-`in scope: 110   proven: 96   unmet MUST: 10`. The full harness still exits `FAIL`
+`PROVEN: 103`, `FRONTEND: 3`, `UNCOVERED: 11`, no `NOT_YET_DUE` bucket at all, and
+`in scope: 117   proven: 103   unmet MUST: 10`. The full harness still exits `FAIL`
 because those 10 unmet MUSTs are the inherited v0.1/v0.2 items below; the per-stage
-gates `--stage M1` through `--stage M6` plus `--stage v0.2-ui` all pass and are what CI
-enforces today, each reporting `unmet MUST: 0` over 5, 11, 8, 6, 4, 5 and 6 in-scope
+gates `--stage M1` through `--stage M7` plus `--stage v0.2-ui` all pass and are what CI
+enforces today, each reporting `unmet MUST: 0` over 5, 11, 8, 6, 4, 5, 7 and 6 in-scope
 criteria respectively.
+
+### What M7's numbers do and do not measure
+
+The seven `AC3-EMA` criteria are proven against `tests/fake_idp.py` (extended with an
+RFC 8693 token-exchange endpoint) and `tests/fake_enterprise_as.py`, both in-process
+behind `ASGITransport`. Everything between those fakes and each assertion is real: the
+real `IdentityService.complete_login`, the real sealed secret store, the real
+`EncryptedTokenBroker` including its re-acquisition path, the real `RemoteMcpManager`
+and the real `CapabilityGateway`. What the numbers establish is that the *protocol
+path* behaves correctly — sign in once, exchange, grant, invoke, renew, revoke — not
+that any commercial identity provider has been interoperated with. Real IdP interop
+(Entra, Okta) is M8's, and would be recorded as an expiring `manual` record rather than
+as a test.
 
 ### What M6's numbers do and do not measure
 
@@ -188,7 +210,7 @@ Phase 2 closes the v0.3 M0–M2 gaps, Phase 3 the inherited ones, Phase 4 gates
 moves on evidence rather than assertion.
 
 CI gates the milestone stages rather than the full harness: the backend job runs
-`--stage M1` through `--stage M6` and `--stage v0.2-ui`, each of which passes today. The
+`--stage M1` through `--stage M7` and `--stage v0.2-ui`, each of which passes today. The
 full `make acceptance` gate stays M8's job, because it cannot pass until the 10
 inherited unmet MUSTs above are closed.
 
@@ -196,6 +218,6 @@ Re-run at any time:
 
 ```bash
 make acceptance                 # full: runs the suite, reports per criterion
-uv run python scripts/check_acceptance.py --stage M6
+uv run python scripts/check_acceptance.py --stage M7
 uv run python scripts/check_acceptance.py --no-tests --stage M2
 ```

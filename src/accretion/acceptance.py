@@ -55,6 +55,7 @@ _CATEGORY_MILESTONE = {
     "PLG": "M4",
     "RES": "M5",
     "UI": "M6",
+    "EMA": "M7",
 }
 
 

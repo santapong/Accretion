@@ -38,6 +38,35 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit/enterprise-auth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Enterprise Auth Audit Events
+         * @description Every enterprise authorization decision the caller may see.
+         *
+         *     Mirrors ``/api/v1/audit/plugins``: naming a workspace the caller is not a
+         *     member of is a 403, and naming none falls back to the workspaces they can
+         *     see. Session-wide rows — retention and revocation, which belong to no single
+         *     workspace — are recorded against ``UNSCOPED`` and are shown only to the
+         *     principal they are about, and only when no workspace was named.
+         *
+         *     ``detail`` is prose written by the enterprise auth manager and never carries
+         *     assertion or token material; AC3-EMA-05 scans every row returned here.
+         */
+        get: operations["list_enterprise_auth_audit_events_api_v1_audit_enterprise_auth_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/audit/plugins": {
         parameters: {
             query?: never;
@@ -322,6 +351,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/enterprise-auth/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Enterprise Auth Profile
+         * @description What enterprise-managed authorization can do for the calling principal.
+         *
+         *     Lives under ``/api/v1/enterprise-auth/`` rather than ``/api/v1/auth/`` because
+         *     the latter prefix is exempt from the session middleware, and this answer is
+         *     per-principal. No token, no ``secret_store_key``, no assertion id.
+         */
+        get: operations["get_enterprise_auth_profile_api_v1_enterprise_auth_profile_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/mcp/servers": {
         parameters: {
             query?: never;
@@ -426,6 +479,33 @@ export interface paths {
         put?: never;
         /** Enable Mcp Server */
         post: operations["enable_mcp_server_api_v1_mcp_servers__mcp_server_id__enable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp/servers/{mcp_server_id}/enterprise-authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enterprise Authorize Mcp Server
+         * @description Mint the caller's own enterprise-authorized connection to one MCP server.
+         *
+         *     Workspace membership is required and nothing more: the connection is USER
+         *     scoped and belongs to the caller alone (INV3-008), so demanding an
+         *     administrator here would make AC3-EMA-02 unreachable for ordinary members
+         *     while granting them nothing they could not obtain by invoking a tool. A
+         *     non-member never gets this far — ``_mcp_server_for_request`` raises, and a
+         *     server in an invisible workspace 404s rather than 403s.
+         */
+        post: operations["enterprise_authorize_mcp_server_api_v1_mcp_servers__mcp_server_id__enterprise_authorize_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2999,6 +3079,79 @@ export interface components {
          * @enum {string}
          */
         EdgeGuard: "ON_SUCCESS" | "ON_FAIL" | "ON_INCONCLUSIVE" | "ON_APPROVED" | "ON_DENIED" | "ON_REPLAN_AVAILABLE" | "ON_REPLAN_EXHAUSTED";
+        /**
+         * EnterpriseAuthGrant
+         * @description Append-only record of one enterprise authorization decision (SDD 8, M7).
+         *
+         *     Every exit path of the enterprise auth manager writes exactly one row.
+         *     ``detail`` is prose for an operator and never carries an assertion, a grant,
+         *     or an access token.
+         */
+        EnterpriseAuthGrant: {
+            /** Connection Id */
+            connection_id?: string | null;
+            /** Connector Id */
+            connector_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Grant Id */
+            grant_id: string;
+            /** Mcp Server Id */
+            mcp_server_id?: string | null;
+            outcome: components["schemas"]["EnterpriseAuthOutcome"];
+            /** Principal Id */
+            principal_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * EnterpriseAuthOutcome
+         * @enum {string}
+         */
+        EnterpriseAuthOutcome: "GRANTED" | "REFRESHED" | "REFUSED_ISSUER" | "REFUSED_AUDIENCE" | "REFUSED_EXPIRED" | "REFUSED_DISABLED" | "REFUSED_MISSING" | "REFUSED_UPSTREAM" | "REFUSED_CONFIGURATION" | "REFUSED_REVOKED" | "REVOKED";
+        /**
+         * EnterpriseAuthProfileResponse
+         * @description What the caller may know about enterprise-managed authorization (M7).
+         *
+         *     Deliberately a description of *configuration and state*, never of material:
+         *     the retained identity assertion, its ``secret_store_key``, the identity
+         *     assertion grant and the enterprise-issued access token are all absent by
+         *     construction, and AC3-EMA-05 scans this response to keep it that way. The
+         *     only thing said about the assertion is whether the caller currently holds a
+         *     live one and when it expires, which an operator needs in order to understand
+         *     why an enterprise authorization would or would not succeed right now.
+         */
+        EnterpriseAuthProfileResponse: {
+            /** Assertion Expires At */
+            assertion_expires_at?: string | null;
+            /** Audiences */
+            audiences?: {
+                [key: string]: string;
+            };
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Has Live Assertion
+             * @default false
+             */
+            has_live_assertion: boolean;
+            /** Token Exchange Configured */
+            token_exchange_configured: boolean;
+        };
         /** ErrorSummary */
         ErrorSummary: {
             /** Code */
@@ -6446,6 +6599,39 @@ export interface operations {
             };
         };
     };
+    list_enterprise_auth_audit_events_api_v1_audit_enterprise_auth_get: {
+        parameters: {
+            query?: {
+                connector_id?: string | null;
+                principal_id?: string | null;
+                workspace_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnterpriseAuthGrant"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_plugin_audit_events_api_v1_audit_plugins_get: {
         parameters: {
             query?: {
@@ -6894,6 +7080,26 @@ export interface operations {
             };
         };
     };
+    get_enterprise_auth_profile_api_v1_enterprise_auth_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnterpriseAuthProfileResponse"];
+                };
+            };
+        };
+    };
     list_mcp_servers_api_v1_mcp_servers_get: {
         parameters: {
             query?: {
@@ -7100,6 +7306,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["McpServerDefinition"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enterprise_authorize_mcp_server_api_v1_mcp_servers__mcp_server_id__enterprise_authorize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionSummary"];
                 };
             };
             /** @description Validation Error */

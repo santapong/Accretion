@@ -729,6 +729,81 @@ class TokenHandle(StrictModel):
     refreshed_at: datetime | None = None
 
 
+class AssertionStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    EXPIRED = "EXPIRED"
+    REVOKED = "REVOKED"
+
+
+class IdentityAssertion(StrictModel):
+    """Retained identity assertion for enterprise-managed authorization (SDD 8, M7).
+
+    Carries no token material: ``secret_store_key`` addresses the sealed assertion
+    in the secret store, and the assertion itself is never returned through the
+    public API, the runtime context, or telemetry. ``expires_at`` is the
+    assertion's own expiry, never the session TTL.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    assertion_id: str
+    auth_session_id: str
+    principal_id: str
+    issuer: str
+    subject: str
+    secret_store_key: str
+    expires_at: datetime
+    status: AssertionStatus = AssertionStatus.ACTIVE
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class EnterpriseAuthOutcome(StrEnum):
+    GRANTED = "GRANTED"
+    REFRESHED = "REFRESHED"
+    REFUSED_ISSUER = "REFUSED_ISSUER"
+    REFUSED_AUDIENCE = "REFUSED_AUDIENCE"
+    REFUSED_EXPIRED = "REFUSED_EXPIRED"
+    REFUSED_DISABLED = "REFUSED_DISABLED"
+    #: No identity assertion is retained for the principal at all — distinct from
+    #: one that was retained and has since expired, so the audit trail never
+    #: claims an expiry that did not happen.
+    REFUSED_MISSING = "REFUSED_MISSING"
+    #: An upstream party — the identity provider's token-exchange endpoint or the
+    #: connector's authorization server — could not be reached, or refused. Kept
+    #: apart from REFUSED_ISSUER so that an upstream outage is never recorded as an
+    #: issuer-policy violation, and apart from REFUSED_CONFIGURATION so that a local
+    #: misconfiguration is never recorded as an outage.
+    REFUSED_UPSTREAM = "REFUSED_UPSTREAM"
+    #: The deployment itself is misconfigured — a connector that names no
+    #: authorization server, or a retained token with no usable expiry. Nothing
+    #: travelled, so this is never an upstream fault.
+    REFUSED_CONFIGURATION = "REFUSED_CONFIGURATION"
+    #: The principal's connection was revoked by an operator. Enterprise
+    #: acquisition refuses rather than resurrecting it, so a revocation is durable
+    #: beyond one token lifetime.
+    REFUSED_REVOKED = "REFUSED_REVOKED"
+    REVOKED = "REVOKED"
+
+
+class EnterpriseAuthGrant(StrictModel):
+    """Append-only record of one enterprise authorization decision (SDD 8, M7).
+
+    Every exit path of the enterprise auth manager writes exactly one row.
+    ``detail`` is prose for an operator and never carries an assertion, a grant,
+    or an access token.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    grant_id: str
+    principal_id: str
+    workspace_id: str
+    connector_id: str
+    mcp_server_id: str | None = None
+    connection_id: str | None = None
+    outcome: EnterpriseAuthOutcome
+    detail: str = Field(default="", max_length=1024)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 class ConnectorKind(StrEnum):
     MCP = "MCP"
     REST = "REST"

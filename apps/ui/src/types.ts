@@ -91,3 +91,8 @@ export type McpDiscoverySnapshot = components["schemas"]["McpDiscoverySnapshot"]
 export type CapabilityResolveRequest = components["schemas"]["CapabilityResolveRequest"];
 export type ResolvedCapability = components["schemas"]["ResolvedCapability"];
 export type CapabilityResolutionOutcome = components["schemas"]["CapabilityResolutionOutcome"];
+
+// v0.3 M7 — optional enterprise-managed authorization (EMA).
+export type EnterpriseAuthProfileResponse = components["schemas"]["EnterpriseAuthProfileResponse"];
+export type EnterpriseAuthGrant = components["schemas"]["EnterpriseAuthGrant"];
+export type EnterpriseAuthOutcome = components["schemas"]["EnterpriseAuthOutcome"];

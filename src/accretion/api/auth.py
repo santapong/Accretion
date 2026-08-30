@@ -11,7 +11,7 @@ DISABLED principal is refused before any capability-invoking route runs
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import httpx
 from fastapi import FastAPI, Request
@@ -27,6 +27,9 @@ from accretion.identity import (
 )
 from accretion.persistence.store import StateStore
 
+if TYPE_CHECKING:  # pragma: no cover - enterprise_auth imports identity, not this
+    from accretion.enterprise_auth import EnterpriseAuthManager
+
 _EXEMPT_PREFIXES = ("/api/v1/auth/",)
 _EXEMPT_PATHS = {"/healthz", "/docs", "/openapi.json", "/redoc"}
 
@@ -41,7 +44,12 @@ class AuthRuntime:
     local_principal_cache: Principal | None = None
 
 
-def build_auth_runtime(store: StateStore, settings: Settings) -> AuthRuntime:
+def build_auth_runtime(
+    store: StateStore,
+    settings: Settings,
+    *,
+    enterprise_auth: EnterpriseAuthManager | None = None,
+) -> AuthRuntime:
     oidc: OidcClient | None = None
     if settings.auth_mode == "OIDC":
         oidc = OidcClient(
@@ -59,6 +67,7 @@ def build_auth_runtime(store: StateStore, settings: Settings) -> AuthRuntime:
         oidc,
         session_ttl_seconds=settings.session_ttl_seconds,
         local_subject=settings.operator_identity,
+        enterprise_auth=enterprise_auth,
     )
     return AuthRuntime(
         mode=settings.auth_mode,

@@ -17,6 +17,7 @@ from accretion.contracts import (
     ApprovalStatus,
     ArchitectureMetric,
     ArtifactRef,
+    AssertionStatus,
     AuthSession,
     AuthTransaction,
     BenchmarkRun,
@@ -30,9 +31,11 @@ from accretion.contracts import (
     ConnectionStatus,
     ConnectorDefinition,
     ContextBundle,
+    EnterpriseAuthGrant,
     ErrorSummary,
     EvidenceRecord,
     ExecutionMode,
+    IdentityAssertion,
     LoopExecution,
     LoopExecutionStatus,
     LoopIteration,
@@ -112,6 +115,7 @@ from accretion.persistence.models import (
     ConnectionRow,
     ConnectorDefinitionRow,
     ContextBundleRow,
+    EnterpriseAuthGrantRow,
     ExperienceEmbeddingRow,
     ExperienceMatchRow,
     ExperienceModerationActionRow,
@@ -119,6 +123,7 @@ from accretion.persistence.models import (
     ExperienceRow,
     ExperienceSelectionRow,
     GraphValidationResultRow,
+    IdentityAssertionRow,
     LoopExecutionRow,
     LoopIterationRow,
     McpDiscoverySnapshotRow,
@@ -398,6 +403,23 @@ class StateStore(Protocol):
     async def upsert_secret_record(self, record: SecretRecord) -> SecretRecord: ...
     async def get_secret_record(self, secret_store_key: str) -> SecretRecord | None: ...
     async def delete_secret_record(self, secret_store_key: str) -> None: ...
+    async def upsert_identity_assertion(
+        self, assertion: IdentityAssertion
+    ) -> IdentityAssertion: ...
+    async def get_identity_assertion_for_session(
+        self, auth_session_id: str
+    ) -> IdentityAssertion | None: ...
+    async def get_identity_assertion_for_principal(
+        self, principal_id: str
+    ) -> IdentityAssertion | None: ...
+    async def append_enterprise_auth_grant(
+        self, grant: EnterpriseAuthGrant
+    ) -> EnterpriseAuthGrant: ...
+    async def list_enterprise_auth_grants(
+        self,
+        principal_id: str | None = None,
+        connector_id: str | None = None,
+    ) -> list[EnterpriseAuthGrant]: ...
     async def upsert_connector_definition(
         self, connector: ConnectorDefinition
     ) -> ConnectorDefinition: ...
@@ -601,6 +623,8 @@ class MemoryStore:
         self.auth_transactions: dict[str, AuthTransaction] = {}
         self.oauth_transactions: dict[str, OAuthTransaction] = {}
         self.token_handles: dict[str, TokenHandle] = {}
+        self.identity_assertions: dict[str, IdentityAssertion] = {}
+        self.enterprise_auth_grants: list[EnterpriseAuthGrant] = []
         self.secret_records: dict[str, SecretRecord] = {}
         self.connector_definitions: dict[str, ConnectorDefinition] = {}
         self.connections: dict[str, Connection] = {}
@@ -1549,6 +1573,62 @@ class MemoryStore:
 
     async def delete_secret_record(self, secret_store_key: str) -> None:
         self.secret_records.pop(secret_store_key, None)
+
+    async def upsert_identity_assertion(self, assertion: IdentityAssertion) -> IdentityAssertion:
+        self.identity_assertions[assertion.assertion_id] = assertion
+        return assertion
+
+    async def get_identity_assertion_for_session(
+        self, auth_session_id: str
+    ) -> IdentityAssertion | None:
+        candidates = sorted(
+            (
+                assertion
+                for assertion in self.identity_assertions.values()
+                if assertion.auth_session_id == auth_session_id
+            ),
+            key=lambda assertion: (assertion.created_at, assertion.assertion_id),
+        )
+        return candidates[-1] if candidates else None
+
+    async def get_identity_assertion_for_principal(
+        self, principal_id: str
+    ) -> IdentityAssertion | None:
+        candidates = sorted(
+            (
+                assertion
+                for assertion in self.identity_assertions.values()
+                if assertion.principal_id == principal_id
+                and assertion.status is AssertionStatus.ACTIVE
+            ),
+            key=lambda assertion: (assertion.created_at, assertion.assertion_id),
+        )
+        return candidates[-1] if candidates else None
+
+    async def append_enterprise_auth_grant(
+        self, grant: EnterpriseAuthGrant
+    ) -> EnterpriseAuthGrant:
+        if any(
+            existing.grant_id == grant.grant_id for existing in self.enterprise_auth_grants
+        ):
+            raise ValueError(f"enterprise auth grant {grant.grant_id} already exists")
+        self.enterprise_auth_grants.append(grant)
+        return grant
+
+    async def list_enterprise_auth_grants(
+        self,
+        principal_id: str | None = None,
+        connector_id: str | None = None,
+    ) -> list[EnterpriseAuthGrant]:
+        return sorted(
+            (
+                grant
+                for grant in self.enterprise_auth_grants
+                if (principal_id is None or grant.principal_id == principal_id)
+                and (connector_id is None or grant.connector_id == connector_id)
+            ),
+            key=lambda grant: (grant.created_at, grant.grant_id),
+        )
 
     async def upsert_connector_definition(
         self, connector: ConnectorDefinition
@@ -3823,6 +3903,114 @@ class PostgresStore:
             )
             if row is not None:
                 await session.delete(row)
+
+    async def upsert_identity_assertion(self, assertion: IdentityAssertion) -> IdentityAssertion:
+        definition = assertion.model_dump(mode="json")
+        now = datetime.now(UTC)
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(IdentityAssertionRow).where(
+                    IdentityAssertionRow.assertion_id == assertion.assertion_id
+                )
+            )
+            if row is None:
+                session.add(
+                    IdentityAssertionRow(
+                        id=new_id("identity_assertion"),
+                        assertion_id=assertion.assertion_id,
+                        auth_session_id=assertion.auth_session_id,
+                        principal_id=assertion.principal_id,
+                        status=assertion.status.value,
+                        expires_at=assertion.expires_at,
+                        definition=definition,
+                        created_at=assertion.created_at,
+                        updated_at=now,
+                    )
+                )
+            else:
+                row.auth_session_id = assertion.auth_session_id
+                row.principal_id = assertion.principal_id
+                row.status = assertion.status.value
+                row.expires_at = assertion.expires_at
+                row.definition = definition
+                row.updated_at = now
+        return assertion
+
+    async def get_identity_assertion_for_session(
+        self, auth_session_id: str
+    ) -> IdentityAssertion | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(IdentityAssertionRow)
+                .where(IdentityAssertionRow.auth_session_id == auth_session_id)
+                .order_by(
+                    IdentityAssertionRow.created_at.desc(),
+                    IdentityAssertionRow.assertion_id.desc(),
+                )
+                .limit(1)
+            )
+        return IdentityAssertion.model_validate(row.definition) if row else None
+
+    async def get_identity_assertion_for_principal(
+        self, principal_id: str
+    ) -> IdentityAssertion | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(IdentityAssertionRow)
+                .where(
+                    IdentityAssertionRow.principal_id == principal_id,
+                    IdentityAssertionRow.status == AssertionStatus.ACTIVE.value,
+                )
+                .order_by(
+                    IdentityAssertionRow.created_at.desc(),
+                    IdentityAssertionRow.assertion_id.desc(),
+                )
+                .limit(1)
+            )
+        return IdentityAssertion.model_validate(row.definition) if row else None
+
+    async def append_enterprise_auth_grant(
+        self, grant: EnterpriseAuthGrant
+    ) -> EnterpriseAuthGrant:
+        async with self.sessions.begin() as session:
+            existing = await session.scalar(
+                select(EnterpriseAuthGrantRow.id).where(
+                    EnterpriseAuthGrantRow.grant_id == grant.grant_id
+                )
+            )
+            if existing is not None:
+                raise ValueError(f"enterprise auth grant {grant.grant_id} already exists")
+            session.add(
+                EnterpriseAuthGrantRow(
+                    id=new_id("enterprise_auth_grant"),
+                    grant_id=grant.grant_id,
+                    principal_id=grant.principal_id,
+                    workspace_id=grant.workspace_id,
+                    connector_id=grant.connector_id,
+                    mcp_server_id=grant.mcp_server_id,
+                    connection_id=grant.connection_id,
+                    outcome=grant.outcome.value,
+                    definition=grant.model_dump(mode="json"),
+                    created_at=grant.created_at,
+                )
+            )
+        return grant
+
+    async def list_enterprise_auth_grants(
+        self,
+        principal_id: str | None = None,
+        connector_id: str | None = None,
+    ) -> list[EnterpriseAuthGrant]:
+        query = select(EnterpriseAuthGrantRow).order_by(
+            EnterpriseAuthGrantRow.created_at, EnterpriseAuthGrantRow.grant_id
+        )
+        if principal_id is not None:
+            query = query.where(EnterpriseAuthGrantRow.principal_id == principal_id)
+        if connector_id is not None:
+            query = query.where(EnterpriseAuthGrantRow.connector_id == connector_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [EnterpriseAuthGrant.model_validate(row.definition) for row in rows]
 
     async def upsert_connector_definition(
         self, connector: ConnectorDefinition

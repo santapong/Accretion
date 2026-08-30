@@ -71,6 +71,17 @@ class Settings(BaseSettings):
     # Upstream hosts the research adapter may reach. Empty means none, so enabling
     # the plugin alone cannot open egress; the allowlist is the second gate.
     research_allowed_hosts: list[str] = Field(default_factory=list)
+    # Enterprise-managed authorization (v0.3 M7, SDD 8 / OQ3-08). Optional and off
+    # by default: with the flag down an EMA connector behaves exactly as an
+    # unauthorized OAuth connector.
+    enable_enterprise_auth: bool = False
+    # Authorization-server token-exchange endpoint (RFC 8693). Empty means the
+    # subsystem is inert even with the flag raised, so enabling the flag alone
+    # cannot open egress.
+    enterprise_auth_token_exchange_url: str = ""
+    # connector_id -> the audience the authorization server must issue for. A
+    # connector absent from this map has no audience and cannot be authorized.
+    enterprise_auth_audiences: dict[str, str] = Field(default_factory=dict)
 
     @property
     def worktree_dir(self) -> Path:

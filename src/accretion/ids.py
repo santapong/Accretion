@@ -74,6 +74,8 @@ _PREFIXES = {
     "evidence": "evd",
     "evidence_candidate": "evc",
     "citation_check": "cck",
+    "identity_assertion": "ida",
+    "enterprise_auth_grant": "eag",
 }
 
 

@@ -28,6 +28,7 @@ from accretion.contracts import (
     McpServerState,
     McpTransport,
 )
+from accretion.enterprise_auth import EnterpriseAuthError, EnterpriseAuthManager
 from accretion.ids import new_id
 from accretion.mcp.endpoint_policy import McpEndpointPolicy
 from accretion.mcp.remote_client import (
@@ -62,11 +63,15 @@ class RemoteMcpManager:
         client: RemoteMcpClient,
         endpoint_policy: McpEndpointPolicy,
         token_broker: TokenBroker | None = None,
+        enterprise_auth: EnterpriseAuthManager | None = None,
     ) -> None:
         self.store = store
         self.client = client
         self.endpoint_policy = endpoint_policy
         self.token_broker = token_broker
+        # Absent unless the deployment switched enterprise-managed authorization on
+        # (v0.3 M7). When absent, an ``EMA`` connector is simply an unauthorized one.
+        self.enterprise_auth = enterprise_auth
 
     async def register(self, server: McpServerDefinition) -> McpServerDefinition:
         if await self.store.get_mcp_server(server.mcp_server_id) is not None:
@@ -453,6 +458,34 @@ class RemoteMcpManager:
             raise McpManagerError("MCP connector is missing")
         if connector.auth_type is ConnectorAuthType.NONE:
             return None, None
+        if connector.auth_type is ConnectorAuthType.EMA:
+            # The only M7 addition to this method. It may mint a connection; it never
+            # produces credentials itself, so everything below is reached unchanged
+            # and the usual handle, issuer, audience and scope checks still decide.
+            if self.enterprise_auth is None:
+                await self._mark_auth_required(server, None, principal_id, None)
+                raise McpServerAuthRequired("enterprise authorization is not enabled")
+            existing = self._select_connection(
+                await self.store.list_connections(connector_id=server.connector_id),
+                principal_id,
+                workspace_id,
+            )
+            if existing is None or existing.status not in {
+                ConnectionStatus.ACTIVE,
+                ConnectionStatus.DEGRADED,
+            }:
+                try:
+                    await self.enterprise_auth.ensure_access(
+                        connector,
+                        server,
+                        principal_id=principal_id,
+                        workspace_id=workspace_id,
+                    )
+                except EnterpriseAuthError as exc:
+                    await self._mark_auth_required(server, existing, principal_id, None)
+                    raise McpServerAuthRequired(
+                        "enterprise authorization was refused"
+                    ) from exc
         connection = self._select_connection(
             await self.store.list_connections(connector_id=server.connector_id),
             principal_id,

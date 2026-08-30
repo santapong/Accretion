@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api";
+import { EnterpriseAuthPanel } from "./EnterpriseAuthPanel";
 import type { AuthProviderInfo, WorkspaceEntity } from "../types";
 
 /**
@@ -75,6 +76,8 @@ export function IdentityPage() {
             : "This browser holds no session."}
         </p>
       </section>
+
+      <EnterpriseAuthPanel />
 
       <section aria-label="Workspace roles" tabIndex={-1} className="registry-card">
         <h2>Workspace roles</h2>

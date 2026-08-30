@@ -1439,6 +1439,18 @@ release_v0_3 =
     AND v0.1/v0.2 regression suite == PASS
 ```
 
+## 24.9 Enterprise-managed authorization
+
+| ID | Priority | Acceptance criterion |
+|---|---|---|
+| AC3-EMA-01 | MUST | With `enterprise_auth` disabled, an EMA connector behaves exactly as an unauthorized OAuth connector: `AUTH_REQUIRED`, and no identity assertion is retained or exchanged. |
+| AC3-EMA-02 | MUST | With `enterprise_auth` enabled, a principal who has signed in once can invoke a centrally managed MCP server with no further end-user authorization step. |
+| AC3-EMA-03 | MUST | An identity assertion or enterprise grant with a wrong issuer, wrong audience, or expired lifetime is refused, and the refusal is recorded. |
+| AC3-EMA-04 | MUST | Ending the session or revoking the connection prevents subsequent enterprise-authorized invocation and destroys the retained assertion. |
+| AC3-EMA-05 | MUST | No identity assertion, enterprise grant, or enterprise-issued access token appears in AgentEvent, TaskEnvelope, ContextBundle, frontend payload, or OpenTelemetry export. |
+| AC3-EMA-06 | MUST | An enterprise-authorized connection cannot be resolved for a different principal. |
+| AC3-EMA-07 | MUST | Expiry of an enterprise-issued access token within a valid session is renewed without end-user interaction; expiry of the retained assertion fails closed to `REAUTH_REQUIRED`. |
+
 ---
 
 # 25. Open questions / decisions needed
