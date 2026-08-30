@@ -1,0 +1,111 @@
+{
+  "capability_results": [
+    {
+      "authorization": {
+        "approval_id": null,
+        "outcome": "ALLOW",
+        "policy_id": "local-capability-policy",
+        "policy_version": "1.0.0",
+        "reason": "explicitly allowed low-risk capability"
+      },
+      "binding_id": "capbind_m6_01",
+      "completed_at": "2026-08-28T00:00:00Z",
+      "connection_id": "conn_m6_01",
+      "connector_id": "conndef_m6_github",
+      "error": null,
+      "output": {
+        "echo": "badged",
+        "ok": true
+      },
+      "request": {
+        "arguments": {
+          "message": "badged"
+        },
+        "capability_id": "fixture.badged",
+        "capability_version": "1.0.0",
+        "created_at": "2026-08-28T00:00:00Z",
+        "declared_reason": "M6 run inspector fixture",
+        "idempotency_key": null,
+        "node_id": "run_m6_01:act",
+        "request_id": "cpr_m6_01",
+        "run_id": "run_m6_01",
+        "schema_version": "1.0"
+      },
+      "side_effect_operation_id": null,
+      "source_ids": [],
+      "status": "SUCCEEDED"
+    },
+    {
+      "authorization": {
+        "approval_id": null,
+        "outcome": "ALLOW",
+        "policy_id": "local-capability-policy",
+        "policy_version": "1.0.0",
+        "reason": "explicitly allowed low-risk capability"
+      },
+      "binding_id": null,
+      "completed_at": "2026-08-28T00:00:00Z",
+      "connection_id": null,
+      "connector_id": null,
+      "error": {
+        "code": "CAPABILITY_EXECUTION_FAILED",
+        "message": "'message' is a required property\n\nFailed validating 'required' in schema:\n    {'type': 'object',\n     'properties': {'message': {'type': 'string'}},\n     'required': ['message'],\n     'additionalProperties': False}\n\nOn instance:\n    {'ok': True, 'echo': 'unbound'}",
+        "retryable": false
+      },
+      "output": null,
+      "request": {
+        "arguments": {
+          "message": "unbound"
+        },
+        "capability_id": "accretion.echo",
+        "capability_version": "1.0.0",
+        "created_at": "2026-08-28T00:00:00Z",
+        "declared_reason": "M6 run inspector fixture",
+        "idempotency_key": null,
+        "node_id": "run_m6_01:verify",
+        "request_id": "cpr_m6_02",
+        "run_id": "run_m6_01",
+        "schema_version": "1.0"
+      },
+      "side_effect_operation_id": null,
+      "source_ids": [],
+      "status": "FAILED"
+    },
+    {
+      "authorization": {
+        "approval_id": null,
+        "outcome": "ALLOW",
+        "policy_id": "local-capability-policy",
+        "policy_version": "1.0.0",
+        "reason": "explicitly allowed low-risk capability"
+      },
+      "binding_id": "cbd_m6_01",
+      "completed_at": "2026-08-28T00:00:00Z",
+      "connection_id": null,
+      "connector_id": "conndef_plugin_m6-badges",
+      "error": null,
+      "output": {
+        "echo": "plugin-served",
+        "ok": true
+      },
+      "request": {
+        "arguments": {
+          "message": "plugin-served"
+        },
+        "capability_id": "m6-badges.summarize",
+        "capability_version": "1.0.0",
+        "created_at": "2026-08-28T00:00:00Z",
+        "declared_reason": "M6 run inspector fixture",
+        "idempotency_key": null,
+        "node_id": "run_m6_01:plan",
+        "request_id": "cpr_m6_03",
+        "run_id": "run_m6_01",
+        "schema_version": "1.0"
+      },
+      "side_effect_operation_id": null,
+      "source_ids": [],
+      "status": "SUCCEEDED"
+    }
+  ],
+  "schema_version": "1.0"
+}

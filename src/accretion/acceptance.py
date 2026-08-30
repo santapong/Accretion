@@ -31,6 +31,19 @@ SDDS = {
 }
 
 _ROW = re.compile(r"^\|\s*((?:V0[12]|AC3)[A-Z0-9-]+)\s*\|(.+)\|\s*$")
+
+# Frontend evidence is one or more ``path[:line] <test title>`` segments joined by
+# ``" + "``. The pointer and the title it carries are both machine-checked.
+_EVIDENCE_POINTER = re.compile(r"[A-Za-z0-9_./-]+\.(?:tsx|ts|jsx|js)(?::\d+)?")
+FRONTEND_EVIDENCE_ROOT = "apps/ui/"
+FRONTEND_EVIDENCE_SUFFIXES = (".test.ts", ".test.tsx")
+_EVIDENCE_SEPARATOR = " + "
+
+
+def _vitest_anchor(title: str) -> re.Pattern[str]:
+    """Match the opening line of a vitest ``test``/``it`` declaring exactly ``title``."""
+
+    return re.compile(r"^\s*(?:test|it)\(\s*(['\"`])" + re.escape(title) + r"\1")
 _PRIORITIES = {"MUST", "SHOULD"}
 
 # v0.3 criteria carry their milestone in the category, not the id.
@@ -58,6 +71,7 @@ class Criterion:
     issue: str = ""
     expires: str = ""
     evidence: str = ""
+    frontend_evidence: str = ""
     last_verified: str = ""
     tests: list[str] = field(default_factory=list)
     outcomes: list[str] = field(default_factory=list)
@@ -112,6 +126,20 @@ def load_criteria() -> dict[str, Criterion]:
     return criteria
 
 
+POLICY_KEYS = frozenset(
+    {
+        "verification",
+        "reason",
+        "issue",
+        "expires",
+        "evidence",
+        "last_verified",
+        "frontend_evidence",
+    }
+)
+VERIFICATION_MODES = frozenset({"test", "not_yet_due", "waived", "manual", "frontend"})
+
+
 def apply_policy(criteria: dict[str, Criterion]) -> list[str]:
     """Overlay the verification policy. Returns policy errors."""
 
@@ -124,12 +152,33 @@ def apply_policy(criteria: dict[str, Criterion]) -> list[str]:
         if criterion is None:
             errors.append(f"{identifier}: named in policy but absent from every SDD")
             continue
-        criterion.verification = entry.get("verification", "test")
+        # A key nothing validates is a silent hole: a one-character typo in
+        # `frontend_evidence` would drop every checked vitest pointer while the gate
+        # still printed PASS. Unknown keys and unknown verification modes fail closed.
+        for key in entry:
+            if key not in POLICY_KEYS:
+                errors.append(f"{identifier}: unknown policy key {key!r}")
+        verification = entry.get("verification", "test")
+        if verification not in VERIFICATION_MODES:
+            errors.append(
+                f"{identifier}: unknown verification {verification!r} "
+                f"(expected one of {', '.join(sorted(VERIFICATION_MODES))})"
+            )
+        criterion.verification = verification
         criterion.reason = entry.get("reason", "")
         criterion.issue = entry.get("issue", "")
         criterion.expires = entry.get("expires", "")
         criterion.evidence = entry.get("evidence", "")
         criterion.last_verified = entry.get("last_verified", "")
+        criterion.frontend_evidence = entry.get("frontend_evidence", "")
+        if criterion.frontend_evidence:
+            # A criterion whose pytest claim covers only part of the surface can name
+            # the vitest spec carrying the rest. The pointer is checked exactly like
+            # `verification = "frontend"` evidence, so deleting the page test fails the
+            # gate even though the criterion is still counted as proven by pytest.
+            errors.extend(
+                frontend_evidence_errors(identifier, criterion.frontend_evidence)
+            )
         if criterion.verification == "waived":
             # A waiver without an owner or an end date becomes permanent silence.
             if not criterion.reason or not criterion.issue or not criterion.expires:
@@ -137,8 +186,81 @@ def apply_policy(criteria: dict[str, Criterion]) -> list[str]:
         if criterion.verification == "manual":
             if not criterion.evidence or not criterion.last_verified:
                 errors.append(f"{identifier}: manual needs evidence and last_verified")
-        if criterion.verification == "frontend" and not criterion.evidence:
-            errors.append(f"{identifier}: frontend needs evidence naming the vitest test")
+        if criterion.verification == "frontend":
+            errors.extend(frontend_evidence_errors(identifier, criterion.evidence))
+    return errors
+
+
+def frontend_evidence_errors(identifier: str, evidence: str) -> list[str]:
+    """Check that frontend evidence anchors on a vitest test that actually exists.
+
+    ``verification = "frontend"`` moves the proof out of this gate and into vitest, so
+    the pointer is the only thing left tying a criterion to a test. An unchecked string
+    rots silently the moment a test file is renamed or deleted; a bare file path is
+    barely better, because any ``.ts`` under ``apps/ui/`` — a page source, the vitest
+    setup file — would satisfy it while proving nothing. Each pointer must therefore be
+    an ``apps/ui/...`` path naming a vitest spec (``*.test.ts`` / ``*.test.tsx``), must
+    carry a ``:line`` anchor onto the test it claims, and the anchored line must open a
+    ``test``/``it`` whose title is exactly the prose the pointer carries. A file, a line
+    or a title that drifts fails here, in the gate, not only in the pytest suite.
+    """
+
+    errors: list[str] = []
+    segments: list[tuple[str, str]] = []
+    for segment in evidence.split(_EVIDENCE_SEPARATOR):
+        match = _EVIDENCE_POINTER.search(segment)
+        if match is None:
+            continue
+        segments.append((match.group(0), segment[match.end() :].strip()))
+    if not segments:
+        errors.append(
+            f"{identifier}: frontend needs evidence naming the vitest test "
+            f"as a '{FRONTEND_EVIDENCE_ROOT}...' path"
+        )
+        return errors
+    for pointer, title in segments:
+        relative, _, line = pointer.partition(":")
+        if not relative.startswith(FRONTEND_EVIDENCE_ROOT):
+            errors.append(
+                f"{identifier}: frontend evidence '{pointer}' must be a path "
+                f"under {FRONTEND_EVIDENCE_ROOT}"
+            )
+            continue
+        if not relative.endswith(FRONTEND_EVIDENCE_SUFFIXES):
+            errors.append(
+                f"{identifier}: frontend evidence '{relative}' must name a vitest spec "
+                f"({' or '.join(FRONTEND_EVIDENCE_SUFFIXES)})"
+            )
+            continue
+        target = ROOT / relative
+        if not target.is_file():
+            errors.append(f"{identifier}: frontend evidence path does not exist: {relative}")
+            continue
+        if not line:
+            errors.append(
+                f"{identifier}: frontend evidence {relative} needs a :line anchor "
+                f"naming the vitest test"
+            )
+            continue
+        source = target.read_text().splitlines()
+        total = len(source)
+        if not 1 <= int(line) <= total:
+            errors.append(
+                f"{identifier}: frontend evidence {relative}:{line} is past "
+                f"end of file ({total} lines)"
+            )
+            continue
+        if not title:
+            errors.append(
+                f"{identifier}: frontend evidence {relative}:{line} names no test title"
+            )
+            continue
+        anchor = source[int(line) - 1]
+        if not _vitest_anchor(title).match(anchor):
+            errors.append(
+                f"{identifier}: frontend evidence {relative}:{line} lands on "
+                f"{anchor!r}, not the test it names"
+            )
     return errors
 
 

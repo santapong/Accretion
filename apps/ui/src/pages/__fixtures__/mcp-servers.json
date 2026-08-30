@@ -1,0 +1,88 @@
+[
+  {
+    "allowed_tool_patterns": [
+      "crossref_*"
+    ],
+    "auth_profile_ref": null,
+    "circuit_open_until": "2026-08-28T00:00:00Z",
+    "command": [],
+    "connector_id": "research-crossref",
+    "consecutive_failures": 3,
+    "created_at": "2026-08-28T00:00:00Z",
+    "denied_tool_patterns": [],
+    "discovery_policy": {
+      "default_ttl_ms": 300000,
+      "max_items_per_kind": 1000,
+      "prompts": false,
+      "resources": false,
+      "tools": true
+    },
+    "enabled": true,
+    "endpoint": "https://research-crossref.mcp.accretion.test/mcp",
+    "health_policy": {
+      "cooldown_seconds": 30,
+      "failure_threshold": 3,
+      "max_discovery_retries": 1,
+      "max_response_bytes": 2000000,
+      "timeout_ms": 10000
+    },
+    "last_health_check": "2026-08-28T00:00:00Z",
+    "mcp_server_id": "mcs_m6_02",
+    "name": "Accretion Research (Crossref-shaped)",
+    "owner_principal_id": "prin_m6_01",
+    "protocol_versions": [
+      "2026-07-28"
+    ],
+    "revision": 6,
+    "schema_version": "1.0",
+    "state": "DEGRADED",
+    "tool_mappings": [],
+    "transport": "HTTP",
+    "trust_level": "RESTRICTED",
+    "updated_at": "2026-08-28T00:00:00Z",
+    "workspace_id": "wks_m6_01"
+  },
+  {
+    "allowed_tool_patterns": [
+      "openalex_*"
+    ],
+    "auth_profile_ref": null,
+    "circuit_open_until": null,
+    "command": [],
+    "connector_id": "research-openalex",
+    "consecutive_failures": 0,
+    "created_at": "2026-08-28T00:00:00Z",
+    "denied_tool_patterns": [],
+    "discovery_policy": {
+      "default_ttl_ms": 300000,
+      "max_items_per_kind": 1000,
+      "prompts": false,
+      "resources": false,
+      "tools": true
+    },
+    "enabled": true,
+    "endpoint": "https://research-openalex.mcp.accretion.test/mcp",
+    "health_policy": {
+      "cooldown_seconds": 30,
+      "failure_threshold": 3,
+      "max_discovery_retries": 1,
+      "max_response_bytes": 2000000,
+      "timeout_ms": 10000
+    },
+    "last_health_check": "2026-08-28T00:00:00Z",
+    "mcp_server_id": "mcs_m6_01",
+    "name": "Accretion Research (OpenAlex-shaped)",
+    "owner_principal_id": "prin_m6_01",
+    "protocol_versions": [
+      "2026-07-28"
+    ],
+    "revision": 3,
+    "schema_version": "1.0",
+    "state": "READY",
+    "tool_mappings": [],
+    "transport": "HTTP",
+    "trust_level": "RESTRICTED",
+    "updated_at": "2026-08-28T00:00:00Z",
+    "workspace_id": "wks_m6_01"
+  }
+]

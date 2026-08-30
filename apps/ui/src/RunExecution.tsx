@@ -15,6 +15,7 @@ import {
 import "@xyflow/react/dist/style.css";
 import { api } from "./api";
 import { layoutProjection } from "./graphLayout";
+import { badgeParts, nodeBadges, type NodeBadge, type NodeBadgeIndex } from "./runBadges";
 import type {
   ApprovalRecord,
   CandidateScore,
@@ -23,11 +24,14 @@ import type {
   ExperienceMatch,
   GraphProjection,
   GraphProjectionNode,
+  GraphRevisionDiff,
   GraphValidationResult,
   LoopExecution,
   Run,
+  RuntimeDecision,
   SearchRecord,
   TrajectorySeed,
+  ValidationFinding,
   VerificationResult,
 } from "./types";
 
@@ -86,7 +90,33 @@ function LoopBackEdge({
 
 const edgeTypes = { loopBack: LoopBackEdge };
 
-function ProjectionNodeLabel({ node }: { node: GraphProjectionNode }) {
+/**
+ * The provenance badges for one node, in the order the audit recorded them.
+ *
+ * Rendered both inside the React Flow node (AC3-UI-05, SDD 16.6) and in the
+ * `projection-node-summary` list that mirrors the canvas for assistive technology, so
+ * the two can never disagree about what the gateway resolved.
+ */
+function NodeBadges({ badges }: { badges: readonly NodeBadge[] }) {
+  return (
+    <>
+      {badges.map((badge) => (
+        <span className="node-badge" key={badge.requestId} data-capability-id={badge.capabilityId}>
+          <span className="node-badge-capability">{badge.capabilityId}</span>
+          {badgeParts(badge).map(([kind, value]) => (
+            <span className="node-badge-part" data-badge-part={kind} key={kind}>
+              {kind} {value}
+            </span>
+          ))}
+        </span>
+      ))}
+    </>
+  );
+}
+
+function ProjectionNodeLabel(
+  { node, badges }: { node: GraphProjectionNode; badges: readonly NodeBadge[] },
+) {
   return (
     <div className="projection-node-content">
       <span className="projection-node-kind">{node.kind}</span>
@@ -100,11 +130,16 @@ function ProjectionNodeLabel({ node }: { node: GraphProjectionNode }) {
       {node.kind === "GATE" && node.status === "WAITING" ? (
         <span className="gate-waiting-hint">Waiting for approval</span>
       ) : null}
+      {badges.length ? (
+        <span className="projection-node-badges">
+          <NodeBadges badges={badges} />
+        </span>
+      ) : null}
     </div>
   );
 }
 
-function ProjectionCanvas({ projection }: { projection: GraphProjection }) {
+function ProjectionCanvas({ projection, badges }: { projection: GraphProjection; badges: NodeBadgeIndex }) {
   const projectionNodes = useMemo(() => projection.nodes ?? [], [projection.nodes]);
   const projectionEdges = useMemo(() => projection.edges ?? [], [projection.edges]);
   const layout = useMemo(() => layoutProjection(projection), [projection]);
@@ -136,10 +171,12 @@ function ProjectionCanvas({ projection }: { projection: GraphProjection }) {
           `projection-node-kind-${node.kind.toLowerCase()}`,
           isGroup ? "projection-node-group" : "",
         ].filter(Boolean).join(" "),
-        data: { label: <ProjectionNodeLabel node={node} /> },
+        data: {
+          label: <ProjectionNodeLabel node={node} badges={badges.get(node.node_id) ?? []} />,
+        },
       };
     });
-  }, [projectionNodes, layout, parentIds]);
+  }, [projectionNodes, layout, parentIds, badges]);
 
   const flowEdges = useMemo<Edge[]>(() => {
     const parentByNode = new Map(
@@ -203,6 +240,7 @@ function ProjectionCanvas({ projection }: { projection: GraphProjection }) {
           <li key={node.node_id}>
             <span>{node.label}</span>
             <StatusBadge state={node.status} />
+            <NodeBadges badges={badges.get(node.node_id) ?? []} />
           </li>
         ))}
       </ul>
@@ -596,6 +634,84 @@ function SearchTree({ run }: { run: Run }) {
   );
 }
 
+const diffSections: readonly (readonly [string, keyof GraphRevisionDiff])[] = [
+  ["Added nodes", "added_nodes"],
+  ["Removed nodes", "removed_nodes"],
+  ["Changed nodes", "changed_nodes"],
+  ["Added edges", "added_edges"],
+  ["Removed edges", "removed_edges"],
+  ["Changed edges", "changed_edges"],
+];
+
+/**
+ * Every identity the diff carries, not just how many there are.
+ *
+ * Counts alone cannot tell an operator *which* node the replan dropped, and the edge
+ * lists were previously not rendered at all, so a revision that rewired the graph
+ * without touching a node read as an empty diff.
+ */
+function GraphDiffIdentities({ diff }: { diff: GraphRevisionDiff }) {
+  return (
+    <dl className="graph-diff-identities" role="group" aria-label="Graph revision diff identities">
+      {diffSections.map(([label, key]) => {
+        const identities = (diff[key] as string[] | undefined) ?? [];
+        return (
+          <div key={key} data-diff-section={key}>
+            <dt>{label}</dt>
+            <dd>
+              {identities.length
+                ? <ul>{identities.map((value) => <li key={value}><code>{value}</code></li>)}</ul>
+                : <span className="quiet">none</span>}
+            </dd>
+          </div>
+        );
+      })}
+    </dl>
+  );
+}
+
+/**
+ * The routing evidence behind one decision: the ordered fallback chain the router would
+ * walk if the selection failed, and every feature it observed while scoring. Values are
+ * rendered as the decision recorded them; the decision contract carries no credential
+ * field, and this renders nothing the decision does not carry.
+ */
+function RouterEvidence({ decision }: { decision: RuntimeDecision }) {
+  const fallback = decision.fallback_order ?? [];
+  const features = Object.entries(decision.observed_features ?? {});
+  return (
+    <div className="router-evidence">
+      <div>
+        <h4 id={`fallback-${decision.decision_id}`}>Fallback order</h4>
+        {fallback.length ? (
+          <ol className="router-fallback" aria-labelledby={`fallback-${decision.decision_id}`}>
+            {fallback.map((provider, index) => (
+              <li key={provider}><span>{index + 1}</span><strong>{provider}</strong></li>
+            ))}
+          </ol>
+        ) : <p className="quiet">No fallback runtime is available.</p>}
+      </div>
+      <div>
+        <h4 id={`features-${decision.decision_id}`}>Observed features</h4>
+        {features.length ? (
+          <dl className="router-features" aria-labelledby={`features-${decision.decision_id}`}>
+            {features.map(([key, value]) => (
+              <div key={key}><dt>{key}</dt><dd>{formatFeature(value)}</dd></div>
+            ))}
+          </dl>
+        ) : <p className="quiet">The router recorded no observed features.</p>}
+      </div>
+    </div>
+  );
+}
+
+function formatFeature(value: unknown): string {
+  if (value == null) return "null";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return JSON.stringify(value);
+}
+
 function DynamicWorkflowInspector({ run }: { run: Run }) {
   const queryClient = useQueryClient();
   const [replanEvidence, setReplanEvidence] = useState("");
@@ -633,6 +749,7 @@ function DynamicWorkflowInspector({ run }: { run: Run }) {
   const revisionItems = Array.isArray(revisions.data) ? revisions.data : [];
   const decisionItems = Array.isArray(decisions.data) ? decisions.data : [];
   const replanItems = Array.isArray(replans.data) ? replans.data : [];
+  const [selectedRevision, setSelectedRevision] = useState<number>();
   const previousRevision = revisionItems.length > 1
     ? revisionItems[revisionItems.length - 2].revision
     : undefined;
@@ -647,6 +764,17 @@ function DynamicWorkflowInspector({ run }: { run: Run }) {
 
   const validationItems = Array.isArray(validations.data) ? validations.data : [];
   const latestValidation: GraphValidationResult | undefined = validationItems.at(-1);
+  const validationFindings: [string, ValidationFinding][] = [
+    ...(latestValidation?.errors ?? []).map(
+      (finding) => ["finding-error", finding] as [string, ValidationFinding],
+    ),
+    ...(latestValidation?.warnings ?? []).map(
+      (finding) => ["finding-warning", finding] as [string, ValidationFinding],
+    ),
+  ];
+  const inspectedRevision = revisionItems.find(
+    (item) => item.revision === selectedRevision,
+  ) ?? revisionItems.at(-1);
 
   async function requestReplan() {
     setFeedback("Pausing at a safe boundary and validating a new revision…");
@@ -676,10 +804,13 @@ function DynamicWorkflowInspector({ run }: { run: Run }) {
     <section className="dynamic-inspector" aria-labelledby="dynamic-workflow-heading">
       <header>
         <div><p className="eyebrow">P5 authority boundary</p><h3 id="dynamic-workflow-heading">Dynamic workflow</h3></div>
-        <StatusBadge state={latestValidation?.status ?? (activeRevision ? "ACTIVE" : "PROPOSED")} />
+        <StatusBadge state={activeRevision ? "ACTIVE" : "PROPOSED"} />
       </header>
       {latestProposal ? (
-        <article className="proposal-inspector">
+        <article
+          className="proposal-inspector"
+          data-proposal-state={activeRevision ? "ACTIVE" : "PROPOSED"}
+        >
           <div className="dynamic-metrics">
             <span><strong>{latestProposal.nodes.length}</strong> nodes</span>
             <span><strong>{(latestProposal.edges ?? []).length}</strong> edges</span>
@@ -687,42 +818,91 @@ function DynamicWorkflowInspector({ run }: { run: Run }) {
           </div>
           <h4>{(latestProposal.fragment_refs ?? []).join(" · ")}</h4>
           <p>{latestProposal.rationale_summary}</p>
-          <ul>{(latestProposal.assumptions ?? []).map((assumption) => <li key={assumption}>{assumption}</li>)}</ul>
-          {(latestValidation?.errors ?? []).length ? (
-            <ul className="finding-list">
-              {(latestValidation?.errors ?? []).map((finding) => (
-                <li className="finding-error" key={`${finding.code}-${finding.path}`}>
-                  <span>{finding.severity}</span><div><strong>{finding.code}</strong><p>{finding.message}</p></div>
-                </li>
+          <p className="proposal-authority">
+            {activeRevision
+              ? `Executable: activated as graph revision r${activeRevision}.`
+              : "Pending proposal: not executable until a graph revision is activated."}
+          </p>
+          <h5 id="proposal-assumptions-heading">Assumptions</h5>
+          {(latestProposal.assumptions ?? []).length ? (
+            <ul className="proposal-assumptions" aria-labelledby="proposal-assumptions-heading">
+              {(latestProposal.assumptions ?? []).map((assumption) => <li key={assumption}>{assumption}</li>)}
+            </ul>
+          ) : <p className="quiet">The planner recorded no assumptions.</p>}
+          <h5 id="proposal-capabilities-heading">Required capabilities</h5>
+          {(latestProposal.required_capabilities ?? []).length ? (
+            <ul className="proposal-capabilities" aria-labelledby="proposal-capabilities-heading">
+              {(latestProposal.required_capabilities ?? []).map((capability) => (
+                <li key={capability}><code>{capability}</code></li>
               ))}
             </ul>
-          ) : null}
+          ) : <p className="quiet">The proposal requires no capabilities.</p>}
+          <div className="proposal-validation" role="group" aria-label="Validation findings">
+            <h5>Validation</h5>
+            <StatusBadge state={latestValidation?.status ?? "PENDING"} />
+            {validationFindings.length ? (
+              <ul className="finding-list">
+                {validationFindings.map(([severityClass, finding]) => (
+                  <li className={severityClass} key={`${severityClass}-${finding.code}-${finding.path}`}>
+                    <span>{finding.severity}</span>
+                    <div><strong>{finding.code}</strong><p>{finding.message}</p></div>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="quiet">The validator reported no findings.</p>}
+          </div>
           <small>{latestProposal.planner_version} · {latestValidation?.validator_version ?? "validation pending"}</small>
         </article>
       ) : null}
-      <div className="revision-timeline" aria-label="Graph revision timeline">
+      <div
+        className="revision-timeline"
+        role="group"
+        aria-label="Graph revision timeline"
+        tabIndex={0}
+      >
         {revisionItems.map((revision) => (
-          <article key={revision.revision_id}>
-            <span>r{revision.revision}</span>
+          <article
+            key={revision.revision_id}
+            data-revision-role={revision.revision === activeRevision ? "active" : "prior"}
+          >
+            <button
+              type="button"
+              className="revision-select"
+              aria-pressed={revision.revision === inspectedRevision?.revision}
+              onClick={() => setSelectedRevision(revision.revision)}
+            >
+              r{revision.revision}
+            </button>
             <div><strong>{revision.reason.replaceAll("_", " ")}</strong><small>{revision.normalized_graph_hash.slice(0, 12)}…</small></div>
             <small>{(revision.protected_state_refs ?? []).length} protected refs</small>
           </article>
         ))}
         {!revisionItems.length ? <p className="quiet">No graph revision is active.</p> : null}
       </div>
-      {diff.data ? (
-        <div className="graph-diff-summary">
-          <strong>r{diff.data.from_revision} → r{diff.data.to_revision}</strong>
-          <span>+{(diff.data.added_nodes ?? []).length} / −{(diff.data.removed_nodes ?? []).length} nodes</span>
-          <span>{(diff.data.changed_nodes ?? []).length} changed</span>
-          <span>{(diff.data.protected_state_refs ?? []).length} protected state refs</span>
+      {inspectedRevision ? (
+        <div className="revision-detail" role="group" aria-label="Selected graph revision">
+          <strong>r{inspectedRevision.revision}</strong>
+          <span>{inspectedRevision.revision === activeRevision ? "active revision" : "prior revision"}</span>
+          <code>{inspectedRevision.normalized_graph_hash}</code>
         </div>
+      ) : null}
+      {diff.data ? (
+        <>
+          <div className="graph-diff-summary">
+            <strong>r{diff.data.from_revision} → r{diff.data.to_revision}</strong>
+            <span>+{(diff.data.added_nodes ?? []).length} / −{(diff.data.removed_nodes ?? []).length} nodes</span>
+            <span>{(diff.data.changed_nodes ?? []).length} changed</span>
+            <span>{(diff.data.protected_state_refs ?? []).length} protected state refs</span>
+          </div>
+          <GraphDiffIdentities diff={diff.data} />
+        </>
       ) : null}
       {decisionItems.map((decision) => (
         <details className="router-decision" key={decision.decision_id}>
           <summary><strong>Runtime: {decision.selected_runtime ?? "none"}</strong><span>{decision.policy_version}</span></summary>
           <p>{decision.selected_reason}</p>
           <ul>{decision.candidates.map((candidate) => <li key={`${candidate.provider}-${candidate.runtime_version}`}><strong>{candidate.provider}</strong><span>{candidate.score.toFixed(3)} · {candidate.available ? "available" : candidate.exclusion_reason}</span></li>)}</ul>
+          <RouterEvidence decision={decision} />
         </details>
       ))}
       {replanItems.length ? <p className="quiet">{replanItems.length} durable replan request(s)</p> : null}
@@ -761,11 +941,22 @@ export function RunExecution({ run }: { run: Run | undefined }) {
     retry: false,
     refetchInterval,
   });
+  // Read-only capability provenance for the graph badges. Recomputed from the query
+  // result on every render on purpose: a badge must never outlive the audit row it
+  // projects, so there is no cached copy to go stale.
+  const auditQuery = useQuery({
+    queryKey: ["run-audit-badges", runId],
+    queryFn: () => api.audit(runId!),
+    enabled: Boolean(runId),
+    retry: false,
+    refetchInterval,
+  });
 
   if (!run) return <section className="execution-panel empty">Select a run to inspect its orchestration state.</section>;
 
   const projection = isGraphProjection(graphQuery.data) ? graphQuery.data : undefined;
   const verifications = Array.isArray(verificationQuery.data) ? verificationQuery.data : [];
+  const badges = nodeBadges(auditQuery.data);
 
   return (
     <section className="execution-panel" aria-label="Run orchestration">
@@ -779,7 +970,7 @@ export function RunExecution({ run }: { run: Run | undefined }) {
         <SearchTree run={run} />
         <PendingApprovals runId={run.run_id} />
         {loopQuery.data ? <BudgetSummary loop={loopQuery.data} /> : null}
-        {projection ? <ProjectionCanvas projection={projection} /> : (
+        {projection ? <ProjectionCanvas projection={projection} badges={badges} /> : (
           <div className="projection-unavailable">
             <strong>{graphQuery.isPending ? "Loading execution graph…" : "No graph projection is available for this run"}</strong>
             <p>Runs created before graph persistence keep their normalized trace below.</p>
