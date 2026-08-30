@@ -1,8 +1,9 @@
 # v0.3 prioritized backlog
 
-Status: M0–M5 delivered; work is parked before M6. Every M0–M5 acceptance
+Status: M0–M6 delivered; work is parked before M7. Every M0–M6 acceptance
 criterion is proven by a claiming test (`make acceptance`), and the per-stage gates
-`--stage M1` through `--stage M5` all report `in scope: n   proven: n   unmet MUST: 0`.
+`--stage M1` through `--stage M6`, plus `--stage v0.2-ui`, all report
+`in scope: n   proven: n   unmet MUST: 0`. No criterion is `not_yet_due` any more.
 The remaining uncovered criteria are inherited v0.1/v0.2 items listed in the
 [acceptance baseline](acceptance-baseline.md).
 
@@ -20,8 +21,8 @@ or unlocking the hash-manifested v0.4+ designs.
 | 4 | M3 remote MCP manager — **delivered** (#79) | Authenticated remote discovery, schema validation, health/circuit breaking, SSRF controls, and canonical capability bindings |
 | 5 | M4 plugin manager — **delivered** | Versioned manifest validation, permission requests without grants, enable/disable/upgrade, and historical provenance |
 | 6 | M5 research intelligence plugin — **delivered** | Provider-neutral research capabilities, normalized evidence, provenance, and citation verification |
-| 7 | M6 frontend and administration — **next** | Plugins, Connections, MCP Servers, capability resolution, identity, and roles without exposing secrets |
-| 8 | M7 enterprise authorization | Optional EMA integration behind a feature flag after the standard OAuth path is stable |
+| 7 | M6 frontend and administration — **delivered** | Plugins, Connections, MCP Servers, capability resolution, identity, and roles without exposing secrets |
+| 8 | M7 enterprise authorization — **next** | Optional EMA integration behind a feature flag after the standard OAuth path is stable |
 | 9 | M8 release hardening | Clean-checkout reproduction of every inherited v0.1, v0.2, and v0.3 MUST criterion |
 
 ## M8 inherited UI findings (F1–F4)
@@ -217,6 +218,82 @@ needs without re-deriving it:
   parameter** because `Run` reaches a task, a project and a principal, and none of the
   three reaches a workspace. Narrowing the gate to the run's own workspace needs that
   link built first — M6.
+
+### v0.3 M6 — closed
+
+M6 shipped the administration surface and the run-page inspectors, proving `AC3-UI-01`
+through `AC3-UI-05` and taking over the six inherited `V02-UI-001..006` criteria. The
+operating detail is in the
+[frontend and administration runbook](../../runbooks/v03-frontend-admin.md); what a later
+reader needs without re-deriving it:
+
+- **The proof of a page is split, and the split is machine-checked** (ADR3-M6-001). Each
+  `AC3-UI-*` criterion is claimed by a marked pytest test proving the API half in-process
+  against the real managers, and carries a `frontend_evidence` pointer — a new
+  `criteria.toml` key — naming the vitest test that proves the rendering half. The
+  pointer is path-, line- and title-checked by `acceptance.py`, so deleting a page test
+  or retitling one by a byte fails `--stage M6`. `criteria.toml` was therefore flipped in
+  the PRs that landed the markers, not batched into the close-out: the harness fails
+  closed when a marked test claims a `not_yet_due` criterion.
+- **The plan's predicted counts do not describe the delivered shape.** `m6-plan.md`
+  expected `--stage M6` `proven: 2` and `make acceptance` `FRONTEND 9`, both derived from
+  putting most criteria on `verification = "frontend"`. Because that setting *replaces* a
+  pytest claim rather than adding to it, adopting it would have meant discarding the
+  in-process proof. Delivered: `--stage M6` reports `in scope: 5   proven: 5`,
+  `--stage v0.2-ui` reports `6 / 6`, and `FRONTEND` stays at 3 — the pre-existing
+  `V01-P4-004`, `V02-P6-008` and `V02-P7-007` pointers — because `FRONTEND` counts
+  criteria whose *only* proof is vitest.
+- **One new route, no new contract, no migration** (ADR3-M6-002).
+  `GET /api/v1/mcp/servers/{id}/discovery` returns the most recent `McpDiscoverySnapshot`
+  so §16.3's tools/prompts/cache-TTL requirement has a path to the browser;
+  `/capabilities` returns the mapped canonical set, not the raw snapshot. It is additive
+  over M3 contracts, never contacts the server, and 404s identically for a non-member, a
+  non-existent server, and a server that has never discovered. §17's route list does not
+  name it and `docs/sdd/` is hash-manifested, so the divergence is recorded rather than
+  patched.
+- **Identity is read-only and stays that way until M7** (ADR3-M6-003). §16.4's active
+  sessions and enterprise authorization panel are deferred: no route returns an
+  `AuthSession` row, and an endpoint enumerating sessions is one that tells an attacker
+  which sessions to target, so it belongs with the milestone that designs its revocation.
+  Role assignment is an authorization write and M7 owns the policy that should govern it.
+- **Node badges come from the audit, not from the manifest** (ADR3-M6-004).
+  `PluginUiContribution.node_badges` is typed `list[dict[str, Any]]` with no declared key
+  for the label, the node predicate, or the projected value, so rendering it would mean
+  inventing the entry shape in the UI. The badge instead reads the plugin id out of the
+  synthetic connector the gateway already records in
+  `CapabilityExecutionResult.connector_id`. Declaring the entry contract is M8's.
+- **"Non-authoritative" is structural, not a review note.** `apps/ui/src/runBadges.ts`
+  imports only `./types`, holds no state and names no transport, asserted in pytest; the
+  vitest half asserts no interactive role and zero fetches on click across both the
+  React Flow node and its accessible mirror. Making a badge authoritative would require
+  adding an import the test forbids.
+- **Deferrals, stated rather than silent.**
+  - *`GET /audit/connections`, `GET /audit/capabilities`, `POST /capabilities/{id}/dry-run`
+    → M8.* Each needs a contract and a store method that do not exist plus a migration,
+    which is not a frontend milestone's work.
+  - *F1 (390 px overflow) and F2 (WCAG AA contrast) stay open.* jsdom has no layout engine
+    and `apps/ui/src/test/setup.ts` fakes `offsetWidth` and `getBoundingClientRect` with
+    constants, so an assertion about either would assert the stub. They remain browser/axe
+    evidence for M8. F3 and F4 are unchanged for the inherited routes; the five new pages
+    each carry an `h1` and focusable scroll regions, so they add nothing to either finding.
+  - *Live plugin health probing → **re-deferred to M8***. M4 deferred it to M5, M5 to M6.
+    The reason is unchanged and is not about the UI: probing is a scheduled activity and
+    there is still no scheduler. `/admin/plugins` renders the health the store holds; it
+    does not collect it.
+  - *First-class `consent_records` and `scope_grants` tables → M8.* M6 adds no persisted
+    field and no table; `PluginDetail` already composes what the page renders, so the lift
+    stays additive.
+- **M4's open product question is still open.** Whether a disabled-but-allowlisted
+  plugin should block experience replay (`ExperienceService` filters on
+  `list_plugins(allowlisted_only=True)`) is a product call, not a rendering one. M6 made
+  the two states *visible* on `/admin/plugins` — trust and installation state are separate
+  columns and read differently — which is as far as a frontend milestone can take it. The
+  decision is M8's.
+- **Two M5 seams are still open and were not M6 work after all.** The planner hangs
+  `capability_refs` on `AGENT`/`LOOP` nodes while `RunManager` spends them on `TOOL`
+  nodes; and `GET /api/v1/runs/{run_id}/research-evidence` still takes `workspace_id`
+  explicitly because `Run` reaches no workspace. Both are execution-path decisions with no
+  frontend component, and both move to M8.
 
 ## Locked boundary
 

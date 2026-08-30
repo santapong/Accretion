@@ -4,7 +4,7 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
-Status: v0.3 milestones M0–M5 delivered on `develop`; parked 2026-08-26 before M6.
+Status: v0.3 milestones M0–M6 delivered on `develop`; parked 2026-08-29 before M7.
 
 ### Added
 
@@ -49,7 +49,8 @@ Status: v0.3 milestones M0–M5 delivered on `develop`; parked 2026-08-26 before
 - Added the `docs/runbooks/v03-plugins.md` operator runbook, carrying ADR3-M4-001
   (SDD §20.3 adopted over §9.2 for the plugin state machine).
 - Added milestone acceptance gates to CI: `check_acceptance.py --stage M1`
-  through `--stage M5` now run after the backend test suite.
+  through `--stage M6`, plus `--stage v0.2-ui`, now run after the backend test
+  suite.
 - Added the v0.3 M5 research intelligence plugin: the bundled
   `accretion-research` package declaring five skills and five canonical
   capabilities over two deliberately divergent MCP backends, the SDD §7.6
@@ -84,9 +85,52 @@ Status: v0.3 milestones M0–M5 delivered on `develop`; parked 2026-08-26 before
   `ACCRETION_ENABLE_RESEARCH_PLUGIN` and an
   `ACCRETION_RESEARCH_ALLOWED_HOSTS` allowlist that starts empty, so enabling
   the plugin alone opens no upstream egress.
+- Added the v0.3 M6 administration surface: five operator routes under
+  `/admin` — Connections, Plugins, MCP servers, Capability inspector, and
+  Identity — each with an `h1`, rendering only projections the API already emits.
+  No page can display a token, a refresh token, or a token handle, because no
+  route it calls returns one.
+- Added `GET /api/v1/mcp/servers/{mcp_server_id}/discovery`, returning the most
+  recent `McpDiscoverySnapshot` so SDD §16.3's discovered tools, prompts, and
+  cache TTL have a path to the browser. Additive over M3 contracts: no new
+  contract, table, or migration. It never contacts the server, and 404s
+  identically for a non-member, an unknown server, and a server that has never
+  discovered.
+- Added capability badges on the React Flow run nodes and in their accessible
+  summary mirror, a graph diff that names every added, removed, and changed node
+  **and edge**, and a router inspector rendering `fallback_order` and
+  `observed_features`. The last two close the `V02-UI-003` and `V02-UI-006`
+  specification mismatches the acceptance baseline recorded as open.
+- Added executable acceptance coverage for `AC3-UI-01` through `AC3-UI-05` and
+  for the six inherited `V02-UI-001..006` criteria. Every criterion in the three
+  SDDs is now in scope: `NOT_YET_DUE` is empty for the first time, and
+  `make acceptance` reports `in scope: 110   proven: 96   unmet MUST: 10`, all
+  ten inherited v0.1/v0.2 items.
+- Added `frontend_evidence` to `docs/acceptance/criteria.toml` and the acceptance
+  harness: a criterion proven by pytest can now name the vitest test carrying the
+  rendering half of its proof, and the pointer is checked by path, `:line` anchor,
+  and exact test title. Deleting a page test or retitling one by a byte fails the
+  gate. `verification = "frontend"` evidence is now checked the same way instead
+  of being any non-empty string.
+- Added the `docs/runbooks/v03-frontend-admin.md` operator runbook, carrying
+  ADR3-M6-001 (the proof of a page is split between pytest and vitest, and the
+  split is machine-checked), ADR3-M6-002 (`GET .../discovery` is added though
+  SDD §17 does not list it), ADR3-M6-003 (identity is read-only; session
+  enumeration and the enterprise authorization panel are M7), and ADR3-M6-004
+  (a node badge names the plugin from its synthetic connector; manifest-declared
+  `node_badges` is M8).
 
 ### Changed
 
+- `apps/ui/src/api.ts` gained the M6 client functions (plugin detail,
+  installations and audit, connectors and connections with connect / reauthorize
+  / revoke / health, MCP servers with capabilities and discovery, capability
+  resolution, workspaces, auth providers), and `MeResponse` moved from a
+  hand-written interface in `api.ts` to the generated schema types. vitest
+  fixtures are typed as `components["schemas"][...]`, so backend schema drift
+  breaks `npm run check` rather than producing a green suite over a stale shape.
+- The read-only `/capabilities` registry page now links to the capability
+  inspector, because a capability listed there may still be unresolvable.
 - The API process now builds its `VerifierRegistry` explicitly, including
   `research_verifiers(store)`, and wires a `GatewayCapabilityInvoker` onto the
   run manager. Both closed the same class of gap: a component that resolved in
