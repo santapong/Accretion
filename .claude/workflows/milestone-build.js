@@ -46,8 +46,15 @@ ${sddRule(pr)}
 Git discipline: earlier PRs of this milestone are already committed on ${branch}; the
 current PR is the uncommitted working tree. NEVER run git checkout, git restore, git
 stash, git reset, git clean, git commit or git push — a verifier once reverted two PRs
-of uncommitted work with git checkout. A mutation check copies the file to the
-scratchpad, edits, re-runs, and restores with cp, then proves byte-identity with cmp.
+of uncommitted work with git checkout.
+
+Mutation checks NEVER touch the shared tree: verifiers run in parallel, and one
+verifier's mutation was once observed by another as a live regression. Run them in a
+throwaway worktree instead: \`git worktree add <scratchpad>/verify-<your label> HEAD\`
+then \`git diff HEAD | git -C <that worktree> apply\` and \`git status --porcelain | grep '^??'\`
+copied across so the uncommitted PR is present; mutate, re-run, and finally
+\`git worktree remove --force\` it. The shared tree must be byte-identical before and
+after your run (\`git status --porcelain\` unchanged).
 
 Local invocation traps, both of which silently ruin a run:
 - pytest needs BOTH: PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync pytest -p pytest_asyncio.plugin
