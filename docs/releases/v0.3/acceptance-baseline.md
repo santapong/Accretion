@@ -1,7 +1,7 @@
 # Acceptance baseline
 
 > Computed: 2026-08-25 · Base: `develop` at `519ab2b`
-> Numbers refreshed: 2026-08-26 · `develop` at `b77b221` plus M5 (research intelligence)
+> Numbers refreshed: 2026-08-29 · `develop` at `3e7f9c1` plus M6 (frontend and administration)
 >
 > Produced by `make acceptance`. This document records a **starting position**, not a
 > release decision. It supersedes hand-written status claims.
@@ -23,29 +23,51 @@ only *how* each is verified; and a test claims a criterion with
 | | Count |
 |---|---:|
 | Criteria in the three SDDs | 110 |
-| Not yet due (M6) | 5 |
-| **In scope** | **105** |
-| Proven by a passing claiming test | 85 |
+| Not yet due | 0 |
+| **In scope** | **110** |
+| Proven by a passing claiming test | 96 |
 | Proven by the frontend suite | 3 |
-| Uncovered | 17 |
+| Uncovered | 11 |
 
-Coverage is 84% of in-scope criteria (88 of 105). The first computed figure was 37;
+Coverage is 90% of in-scope criteria (99 of 110). The first computed figure was 37;
 the annotation sweep raised it to 59 without changing any runtime behaviour, because
 the inherited gap was traceability rather than implementation. Putting the token broker
 into the execution path then closed five more (#75); completing M2 closed six (#77);
 closing the Claude egress asymmetry closed `V01-P4-001` (#78); M3 brought seven
 MCP criteria into scope and proved all of them (#79); M4 brought the six AC3-PLG
-plugin-manager criteria into scope and proved all of them; and M5 brought the four
-AC3-RES research criteria into scope and proved all of them. Every v0.3 M0–M5
-criterion is now proven; all 17 uncovered criteria are inherited v0.1/v0.2 items, and
-the five still not due are M6's `AC3-UI-01` through `AC3-UI-05`.
+plugin-manager criteria into scope and proved all of them; M5 brought the four
+AC3-RES research criteria into scope and proved all of them; and M6 brought the five
+AC3-UI criteria into scope, proved all of them, and additionally closed the six
+inherited `V02-UI-001..006` run-page criteria. **Nothing is `not_yet_due` any more** —
+every criterion in the three SDDs is now in scope. All 11 uncovered criteria are
+inherited v0.1/v0.2 items.
 
 Reproduce this table with `make acceptance`; the run behind these numbers reported
-`PROVEN: 85`, `FRONTEND: 3`, `UNCOVERED: 17`, `NOT_YET_DUE: 5`, and
-`in scope: 105   proven: 85   unmet MUST: 16`. The full harness still exits `FAIL`
-because those 16 unmet MUSTs are the inherited v0.1/v0.2 items below; the per-stage
-gates `--stage M1` through `--stage M5` all pass and are what CI enforces today, each
-reporting `unmet MUST: 0` over 5, 11, 8, 6 and 4 in-scope criteria respectively.
+`PROVEN: 96`, `FRONTEND: 3`, `UNCOVERED: 11`, no `NOT_YET_DUE` bucket at all, and
+`in scope: 110   proven: 96   unmet MUST: 10`. The full harness still exits `FAIL`
+because those 10 unmet MUSTs are the inherited v0.1/v0.2 items below; the per-stage
+gates `--stage M1` through `--stage M6` plus `--stage v0.2-ui` all pass and are what CI
+enforces today, each reporting `unmet MUST: 0` over 5, 11, 8, 6, 4, 5 and 6 in-scope
+criteria respectively.
+
+### What M6's numbers do and do not measure
+
+`FRONTEND` stayed at 3 while five AC3-UI and six V02-UI criteria were proven, which
+looks wrong and is not. `FRONTEND` counts criteria whose *only* proof is vitest. M6's
+criteria are each claimed by a marked pytest test that proves the API half in-process
+against the real managers — a really-installed package's version and state, a
+really-opened circuit breaker, a resolution checked against the store, a capability
+really executed through `CapabilityGateway` — and carry the vitest test proving the
+rendering half as a `frontend_evidence` pointer that `acceptance.py` checks by path,
+line and test title. They are therefore counted under `PROVEN`. The three that remain
+`FRONTEND` are the pre-existing `V01-P4-004`, `V02-P6-008` and `V02-P7-007`. See
+ADR3-M6-001 in the
+[frontend and administration runbook](../../runbooks/v03-frontend-admin.md).
+
+What the numbers do **not** establish is anything about layout or contrast. jsdom has no
+layout engine and `apps/ui/src/test/setup.ts` fakes `offsetWidth` and
+`getBoundingClientRect` with constants, so F1 and F2 below remain open against browser
+and axe evidence rather than against this suite.
 
 ### What M5's numbers do and do not measure
 
@@ -63,9 +85,13 @@ failure this document exists to prevent.
 ### Movement since the baseline
 
 Findings below that were open at `519ab2b` and are now closed, so a reader does not
-act on them twice: `V01-P4-001` (#78), and `AC3-CON-06` and `AC3-SEC-03` (#75, #77).
-The remaining findings stand, including the `command_result` child-environment
-inheritance.
+act on them twice: `V01-P4-001` (#78); `AC3-CON-06` and `AC3-SEC-03` (#75, #77); and the
+two specification mismatches `V02-UI-003` and `V02-UI-006`, closed by M6 — the graph diff
+now names every added, removed and changed node *and edge* rather than rendering counts,
+and the router inspector renders `fallback_order` and `observed_features`. Both are proven
+against the real planner, the real replan path and the production runtime router, whose
+output is committed as the vitest fixture. The remaining findings stand, including the
+`command_result` child-environment inheritance.
 
 Three criteria are proven by **vitest** rather than pytest. This gate reads pytest
 markers, so those record a pointer to the test that proves them; `npm run test` runs
@@ -134,11 +160,12 @@ These need work, not annotation.
 
 **Specification mismatches**
 
-- `V02-UI-003` — the diff renders counts only, never identities, and no edge diff at
-  all. The criterion says "accurately shows added/removed/replaced nodes/edges".
-- `V02-UI-006` — neither `fallback_order` nor `observed_features` is rendered
-  anywhere, though the criterion and the P5 acceptance document both claim the UI
-  exposes them.
+- ~~`V02-UI-003` — the diff renders counts only, never identities, and no edge diff at
+  all.~~ Closed by M6: the diff names every added, removed and changed node and edge, and
+  a rollback diff renders its own identities rather than the previous diff's.
+- ~~`V02-UI-006` — neither `fallback_order` nor `observed_features` is rendered
+  anywhere.~~ Closed by M6: the router inspector lists the fallback order and every
+  observed feature, and renders only the fields the decision declares — never a credential.
 - `V02-P5-005` — the test named for privilege expansion asserts only
   `UNKNOWN_CAPABILITY` and short-circuits before the privilege branch. No test anywhere
   asserts `PRIVILEGE_EXPANSION`, `DENIED_CAPABILITY`, or `RISK_EXPANSION`.
@@ -160,15 +187,15 @@ Phase 2 closes the v0.3 M0–M2 gaps, Phase 3 the inherited ones, Phase 4 gates
 `make acceptance` in CI. Each criterion closed gains a claiming test, so this table
 moves on evidence rather than assertion.
 
-CI gates the milestone stages rather than the full harness: M4 added
-`--stage M1` through `--stage M4` to the backend job, each of which passes today. The
-full `make acceptance` gate stays M8's job, because it cannot pass until the 16
+CI gates the milestone stages rather than the full harness: the backend job runs
+`--stage M1` through `--stage M6` and `--stage v0.2-ui`, each of which passes today. The
+full `make acceptance` gate stays M8's job, because it cannot pass until the 10
 inherited unmet MUSTs above are closed.
 
 Re-run at any time:
 
 ```bash
 make acceptance                 # full: runs the suite, reports per criterion
-uv run python scripts/check_acceptance.py --stage M4
+uv run python scripts/check_acceptance.py --stage M6
 uv run python scripts/check_acceptance.py --no-tests --stage M2
 ```
