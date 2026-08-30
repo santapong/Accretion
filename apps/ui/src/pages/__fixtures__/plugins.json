@@ -1,0 +1,107 @@
+[
+  {
+    "allowlisted": true,
+    "capability_refs": [
+      "accretion.echo",
+      "accretion.protected-write"
+    ],
+    "checksum": "3328cb725381ba3162caa2d189cebf631518a953d3e16e4d054887f5fcb87f3a",
+    "created_at": "2026-08-28T00:00:00Z",
+    "description": "Built-in, locally allowlisted v0.1 governance plugin.",
+    "plugin_id": "accretion-core-governance",
+    "policy_refs": [
+      "local-capability-policy"
+    ],
+    "provider_projections": {},
+    "schema_version": "1.0",
+    "skill_refs": [
+      "governed-capability-smoke"
+    ],
+    "verifier_refs": [],
+    "version": "1.0.0"
+  },
+  {
+    "allowlisted": true,
+    "capability_refs": [
+      "research.literature.search",
+      "research.paper.fetch",
+      "research.metadata.resolve",
+      "research.citation.verify",
+      "github.search"
+    ],
+    "checksum": "869a89177e1c4fb1b2b03109a6f31cdd15fce32aa0e053a233e1dbd6bf31a76e",
+    "created_at": "2026-08-28T00:00:00Z",
+    "description": "SDD 10 research package: literature search, paper retrieval, metadata resolution, citation verification, and repository search, over two interchangeable MCP connector backends. Declares no code execution capability (ADR3-M5-002).",
+    "plugin_id": "accretion-research",
+    "policy_refs": [
+      "local-capability-policy"
+    ],
+    "provider_projections": {
+      "accretion": {
+        "declared_capability_ids": [
+          "research.literature.search",
+          "research.paper.fetch",
+          "research.metadata.resolve",
+          "research.citation.verify",
+          "github.search"
+        ],
+        "granted_capability_ids": [
+          "research.literature.search",
+          "research.paper.fetch",
+          "research.metadata.resolve",
+          "research.citation.verify",
+          "github.search"
+        ],
+        "manifest_digest": "869a89177e1c4fb1b2b03109a6f31cdd15fce32aa0e053a233e1dbd6bf31a76e",
+        "trust_level": "BUILTIN"
+      }
+    },
+    "schema_version": "1.0",
+    "skill_refs": [
+      "accretion-research-literature-review",
+      "accretion-research-paper-retrieval",
+      "accretion-research-metadata-resolution",
+      "accretion-research-citation-verification",
+      "accretion-research-implementation-survey"
+    ],
+    "verifier_refs": [],
+    "version": "1.0.0"
+  },
+  {
+    "allowlisted": true,
+    "capability_refs": [
+      "accretion.sample.echo",
+      "accretion.sample.record"
+    ],
+    "checksum": "34c56b3b8606d5916ed33af91fa9afdeed352f823ede2c89b2ffee5ba173dffa",
+    "created_at": "2026-08-28T00:00:00Z",
+    "description": "A conformant SDD 9.1 package used to exercise the plugin manager end to end.",
+    "plugin_id": "accretion-sample-plugin",
+    "policy_refs": [
+      "local-capability-policy"
+    ],
+    "provider_projections": {
+      "accretion": {
+        "declared_capability_ids": [
+          "accretion.sample.echo",
+          "accretion.sample.record"
+        ],
+        "granted_capability_ids": [
+          "accretion.sample.echo",
+          "accretion.sample.record"
+        ],
+        "manifest_digest": "34c56b3b8606d5916ed33af91fa9afdeed352f823ede2c89b2ffee5ba173dffa",
+        "trust_level": "BUILTIN"
+      },
+      "claude": "projections/claude.json",
+      "codex": "projections/codex.json"
+    },
+    "schema_version": "1.0",
+    "skill_refs": [
+      "accretion-sample-usage",
+      "accretion-sample-read-only"
+    ],
+    "verifier_refs": [],
+    "version": "0.1.0"
+  }
+]

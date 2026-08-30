@@ -1,0 +1,1240 @@
+[
+  {
+    "backend": "MCP",
+    "capability_id": "github.search",
+    "created_at": "2026-08-28T00:00:00Z",
+    "credential_refs": [],
+    "description": "Search source repositories associated with published work.",
+    "enabled": true,
+    "idempotency": "NONE",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "max_results": {
+          "default": 10,
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "query": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object"
+    },
+    "kind": "TOOL",
+    "output_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "candidates": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "authors": {
+                "items": {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "candidate_id": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              "content_digest": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "evidence_class": {
+                "enum": [
+                  "EXTERNAL_SOURCE"
+                ]
+              },
+              "identifiers": {
+                "additionalProperties": {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "payload": {
+                "additionalProperties": false,
+                "properties": {
+                  "claimed_doi": {
+                    "maxLength": 1024,
+                    "type": "string"
+                  },
+                  "concepts": {
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "html_url": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  },
+                  "registered_doi": {
+                    "maxLength": 1024,
+                    "type": "string"
+                  },
+                  "repository": {
+                    "maxLength": 512,
+                    "type": "string"
+                  },
+                  "resolves": {
+                    "type": "boolean"
+                  },
+                  "stargazers": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "title_agrees": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "binding_id": {
+                    "maxLength": 255,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "capability_id": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "connection_id": {
+                    "maxLength": 255,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "connector_id": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "query": {
+                    "maxLength": 4000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "retrieved_at": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "schema_version": {
+                    "const": "1.0"
+                  },
+                  "source_id": {
+                    "maxLength": 1024,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source_uri": {
+                    "maxLength": 2048,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "schema_version",
+                  "connector_id",
+                  "capability_id",
+                  "query",
+                  "retrieved_at",
+                  "source_id",
+                  "binding_id",
+                  "connection_id",
+                  "source_uri"
+                ],
+                "type": "object"
+              },
+              "published_at": {
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "schema_version": {
+                "const": "1.0"
+              },
+              "snippet": {
+                "maxLength": 8000,
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "candidate_id",
+              "evidence_class",
+              "title",
+              "snippet",
+              "authors",
+              "identifiers",
+              "published_at",
+              "content_digest",
+              "provenance",
+              "payload"
+            ],
+            "type": "object"
+          },
+          "maxItems": 200,
+          "type": "array"
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 200,
+          "type": "array"
+        }
+      },
+      "required": [
+        "candidates",
+        "source_ids"
+      ],
+      "type": "object"
+    },
+    "provider_projections": {
+      "accretion": {
+        "decision": "GRANTED",
+        "installation_id": "pli_m6_01",
+        "manifest_digest": "869a89177e1c4fb1b2b03109a6f31cdd15fce32aa0e053a233e1dbd6bf31a76e",
+        "plugin_id": "accretion-research",
+        "plugin_version": "1.0.0",
+        "trust_level": "BUILTIN",
+        "workspace_id": "wks_m6_01"
+      },
+      "claude": {
+        "surface": "tool",
+        "tool_name": "github_search"
+      },
+      "codex": {
+        "function_name": "githubSearch",
+        "surface": "function"
+      }
+    },
+    "required_permissions": [
+      "github.read"
+    ],
+    "risk": "LOW",
+    "schema_version": "1.0",
+    "side_effects": [],
+    "verifier_policy_ref": null,
+    "version": "1.0.0"
+  },
+  {
+    "backend": "MCP",
+    "capability_id": "research.citation.verify",
+    "created_at": "2026-08-28T00:00:00Z",
+    "credential_refs": [],
+    "description": "Resolve a cited work and report the identifier actually registered for it.",
+    "enabled": true,
+    "idempotency": "NONE",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "citation": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "paper_id": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "paper_id",
+        "citation"
+      ],
+      "type": "object"
+    },
+    "kind": "TOOL",
+    "output_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "candidates": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "authors": {
+                "items": {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "candidate_id": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              "content_digest": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "evidence_class": {
+                "enum": [
+                  "EXTERNAL_SOURCE"
+                ]
+              },
+              "identifiers": {
+                "additionalProperties": {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "payload": {
+                "additionalProperties": false,
+                "properties": {
+                  "claimed_doi": {
+                    "maxLength": 1024,
+                    "type": "string"
+                  },
+                  "concepts": {
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "html_url": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  },
+                  "registered_doi": {
+                    "maxLength": 1024,
+                    "type": "string"
+                  },
+                  "repository": {
+                    "maxLength": 512,
+                    "type": "string"
+                  },
+                  "resolves": {
+                    "type": "boolean"
+                  },
+                  "stargazers": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "title_agrees": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "binding_id": {
+                    "maxLength": 255,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "capability_id": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "connection_id": {
+                    "maxLength": 255,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "connector_id": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "query": {
+                    "maxLength": 4000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "retrieved_at": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "schema_version": {
+                    "const": "1.0"
+                  },
+                  "source_id": {
+                    "maxLength": 1024,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source_uri": {
+                    "maxLength": 2048,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "schema_version",
+                  "connector_id",
+                  "capability_id",
+                  "query",
+                  "retrieved_at",
+                  "source_id",
+                  "binding_id",
+                  "connection_id",
+                  "source_uri"
+                ],
+                "type": "object"
+              },
+              "published_at": {
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "schema_version": {
+                "const": "1.0"
+              },
+              "snippet": {
+                "maxLength": 8000,
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "candidate_id",
+              "evidence_class",
+              "title",
+              "snippet",
+              "authors",
+              "identifiers",
+              "published_at",
+              "content_digest",
+              "provenance",
+              "payload"
+            ],
+            "type": "object"
+          },
+          "maxItems": 200,
+          "type": "array"
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 200,
+          "type": "array"
+        }
+      },
+      "required": [
+        "candidates",
+        "source_ids"
+      ],
+      "type": "object"
+    },
+    "provider_projections": {
+      "accretion": {
+        "decision": "GRANTED",
+        "installation_id": "pli_m6_01",
+        "manifest_digest": "869a89177e1c4fb1b2b03109a6f31cdd15fce32aa0e053a233e1dbd6bf31a76e",
+        "plugin_id": "accretion-research",
+        "plugin_version": "1.0.0",
+        "trust_level": "BUILTIN",
+        "workspace_id": "wks_m6_01"
+      },
+      "claude": {
+        "surface": "tool",
+        "tool_name": "research_citation_verify"
+      },
+      "codex": {
+        "function_name": "researchCitationVerify",
+        "surface": "function"
+      }
+    },
+    "required_permissions": [
+      "research.read"
+    ],
+    "risk": "LOW",
+    "schema_version": "1.0",
+    "side_effects": [],
+    "verifier_policy_ref": null,
+    "version": "1.0.0"
+  },
+  {
+    "backend": "MCP",
+    "capability_id": "research.literature.search",
+    "created_at": "2026-08-28T00:00:00Z",
+    "credential_refs": [],
+    "description": "Search external literature and return normalized evidence candidates.",
+    "enabled": true,
+    "idempotency": "NONE",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "max_results": {
+          "default": 10,
+          "maximum": 200,
+          "minimum": 1,
+          "type": "integer"
+        },
+        "query": {
+          "maxLength": 4000,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
+      "type": "object"
+    },
+    "kind": "TOOL",
+    "output_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "candidates": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "authors": {
+                "items": {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "candidate_id": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              "content_digest": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "evidence_class": {
+                "enum": [
+                  "EXTERNAL_SOURCE"
+                ]
+              },
+              "identifiers": {
+                "additionalProperties": {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "payload": {
+                "additionalProperties": false,
+                "properties": {
+                  "claimed_doi": {
+                    "maxLength": 1024,
+                    "type": "string"
+                  },
+                  "concepts": {
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "html_url": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  },
+                  "registered_doi": {
+                    "maxLength": 1024,
+                    "type": "string"
+                  },
+                  "repository": {
+                    "maxLength": 512,
+                    "type": "string"
+                  },
+                  "resolves": {
+                    "type": "boolean"
+                  },
+                  "stargazers": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "title_agrees": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "binding_id": {
+                    "maxLength": 255,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "capability_id": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "connection_id": {
+                    "maxLength": 255,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "connector_id": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "query": {
+                    "maxLength": 4000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "retrieved_at": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "schema_version": {
+                    "const": "1.0"
+                  },
+                  "source_id": {
+                    "maxLength": 1024,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source_uri": {
+                    "maxLength": 2048,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "schema_version",
+                  "connector_id",
+                  "capability_id",
+                  "query",
+                  "retrieved_at",
+                  "source_id",
+                  "binding_id",
+                  "connection_id",
+                  "source_uri"
+                ],
+                "type": "object"
+              },
+              "published_at": {
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "schema_version": {
+                "const": "1.0"
+              },
+              "snippet": {
+                "maxLength": 8000,
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "candidate_id",
+              "evidence_class",
+              "title",
+              "snippet",
+              "authors",
+              "identifiers",
+              "published_at",
+              "content_digest",
+              "provenance",
+              "payload"
+            ],
+            "type": "object"
+          },
+          "maxItems": 200,
+          "type": "array"
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 200,
+          "type": "array"
+        }
+      },
+      "required": [
+        "candidates",
+        "source_ids"
+      ],
+      "type": "object"
+    },
+    "provider_projections": {
+      "accretion": {
+        "decision": "GRANTED",
+        "installation_id": "pli_m6_01",
+        "manifest_digest": "869a89177e1c4fb1b2b03109a6f31cdd15fce32aa0e053a233e1dbd6bf31a76e",
+        "plugin_id": "accretion-research",
+        "plugin_version": "1.0.0",
+        "trust_level": "BUILTIN",
+        "workspace_id": "wks_m6_01"
+      },
+      "claude": {
+        "surface": "tool",
+        "tool_name": "research_literature_search"
+      },
+      "codex": {
+        "function_name": "researchLiteratureSearch",
+        "surface": "function"
+      }
+    },
+    "required_permissions": [
+      "research.read"
+    ],
+    "risk": "LOW",
+    "schema_version": "1.0",
+    "side_effects": [],
+    "verifier_policy_ref": null,
+    "version": "1.0.0"
+  },
+  {
+    "backend": "MCP",
+    "capability_id": "research.metadata.resolve",
+    "created_at": "2026-08-28T00:00:00Z",
+    "credential_refs": [],
+    "description": "Resolve an identifier to the metadata record the register holds for it.",
+    "enabled": true,
+    "idempotency": "NONE",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "identifier": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "identifier"
+      ],
+      "type": "object"
+    },
+    "kind": "TOOL",
+    "output_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "candidates": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "authors": {
+                "items": {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "candidate_id": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              "content_digest": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "evidence_class": {
+                "enum": [
+                  "EXTERNAL_SOURCE"
+                ]
+              },
+              "identifiers": {
+                "additionalProperties": {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "payload": {
+                "additionalProperties": false,
+                "properties": {
+                  "claimed_doi": {
+                    "maxLength": 1024,
+                    "type": "string"
+                  },
+                  "concepts": {
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "html_url": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  },
+                  "registered_doi": {
+                    "maxLength": 1024,
+                    "type": "string"
+                  },
+                  "repository": {
+                    "maxLength": 512,
+                    "type": "string"
+                  },
+                  "resolves": {
+                    "type": "boolean"
+                  },
+                  "stargazers": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "title_agrees": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "binding_id": {
+                    "maxLength": 255,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "capability_id": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "connection_id": {
+                    "maxLength": 255,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "connector_id": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "query": {
+                    "maxLength": 4000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "retrieved_at": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "schema_version": {
+                    "const": "1.0"
+                  },
+                  "source_id": {
+                    "maxLength": 1024,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source_uri": {
+                    "maxLength": 2048,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "schema_version",
+                  "connector_id",
+                  "capability_id",
+                  "query",
+                  "retrieved_at",
+                  "source_id",
+                  "binding_id",
+                  "connection_id",
+                  "source_uri"
+                ],
+                "type": "object"
+              },
+              "published_at": {
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "schema_version": {
+                "const": "1.0"
+              },
+              "snippet": {
+                "maxLength": 8000,
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "candidate_id",
+              "evidence_class",
+              "title",
+              "snippet",
+              "authors",
+              "identifiers",
+              "published_at",
+              "content_digest",
+              "provenance",
+              "payload"
+            ],
+            "type": "object"
+          },
+          "maxItems": 200,
+          "type": "array"
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 200,
+          "type": "array"
+        }
+      },
+      "required": [
+        "candidates",
+        "source_ids"
+      ],
+      "type": "object"
+    },
+    "provider_projections": {
+      "accretion": {
+        "decision": "GRANTED",
+        "installation_id": "pli_m6_01",
+        "manifest_digest": "869a89177e1c4fb1b2b03109a6f31cdd15fce32aa0e053a233e1dbd6bf31a76e",
+        "plugin_id": "accretion-research",
+        "plugin_version": "1.0.0",
+        "trust_level": "BUILTIN",
+        "workspace_id": "wks_m6_01"
+      },
+      "claude": {
+        "surface": "tool",
+        "tool_name": "research_metadata_resolve"
+      },
+      "codex": {
+        "function_name": "researchMetadataResolve",
+        "surface": "function"
+      }
+    },
+    "required_permissions": [
+      "research.read"
+    ],
+    "risk": "LOW",
+    "schema_version": "1.0",
+    "side_effects": [],
+    "verifier_policy_ref": null,
+    "version": "1.0.0"
+  },
+  {
+    "backend": "MCP",
+    "capability_id": "research.paper.fetch",
+    "created_at": "2026-08-28T00:00:00Z",
+    "credential_refs": [],
+    "description": "Retrieve one paper by identifier as a normalized evidence candidate.",
+    "enabled": true,
+    "idempotency": "NONE",
+    "input_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "paper_id": {
+          "maxLength": 1024,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "paper_id"
+      ],
+      "type": "object"
+    },
+    "kind": "TOOL",
+    "output_schema": {
+      "additionalProperties": false,
+      "properties": {
+        "candidates": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "authors": {
+                "items": {
+                  "maxLength": 255,
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "candidate_id": {
+                "maxLength": 255,
+                "minLength": 1,
+                "type": "string"
+              },
+              "content_digest": {
+                "pattern": "^[0-9a-f]{64}$",
+                "type": "string"
+              },
+              "evidence_class": {
+                "enum": [
+                  "EXTERNAL_SOURCE"
+                ]
+              },
+              "identifiers": {
+                "additionalProperties": {
+                  "maxLength": 1024,
+                  "type": "string"
+                },
+                "type": "object"
+              },
+              "payload": {
+                "additionalProperties": false,
+                "properties": {
+                  "claimed_doi": {
+                    "maxLength": 1024,
+                    "type": "string"
+                  },
+                  "concepts": {
+                    "items": {
+                      "maxLength": 255,
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  "html_url": {
+                    "maxLength": 2048,
+                    "type": "string"
+                  },
+                  "registered_doi": {
+                    "maxLength": 1024,
+                    "type": "string"
+                  },
+                  "repository": {
+                    "maxLength": 512,
+                    "type": "string"
+                  },
+                  "resolves": {
+                    "type": "boolean"
+                  },
+                  "stargazers": {
+                    "minimum": 0,
+                    "type": "integer"
+                  },
+                  "title_agrees": {
+                    "type": "boolean"
+                  }
+                },
+                "type": "object"
+              },
+              "provenance": {
+                "additionalProperties": false,
+                "properties": {
+                  "binding_id": {
+                    "maxLength": 255,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "capability_id": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "connection_id": {
+                    "maxLength": 255,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "connector_id": {
+                    "maxLength": 255,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "query": {
+                    "maxLength": 4000,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "retrieved_at": {
+                    "format": "date-time",
+                    "type": "string"
+                  },
+                  "schema_version": {
+                    "const": "1.0"
+                  },
+                  "source_id": {
+                    "maxLength": 1024,
+                    "minLength": 1,
+                    "type": "string"
+                  },
+                  "source_uri": {
+                    "maxLength": 2048,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                },
+                "required": [
+                  "schema_version",
+                  "connector_id",
+                  "capability_id",
+                  "query",
+                  "retrieved_at",
+                  "source_id",
+                  "binding_id",
+                  "connection_id",
+                  "source_uri"
+                ],
+                "type": "object"
+              },
+              "published_at": {
+                "format": "date-time",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "schema_version": {
+                "const": "1.0"
+              },
+              "snippet": {
+                "maxLength": 8000,
+                "type": "string"
+              },
+              "title": {
+                "maxLength": 2000,
+                "minLength": 1,
+                "type": "string"
+              }
+            },
+            "required": [
+              "schema_version",
+              "candidate_id",
+              "evidence_class",
+              "title",
+              "snippet",
+              "authors",
+              "identifiers",
+              "published_at",
+              "content_digest",
+              "provenance",
+              "payload"
+            ],
+            "type": "object"
+          },
+          "maxItems": 200,
+          "type": "array"
+        },
+        "source_ids": {
+          "items": {
+            "maxLength": 1024,
+            "minLength": 1,
+            "type": "string"
+          },
+          "maxItems": 200,
+          "type": "array"
+        }
+      },
+      "required": [
+        "candidates",
+        "source_ids"
+      ],
+      "type": "object"
+    },
+    "provider_projections": {
+      "accretion": {
+        "decision": "GRANTED",
+        "installation_id": "pli_m6_01",
+        "manifest_digest": "869a89177e1c4fb1b2b03109a6f31cdd15fce32aa0e053a233e1dbd6bf31a76e",
+        "plugin_id": "accretion-research",
+        "plugin_version": "1.0.0",
+        "trust_level": "BUILTIN",
+        "workspace_id": "wks_m6_01"
+      },
+      "claude": {
+        "surface": "tool",
+        "tool_name": "research_paper_fetch"
+      },
+      "codex": {
+        "function_name": "researchPaperFetch",
+        "surface": "function"
+      }
+    },
+    "required_permissions": [
+      "research.read"
+    ],
+    "risk": "LOW",
+    "schema_version": "1.0",
+    "side_effects": [],
+    "verifier_policy_ref": null,
+    "version": "1.0.0"
+  }
+]

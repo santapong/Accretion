@@ -1,0 +1,201 @@
+[
+  {
+    "capability_grants": [
+      {
+        "capability_id": "research.literature.search",
+        "decision": "GRANTED",
+        "granted_permissions": [
+          "research.read"
+        ],
+        "reason": "PLUGIN_CAPABILITY_GRANTED: explicitly allowed low-risk capability",
+        "requested_permissions": [
+          "research.read"
+        ]
+      },
+      {
+        "capability_id": "research.paper.fetch",
+        "decision": "GRANTED",
+        "granted_permissions": [
+          "research.read"
+        ],
+        "reason": "PLUGIN_CAPABILITY_GRANTED: explicitly allowed low-risk capability",
+        "requested_permissions": [
+          "research.read"
+        ]
+      },
+      {
+        "capability_id": "research.metadata.resolve",
+        "decision": "GRANTED",
+        "granted_permissions": [
+          "research.read"
+        ],
+        "reason": "PLUGIN_CAPABILITY_GRANTED: explicitly allowed low-risk capability",
+        "requested_permissions": [
+          "research.read"
+        ]
+      },
+      {
+        "capability_id": "research.citation.verify",
+        "decision": "GRANTED",
+        "granted_permissions": [
+          "research.read"
+        ],
+        "reason": "PLUGIN_CAPABILITY_GRANTED: explicitly allowed low-risk capability",
+        "requested_permissions": [
+          "research.read"
+        ]
+      },
+      {
+        "capability_id": "github.search",
+        "decision": "GRANTED",
+        "granted_permissions": [
+          "github.read"
+        ],
+        "reason": "PLUGIN_CAPABILITY_GRANTED: explicitly allowed low-risk capability",
+        "requested_permissions": [
+          "github.read"
+        ]
+      }
+    ],
+    "connector_resolutions": [
+      {
+        "connection_id": null,
+        "connector_id": "research-crossref",
+        "missing_scopes": [],
+        "required": false,
+        "satisfied": false
+      },
+      {
+        "connection_id": null,
+        "connector_id": "research-openalex",
+        "missing_scopes": [],
+        "required": false,
+        "satisfied": false
+      }
+    ],
+    "consent": {
+      "granted_at": "2026-08-28T00:00:00Z",
+      "granted_by_principal_id": "prin_m6_01",
+      "granted_capability_ids": [
+        "github.search",
+        "research.citation.verify",
+        "research.literature.search",
+        "research.metadata.resolve",
+        "research.paper.fetch"
+      ],
+      "manifest_digest": "869a89177e1c4fb1b2b03109a6f31cdd15fce32aa0e053a233e1dbd6bf31a76e"
+    },
+    "created_at": "2026-08-28T00:00:00Z",
+    "failure_reason": null,
+    "installation_id": "pli_m6_01",
+    "installed_by_principal_id": "prin_m6_01",
+    "manifest_digest": "869a89177e1c4fb1b2b03109a6f31cdd15fce32aa0e053a233e1dbd6bf31a76e",
+    "plugin_id": "accretion-research",
+    "previous_version": null,
+    "registered_capability_ids": [
+      "research.literature.search",
+      "research.paper.fetch",
+      "research.metadata.resolve",
+      "research.citation.verify",
+      "github.search"
+    ],
+    "registered_mcp_server_ids": [
+      "mcs_m6_01",
+      "mcs_m6_02"
+    ],
+    "registered_skill_ids": [
+      "accretion-research-literature-review",
+      "accretion-research-paper-retrieval",
+      "accretion-research-metadata-resolution",
+      "accretion-research-citation-verification",
+      "accretion-research-implementation-survey"
+    ],
+    "requested_capability_ids": [
+      "research.literature.search",
+      "research.paper.fetch",
+      "research.metadata.resolve",
+      "research.citation.verify",
+      "github.search"
+    ],
+    "revision": 5,
+    "schema_version": "1.0",
+    "state": "ENABLED",
+    "trust_level": "BUILTIN",
+    "updated_at": "2026-08-28T00:00:00Z",
+    "version": "1.0.0",
+    "workspace_id": "wks_m6_01"
+  },
+  {
+    "capability_grants": [
+      {
+        "capability_id": "accretion.sample.echo",
+        "decision": "GRANTED",
+        "granted_permissions": [
+          "accretion.sample.read"
+        ],
+        "reason": "PLUGIN_CAPABILITY_GRANTED: explicitly allowed low-risk capability",
+        "requested_permissions": [
+          "accretion.sample.read"
+        ]
+      },
+      {
+        "capability_id": "accretion.sample.record",
+        "decision": "GRANTED",
+        "granted_permissions": [
+          "accretion.sample.read",
+          "accretion.sample.write"
+        ],
+        "reason": "PLUGIN_CAPABILITY_GRANTED: content-bound operator approval is recorded",
+        "requested_permissions": [
+          "accretion.sample.read",
+          "accretion.sample.write"
+        ]
+      }
+    ],
+    "connector_resolutions": [
+      {
+        "connection_id": null,
+        "connector_id": "slack",
+        "missing_scopes": [],
+        "required": false,
+        "satisfied": false
+      }
+    ],
+    "consent": {
+      "granted_at": "2026-08-28T00:00:00Z",
+      "granted_by_principal_id": "prin_m6_01",
+      "granted_capability_ids": [
+        "accretion.sample.echo",
+        "accretion.sample.record"
+      ],
+      "manifest_digest": "34c56b3b8606d5916ed33af91fa9afdeed352f823ede2c89b2ffee5ba173dffa"
+    },
+    "created_at": "2026-08-28T00:00:00Z",
+    "failure_reason": null,
+    "installation_id": "pli_m6_02",
+    "installed_by_principal_id": "prin_m6_01",
+    "manifest_digest": "34c56b3b8606d5916ed33af91fa9afdeed352f823ede2c89b2ffee5ba173dffa",
+    "plugin_id": "accretion-sample-plugin",
+    "previous_version": null,
+    "registered_capability_ids": [
+      "accretion.sample.echo",
+      "accretion.sample.record"
+    ],
+    "registered_mcp_server_ids": [],
+    "registered_skill_ids": [
+      "accretion-sample-usage",
+      "accretion-sample-read-only"
+    ],
+    "requested_capability_ids": [
+      "accretion.sample.echo",
+      "accretion.sample.record"
+    ],
+    "revision": 6,
+    "schema_version": "1.0",
+    "state": "DISABLED",
+    "trust_level": "BUILTIN",
+    "updated_at": "2026-08-28T00:00:00Z",
+    "version": "0.1.0",
+    "workspace_id": "wks_m6_01"
+  }
+]
