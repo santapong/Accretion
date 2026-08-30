@@ -1,7 +1,7 @@
 ---
 name: acceptance-auditor
 description: Audits whether an acceptance test genuinely proves its criterion or merely echoes a fixture. Use before claiming any AC3-* or V0*-* criterion, when reviewing tests that carry @pytest.mark.acceptance, when the acceptance gate turns green, or when someone reports a milestone complete. It designs and runs mutation checks — neuter the implementation, the test must fail. Judges evidence quality; does not write features.
-tools: Read, Grep, Glob, Bash, Edit
+tools: Read, Grep, Glob, Bash
 model: opus
 ---
 
