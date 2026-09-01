@@ -26,11 +26,12 @@ only *how* each is verified; and a test claims a criterion with
 | Criteria in the three SDDs | 117 |
 | Not yet due | 0 |
 | **In scope** | **117** |
-| Proven by a passing claiming test | 103 |
+| Proven by a passing claiming test | 111 |
 | Proven by the frontend suite | 3 |
-| Uncovered | 11 |
+| Proven by a recorded live-provider run | 3 |
+| Uncovered | 0 |
 
-Coverage is 91% of in-scope criteria (106 of 117). The first computed figure was 37;
+Coverage is 100% of in-scope criteria (117 of 117). The first computed figure was 37;
 the annotation sweep raised it to 59 without changing any runtime behaviour, because
 the inherited gap was traceability rather than implementation. Putting the token broker
 into the execution path then closed five more (#75); completing M2 closed six (#77);
@@ -42,22 +43,28 @@ AC3-UI criteria into scope, proved all of them, and additionally closed the six
 inherited `V02-UI-001..006` run-page criteria. M7 then added the seven `AC3-EMA`
 enterprise-authorization criteria to the SDD (§24.9) and proved all seven, which is
 why the SDD total moves from 110 to 117 and `PROVEN` from 96 to 103.
-**Nothing is `not_yet_due`** — every criterion in the three SDDs is in scope. All 11
-uncovered criteria are inherited v0.1/v0.2 items.
+**Nothing is `not_yet_due`** — every criterion in the three SDDs is in scope.
 
-The unmet-MUST count is unchanged at **10**, and that is the derivation: 117 in scope
-− 103 proven − 3 proven by the frontend suite = 11 uncovered, of which 10 are MUST and
-one (`V01-P4-008`, a SHOULD) is not. M7 added seven in-scope MUSTs and seven proofs, so it
-moved both sides of that subtraction by the same amount and contributed nothing to the
-unmet total. The 10 are the inherited v0.1/v0.2 items, unchanged since M3.
+**M8 closed the last ten.** Seven of them needed a claiming test rather than any
+behaviour change, which is why the implementation moved so little: the graph
+validator's cycle, fan-out, privilege and risk branches, the six search stop
+reasons, the N=1,2,4 curve and the benchmark version axes were all already
+implemented and simply unclaimed. `V02-P7-003` was the one exception that
+required a `src/` change. The three live-provider criteria cannot run in CI at
+all and became `manual` records against a real recorded run.
+
+The derivation now: 117 in scope − 111 proven by a claiming test − 3 proven by the
+frontend suite − 3 proven by a recorded live-provider run = **0 uncovered**, and
+therefore **`unmet MUST: 0`**.
 
 Reproduce this table with `make acceptance`; the run behind these numbers reported
-`PROVEN: 103`, `FRONTEND: 3`, `UNCOVERED: 11`, no `NOT_YET_DUE` bucket at all, and
-`in scope: 117   proven: 103   unmet MUST: 10`. The full harness still exits `FAIL`
-because those 10 unmet MUSTs are the inherited v0.1/v0.2 items below; the per-stage
-gates `--stage M1` through `--stage M7` plus `--stage v0.2-ui` all pass and are what CI
-enforces today, each reporting `unmet MUST: 0` over 5, 11, 8, 6, 4, 5, 7 and 6 in-scope
-criteria respectively.
+`PROVEN: 111`, `FRONTEND: 3`, `MANUAL: 3`, no `UNCOVERED` and no `NOT_YET_DUE`
+bucket at all, and `in scope: 117   proven: 111   unmet MUST: 0`. **The full harness
+now exits `PASS` and is what CI enforces**: as of M8 the eight stage-scoped gates
+(`--stage M1`…`--stage M7` plus `--stage v0.2-ui`) have been replaced by a single
+unscoped `check_acceptance.py`, which covers every criterion they did and cannot
+report PASS over an empty scope the way a stage gate can. `scripts/release_gate.py`
+runs alongside it and evaluates SDD §24.8's five conditions separately.
 
 ### What M7's numbers do and do not measure
 
@@ -166,19 +173,22 @@ These need work, not annotation.
 
 **Evidence integrity**
 
-- `V01-BENCH-005` — `config.v1.json` and `environments.v1.json` are unhashed and
-  untested, while P5/P6/P7 pin theirs. Silent edits would change published utility and
-  regret with no test failure.
+- ~~`V01-BENCH-005` — `config.v1.json` and `environments.v1.json` are unhashed and
+  untested, while P5/P6/P7 pin theirs.~~ Closed by M8: all four ACR-ARCH fixtures now
+  carry literal digests, and each of the three version axes is bumped alone in a
+  `tmp_path` corpus copy to show they move independently.
 - The P5 and P7 fixture pins are tautological: they assert
   `first.corpus_sha256 == digest(runner.tasks_path)`, hashing the file just read. Only
   P6 asserts literal digests. The values printed in the acceptance documents have no
   automated guard.
-- `V02-P7-003` and `V02-P7-008` — the benchmarks replay hand-authored fixtures rather
-  than system output. The headline "19/20 stale sources rejected" counts a literal
-  field in `sources.v1.json`; `ExperienceService.assess()` is never invoked, and 16 of
-  its 19 rejection codes have no test. The replay uplift is arithmetic over typed
-  numbers. The documents do disclaim this, but the acceptance tables read as
-  measurement.
+- ~~`V02-P7-003` and `V02-P7-008` — the benchmarks replay hand-authored fixtures
+  rather than system output.~~ Closed by M8: `V02-P7-003` is now proven against the real
+  `ExperienceService.assess()`, with all 19 reason codes provoked by distinct
+  single-variable perturbations and a guard test that fails if a code is added without
+  coverage. `ExperienceBenchmarkRunner.run()` gained an optional `stale_assessor` and
+  the gate reports `stale_rejection_source` (`DECLARED` / `ASSESSED`). **Partly open**:
+  the two API routes still serve the `DECLARED` path, tracked under "P7 experience
+  benchmark provenance" in the backlog for v0.4.
 
 **Specification mismatches**
 
@@ -188,18 +198,22 @@ These need work, not annotation.
 - ~~`V02-UI-006` — neither `fallback_order` nor `observed_features` is rendered
   anywhere.~~ Closed by M6: the router inspector lists the fallback order and every
   observed feature, and renders only the fields the decision declares — never a credential.
-- `V02-P5-005` — the test named for privilege expansion asserts only
-  `UNKNOWN_CAPABILITY` and short-circuits before the privilege branch. No test anywhere
-  asserts `PRIVILEGE_EXPANSION`, `DENIED_CAPABILITY`, or `RISK_EXPANSION`.
+- ~~`V02-P5-005` — the test named for privilege expansion asserts only
+  `UNKNOWN_CAPABILITY` and short-circuits before the privilege branch.~~ Closed by M8:
+  `tests/test_v03_m8_inherited_planning.py` asserts each finding code exactly, so
+  `UNKNOWN_CAPABILITY` can no longer carry the assertion.
 
 **Test hygiene**
 
-- `tests/test_p5_postgres_store.py::test_p5_postgres_records_round_trip_and_remain_immutable`
-  is not isolated and fails on a second run against the same database. CI is green only
-  because it uses a fresh container each run.
-- No live-provider criterion is enforced by CI: `tests/test_live_runtimes.py` is gated
-  on `ACCRETION_LIVE_PROVIDERS=1`, which the workflow never sets. `V01-P0-002` and
-  `V01-P0-004` rest on manual runs recorded against earlier commits.
+- ~~`tests/test_p5_postgres_store.py::test_p5_postgres_records_round_trip_and_remain_immutable`
+  is not isolated and fails on a second run against the same database.~~ Closed by M8
+  PR0, which gave the test uuid-based ids.
+- ~~No live-provider criterion is enforced by CI.~~ Addressed by M8, though not by
+  making them run in CI, which is not possible: `scripts/live_acceptance.py` produces a
+  dated evidence document from a real signed-in run, and `V01-P0-002`, `V01-P0-004` and
+  `V01-P4-008` are recorded as `manual` criteria that expire after 180 days.
+  `tests/test_v03_m8_live_protocol.py` guards the protocol wiring offline with fake
+  binaries, deliberately unmarked so a stub cannot impersonate a vendor CLI.
 - All three P5–P7 feature flags default to `False`, so in a stock deployment none of
   the behaviour those 23 criteria describe is reachable.
 
@@ -210,9 +224,9 @@ Phase 2 closes the v0.3 M0–M2 gaps, Phase 3 the inherited ones, Phase 4 gates
 moves on evidence rather than assertion.
 
 CI gates the milestone stages rather than the full harness: the backend job runs
-`--stage M1` through `--stage M7` and `--stage v0.2-ui`, each of which passes today. The
-full `make acceptance` gate stays M8's job, because it cannot pass until the 10
-inherited unmet MUSTs above are closed.
+`--stage M1` through `--stage M7` and `--stage v0.2-ui`. **Superseded in M8**: CI now
+runs the unscoped `check_acceptance.py` plus `scripts/release_gate.py`, and a
+`clean-checkout` job proves the same result from a fresh clone with no caches.
 
 Re-run at any time:
 

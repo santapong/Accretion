@@ -515,19 +515,68 @@ def ci_gate_stages() -> list[str]:
     return re.findall(r"check_acceptance\.py --stage (\S+)", workflow)
 
 
-def test_ci_runs_a_stage_gate_for_every_stage_the_criteria_declare() -> None:
-    """A milestone whose criteria exist but whose gate is not in CI is ungated.
+def ci_acceptance_invocations() -> list[str]:
+    """Every ``check_acceptance.py`` invocation in CI, in order."""
 
-    Derived from the loaded criteria rather than a hard-coded list, so adding M8 rows
-    without adding the CI line fails, and dropping the M7 line fails today.
+    workflow = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    return re.findall(r"check_acceptance\.py *(.*)", workflow)
+
+
+def test_ci_gates_every_declared_stage_through_the_unscoped_harness() -> None:
+    """A milestone whose criteria exist but which nothing in CI gates is ungated.
+
+    Until M8 this was satisfied by one ``--stage`` line per milestone, and the test
+    checked that the set of lines covered the set of declared stages. M8 replaced
+    those with a single unscoped run, which is a strictly stronger guarantee: it
+    covers every stage, including any added later, and unlike a stage gate it cannot
+    report PASS over an empty scope. The obligation the old test encoded is kept
+    here - nothing declared may go ungated - and is now discharged by proving the
+    unscoped invocation exists rather than by enumerating stages.
     """
 
     declared = {c.stage for c in harness.load_criteria().values() if c.release == "v0.3"}
-    gated = ci_gate_stages()
+    invocations = ci_acceptance_invocations()
 
-    assert "M7" in declared
-    assert declared - set(gated) == set(), f"stages with no CI gate: {declared - set(gated)}"
-    assert len(gated) == len(set(gated)), f"duplicate stage gates in CI: {gated}"
+    assert declared, "no v0.3 stages are declared at all"
+    assert invocations, "CI does not run the acceptance harness"
+    unscoped = [item for item in invocations if "--stage" not in item]
+    assert unscoped, (
+        "CI runs the acceptance harness only with --stage; an unscoped run is what "
+        "gates the stages this repository has not enumerated"
+    )
+    # Stage gates are redundant once the unscoped run gates everything, and each one
+    # re-runs the whole suite. Keeping them would triple CI for no added coverage.
+    assert not ci_gate_stages(), (
+        f"stage-scoped gates are superseded by the unscoped run: {ci_gate_stages()}"
+    )
+
+
+def test_ci_runs_the_release_gate() -> None:
+    """SDD 24.8's four non-acceptance conditions must be enforced, not just written."""
+
+    workflow = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    assert "release_gate.py" in workflow
+
+
+def test_ci_keeps_a_standalone_pytest_step() -> None:
+    """The harness decides criteria; it does not fail on a test that claims none.
+
+    Without a bare pytest step a regression in unclaimed code would go unreported
+    while the acceptance gate stayed green.
+    """
+
+    workflow = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    assert re.search(r"pytest -p pytest_asyncio\.plugin\s*$", workflow, re.MULTILINE)
+
+
+def test_ci_proves_the_release_reproduces_from_a_clean_checkout() -> None:
+    """SDD 24.8 requires a clean-checkout reproduction, so a job must do it."""
+
+    workflow = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    assert "clean-checkout:" in workflow
+    clean = workflow.split("clean-checkout:", 1)[1]
+    assert "enable-cache: false" in clean, "a cached checkout is not a clean one"
+    assert "check_acceptance.py" in clean
 
 
 # --- The escape hatches must not be able to outlive or outrank a test -------
