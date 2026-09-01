@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, Any, Literal, Protocol
@@ -16,9 +16,16 @@ class StrictModel(BaseModel):
 class Provider(StrEnum):
     CLAUDE = "CLAUDE"
     CODEX = "CODEX"
+    OPENCODE = "OPENCODE"
     FAKE = "FAKE"
     DETERMINISTIC = "DETERMINISTIC"
     HUMAN = "HUMAN"
+
+
+LIVE_PROVIDERS: frozenset[Provider] = frozenset(
+    {Provider.CLAUDE, Provider.CODEX, Provider.OPENCODE}
+)
+"""Providers backed by a signed-in agent CLI, gated by the live-provider policy."""
 
 
 class RuntimeStatus(StrEnum):
@@ -167,6 +174,7 @@ class VerificationTargetKind(StrEnum):
     GIT_DIFF = "GIT_DIFF"
     COMMAND_SUITE = "COMMAND_SUITE"
     TRAJECTORY_POLICY = "TRAJECTORY_POLICY"
+    EXTERNAL_EVIDENCE = "EXTERNAL_EVIDENCE"
 
 
 class IterationDirectiveKind(StrEnum):
@@ -342,6 +350,194 @@ class MetaPlugin(StrictModel):
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
+class PluginState(StrEnum):
+    """SDD 20.3 plugin lifecycle states, adopted verbatim (ADR3-M4-001)."""
+
+    DISCOVERED = "DISCOVERED"
+    VALIDATING = "VALIDATING"
+    INSTALLED = "INSTALLED"
+    SETUP_REQUIRED = "SETUP_REQUIRED"
+    READY = "READY"
+    ENABLED = "ENABLED"
+    DISABLED = "DISABLED"
+    FAILED = "FAILED"
+    REMOVED = "REMOVED"
+
+
+class PluginTrustLevel(StrEnum):
+    BUILTIN = "BUILTIN"
+    WORKSPACE_APPROVED = "WORKSPACE_APPROVED"
+    SIGNED_THIRD_PARTY = "SIGNED_THIRD_PARTY"
+    UNVERIFIED_DEV = "UNVERIFIED_DEV"
+    BLOCKED = "BLOCKED"
+
+
+class PluginCapabilityDecision(StrEnum):
+    GRANTED = "GRANTED"
+    DENIED = "DENIED"
+    DOWNGRADED_READ_ONLY = "DOWNGRADED_READ_ONLY"
+
+
+class PluginSignatureAlgorithm(StrEnum):
+    SHA256_PIN = "SHA256_PIN"
+    ED25519 = "ED25519"
+
+
+class PluginConnectorRequirement(StrictModel):
+    """A connector a plugin asks for; policy decides whether it is ever satisfied."""
+
+    connector_id: str = Field(pattern=r"^[a-z][a-z0-9._-]*$", max_length=255)
+    scopes: list[str] = Field(default_factory=list)
+    reason: str = Field(default="", max_length=2_000)
+
+
+class PluginUiContribution(StrictModel):
+    """Declarative-only UI surface (OQ3-09); validated and persisted, rendered in M6."""
+
+    pages: list[dict[str, Any]] = Field(default_factory=list)
+    node_badges: list[dict[str, Any]] = Field(default_factory=list)
+
+
+class PluginSignature(StrictModel):
+    """Detached authenticity claim over the manifest digest."""
+
+    algorithm: PluginSignatureAlgorithm = PluginSignatureAlgorithm.SHA256_PIN
+    key_id: str = Field(default="", max_length=255)
+    value: str = Field(min_length=1, max_length=4_096)
+    signed_at: datetime | None = None
+
+
+class MetaPluginManifest(StrictModel):
+    """SDD 9.1 package declaration. ``MetaPlugin`` stays its narrow registry projection."""
+
+    schema_version: Literal["1.0"] = "1.0"
+    id: str = Field(pattern=r"^[a-z][a-z0-9-]*$", max_length=255)
+    version: str = Field(pattern=r"^\d+\.\d+\.\d+$")
+    name: str = Field(min_length=1, max_length=255)
+    description: str = Field(default="", max_length=4_000)
+    skills: list[MetaSkill] = Field(default_factory=list)
+    required_connectors: list[PluginConnectorRequirement] = Field(default_factory=list)
+    optional_connectors: list[PluginConnectorRequirement] = Field(default_factory=list)
+    mcp_servers: list[dict[str, Any]] = Field(default_factory=list)
+    capabilities: list[Capability] = Field(default_factory=list)
+    verifiers: list[str] = Field(default_factory=list)
+    policies: list[str] = Field(default_factory=list)
+    ui: PluginUiContribution = Field(default_factory=PluginUiContribution)
+    # Provider -> package-relative projection path. Deliberately narrower than
+    # ``Capability.provider_projections`` (dict[str, Any]); the plugin registration
+    # layer owns the conversion between the two.
+    provider_projections: dict[str, str] = Field(default_factory=dict)
+    # Beyond the literal 9.1 field list: trust verification needs a detached
+    # signature and M4 defines no package envelope to carry one.
+    signature: PluginSignature | None = None
+
+
+class PluginRef(StrictModel):
+    """The locked v0.4 historical reference triple. Nothing may be added to it."""
+
+    plugin_id: str
+    version: str
+    manifest_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+
+
+class PluginVersionRecord(StrictModel):
+    """Immutable global registry entry for one ``(plugin_id, version)`` manifest."""
+
+    schema_version: Literal["1.0"] = "1.0"
+    plugin_version_id: str
+    plugin_id: str
+    version: str
+    manifest_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    trust_level: PluginTrustLevel = PluginTrustLevel.UNVERIFIED_DEV
+    manifest: MetaPluginManifest
+    source_uri: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    def to_ref(self) -> PluginRef:
+        return PluginRef(
+            plugin_id=self.plugin_id,
+            version=self.version,
+            manifest_digest=self.manifest_digest,
+        )
+
+
+class PluginCapabilityGrant(StrictModel):
+    """What the manifest requested next to what policy actually granted."""
+
+    capability_id: str
+    requested_permissions: list[str] = Field(default_factory=list)
+    granted_permissions: list[str] = Field(default_factory=list)
+    decision: PluginCapabilityDecision = PluginCapabilityDecision.GRANTED
+    reason: str = Field(default="", max_length=2_000)
+
+
+class PluginConsent(StrictModel):
+    """Administrator consent, bound to the exact digest that was shown."""
+
+    granted_by_principal_id: str
+    manifest_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    granted_capability_ids: list[str] = Field(default_factory=list)
+    granted_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class PluginConnectorResolution(StrictModel):
+    connector_id: str
+    required: bool = True
+    satisfied: bool = False
+    connection_id: str | None = None
+    missing_scopes: list[str] = Field(default_factory=list)
+
+
+class PluginInstallation(StrictModel):
+    """Mutable, workspace-scoped lifecycle state. Never stored in ``MetaPlugin``."""
+
+    schema_version: Literal["1.0"] = "1.0"
+    installation_id: str
+    workspace_id: str
+    plugin_id: str
+    version: str
+    manifest_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    state: PluginState = PluginState.DISCOVERED
+    trust_level: PluginTrustLevel = PluginTrustLevel.UNVERIFIED_DEV
+    requested_capability_ids: list[str] = Field(default_factory=list)
+    capability_grants: list[PluginCapabilityGrant] = Field(default_factory=list)
+    connector_resolutions: list[PluginConnectorResolution] = Field(default_factory=list)
+    consent: PluginConsent | None = None
+    registered_skill_ids: list[str] = Field(default_factory=list)
+    registered_capability_ids: list[str] = Field(default_factory=list)
+    registered_mcp_server_ids: list[str] = Field(default_factory=list)
+    previous_version: str | None = None
+    failure_reason: str | None = None
+    installed_by_principal_id: str | None = None
+    revision: int = Field(default=1, ge=1)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    def to_ref(self) -> PluginRef:
+        return PluginRef(
+            plugin_id=self.plugin_id,
+            version=self.version,
+            manifest_digest=self.manifest_digest,
+        )
+
+
+class PluginAuditEvent(StrictModel):
+    """Append-only lifecycle record (SDD 20.3). Written for every state transition."""
+
+    schema_version: Literal["1.0"] = "1.0"
+    plugin_event_id: str
+    plugin_id: str
+    installation_id: str | None = None
+    workspace_id: str | None = None
+    event_type: str = Field(min_length=1, max_length=64)
+    from_state: PluginState | None = None
+    to_state: PluginState | None = None
+    actor_principal_id: str | None = None
+    correlation_id: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
 class CapabilityPolicy(StrictModel):
     schema_version: Literal["1.0"] = "1.0"
     policy_id: str
@@ -386,6 +582,463 @@ class CapabilityExecutionResult(StrictModel):
     error: ErrorSummary | None = None
     side_effect_operation_id: str | None = None
     completed_at: datetime | None = None
+    # Which connector actually served the call. Additive-optional on purpose:
+    # results persisted before v0.3 M5 carry none of these keys and must still
+    # validate, so every field defaults and none may become required.
+    connector_id: str | None = None
+    binding_id: str | None = None
+    connection_id: str | None = None
+    source_ids: list[str] = Field(default_factory=list)
+
+
+class PrincipalType(StrEnum):
+    HUMAN = "HUMAN"
+    SERVICE = "SERVICE"
+
+
+class PrincipalStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    DISABLED = "DISABLED"
+
+
+class WorkspaceRole(StrEnum):
+    OWNER = "OWNER"
+    ADMIN = "ADMIN"
+    DEVELOPER = "DEVELOPER"
+    RESEARCHER = "RESEARCHER"
+    VIEWER = "VIEWER"
+    SERVICE = "SERVICE"
+
+
+class Principal(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    principal_id: str
+    type: PrincipalType = PrincipalType.HUMAN
+    # Identity uniqueness derives from (issuer, subject), never email alone.
+    issuer: str
+    subject: str
+    email: str | None = None
+    display_name: str | None = None
+    status: PrincipalStatus = PrincipalStatus.ACTIVE
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class PrincipalRef(StrictModel):
+    principal_id: str
+    display_name: str | None = None
+    status: PrincipalStatus
+
+
+class WorkspaceEntity(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    workspace_id: str
+    name: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class WorkspaceMembership(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    membership_id: str
+    workspace_id: str
+    principal_id: str
+    role: WorkspaceRole
+    revision: int = 1
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class AuthSession(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    auth_session_id: str
+    principal_id: str
+    issued_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime
+    revoked: bool = False
+
+
+class AuthTransaction(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    transaction_id: str
+    state: str
+    nonce: str
+    code_verifier: str
+    redirect_target: str = "/"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime
+
+
+class OAuthTransactionPurpose(StrEnum):
+    """Why an OAuth transaction exists.
+
+    A login state and a connector state must never be redeemable at each other's
+    callback (ADR3-003), so purpose is mandatory and carries no default.
+    """
+
+    CONNECT = "CONNECT"
+    REAUTHORIZE = "REAUTHORIZE"
+
+
+class OAuthTransaction(StrictModel):
+    """Short-lived, single-use connector authorization state (SDD 19.1).
+
+    Deliberately a sibling of AuthTransaction rather than a widening of it: sharing
+    one state keyspace between SSO login and connector authorization is the confused
+    deputy ADR3-003 exists to prevent.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    transaction_id: str
+    purpose: OAuthTransactionPurpose
+    state: str
+    code_verifier: str
+    connector_id: str
+    principal_id: str
+    workspace_id: str
+    connection_id: str | None = None
+    requested_scopes: list[str] = Field(default_factory=list)
+    redirect_target: str = "/"
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    expires_at: datetime
+
+
+class TokenStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    EXPIRED = "EXPIRED"
+    REVOKED = "REVOKED"
+    ERROR = "ERROR"
+
+
+class TokenHandle(StrictModel):
+    """Opaque reference to broker-held credentials (SDD 6.2).
+
+    Carries no token material. ``secret_store_key`` addresses the ciphertext in the
+    secret store and is never returned through the public API or runtime context.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    token_handle_id: str
+    connector_id: str
+    principal_id: str | None = None
+    workspace_id: str
+    issuer: str
+    scopes: list[str] = Field(default_factory=list)
+    audience: list[str] = Field(default_factory=list)
+    expires_at: datetime | None = None
+    secret_store_key: str
+    status: TokenStatus = TokenStatus.ACTIVE
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    refreshed_at: datetime | None = None
+
+
+class AssertionStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    EXPIRED = "EXPIRED"
+    REVOKED = "REVOKED"
+
+
+class IdentityAssertion(StrictModel):
+    """Retained identity assertion for enterprise-managed authorization (SDD 8, M7).
+
+    Carries no token material: ``secret_store_key`` addresses the sealed assertion
+    in the secret store, and the assertion itself is never returned through the
+    public API, the runtime context, or telemetry. ``expires_at`` is the
+    assertion's own expiry, never the session TTL.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    assertion_id: str
+    auth_session_id: str
+    principal_id: str
+    issuer: str
+    subject: str
+    secret_store_key: str
+    expires_at: datetime
+    status: AssertionStatus = AssertionStatus.ACTIVE
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class EnterpriseAuthOutcome(StrEnum):
+    GRANTED = "GRANTED"
+    REFRESHED = "REFRESHED"
+    REFUSED_ISSUER = "REFUSED_ISSUER"
+    REFUSED_AUDIENCE = "REFUSED_AUDIENCE"
+    REFUSED_EXPIRED = "REFUSED_EXPIRED"
+    REFUSED_DISABLED = "REFUSED_DISABLED"
+    #: No identity assertion is retained for the principal at all — distinct from
+    #: one that was retained and has since expired, so the audit trail never
+    #: claims an expiry that did not happen.
+    REFUSED_MISSING = "REFUSED_MISSING"
+    #: An upstream party — the identity provider's token-exchange endpoint or the
+    #: connector's authorization server — could not be reached, or refused. Kept
+    #: apart from REFUSED_ISSUER so that an upstream outage is never recorded as an
+    #: issuer-policy violation, and apart from REFUSED_CONFIGURATION so that a local
+    #: misconfiguration is never recorded as an outage.
+    REFUSED_UPSTREAM = "REFUSED_UPSTREAM"
+    #: The deployment itself is misconfigured — a connector that names no
+    #: authorization server, or a retained token with no usable expiry. Nothing
+    #: travelled, so this is never an upstream fault.
+    REFUSED_CONFIGURATION = "REFUSED_CONFIGURATION"
+    #: The principal's connection was revoked by an operator. Enterprise
+    #: acquisition refuses rather than resurrecting it, so a revocation is durable
+    #: beyond one token lifetime.
+    REFUSED_REVOKED = "REFUSED_REVOKED"
+    REVOKED = "REVOKED"
+
+
+class EnterpriseAuthGrant(StrictModel):
+    """Append-only record of one enterprise authorization decision (SDD 8, M7).
+
+    Every exit path of the enterprise auth manager writes exactly one row.
+    ``detail`` is prose for an operator and never carries an assertion, a grant,
+    or an access token.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    grant_id: str
+    principal_id: str
+    workspace_id: str
+    connector_id: str
+    mcp_server_id: str | None = None
+    connection_id: str | None = None
+    outcome: EnterpriseAuthOutcome
+    detail: str = Field(default="", max_length=1024)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class ConnectorKind(StrEnum):
+    MCP = "MCP"
+    REST = "REST"
+    GRAPHQL = "GRAPHQL"
+    SDK = "SDK"
+    LOCAL = "LOCAL"
+
+
+class ConnectorAuthType(StrEnum):
+    NONE = "NONE"
+    OAUTH2 = "OAUTH2"
+    OIDC = "OIDC"
+    API_KEY = "API_KEY"
+    SERVICE_ACCOUNT = "SERVICE_ACCOUNT"
+    EMA = "EMA"
+
+
+class ConnectionScope(StrEnum):
+    USER = "USER"
+    WORKSPACE = "WORKSPACE"
+
+
+class ConnectionStatus(StrEnum):
+    PENDING = "PENDING"
+    ACTIVE = "ACTIVE"
+    DEGRADED = "DEGRADED"
+    REAUTH_REQUIRED = "REAUTH_REQUIRED"
+    REVOKED = "REVOKED"
+
+
+class CapabilityBindingBackend(StrictModel):
+    type: CapabilityBackend
+    server_ref: str | None = None
+    method: str | None = None
+    tool_name: str | None = None
+
+
+class CapabilityBinding(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    binding_id: str
+    capability_id: str
+    connector_id: str
+    backend: CapabilityBindingBackend
+    input_transform_ref: str | None = None
+    output_transform_ref: str | None = None
+    policy_ref: str | None = None
+    enabled: bool = True
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class ConnectorDefinition(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    connector_id: str
+    plugin_id: str | None = None
+    name: str
+    kind: ConnectorKind
+    auth_type: ConnectorAuthType = ConnectorAuthType.NONE
+    authorization_server: str | None = None
+    resource_server: str | None = None
+    default_scopes: list[str] = Field(default_factory=list)
+    optional_scopes: list[str] = Field(default_factory=list)
+    connection_scope: ConnectionScope = ConnectionScope.USER
+    health_check_ref: str | None = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class Connection(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    connection_id: str
+    connector_id: str
+    workspace_id: str
+    principal_id: str | None = None
+    scope: ConnectionScope = ConnectionScope.USER
+    token_handle_ref: str | None = None
+    granted_scopes: list[str] = Field(default_factory=list)
+    status: ConnectionStatus = ConnectionStatus.PENDING
+    workspace_shareable: bool = False
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    last_health_check: datetime | None = None
+    metadata: dict[str, Any] = Field(default_factory=dict)
+
+
+class ConnectionRef(StrictModel):
+    connection_id: str
+    connector_id: str
+    status: ConnectionStatus
+
+
+class CapabilityResolutionOutcome(StrEnum):
+    OK = "OK"
+    NO_CONNECTOR_REQUIRED = "NO_CONNECTOR_REQUIRED"
+    REQUIRE_REAUTH = "REQUIRE_REAUTH"
+    NO_CONNECTION = "NO_CONNECTION"
+    DISABLED = "DISABLED"
+
+
+class ResolvedCapability(StrictModel):
+    capability: Capability
+    outcome: CapabilityResolutionOutcome
+    binding: CapabilityBinding | None = None
+    connection: ConnectionRef | None = None
+    reason: str = ""
+
+
+class McpTransport(StrEnum):
+    STDIO = "STDIO"
+    HTTP = "HTTP"
+
+
+class McpTrustLevel(StrEnum):
+    TRUSTED = "TRUSTED"
+    RESTRICTED = "RESTRICTED"
+    UNTRUSTED = "UNTRUSTED"
+
+
+class McpServerState(StrEnum):
+    DISABLED = "DISABLED"
+    READY = "READY"
+    DEGRADED = "DEGRADED"
+    UNREACHABLE = "UNREACHABLE"
+    AUTH_REQUIRED = "AUTH_REQUIRED"
+    SCHEMA_ERROR = "SCHEMA_ERROR"
+    BLOCKED = "BLOCKED"
+
+
+class McpCacheScope(StrEnum):
+    PUBLIC = "PUBLIC"
+    PRIVATE = "PRIVATE"
+
+
+class McpHealthPolicy(StrictModel):
+    timeout_ms: int = Field(default=10_000, ge=100, le=120_000)
+    max_discovery_retries: int = Field(default=1, ge=0, le=3)
+    failure_threshold: int = Field(default=3, ge=1, le=20)
+    cooldown_seconds: int = Field(default=30, ge=1, le=3600)
+    max_response_bytes: int = Field(default=2_000_000, ge=1024, le=10_000_000)
+
+
+class McpDiscoveryPolicy(StrictModel):
+    tools: bool = True
+    resources: bool = True
+    prompts: bool = True
+    max_items_per_kind: int = Field(default=1000, ge=1, le=10_000)
+    default_ttl_ms: int = Field(default=300_000, ge=0, le=86_400_000)
+
+
+class McpToolMapping(StrictModel):
+    """An explicit canonical capability-to-remote-tool publication decision."""
+
+    capability_id: str = Field(pattern=r"^[a-z][a-z0-9._-]*$", max_length=255)
+    tool_name: str = Field(min_length=1, max_length=255)
+    version: str = Field(default="1.0.0", pattern=r"^\d+\.\d+\.\d+$")
+    risk: RiskLevel = RiskLevel.LOW
+    side_effects: list[str] = Field(default_factory=list)
+    required_permissions: list[str] = Field(default_factory=list)
+    idempotency: IdempotencyMode = IdempotencyMode.NONE
+
+
+class McpServerDefinition(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    mcp_server_id: str
+    workspace_id: str
+    connector_id: str
+    name: str = Field(min_length=1, max_length=255)
+    transport: McpTransport = McpTransport.HTTP
+    endpoint: str | None = None
+    command: list[str] = Field(default_factory=list)
+    protocol_versions: list[str] = Field(
+        default_factory=lambda: ["2026-07-28"], min_length=1
+    )
+    auth_profile_ref: str | None = None
+    trust_level: McpTrustLevel = McpTrustLevel.RESTRICTED
+    owner_principal_id: str
+    enabled: bool = False
+    state: McpServerState = McpServerState.DISABLED
+    health_policy: McpHealthPolicy = Field(default_factory=McpHealthPolicy)
+    discovery_policy: McpDiscoveryPolicy = Field(default_factory=McpDiscoveryPolicy)
+    allowed_tool_patterns: list[str] = Field(default_factory=lambda: ["*"])
+    denied_tool_patterns: list[str] = Field(default_factory=list)
+    tool_mappings: list[McpToolMapping] = Field(default_factory=list)
+    consecutive_failures: int = Field(default=0, ge=0)
+    circuit_open_until: datetime | None = None
+    revision: int = Field(default=1, ge=1)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+    last_health_check: datetime | None = None
+
+    @model_validator(mode="after")
+    def validate_transport_target(self) -> McpServerDefinition:
+        if self.transport is McpTransport.HTTP and not self.endpoint:
+            raise ValueError("HTTP MCP servers require an endpoint")
+        if self.transport is McpTransport.STDIO and not self.command:
+            raise ValueError("STDIO MCP servers require a command")
+        return self
+
+
+class McpCacheHint(StrictModel):
+    ttl_ms: int = Field(ge=0, le=86_400_000)
+    scope: McpCacheScope = McpCacheScope.PRIVATE
+
+
+class McpDiscoverySnapshot(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    discovery_snapshot_id: str
+    mcp_server_id: str
+    connection_id: str | None = None
+    protocol_version: str
+    server_info: dict[str, Any] = Field(default_factory=dict)
+    tools: list[dict[str, Any]] = Field(default_factory=list)
+    resources: list[dict[str, Any]] = Field(default_factory=list)
+    resource_templates: list[dict[str, Any]] = Field(default_factory=list)
+    prompts: list[dict[str, Any]] = Field(default_factory=list)
+    cache_hints: dict[str, McpCacheHint] = Field(default_factory=dict)
+    schema_errors: list[str] = Field(default_factory=list)
+    valid: bool = True
+    content_sha256: str
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    def is_fresh(self, kind: str, *, now: datetime | None = None) -> bool:
+        hint = self.cache_hints.get(kind)
+        if hint is None:
+            return False
+        current = now or datetime.now(UTC)
+        return current < self.created_at + timedelta(milliseconds=hint.ttl_ms)
+
+
+class McpServerEvent(StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    mcp_event_id: str
+    mcp_server_id: str
+    event_type: str
+    actor_principal_id: str | None = None
+    correlation_id: str | None = None
+    details: dict[str, Any] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
 
 
 class PromptContract(StrictModel):
@@ -754,6 +1407,13 @@ class VerificationTarget(StrictModel):
     require_git_changes: bool = True
     expected_diff_sha256: str | None = None
     command_suite_refs: list[str] = Field(default_factory=list)
+    evidence_refs: list[str] = Field(default_factory=list)
+    """Evidence ids an EXTERNAL_EVIDENCE target is scoped to.
+
+    Additive and optional, so every persisted pre-M5 target still deserializes and
+    every non-research verifier sees a byte-identical target. Empty means "every
+    evidence record this run gathered", which is what the run manager builds.
+    """
 
 
 class VerificationContext(StrictModel):
@@ -942,6 +1602,14 @@ class WorkflowNodeSpec(StrictModel):
     parent_key: str | None = None
     instruction: str | None = None
     loop: NodeLoopPolicy | None = None
+    # The section 27 exit seam: canonical capability ids the executor invokes when it
+    # reaches this node. Additive and optional on purpose --- every template persisted
+    # before v0.3 M5 carries no such key, and ``extra="forbid"`` would reject every one
+    # of them if this field were required. An empty list is the pre-M5 behaviour
+    # exactly, so a template that never mentions capabilities executes byte for byte as
+    # it did before. Ids are canonical, so a node names *what* it needs and never which
+    # connector serves it (AC3-RES-02).
+    capability_refs: list[str] = Field(default_factory=list)
 
 
 class WorkflowEdgeSpec(StrictModel):
@@ -1046,7 +1714,6 @@ class Checkpoint(StrictModel):
     workspace_diff_sha256: str | None = None
     side_effect_operation_id: str | None = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
-
 
 
 
@@ -1276,6 +1943,9 @@ class Run(StrictModel):
     project_id: str
     provider: Provider
     state: RunState
+    # Who the run acts for. Capability invocation is refused when this principal is
+    # disabled, so authority does not end at the HTTP boundary (AC3-ID-05).
+    principal_id: str | None = None
     last_sequence: int = 0
     revision: int = 0
     session_id: str | None = None
@@ -1322,3 +1992,113 @@ class AgentRuntime(Protocol):
     async def artifacts(self, run: RunRef) -> list[ArtifactRef]: ...
     async def usage(self, run: RunRef) -> UsageSnapshot: ...
     async def terminate(self, run: RunRef) -> None: ...
+
+
+class EvidenceClass(StrEnum):
+    """How the world was observed. Names are pinned by the v0.4 cross-release registry."""
+
+    DIGITAL = "DIGITAL"
+    SIMULATION = "SIMULATION"
+    PHYSICAL = "PHYSICAL"
+    HUMAN_ATTESTATION = "HUMAN_ATTESTATION"
+    EXTERNAL_SOURCE = "EXTERNAL_SOURCE"
+
+
+class EvidenceTrust(StrEnum):
+    """Ordered low to high. Assigned by the normalizer, never read from connector output."""
+
+    QUARANTINED = "QUARANTINED"
+    UNVERIFIED = "UNVERIFIED"
+    CORROBORATED = "CORROBORATED"
+    VERIFIED = "VERIFIED"
+
+
+class EvidenceProvenance(StrictModel):
+    """AC3-RES-03 as a type.
+
+    Connector, capability, query, timestamp and source identifier are required and
+    non-optional, so evidence that cannot say where it came from cannot be
+    constructed at all — the criterion is enforced by validation rather than by
+    reviewer discipline. ``binding_id`` and ``connection_id`` are optional because
+    a deterministic local source has neither.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    connector_id: str = Field(min_length=1, max_length=255)
+    capability_id: str = Field(min_length=1, max_length=255)
+    query: str = Field(min_length=1, max_length=4_000)
+    retrieved_at: datetime
+    source_id: str = Field(min_length=1, max_length=1_024)
+    binding_id: str | None = None
+    connection_id: str | None = None
+    source_uri: str | None = Field(default=None, max_length=2_048)
+
+
+class EvidenceCandidate(StrictModel):
+    """One normalized result (SDD 10.1), before any verifier has looked at it.
+
+    Backend-specific wire shapes are flattened here, which is what lets the
+    connector swap without the workflow's capability ids moving.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    candidate_id: str
+    evidence_class: EvidenceClass = EvidenceClass.EXTERNAL_SOURCE
+    title: str = Field(min_length=1, max_length=2_000)
+    snippet: str = Field(default="", max_length=8_000)
+    authors: list[str] = Field(default_factory=list)
+    identifiers: dict[str, str] = Field(default_factory=dict)
+    published_at: datetime | None = None
+    content_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    provenance: EvidenceProvenance
+    payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class CitationCheck(StrictModel):
+    """One deterministic verification of a claimed citation against a resolver.
+
+    The check is the *evidence about the evidence*: it records what the candidate
+    claimed, what the resolver actually returned, and whether they agree.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    check_id: str
+    verifier_id: str = Field(min_length=1, max_length=255)
+    claimed_identifier: str = Field(min_length=1, max_length=1_024)
+    resolved_identifier: str | None = Field(default=None, max_length=1_024)
+    status: VerificationStatus
+    detail: str = Field(default="", max_length=4_000)
+    checked_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+
+class EvidenceRecord(StrictModel):
+    """A stored, trust-labelled candidate — the unit the Evidence Store persists.
+
+    ``trust_score`` mirrors ``CandidateScore.total_score``: it is ``None`` unless
+    verifiers accepted the candidate, so unverified evidence is structurally
+    unrankable rather than merely low-scored (AC3-RES-04).
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    evidence_id: str
+    run_id: str
+    node_id: str | None = None
+    evidence_class: EvidenceClass = EvidenceClass.EXTERNAL_SOURCE
+    candidate: EvidenceCandidate
+    trust: EvidenceTrust = EvidenceTrust.UNVERIFIED
+    trust_score: float | None = Field(default=None, ge=0.0, le=1.0)
+    citation_checks: list[CitationCheck] = Field(default_factory=list)
+    verification_ids: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
+
+    @property
+    def content_digest(self) -> str:
+        """Promoted to an indexed column; the candidate remains the single source."""
+        return self.candidate.content_digest
+
+    @model_validator(mode="after")
+    def _unverified_is_unrankable(self) -> EvidenceRecord:
+        if self.trust in (EvidenceTrust.QUARANTINED, EvidenceTrust.UNVERIFIED):
+            if self.trust_score is not None:
+                raise ValueError(f"{self.trust.value} evidence must not carry a trust score")
+        return self

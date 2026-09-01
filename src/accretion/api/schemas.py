@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -8,12 +9,20 @@ from pydantic import BaseModel, Field, model_validator
 from accretion.contracts import (
     ApprovalDecisionValue,
     BenchmarkExecutionSource,
+    ConnectionScope,
+    ConnectionStatus,
     ExecutionMode,
+    McpDiscoveryPolicy,
+    McpHealthPolicy,
+    McpToolMapping,
+    McpTrustLevel,
+    Principal,
     Provider,
     RiskLevel,
     TaskBudgets,
     TaskType,
     TemplateStatus,
+    WorkspaceMembership,
 )
 from accretion.orchestration.models import (
     PlannerRuntime,
@@ -21,6 +30,24 @@ from accretion.orchestration.models import (
     SearchBudgetEnvelope,
     SearchMode,
 )
+
+
+class MeResponse(BaseModel):
+    principal: Principal
+    memberships: list[WorkspaceMembership]
+    auth_mode: str
+
+
+class AuthProviderInfo(BaseModel):
+    mode: str
+    issuer: str | None = None
+
+
+class CapabilityResolveRequest(BaseModel):
+    capability_id: str
+    version: str | None = None
+    principal_id: str | None = None
+    workspace_id: str | None = None
 
 
 class ProjectCreate(BaseModel):
@@ -133,6 +160,85 @@ class WorkflowTemplateSummary(BaseModel):
     mode: ExecutionMode
     status: TemplateStatus
     checksum: str
+
+
+class ConnectCreate(BaseModel):
+    """Start an authorization. Scopes default to the connector's declared minimum."""
+
+    workspace_id: str = "workspace_local"
+    scopes: list[str] | None = None
+    redirect_target: str = "/"
+
+
+class AuthorizationStart(BaseModel):
+    authorization_url: str
+
+
+class ConnectionSummary(BaseModel):
+    """Read-only connection listing; token handles never enter the API (INV3-002)."""
+
+    connection_id: str
+    connector_id: str
+    workspace_id: str
+    principal_id: str | None = None
+    scope: ConnectionScope
+    status: ConnectionStatus
+    granted_scopes: list[str] = Field(default_factory=list)
+    workspace_shareable: bool = False
+    created_at: datetime
+    last_health_check: datetime | None = None
+
+
+class EnterpriseAuthProfileResponse(BaseModel):
+    """What the caller may know about enterprise-managed authorization (M7).
+
+    Deliberately a description of *configuration and state*, never of material:
+    the retained identity assertion, its ``secret_store_key``, the identity
+    assertion grant and the enterprise-issued access token are all absent by
+    construction, and AC3-EMA-05 scans this response to keep it that way. The
+    only thing said about the assertion is whether the caller currently holds a
+    live one and when it expires, which an operator needs in order to understand
+    why an enterprise authorization would or would not succeed right now.
+    """
+
+    enabled: bool
+    token_exchange_configured: bool
+    audiences: dict[str, str] = Field(default_factory=dict)
+    has_live_assertion: bool = False
+    assertion_expires_at: datetime | None = None
+
+
+class McpServerCreate(BaseModel):
+    workspace_id: str
+    connector_id: str
+    name: str = Field(min_length=1, max_length=255)
+    endpoint: str
+    protocol_versions: list[str] = Field(default_factory=lambda: ["2026-07-28"])
+    auth_profile_ref: str | None = None
+    trust_level: McpTrustLevel = McpTrustLevel.RESTRICTED
+    health_policy: McpHealthPolicy = Field(default_factory=McpHealthPolicy)
+    discovery_policy: McpDiscoveryPolicy = Field(default_factory=McpDiscoveryPolicy)
+    allowed_tool_patterns: list[str] = Field(default_factory=lambda: ["*"])
+    denied_tool_patterns: list[str] = Field(default_factory=list)
+    tool_mappings: list[McpToolMapping] = Field(default_factory=list)
+
+
+class PluginInstallRequest(BaseModel):
+    """Install or upgrade a package into one workspace.
+
+    ``consent_digest`` must echo the manifest digest the administrator was shown, and
+    ``consent_capability_ids`` may narrow what policy granted but never widen it.
+    """
+
+    workspace_id: str
+    reference: str = Field(min_length=1, max_length=255)
+    consent_digest: str = Field(pattern=r"^[0-9a-f]{64}$")
+    consent_capability_ids: list[str] = Field(default_factory=list)
+    expected_digest: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+
+
+class PluginWorkspaceRequest(BaseModel):
+    workspace_id: str
 
 
 class ErrorEnvelope(BaseModel):

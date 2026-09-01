@@ -52,6 +52,30 @@ _PREFIXES = {
     "experience_selection": "exs",
     "moderation_action": "mod",
     "trajectory_seed": "tsd",
+    "conndef": "cnd",
+    "conn": "con",
+    "capbind": "cbd",
+    "principal": "usr",
+    "workspace_entity": "wks",
+    "workspace_membership": "wsm",
+    "auth_session": "aus",
+    "auth_transaction": "atx",
+    # SDD 6.2 writes token handles as ``tokh_``; the prefix registry is three
+    # characters wide, so the canonical form is ``tkh_``.
+    "token_handle": "tkh",
+    "oauth_transaction": "otx",
+    "secret_record": "sec",
+    "mcp_server": "mcs",
+    "mcp_snapshot": "mcp",
+    "mcp_event": "mce",
+    "plugin_version": "plv",
+    "plugin_installation": "pli",
+    "plugin_event": "ple",
+    "evidence": "evd",
+    "evidence_candidate": "evc",
+    "citation_check": "cck",
+    "identity_assertion": "ida",
+    "enterprise_auth_grant": "eag",
 }
 
 

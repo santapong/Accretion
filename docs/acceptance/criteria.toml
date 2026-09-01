@@ -1,0 +1,133 @@
+# Acceptance verification policy.
+#
+# The SDDs are the source of truth for WHAT the criteria are; this file records only
+# HOW each is verified. A criterion absent from this file must be proven by a test
+# that claims it with @pytest.mark.acceptance("<id>").
+#
+#   verification = "test"          proven by a marked, passing test (the default)
+#   verification = "manual"        needs evidence + last_verified; goes stale after 180 days
+#   verification = "waived"        needs reason + issue + expires; fails once expired.
+#                                  `expires` must be an ISO-8601 date (YYYY-MM-DD) no
+#                                  more than 180 days out: a release name such as
+#                                  "v0.4.0" is a policy error, not an end date, and an
+#                                  unreadable end date counts as already expired
+#   verification = "frontend"      proven by the vitest suite CI runs; evidence must be
+#                                  one or more `apps/ui/<path>.test.tsx:<line> <test title>`
+#                                  pointers separated by ` + `, each anchored on the
+#                                  opening line of the vitest test it names; the gate
+#                                  fails if a file, a line, or the title drifts
+#   verification = "not_yet_due"   belongs to a milestone that has not started
+#
+#   frontend_evidence = "..."      an extra, path-and-title-checked vitest pointer on a
+#                                  criterion still proven by pytest, for criteria whose
+#                                  pytest claim covers only part of the surface
+#
+# Both escape hatches expire on purpose. An audit records what someone believed on one
+# day; this file makes every belief carry an end date.
+#
+# Neither escape hatch outranks a test. If a criterion recorded "manual" or "waived" is
+# also claimed by a marked test and that test fails, the criterion reports FAILING: the
+# failing test is the newer and more specific evidence. For the same reason a claimed
+# test that reports no outcome at all --- a fixture that raised during setup, a node
+# collected but never run --- classifies FAILING rather than PROVEN.
+
+[criteria]
+
+# --- Proven by the frontend suite -------------------------------------------
+# This gate reads pytest markers, so a criterion whose proof lives in vitest is
+# recorded with a pointer. `npm run test` runs these in CI on every pull request.
+V01-P4-004 = { verification = "frontend", evidence = "apps/ui/src/App.test.tsx:132 navigates to the required operator screens + apps/ui/src/EventStream.test.tsx:61 recovers a missed SSE sequence from the authoritative audit snapshot + apps/ui/src/RunExecution.test.tsx:131 renders the persisted loop projection, budgets, and curved loop-back route" }
+V02-P6-008 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:490 renders P6 candidate lineage, provenance, scores, spend, and selection reason" }
+V02-P7-007 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:549 renders P7 experience provenance, compatibility, transfer risk, and reused segments" }
+
+# --- Proven by a recorded live-provider run ---------------------------------
+# These three name real vendor CLIs. CI never sets ACCRETION_LIVE_PROVIDERS=1, so
+# no test in the suite can claim them without reporting a skip - and the harness
+# classifies a claimed test that reports no outcome as FAILING, which is exactly
+# right. They are therefore manual, pointing at the evidence file that
+# `scripts/live_acceptance.py` wrote on a real run. Re-run that script and move
+# `last_verified` before the 180-day window closes.
+#
+# The protocol regressions that CAN be checked offline are covered by unmarked
+# tests in tests/test_v03_m8_live_protocol.py: those guard the wiring without
+# overclaiming that a fake binary proves a signed-in vendor CLI works.
+V01-P0-002 = { verification = "manual", evidence = "docs/releases/v0.3/evidence/live-acceptance-2026-09-01.md", last_verified = "2026-09-01" }
+V01-P0-004 = { verification = "manual", evidence = "docs/releases/v0.3/evidence/live-acceptance-2026-09-01.md", last_verified = "2026-09-01" }
+V01-P4-008 = { verification = "manual", evidence = "docs/releases/v0.3/evidence/live-acceptance-2026-09-01.md", last_verified = "2026-09-01" }
+
+# --- Not yet due: milestone M7 has not started ------------------------------
+# The seven AC3-EMA criteria (SDD v0.3 §24.9) cover optional enterprise-managed
+# authorization. Each leaves this list as the M7 PR that proves it lands.
+# AC3-EMA-01 left this list in M7: tests/test_v03_m7_identity_retention.py claims it.
+# AC3-EMA-02 left this list in M7: tests/test_v03_m7_enterprise_mcp.py claims it.
+# AC3-EMA-03 left this list in M7: tests/test_v03_m7_enterprise_auth.py claims it.
+# AC3-EMA-04 left this list in M7: tests/test_v03_m7_identity_retention.py claims its
+# session-ending half and tests/test_v03_m7_enterprise_mcp.py the revocation half.
+# AC3-EMA-05 left this list in M7:
+# tests/test_v03_m7_enterprise_secret_scan.py claims it.
+# AC3-EMA-06 and AC3-EMA-07 left this list in M7:
+# tests/test_v03_m7_enterprise_mcp.py claims both.
+
+# --- Not yet due: milestone M6 has not started ------------------------------
+# The six AC3-PLG criteria left this list in M4 and the four AC3-RES criteria left it
+# in M5: each is now proven by a marked test in tests/test_v03_m4_plugins.py or
+# tests/test_v03_m5_research.py.
+# AC3-UI-04 names the capability *inspector*. Its pytest claim in
+# tests/test_v03_m6_admin_surface.py proves the resolution the page renders is real: three
+# capabilities bound to an OAuth connector, a really registered MCP server and a really
+# installed plugin's synthetic connector resolve onto different backends, bindings and
+# connections, each connection checked against the store; a principal holding no
+# connection is told so rather than handed another principal's; and resolving as another
+# principal is refused. The rendering half — including that a denial states its reason
+# instead of blanking the panel — is proven by vitest, named here as a checked pointer.
+AC3-UI-04 = { verification = "test", frontend_evidence = "apps/ui/src/pages/CapabilityInspectorPage.test.tsx:199 the page is headed Capability inspector and resolves a capability onto its binding, connection, risk and policy + apps/ui/src/pages/CapabilityInspectorPage.test.tsx:224 two capabilities bound to different backends do not read alike + apps/ui/src/pages/CapabilityInspectorPage.test.tsx:253 an unresolved capability states the denial reason instead of an empty panel + apps/ui/src/pages/CapabilityInspectorPage.test.tsx:272 a refused resolution renders the API's own message rather than a blank panel + apps/ui/src/pages/IdentityPage.test.tsx:129 the page is headed Identity and roles and shows the principal's issuer, subject, and session + apps/ui/src/pages/IdentityPage.test.tsx:167 the identity page issues only reads and offers no way to change a role" }
+# AC3-UI-05 names the React Flow badges. Its pytest claim in
+# tests/test_v03_m6_run_inspectors.py proves the provenance they project is real --- a
+# governed capability executed through CapabilityGateway, its connector, connection and
+# binding recorded by the store and committed as the vitest fixture --- and that the
+# badge module cannot reach the API client. The rendering half, including that a badge
+# exposes no interactive role, fetches nothing when clicked, and never caches an older
+# audit, is proven by vitest and named here as a checked pointer.
+AC3-UI-05 = { verification = "test", frontend_evidence = "apps/ui/src/RunExecution.test.tsx:711 badges every graph node with the connector, connection, and binding the audit recorded + apps/ui/src/RunExecution.test.tsx:736 names the plugin that served a call, and only for the plugin-served node + apps/ui/src/RunExecution.test.tsx:761 renders the badges on the React Flow node itself, not only in the summary list + apps/ui/src/RunExecution.test.tsx:780 a badge is not a control: it offers no interactive role and clicking it asks the API for nothing + apps/ui/src/RunExecution.test.tsx:804 a newer audit replaces the badge identities instead of showing a cached copy + apps/ui/src/RunExecution.test.tsx:825 a run whose audit carries no capability results renders no badges + apps/ui/src/runBadges.test.ts:29 carries the connector, connection, and binding the gateway really resolved + apps/ui/src/runBadges.test.ts:55 an audit without capability results produces no badges at all + apps/ui/src/runBadges.test.ts:72 names the plugin behind a plugin-served call and no plugin for an OAuth one" }
+
+# AC3-EMA-01 and AC3-EMA-02 are proven end to end by the marked tests in
+# tests/test_v03_m7_identity_retention.py and tests/test_v03_m7_enterprise_mcp.py: the
+# flag-off run really retains no assertion and exchanges nothing, and the flag-on run
+# really invokes a centrally managed MCP server after one sign-in with no further
+# end-user authorization step. The operator-facing half --- that the disabled deployment
+# says so outright and offers no enterprise action, and that the enabled one offers an
+# action which POSTs enterprise-authorize and re-reads the state it changed --- is proven
+# by vitest and named here as checked pointers.
+AC3-EMA-01 = { verification = "test", frontend_evidence = "apps/ui/src/pages/IdentityPage.test.tsx:211 a disabled profile is stated as disabled rather than rendered as an empty panel + apps/ui/src/pages/McpServersPage.test.tsx:313 only the EMA server offers the enterprise action, and it is disabled while the profile is off" }
+AC3-EMA-02 = { verification = "test", frontend_evidence = "apps/ui/src/pages/IdentityPage.test.tsx:187 the enterprise authorization panel reports an enabled profile with its audiences + apps/ui/src/pages/IdentityPage.test.tsx:234 an enabled profile with no live assertion is distinguished from one that holds one + apps/ui/src/pages/McpServersPage.test.tsx:340 with the profile enabled the action POSTs enterprise-authorize and re-reads the servers" }
+
+# The inherited v0.2 run-page criteria. Their pytest claims in
+# tests/test_v03_m6_run_inspectors.py exercise the real planner, the real replan path and
+# the production runtime router, and commit what they produce as the vitest fixtures; the
+# rendering half is proven by vitest and named here as a checked pointer.
+V02-UI-001 = { verification = "test", frontend_evidence = "apps/ui/src/RunExecution.test.tsx:367 the proposal inspector names the assumptions, the required capabilities, and the validation verdict + apps/ui/src/RunExecution.test.tsx:386 a rejected validation renders every finding code, severity, and message" }
+V02-UI-002 = { verification = "test", frontend_evidence = "apps/ui/src/RunExecution.test.tsx:401 the revision timeline keeps prior revisions reachable and inspectable" }
+V02-UI-003 = { verification = "test", frontend_evidence = "apps/ui/src/RunExecution.test.tsx:883 the graph diff names every added, removed, and changed node and edge + apps/ui/src/RunExecution.test.tsx:898 the rollback diff renders its own identities, not the previous diff's" }
+V02-UI-004 = { verification = "test", frontend_evidence = "apps/ui/src/RunExecution.test.tsx:425 a pending proposal reads as PROPOSED and an activated revision reads as ACTIVE" }
+V02-UI-005 = { verification = "test", frontend_evidence = "apps/ui/src/RunExecution.test.tsx:450 a replan adds the new revision without dropping the pre-replan execution trace" }
+V02-UI-006 = { verification = "test", frontend_evidence = "apps/ui/src/RunExecution.test.tsx:914 the router inspector lists the fallback order and every observed feature + apps/ui/src/RunExecution.test.tsx:936 the router inspector renders only the fields the decision declares, never a credential" }
+
+# AC3-UI-02 names the Connections *page*, but its pytest claim in
+# tests/test_v03_m6_admin_surface.py covers only the API surface the page renders: no
+# request the page makes returns a credential, and the authorize/reauthorize/revoke
+# transitions are real. The page-level half is proven by vitest, which CI runs via
+# `npm run test`, so the spec is named here as a checked pointer: deleting or renaming
+# ConnectionsPage.test.tsx fails this gate.
+# AC3-UI-01 and AC3-UI-03 name the Plugins and MCP *pages*. Their pytest claims in
+# tests/test_v03_m6_admin_surface.py prove the API those pages render really carries
+# the diagnosis — the installed version, state, requested capabilities and connector
+# resolutions for a really-installed package; a really-opened circuit breaker and a
+# really-discovered tool and capability set — and byte-compare the vitest fixtures
+# against the live API. The rendering half is proven by vitest, named here as a
+# checked pointer, so deleting or renaming either page test fails this gate.
+AC3-UI-02 = { verification = "test", frontend_evidence = "apps/ui/src/pages/ConnectionsPage.test.tsx:150 the page is headed Connections and lists each connection's status, scopes, owner, and last health check + apps/ui/src/pages/ConnectionsPage.test.tsx:172 connect posts to the connector connect route and hands the browser to the authorization URL without rendering it + apps/ui/src/pages/ConnectionsPage.test.tsx:190 reauthorize posts to the reauthorize route for the row it was pressed in + apps/ui/src/pages/ConnectionsPage.test.tsx:208 revoke posts to the revoke route for the row it was pressed in and reports the new status + apps/ui/src/pages/ConnectionsPage.test.tsx:225 the health action reads the connection health route and reports the token status + apps/ui/src/pages/ConnectionsPage.test.tsx:241 the page reads no key that ConnectionSummary does not declare" }
+AC3-UI-01 = { verification = "test", frontend_evidence = "apps/ui/src/pages/PluginsPage.test.tsx:72 the page is headed Plugins and its two rows disagree on state, trust, and requested capabilities + apps/ui/src/pages/PluginsPage.test.tsx:124 the detail panel shows the version, state, grants, connector status, and lifecycle history + apps/ui/src/pages/PluginsPage.test.tsx:152 connector status distinguishes satisfied, optional, and required-and-missing + apps/ui/src/pages/PluginsPage.test.tsx:170 the join keeps the installation's version and state, not the registry's" }
+AC3-UI-03 = { verification = "test", frontend_evidence = "apps/ui/src/pages/McpServersPage.test.tsx:134 the page is headed MCP servers and the healthy and broken rows do not read alike + apps/ui/src/pages/McpServersPage.test.tsx:153 two servers differing only in circuit_open_until are described differently + apps/ui/src/pages/McpServersPage.test.tsx:175 the rendered rows change with the breaker, not just the derived helper + apps/ui/src/pages/McpServersPage.test.tsx:195 inspecting a server shows its transport, patterns, capabilities, tools, and cache hints" }
+
+# AC3-MCP-01 is local stdio MCP, delivered pre-v0.3 by the capability gateway, so it
+# is due now even though section 27 files the rest of MCP under M3.

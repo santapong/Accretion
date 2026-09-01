@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import { RunExecution } from "./RunExecution";
-import type { GraphProjection, LoopExecution, Run, VerificationResult } from "./types";
+import type { GraphProjection, LoopExecution, Run, RunGraphRevision, VerificationResult } from "./types";
 
 const schemaVersion = { schema_version: "1.0" } as const;
 
@@ -262,34 +262,78 @@ test("renders hybrid subflows without expanding iterations and offers the gate d
   expect(within(routes).getAllByText("7 traversals").length).toBeGreaterThan(0);
 });
 
-test("shows P5 proposal authority, revision diff, router evidence, and replan control", async () => {
-  const dynamicRun: Run = { ...run, state: "PAUSED" };
-  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+// One P5 fixture family, overridden per test, so each inherited v0.2 criterion gets a
+// differential of its own rather than sharing a single existence check.
+const proposalFixture = {
+  proposal_id: "wfp_fixture", run_id: run.run_id, planner_version: "fragment-planner-v2",
+  confidence: 0.9, nodes: [{ local_id: "start" }, { local_id: "complete" }], edges: [],
+  fragment_refs: ["single-act-verify@1.0.0"], assumptions: ["Budgets remain authoritative."],
+  required_capabilities: ["capability:repo.write", "capability:shell.exec"],
+  rationale_summary: "Composed a reviewed workflow fragment.",
+};
+
+const acceptedValidation = {
+  validation_id: "gvl_fixture", proposal_id: "wfp_fixture", status: "ACCEPT",
+  errors: [], warnings: [], required_repairs: [], validator_version: "graph-validator-v2",
+};
+
+const rejectedValidation = {
+  validation_id: "gvl_rejected", proposal_id: "wfp_fixture", status: "REJECT",
+  errors: [{
+    code: "PROTECTED_STATE_DROPPED", severity: "ERROR",
+    message: "Revision drops a protected state reference.", path: "nodes/review",
+  }],
+  warnings: [{
+    code: "UNVERIFIED_FRAGMENT", severity: "WARNING",
+    message: "Fragment has no verifier attached.", path: "nodes/start",
+  }],
+  required_repairs: ["reattach-protected-state"], validator_version: "graph-validator-v2",
+};
+
+const revisionOne: RunGraphRevision = {
+  schema_version: "2.0", run_id: run.run_id, proposal_id: "wfp_fixture",
+  run_graph_id: "rgr_1", nodes: [], edges: [],
+  revision_id: "grv_1", revision: 1, reason: "INITIAL",
+  normalized_graph_hash: "a".repeat(64), protected_state_refs: [],
+};
+
+const revisionTwo: RunGraphRevision = {
+  schema_version: "2.0", run_id: run.run_id, proposal_id: "wfp_fixture",
+  run_graph_id: "rgr_2", nodes: [], edges: [],
+  revision_id: "grv_2", revision: 2, reason: "HUMAN_REQUEST",
+  normalized_graph_hash: "b".repeat(64), protected_state_refs: ["run:start"],
+};
+
+const runtimeDecisions = [{
+  decision_id: "rtd_fixture", selected_runtime: "FAKE", policy_version: "performance-router-v2",
+  selected_reason: "selected from observable evidence", candidates: [{
+    provider: "FAKE", runtime_version: "fake-p2-v1", score: 0.8, available: true,
+  }],
+}];
+
+type DynamicOverrides = {
+  proposals?: unknown[];
+  validations?: unknown[];
+  revisions?: () => unknown[];
+  replan?: () => unknown;
+};
+
+function stubDynamicRun(overrides: DynamicOverrides = {}) {
+  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
-    if (url.endsWith("/workflow/proposals")) return response([{
-      proposal_id: "wfp_fixture", run_id: run.run_id, planner_version: "fragment-planner-v2",
-      confidence: 0.9, nodes: [{ local_id: "start" }, { local_id: "complete" }], edges: [],
-      fragment_refs: ["single-act-verify@1.0.0"], assumptions: ["Budgets remain authoritative."],
-      rationale_summary: "Composed a reviewed workflow fragment.",
-    }]);
-    if (url.endsWith("/validations")) return response([{
-      validation_id: "gvl_fixture", proposal_id: "wfp_fixture", status: "ACCEPT",
-      errors: [], warnings: [], required_repairs: [], validator_version: "graph-validator-v2",
-    }]);
-    if (url.endsWith("/graph/revisions")) return response([
-      { revision_id: "grv_1", revision: 1, reason: "INITIAL", normalized_graph_hash: "a".repeat(64), protected_state_refs: [] },
-      { revision_id: "grv_2", revision: 2, reason: "HUMAN_REQUEST", normalized_graph_hash: "b".repeat(64), protected_state_refs: ["run:start"] },
-    ]);
+    if (url.endsWith("/replan") && init?.method === "POST") {
+      return response(overrides.replan?.() ?? { request: { status: "APPLIED" } });
+    }
+    if (url.endsWith("/workflow/proposals")) return response(overrides.proposals ?? [proposalFixture]);
+    if (url.endsWith("/validations")) return response(overrides.validations ?? [acceptedValidation]);
+    if (url.endsWith("/graph/revisions")) {
+      return response(overrides.revisions ? overrides.revisions() : [revisionOne, revisionTwo]);
+    }
     if (url.includes("/graph/diff")) return response({
       from_revision: 1, to_revision: 2, added_nodes: ["review"], removed_nodes: [],
       changed_nodes: [], protected_state_refs: ["run:start"],
     });
-    if (url.endsWith("/runtime-decisions")) return response([{
-      decision_id: "rtd_fixture", selected_runtime: "FAKE", policy_version: "performance-router-v2",
-      selected_reason: "selected from observable evidence", candidates: [{
-        provider: "FAKE", runtime_version: "fake-p2-v1", score: 0.8, available: true,
-      }],
-    }]);
+    if (url.endsWith("/runtime-decisions")) return response(runtimeDecisions);
     if (url.endsWith("/replans")) return response([]);
     if (url.endsWith("/graph")) return response(graph);
     if (url.endsWith("/verifications")) return response(verifications);
@@ -297,18 +341,150 @@ test("shows P5 proposal authority, revision diff, router evidence, and replan co
     if (url.endsWith("/loop")) return response(loop);
     return response({});
   });
+}
+
+function renderDynamic(state: Run["state"] = "PAUSED") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
-    <QueryClientProvider client={client}><RunExecution run={dynamicRun} /></QueryClientProvider>,
+    <QueryClientProvider client={client}><RunExecution run={{ ...run, state }} /></QueryClientProvider>,
   );
+  return client;
+}
+
+test("shows P5 proposal authority, revision diff, router evidence, and replan control", async () => {
+  stubDynamicRun();
+  renderDynamic();
 
   await screen.findByText("single-act-verify@1.0.0");
   const inspector = screen.getByRole("region", { name: "Dynamic workflow" });
   expect(within(inspector).getByText("single-act-verify@1.0.0")).toBeInTheDocument();
-  expect(within(inspector).getByText("r2")).toBeInTheDocument();
+  expect(within(inspector).getByRole("button", { name: "r2" })).toBeInTheDocument();
   expect(within(inspector).getByText("1 protected state refs")).toBeInTheDocument();
   expect(within(inspector).getByText("Runtime: FAKE")).toBeInTheDocument();
   expect(within(inspector).getByRole("button", { name: "Request safe replan" })).toBeInTheDocument();
+});
+
+test("the proposal inspector names the assumptions, the required capabilities, and the validation verdict", async () => {
+  stubDynamicRun();
+  renderDynamic();
+  await screen.findByText("single-act-verify@1.0.0");
+  const inspector = screen.getByRole("region", { name: "Dynamic workflow" });
+
+  const assumptions = within(inspector).getByRole("list", { name: "Assumptions" });
+  expect(within(assumptions).getByText("Budgets remain authoritative.")).toBeInTheDocument();
+
+  const capabilities = within(inspector).getByRole("list", { name: "Required capabilities" });
+  expect(within(capabilities).getByText("capability:repo.write")).toBeInTheDocument();
+  expect(within(capabilities).getByText("capability:shell.exec")).toBeInTheDocument();
+
+  const validation = within(inspector).getByRole("group", { name: "Validation findings" });
+  expect(within(validation).getByText("ACCEPT")).toBeInTheDocument();
+  expect(within(validation).getByText("The validator reported no findings.")).toBeInTheDocument();
+  expect(within(validation).queryByText("PROTECTED_STATE_DROPPED")).not.toBeInTheDocument();
+});
+
+test("a rejected validation renders every finding code, severity, and message", async () => {
+  stubDynamicRun({ validations: [rejectedValidation] });
+  renderDynamic();
+  await screen.findByText("single-act-verify@1.0.0");
+  const validation = within(screen.getByRole("region", { name: "Dynamic workflow" }))
+    .getByRole("group", { name: "Validation findings" });
+
+  expect(within(validation).getByText("REJECT")).toBeInTheDocument();
+  expect(within(validation).getByText("PROTECTED_STATE_DROPPED")).toBeInTheDocument();
+  expect(within(validation).getByText("Revision drops a protected state reference.")).toBeInTheDocument();
+  expect(within(validation).getByText("UNVERIFIED_FRAGMENT")).toBeInTheDocument();
+  expect(within(validation).getByText("Fragment has no verifier attached.")).toBeInTheDocument();
+  expect(within(validation).queryByText("The validator reported no findings.")).not.toBeInTheDocument();
+});
+
+test("the revision timeline keeps prior revisions reachable and inspectable", async () => {
+  stubDynamicRun();
+  renderDynamic();
+  await screen.findByText("single-act-verify@1.0.0");
+  const inspector = screen.getByRole("region", { name: "Dynamic workflow" });
+  const timeline = within(inspector).getByRole("group", { name: "Graph revision timeline" });
+
+  // Both revisions are listed, and the scroll region is keyboard reachable (F4).
+  expect(timeline).toHaveAttribute("tabindex", "0");
+  expect(within(timeline).getByRole("button", { name: "r1" })).toBeInTheDocument();
+  expect(within(timeline).getByRole("button", { name: "r2" })).toBeInTheDocument();
+
+  // The active revision is inspected by default; its hash, not the prior one, is shown.
+  const detail = within(inspector).getByRole("group", { name: "Selected graph revision" });
+  expect(within(detail).getByText("b".repeat(64))).toBeInTheDocument();
+  expect(within(detail).getByText("active revision")).toBeInTheDocument();
+
+  // Selecting the prior revision renders r1's own hash, so history stays reachable.
+  fireEvent.click(within(timeline).getByRole("button", { name: "r1" }));
+  expect(within(detail).getByText("a".repeat(64))).toBeInTheDocument();
+  expect(within(detail).queryByText("b".repeat(64))).not.toBeInTheDocument();
+  expect(within(detail).getByText("prior revision")).toBeInTheDocument();
+});
+
+test("a pending proposal reads as PROPOSED and an activated revision reads as ACTIVE", async () => {
+  // Fixture one: a proposal exists, nothing has been activated.
+  stubDynamicRun({ revisions: () => [] });
+  renderDynamic("RUNNING");
+  await screen.findByText("single-act-verify@1.0.0");
+  const pending = screen.getByRole("region", { name: "Dynamic workflow" });
+  expect(within(pending).getByText("PROPOSED")).toBeInTheDocument();
+  expect(within(pending).queryByText("ACTIVE")).not.toBeInTheDocument();
+  expect(
+    within(pending).getByText("Pending proposal: not executable until a graph revision is activated."),
+  ).toBeInTheDocument();
+  cleanup();
+
+  // Fixture two: the same proposal, now activated as a revision.
+  stubDynamicRun();
+  renderDynamic("RUNNING");
+  await screen.findByText("single-act-verify@1.0.0");
+  const active = screen.getByRole("region", { name: "Dynamic workflow" });
+  expect(within(active).getByText("ACTIVE")).toBeInTheDocument();
+  expect(within(active).queryByText("PROPOSED")).not.toBeInTheDocument();
+  expect(
+    within(active).getByText("Executable: activated as graph revision r2."),
+  ).toBeInTheDocument();
+});
+
+test("a replan adds the new revision without dropping the pre-replan execution trace", async () => {
+  let revisions = [revisionOne];
+  stubDynamicRun({
+    revisions: () => revisions,
+    replan: () => {
+      revisions = [revisionOne, revisionTwo];
+      return { request: { status: "APPLIED" }, revision: revisionTwo };
+    },
+  });
+  renderDynamic();
+
+  await screen.findByText("single-act-verify@1.0.0");
+  const inspector = screen.getByRole("region", { name: "Dynamic workflow" });
+  const timeline = within(inspector).getByRole("group", { name: "Graph revision timeline" });
+  expect(within(timeline).getByRole("button", { name: "r1" })).toBeInTheDocument();
+  expect(within(timeline).queryByRole("button", { name: "r2" })).not.toBeInTheDocument();
+
+  // The trace and history rendered before the replan.
+  const routes = screen.getByRole("list", { name: "Projection routes" });
+  expect(within(routes).getByText("Evaluate → Observe")).toBeInTheDocument();
+  expect(within(routes).getAllByText("2 traversals").length).toBeGreaterThan(0);
+  const verificationPanel = screen.getByRole("region", { name: "Verifications" });
+  expect(within(verificationPanel).getByText("One acceptance test failed.")).toBeInTheDocument();
+
+  fireEvent.click(within(inspector).getByRole("button", { name: "Request safe replan" }));
+  await screen.findByText("Revision 2 activated with protected history preserved.");
+  await within(timeline).findByRole("button", { name: "r2" });
+
+  // The replan added a revision; nothing the run had already executed disappeared.
+  expect(within(timeline).getByRole("button", { name: "r1" })).toBeInTheDocument();
+  expect(within(screen.getByRole("list", { name: "Projection routes" })).getByText("Evaluate → Observe"))
+    .toBeInTheDocument();
+  expect(
+    within(screen.getByRole("list", { name: "Projection routes" })).getAllByText("2 traversals").length,
+  ).toBeGreaterThan(0);
+  expect(
+    within(screen.getByRole("region", { name: "Verifications" })).getByText("One acceptance test failed."),
+  ).toBeInTheDocument();
 });
 
 test("renders P6 candidate lineage, provenance, scores, spend, and selection reason", async () => {
@@ -479,4 +655,303 @@ test("renders P7 experience provenance, compatibility, transfer risk, and reused
   expect(within(lineage).getByText("NEGATIVE GUIDANCE")).toBeInTheDocument();
   expect(screen.getByText("Fresh control")).toBeInTheDocument();
   expect(screen.getByText("Verified replay treatment")).toBeInTheDocument();
+});
+
+// --- M6: read-only capability badges, diff identities, and router evidence ---------
+// (imports are declared here, beside their only use, so the evidence anchors above
+// keep their line numbers.)
+import type { components } from "./api/schema";
+import auditFixture from "./__fixtures__/run-audit.json";
+import graphDiffFixture from "./__fixtures__/graph-diff.json";
+import graphDiffRollbackFixture from "./__fixtures__/graph-diff-rollback.json";
+import runtimeDecisionsFixture from "./__fixtures__/runtime-decisions.json";
+// The three fixtures below are generated by tests/test_v03_m6_run_inspectors.py from a
+// real gateway execution, two really-activated graph revisions, and the production
+// runtime router, and are byte-compared there.
+
+const badgeAudit = auditFixture as Pick<
+  components["schemas"]["RunAudit"],
+  "schema_version" | "capability_results"
+>;
+const auditedResults = badgeAudit.capability_results ?? [];
+const boundResult = auditedResults.find((item) => item.connector_id)!;
+const unboundResult = auditedResults.find((item) => !item.connector_id)!;
+const pluginResult = auditedResults.find(
+  (item) => item.connector_id?.startsWith("conndef_plugin_"),
+)!;
+const pluginId = pluginResult.connector_id!.slice("conndef_plugin_".length);
+
+const auditedGraph: GraphProjection = {
+  ...graph,
+  nodes: auditedResults.map((item, index) => ({
+    ...schemaVersion,
+    node_id: item.request.node_id,
+    kind: "TASK",
+    label: `Audited ${index + 1}`,
+    status: "SUCCEEDED",
+    provider: "FAKE",
+    artifact_count: 0,
+    risk: "LOW",
+  })),
+  edges: [],
+};
+
+function mockRunEndpoints(audit: unknown) {
+  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/audit")) return response(audit);
+    if (url.endsWith("/graph")) return response(auditedGraph);
+    if (url.endsWith("/loop")) return response(loop);
+    if (url.endsWith("/verifications")) return response(verifications);
+    if (url.includes("/api/v1/approvals")) return response([]);
+    return response({});
+  });
+}
+
+test("badges every graph node with the connector, connection, and binding the audit recorded", async () => {
+  mockRunEndpoints(badgeAudit);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}><RunExecution run={run} /></QueryClientProvider>,
+  );
+
+  const summary = await screen.findByRole("list", { name: "Projection node states" });
+  const boundRow = within(summary)
+    .getAllByRole("listitem")
+    .find((item) => item.textContent?.includes(boundResult.request.capability_id))!;
+  expect(within(boundRow).getByText(`connector ${boundResult.connector_id}`)).toBeInTheDocument();
+  expect(within(boundRow).getByText(`connection ${boundResult.connection_id}`)).toBeInTheDocument();
+  expect(within(boundRow).getByText(`binding ${boundResult.binding_id}`)).toBeInTheDocument();
+  expect(within(boundRow).queryByText(/^plugin /)).toBeNull();
+
+  const unboundRow = within(summary)
+    .getAllByRole("listitem")
+    .find((item) => item.textContent?.includes(unboundResult.request.capability_id))!;
+  expect(unboundRow).not.toBe(boundRow);
+  expect(within(unboundRow).queryByText(/^connector /)).toBeNull();
+  expect(within(unboundRow).queryByText(/^connection /)).toBeNull();
+  expect(within(unboundRow).queryByText(/^binding /)).toBeNull();
+});
+
+test("names the plugin that served a call, and only for the plugin-served node", async () => {
+  mockRunEndpoints(badgeAudit);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}><RunExecution run={run} /></QueryClientProvider>,
+  );
+
+  const summary = await screen.findByRole("list", { name: "Projection node states" });
+  const pluginRow = within(summary)
+    .getAllByRole("listitem")
+    .find((item) => item.textContent?.includes(pluginResult.request.capability_id))!;
+  expect(within(pluginRow).getByText(`plugin ${pluginId}`)).toBeInTheDocument();
+  expect(within(pluginRow).getByText(`connector ${pluginResult.connector_id}`)).toBeInTheDocument();
+  expect(within(pluginRow).getByText(`binding ${pluginResult.binding_id}`)).toBeInTheDocument();
+  // A plugin capability is bound through a credential-free local connector, so there
+  // is no connection to name and the badge must not invent one.
+  expect(within(pluginRow).queryByText(/^connection /)).toBeNull();
+
+  const oauthRow = within(summary)
+    .getAllByRole("listitem")
+    .find((item) => item.textContent?.includes(boundResult.request.capability_id))!;
+  expect(oauthRow).not.toBe(pluginRow);
+  expect(within(oauthRow).queryByText(new RegExp(`^plugin `))).toBeNull();
+});
+
+test("renders the badges on the React Flow node itself, not only in the summary list", async () => {
+  mockRunEndpoints(badgeAudit);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const { container } = render(
+    <QueryClientProvider client={client}><RunExecution run={run} /></QueryClientProvider>,
+  );
+
+  await screen.findByRole("list", { name: "Projection node states" });
+  const flow = container.querySelector(".projection-flow") as HTMLElement;
+  const onNode = [...flow.querySelectorAll(".projection-node-content .node-badge")];
+  expect(onNode.map((badge) => badge.getAttribute("data-capability-id")).sort()).toEqual(
+    auditedResults.map((item) => item.request.capability_id).sort(),
+  );
+  const pluginBadge = onNode.find(
+    (badge) => badge.getAttribute("data-capability-id") === pluginResult.request.capability_id,
+  )!;
+  expect(pluginBadge.textContent).toContain(`plugin ${pluginId}`);
+});
+
+test("a badge is not a control: it offers no interactive role and clicking it asks the API for nothing", async () => {
+  mockRunEndpoints(badgeAudit);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const { container } = render(
+    <QueryClientProvider client={client}><RunExecution run={run} /></QueryClientProvider>,
+  );
+
+  await screen.findAllByText(`connector ${boundResult.connector_id}`);
+  const badges = [...container.querySelectorAll(".node-badge")];
+  // Every badge is rendered twice: once on the flow node, once in the summary mirror.
+  expect(badges.length).toBe(auditedResults.length * 2);
+  for (const badge of badges) {
+    for (const role of ["button", "textbox", "link", "checkbox", "combobox"] as const) {
+      expect(within(badge as HTMLElement).queryAllByRole(role)).toEqual([]);
+    }
+    expect(badge.querySelector("button, a, input, select, textarea")).toBeNull();
+    expect(badge.getAttribute("tabindex")).toBeNull();
+  }
+
+  const before = vi.mocked(fetch).mock.calls.length;
+  for (const badge of badges) fireEvent.click(badge);
+  expect(vi.mocked(fetch).mock.calls.length).toBe(before);
+});
+
+test("a newer audit replaces the badge identities instead of showing a cached copy", async () => {
+  mockRunEndpoints(badgeAudit);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}><RunExecution run={run} /></QueryClientProvider>,
+  );
+  await screen.findAllByText(`connection ${boundResult.connection_id}`);
+
+  const reconnected = {
+    ...badgeAudit,
+    capability_results: auditedResults.map((item) =>
+      item.connector_id ? { ...item, connection_id: "conn_reauthorized" } : item,
+    ),
+  };
+  mockRunEndpoints(reconnected);
+  await client.invalidateQueries({ queryKey: ["run-audit-badges", run.run_id] });
+
+  expect((await screen.findAllByText("connection conn_reauthorized")).length).toBeGreaterThan(0);
+  expect(screen.queryAllByText(`connection ${boundResult.connection_id}`)).toEqual([]);
+});
+
+test("a run whose audit carries no capability results renders no badges", async () => {
+  mockRunEndpoints({ schema_version: "1.0" });
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const { container } = render(
+    <QueryClientProvider client={client}><RunExecution run={run} /></QueryClientProvider>,
+  );
+
+  await screen.findByRole("list", { name: "Projection node states" });
+  expect(container.querySelectorAll(".node-badge")).toHaveLength(0);
+  expect(screen.queryAllByText(`connector ${boundResult.connector_id}`)).toEqual([]);
+});
+
+const revisionList = [
+  { revision_id: "grv_1", revision: 1, reason: "INITIAL", normalized_graph_hash: "a".repeat(64), protected_state_refs: [] },
+  { revision_id: "grv_2", revision: 2, reason: "HUMAN_REQUEST", normalized_graph_hash: "b".repeat(64), protected_state_refs: ["run_m6_01:start"] },
+];
+
+function mockDynamicEndpoints(diff: unknown, decisions: unknown) {
+  vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.endsWith("/workflow/proposals")) return response([]);
+    if (url.endsWith("/graph/revisions")) return response(revisionList);
+    if (url.includes("/graph/diff")) return response(diff);
+    if (url.endsWith("/runtime-decisions")) return response(decisions);
+    if (url.endsWith("/replans")) return response([]);
+    if (url.endsWith("/graph")) return response(graph);
+    if (url.endsWith("/loop")) return response(loop);
+    if (url.endsWith("/verifications")) return response(verifications);
+    if (url.includes("/api/v1/approvals")) return response([]);
+    return response({});
+  });
+}
+
+const diffSectionsUnderTest = [
+  ["added_nodes", "Added nodes"],
+  ["removed_nodes", "Removed nodes"],
+  ["changed_nodes", "Changed nodes"],
+  ["added_edges", "Added edges"],
+  ["removed_edges", "Removed edges"],
+  ["changed_edges", "Changed edges"],
+] as const;
+
+function assertDiffIdentitiesRendered(diff: components["schemas"]["GraphRevisionDiff"], panel: HTMLElement) {
+  for (const [key, label] of diffSectionsUnderTest) {
+    const section = panel.querySelector(`[data-diff-section="${key}"]`) as HTMLElement;
+    expect(section, `${label} is missing from the diff panel`).not.toBeNull();
+    expect(within(section).getByText(label)).toBeInTheDocument();
+    const identities = (diff[key] ?? []) as string[];
+    if (identities.length) {
+      for (const identity of identities) {
+        expect(within(section).getByText(identity)).toBeInTheDocument();
+      }
+    } else {
+      expect(within(section).getByText("none")).toBeInTheDocument();
+    }
+  }
+}
+
+test("the graph diff names every added, removed, and changed node and edge", async () => {
+  const forward = graphDiffFixture as components["schemas"]["GraphRevisionDiff"];
+  mockDynamicEndpoints(forward, []);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}><RunExecution run={{ ...run, state: "PAUSED" }} /></QueryClientProvider>,
+  );
+
+  const panel = await screen.findByRole("group", { name: "Graph revision diff identities" });
+  assertDiffIdentitiesRendered(forward, panel);
+  // Non-vacuous: the added node and the removed edge are named, not counted.
+  expect(within(panel).getByText("review")).toBeInTheDocument();
+  expect(within(panel).getByText("act-verify")).toBeInTheDocument();
+});
+
+test("the rollback diff renders its own identities, not the previous diff's", async () => {
+  const backward = graphDiffRollbackFixture as components["schemas"]["GraphRevisionDiff"];
+  mockDynamicEndpoints(backward, []);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}><RunExecution run={{ ...run, state: "PAUSED" }} /></QueryClientProvider>,
+  );
+
+  const panel = await screen.findByRole("group", { name: "Graph revision diff identities" });
+  assertDiffIdentitiesRendered(backward, panel);
+  const removed = panel.querySelector('[data-diff-section="removed_nodes"]') as HTMLElement;
+  expect(within(removed).getByText("review")).toBeInTheDocument();
+  const added = panel.querySelector('[data-diff-section="added_nodes"]') as HTMLElement;
+  expect(within(added).getByText("none")).toBeInTheDocument();
+});
+
+test("the router inspector lists the fallback order and every observed feature", async () => {
+  const decisions = runtimeDecisionsFixture as components["schemas"]["RuntimeDecision"][];
+  const decision = decisions[0];
+  expect(decision.fallback_order?.length).toBeGreaterThan(1);
+  mockDynamicEndpoints(null, decisions);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}><RunExecution run={{ ...run, state: "PAUSED" }} /></QueryClientProvider>,
+  );
+
+  const fallback = await screen.findByRole("list", { name: "Fallback order" });
+  expect(within(fallback).getAllByRole("listitem").map((item) => item.textContent)).toEqual(
+    (decision.fallback_order ?? []).map((provider, index) => `${index + 1}${provider}`),
+  );
+  const features = document.querySelector(`[aria-labelledby="features-${decision.decision_id}"]`) as HTMLElement;
+  expect(features).not.toBeNull();
+  for (const [key, value] of Object.entries(decision.observed_features ?? {})) {
+    expect(within(features).getByText(key)).toBeInTheDocument();
+    expect(within(features).getByText(String(value))).toBeInTheDocument();
+  }
+});
+
+test("the router inspector renders only the fields the decision declares, never a credential", async () => {
+  const sentinel = "gho_router_panel_sentinel_value";
+  const decisions = runtimeDecisionsFixture as components["schemas"]["RuntimeDecision"][];
+  // Hostile payload: a credential smuggled onto the decision as an undeclared field,
+  // and onto a candidate. The panel projects named fields, so neither may be rendered.
+  const hostile = decisions.map((decision) => ({
+    ...decision,
+    access_token: sentinel,
+    candidates: decision.candidates.map((candidate) => ({ ...candidate, secret: sentinel })),
+  }));
+  mockDynamicEndpoints(null, hostile);
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  render(
+    <QueryClientProvider client={client}><RunExecution run={{ ...run, state: "PAUSED" }} /></QueryClientProvider>,
+  );
+
+  await screen.findByRole("list", { name: "Fallback order" });
+  const inspector = screen.getByRole("region", { name: "Dynamic workflow" });
+  expect(inspector.textContent).not.toContain(sentinel);
+  expect(inspector.textContent).not.toMatch(/gho_|ghr_|Bearer\s/);
+  expect(document.body.textContent).not.toContain(sentinel);
 });

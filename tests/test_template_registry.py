@@ -122,6 +122,7 @@ def test_fixed_graph_template_is_the_risk_template() -> None:
     assert {edge.source for edge in denied} == {"approve-plan", "approve-outcome"}
 
 
+@pytest.mark.acceptance("V01-P3-006")
 def test_hybrid_template_nests_bounded_loop_subflows() -> None:
     children = {
         node.key: node.parent_key

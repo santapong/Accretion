@@ -194,6 +194,7 @@ def test_accepted_proposal_materializes_repeatably_into_executor_grammar(
         ({"risk": RiskLevel.HIGH}, "approval-gated-change@1.0.0"),
     ],
 )
+@pytest.mark.acceptance("V02-P5-001")
 def test_fragment_planner_selects_reviewed_structure(
     tmp_path: Path, kwargs: dict[str, object], fragment: str
 ) -> None:
@@ -205,6 +206,7 @@ def test_fragment_planner_selects_reviewed_structure(
     assert len(proposal.nodes) <= 32
 
 
+@pytest.mark.acceptance("V02-P5-007")
 def test_valid_fragment_is_repeatable_and_accepted(tmp_path: Path) -> None:
     task, profile = task_and_profile(tmp_path)
     planner = FragmentWorkflowPlanner()
@@ -228,6 +230,7 @@ def test_valid_fragment_is_repeatable_and_accepted(tmp_path: Path) -> None:
     assert first.normalized_graph_hash == validator.normalized_hash(proposal)
 
 
+@pytest.mark.acceptance("V02-P5-002")
 def test_validator_rejects_capability_and_privilege_expansion(tmp_path: Path) -> None:
     task, profile = task_and_profile(tmp_path)
     proposal = FragmentWorkflowPlanner().propose(task, profile)
@@ -288,6 +291,7 @@ def test_validator_rejects_unbounded_cycle_and_verifier_bypass(tmp_path: Path) -
     assert "VERIFIER_BYPASS" in codes
 
 
+@pytest.mark.acceptance("V02-P5-004")
 def test_high_risk_graph_cannot_bypass_approval(tmp_path: Path) -> None:
     task, profile = task_and_profile(tmp_path, risk=RiskLevel.HIGH)
     proposal = FragmentWorkflowPlanner().propose(task, profile)
@@ -318,6 +322,7 @@ def test_high_risk_graph_cannot_bypass_approval(tmp_path: Path) -> None:
     assert "APPROVAL_BYPASS" in {finding.code for finding in result.errors}
 
 
+@pytest.mark.acceptance("V02-P5-004")
 def test_protected_node_requires_gate_before_execution(tmp_path: Path) -> None:
     task, profile = task_and_profile(tmp_path, risk=RiskLevel.HIGH)
     proposal = FragmentWorkflowPlanner().propose(task, profile)
@@ -381,6 +386,7 @@ def test_provider_specific_node_must_match_fixed_p5_runtime(tmp_path: Path) -> N
     assert "RUNTIME_INCOMPATIBLE" in {finding.code for finding in result.errors}
 
 
+@pytest.mark.acceptance("V02-P5-006")
 def test_contract_mismatch_is_repairable_once(tmp_path: Path) -> None:
     task, profile = task_and_profile(tmp_path)
     proposal = FragmentWorkflowPlanner().propose(task, profile)
@@ -434,6 +440,7 @@ def runtime_health(
     )
 
 
+@pytest.mark.acceptance("V02-P5-010")
 def test_runtime_router_is_interpretable_version_keyed_and_fail_closed() -> None:
     health = [
         runtime_health(

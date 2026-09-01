@@ -1,16 +1,9 @@
 from __future__ import annotations
 
-import hashlib
-from pathlib import Path
-
 from httpx import ASGITransport, AsyncClient
 
 from accretion.api.main import app
 from accretion.experience_benchmark import ExperienceBenchmarkRunner
-
-
-def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def test_frozen_experience_gate_reports_uplift_and_negative_transfer() -> None:
@@ -42,14 +35,31 @@ def test_frozen_experience_gate_reports_uplift_and_negative_transfer() -> None:
     assert sum(
         len(item.negative_transfer_treatments) for item in first.tasks
     ) == 2
-    assert first.corpus_sha256 == digest(runner.tasks_path)
-    assert first.source_sha256 == digest(runner.sources_path)
-    assert first.trace_sha256 == digest(runner.traces_path)
-    assert first.config_sha256 == digest(runner.config_path)
+    # Literal digests, not `sha256(runner.tasks_path)`: a self-hashing assertion
+    # re-derives the expected value from the same bytes the runner read, so it holds
+    # even when the frozen corpus is edited. Pinning the constants means any change
+    # to the replayed inputs fails here and has to be re-argued.
+    assert first.corpus_sha256 == (
+        "4913e7d6d7fc5c676a009ecee328f9e13d225d02b67fdc846ada5caefa3917ff"
+    )
+    assert first.source_sha256 == (
+        "968898ea94cb9d1633680ab9a80c4ca92e3b975d5c629069458d851467b713b3"
+    )
+    assert first.trace_sha256 == (
+        "38f1c0b5a1832b8472c63d87ad20a825fd83bca05d3a306d4c087372889ed7a9"
+    )
+    assert first.config_sha256 == (
+        "42c21144b551edaaaed08d6976807e771da82b055c0455678b9b78c02531be9c"
+    )
 
 
 async def test_experience_benchmark_api_is_replay_only() -> None:
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    # Enter the app lifespan here rather than relying on another test having
+    # initialised the module-level `app` singleton: the session middleware reads
+    # `app.state.manager`, which only `lifespan()` sets.
+    async with app.router.lifespan_context(app), AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         summary = await client.get("/api/v2/benchmarks/experience")
         replay = await client.post(
             "/api/v2/benchmarks/experience/run", json={"execution_source": "REPLAY"}

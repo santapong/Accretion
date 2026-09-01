@@ -10,11 +10,17 @@ import {
 } from "react-router-dom";
 import { api, type AcrArchFilters } from "./api";
 import { RunExecution } from "./RunExecution";
+import { ConnectionsPage } from "./pages/ConnectionsPage";
+import { PluginsPage } from "./pages/PluginsPage";
+import { McpServersPage } from "./pages/McpServersPage";
+import { CapabilityInspectorPage } from "./pages/CapabilityInspectorPage";
+import { IdentityPage } from "./pages/IdentityPage";
 import type {
   AgentEvent,
   ExperienceDetail,
   ExperienceMatch,
   Project,
+  Provider,
   Run,
   SearchMode,
   SearchRecord,
@@ -267,7 +273,7 @@ function PlanningReview({ planning, onUpdate }: {
   async function run() {
     setFeedback("Creating run…");
     try {
-      const created = await api.startRun(planning.task_id, { provider: provider as "FAKE" | "CODEX" | "CLAUDE" });
+      const created = await api.startRun(planning.task_id, { provider: provider as Provider });
       setFeedback(`Run ${shortId(created.run_id)} created.`);
     } catch (error) {
       setFeedback(error instanceof Error ? error.message : "Run creation failed.");
@@ -447,7 +453,7 @@ function PlanningReview({ planning, onUpdate }: {
             <button className="secondary-button" type="submit" disabled={!selectedTemplate}>Request override</button>
           </form>
           <div className="run-control">
-            <label>Runtime<select value={provider} onChange={(event) => setProvider(event.target.value)}><option>FAKE</option><option>CODEX</option><option>CLAUDE</option></select></label>
+            <label>Runtime<select value={provider} onChange={(event) => setProvider(event.target.value)}><option>FAKE</option><option>CODEX</option><option>CLAUDE</option><option>OPENCODE</option></select></label>
             <button className="primary-button" type="button" onClick={run}>Create run</button>
             <button className="secondary-button" type="button" onClick={proposeDynamic}>Propose P5 graph</button>
             {dynamicValidation?.validation.status === "ACCEPT" ? (
@@ -529,7 +535,7 @@ export function EventStream({ run }: { run: Run | undefined }) {
     if (!runId || !auditQuery.data) return;
     let recovering = false;
     let expected = auditQuery.data.run.last_sequence + 1;
-    const source = new EventSource(api.eventUrl(runId, auditQuery.data.run.last_sequence));
+    const source = new EventSource(api.eventUrl(runId, auditQuery.data.run.last_sequence), { withCredentials: true });
     source.addEventListener("open", () => setConnectionState({ runId, value: "live" }));
     source.addEventListener("agent_event", (message) => {
       const event = JSON.parse((message as MessageEvent).data) as AgentEvent;
@@ -581,7 +587,13 @@ export function EventStream({ run }: { run: Run | undefined }) {
         </div>
         <span className={`connection connection-${connection}`}><i />{connection}</span>
       </header>
-      <div className="event-list" aria-live="polite">
+      <div
+        className="event-list"
+        aria-live="polite"
+        role="log"
+        tabIndex={0}
+        aria-label="Normalized event trace"
+      >
         {auditQuery.isLoading ? <div className="empty">Loading authoritative snapshot…</div> : null}
         {!auditQuery.isLoading && events.length === 0 ? <div className="empty">Waiting for events…</div> : null}
         {events.map((event) => (
@@ -668,7 +680,7 @@ function NewTaskPage() {
   return (
     <>
       <section className="task-studio page-panel">
-        <header className="section-heading"><div><p className="eyebrow">Create and review</p><h2>New task</h2></div><span>deterministic-profiler-v1</span></header>
+        <header className="section-heading"><div><p className="eyebrow">Create and review</p><h1>New task</h1></div><span>deterministic-profiler-v1</span></header>
         <ProjectCreator onCreated={(project) => { queryClient.setQueryData<Project[]>(["projects"], (current = []) => [...current, project]); }} />
         <NewTaskForm projects={projectQuery.data ?? []} onPlanning={setPlanning} />
       </section>
@@ -683,7 +695,7 @@ function LiveRunPage() {
   const selected = (runQuery.data ?? []).find((run) => run.run_id === runId);
   return (
     <div className="inspector-stack page-stack">
-      <header className="section-heading"><div><p className="eyebrow">Live run</p><h2>{runId ? shortId(runId) : "Run not selected"}</h2></div>{selected ? <StatePill state={selected.state} /> : null}</header>
+      <header className="section-heading"><div><p className="eyebrow">Live run</p><h1>{runId ? shortId(runId) : "Run not selected"}</h1></div>{selected ? <StatePill state={selected.state} /> : null}</header>
       <RunExecution run={selected} />
       <EventStream run={selected} />
     </div>
@@ -710,11 +722,11 @@ function RuntimeMonitorPage() {
   const runtimes = useQuery({ queryKey: ["runtimes"], queryFn: api.runtimes, refetchInterval: 5000 });
   return (
     <section className="page-panel">
-      <header className="section-heading"><div><p className="eyebrow">Provider health</p><h2>Runtime monitor</h2></div></header>
+      <header className="section-heading"><div><p className="eyebrow">Provider health</p><h1>Runtime monitor</h1></div></header>
       <div className="registry-grid">
         {(runtimes.data ?? []).map((runtime) => (
           <article className="registry-card" key={runtime.runtime_id}>
-            <header><h3>{runtime.provider}</h3><StatePill state={runtime.status} /></header>
+            <header><h2>{runtime.provider}</h2><StatePill state={runtime.status} /></header>
             <p>{runtime.runtime_version} · {runtime.auth_mode} · {runtime.observed_usage_pressure}</p>
             <RuntimeSessions runtimeId={runtime.runtime_id} />
           </article>
@@ -735,12 +747,12 @@ function HistoryPage() {
   });
   return (
     <section className="page-panel">
-      <header className="section-heading"><div><p className="eyebrow">Immutable evidence</p><h2>Run history / trace replay</h2></div></header>
+      <header className="section-heading"><div><p className="eyebrow">Immutable evidence</p><h1>Run history / trace replay</h1></div></header>
       <div className="history-grid">
         <div className="run-list">{(runs.data ?? []).map((run) => <button className={selected === run.run_id ? "run selected" : "run"} key={run.run_id} onClick={() => setSelectedId(run.run_id)}><span><strong>{shortId(run.run_id)}</strong><small>{run.provider} · {run.last_sequence} events</small></span><StatePill state={run.state} /></button>)}</div>
         {audit.data ? (
           <article className="audit-chain">
-            <h3>Complete provenance</h3>
+            <h2>Complete provenance</h2>
             <ol>
               <li>Task <strong>{shortId(audit.data.task.envelope.task_id)}</strong></li>
               <li>Profile <strong>{shortId(audit.data.profile.profile_id)}</strong></li>
@@ -769,7 +781,7 @@ function ApprovalsPage() {
   }
   return (
     <section className="page-panel">
-      <header className="section-heading"><div><p className="eyebrow">Human authority</p><h2>Verifiers / approvals</h2></div></header>
+      <header className="section-heading"><div><p className="eyebrow">Human authority</p><h1>Verifiers / approvals</h1></div></header>
       <div className="registry-list">{(approvals.data ?? []).map((approval) => <article className="approval-request" key={approval.approval_id}><div><strong>{approval.summary || approval.method}</strong><small>{shortId(approval.run_id)} · {approval.status}</small></div>{approval.status === "PENDING" ? <div className="approval-actions"><button className="primary-button" onClick={() => decide(approval.approval_id, "APPROVE")}>Approve</button><button className="secondary-button" onClick={() => decide(approval.approval_id, "DENY")}>Deny</button></div> : <StatePill state={approval.status} />}</article>)}</div>
       {!approvals.data?.length ? <div className="empty">No approval records.</div> : null}
     </section>
@@ -782,11 +794,12 @@ function CapabilitiesPage() {
   const plugins = useQuery({ queryKey: ["plugins"], queryFn: api.plugins });
   return (
     <section className="page-panel">
-      <header className="section-heading"><div><p className="eyebrow">Read-only registry</p><h2>Capabilities, skills, and plugins</h2></div></header>
+      <header className="section-heading"><div><p className="eyebrow">Read-only registry</p><h1>Capabilities, skills, and plugins</h1></div></header>
+      <p className="page-status">A capability listed here may still be unusable. <Link to="/admin/capabilities/inspect">Inspect a capability</Link> to see the binding and connection a run would really use.</p>
       <div className="registry-grid">
-        <article className="registry-card"><h3>Capabilities</h3><ul className="registry-list">{(capabilities.data ?? []).map((item) => <li key={`${item.capability_id}:${item.version}`}><strong>{item.capability_id}@{item.version}</strong><span>{item.kind} · {item.risk} · {item.backend}</span></li>)}</ul></article>
-        <article className="registry-card"><h3>Skills</h3><ul className="registry-list">{(skills.data ?? []).map((item) => <li key={`${item.skill_id}:${item.version}`}><strong>{item.skill_id}@{item.version}</strong><span>{(item.required_capabilities ?? []).join(", ")}</span></li>)}</ul></article>
-        <article className="registry-card"><h3>Plugins</h3><ul className="registry-list">{(plugins.data ?? []).map((item) => <li key={`${item.plugin_id}:${item.version}`}><strong>{item.plugin_id}@{item.version}</strong><span>{(item.skill_refs ?? []).join(", ")}</span></li>)}</ul></article>
+        <article className="registry-card"><h2>Capabilities</h2><ul className="registry-list">{(capabilities.data ?? []).map((item) => <li key={`${item.capability_id}:${item.version}`}><strong>{item.capability_id}@{item.version}</strong><span>{item.kind} · {item.risk} · {item.backend}</span></li>)}</ul></article>
+        <article className="registry-card"><h2>Skills</h2><ul className="registry-list">{(skills.data ?? []).map((item) => <li key={`${item.skill_id}:${item.version}`}><strong>{item.skill_id}@{item.version}</strong><span>{(item.required_capabilities ?? []).join(", ")}</span></li>)}</ul></article>
+        <article className="registry-card"><h2>Plugins</h2><ul className="registry-list">{(plugins.data ?? []).map((item) => <li key={`${item.plugin_id}:${item.version}`}><strong>{item.plugin_id}@{item.version}</strong><span>{(item.skill_refs ?? []).join(", ")}</span></li>)}</ul></article>
       </div>
     </section>
   );
@@ -825,7 +838,7 @@ function BenchmarkPage() {
 
   return (
     <section className="page-panel">
-      <header className="section-heading"><div><p className="eyebrow">Architecture evaluation</p><h2>ACR-ARCH</h2></div><button className="primary-button" onClick={replay}>Reproduce replay</button></header>
+      <header className="section-heading"><div><p className="eyebrow">Architecture evaluation</p><h1>ACR-ARCH</h1></div><button className="primary-button" onClick={replay}>Reproduce replay</button></header>
       <div className="benchmark-summary">
         <div><strong>{summary.data?.task_count ?? 0}</strong><span>tasks</span></div>
         <div><strong>{summary.data?.scenario_count ?? 0}</strong><span>mode scenarios</span></div>
@@ -877,7 +890,7 @@ function SearchBenchmarkPage() {
 
   return (
     <section className="page-panel search-benchmark-page">
-      <header className="section-heading"><div><p className="eyebrow">P6 research evidence</p><h2>Quality vs compute</h2></div><button className="primary-button" onClick={replay}>Reproduce N=1/2/4</button></header>
+      <header className="section-heading"><div><p className="eyebrow">P6 research evidence</p><h1>Quality vs compute</h1></div><button className="primary-button" onClick={replay}>Reproduce N=1/2/4</button></header>
       <div className="benchmark-summary">
         <div><strong>{summary.data?.task_count ?? 0}</strong><span>held-out tasks</span></div>
         <div><strong>{curve.at(-1)?.acceptance_rate == null ? "—" : `${Math.round(curve.at(-1)!.acceptance_rate * 100)}%`}</strong><span>N=4 accepted</span></div>
@@ -896,7 +909,7 @@ function SearchBenchmarkPage() {
           </svg>
         </figure>
         <div className="provider-comparison">
-          <h3>Cross-provider replay</h3>
+          <h2>Cross-provider replay</h2>
           {(summary.data?.provider_comparison ?? []).map((provider) => <article key={provider.provider}><div><strong>{provider.provider}</strong><span className="provider-rate">{Math.round(provider.acceptance_rate * 100)}% accepted</span></div><span>{provider.mean_best_quality.toFixed(3)}</span><small>mean best eligible quality · {provider.accepted_tasks}/{provider.task_count} tasks accepted</small></article>)}
           <p>Frozen fixture hashes</p>
           <code>{summary.data?.corpus_sha256 ?? "loading corpus…"}</code>
@@ -936,7 +949,7 @@ function DynamicBenchmarkPage() {
   const gate = summary.data?.gate;
   return (
     <section className="page-panel experience-benchmark-page">
-      <header className="section-heading"><div><p className="eyebrow">P5 preregistered evidence</p><h2>Dynamic workflow gate</h2></div><button className="primary-button" onClick={replay}>Reproduce static vs dynamic</button></header>
+      <header className="section-heading"><div><p className="eyebrow">P5 preregistered evidence</p><h1>Dynamic workflow gate</h1></div><button className="primary-button" onClick={replay}>Reproduce static vs dynamic</button></header>
       <div className="benchmark-summary">
         <div><strong>{summary.data?.task_count ?? 0}</strong><span>held-out tasks</span></div>
         <div><strong>{summary.data?.trace_count ?? 0}</strong><span>paired traces</span></div>
@@ -957,8 +970,8 @@ function DynamicBenchmarkPage() {
         </table>
       </div>
       <div className="experience-benchmark-evidence">
-        <div><h3>Cohort comparison</h3><ul>{(summary.data?.cohorts ?? []).map((cohort) => <li key={cohort.cohort}><strong>{cohort.cohort}</strong> · static {cohort.static_mean_utility.toFixed(3)} · dynamic {cohort.dynamic_mean_utility.toFixed(3)} · uplift {cohort.utility_uplift >= 0 ? "+" : ""}{cohort.utility_uplift.toFixed(3)}</li>)}</ul></div>
-        <div><h3>Frozen fixture hashes</h3><code>{summary.data?.corpus_sha256 ?? "loading corpus…"}</code><code>{summary.data?.trace_sha256 ?? "loading traces…"}</code><code>{summary.data?.config_sha256 ?? "loading config…"}</code></div>
+        <div><h2>Cohort comparison</h2><ul>{(summary.data?.cohorts ?? []).map((cohort) => <li key={cohort.cohort}><strong>{cohort.cohort}</strong> · static {cohort.static_mean_utility.toFixed(3)} · dynamic {cohort.dynamic_mean_utility.toFixed(3)} · uplift {cohort.utility_uplift >= 0 ? "+" : ""}{cohort.utility_uplift.toFixed(3)}</li>)}</ul></div>
+        <div><h2>Frozen fixture hashes</h2><code>{summary.data?.corpus_sha256 ?? "loading corpus…"}</code><code>{summary.data?.trace_sha256 ?? "loading traces…"}</code><code>{summary.data?.config_sha256 ?? "loading config…"}</code></div>
       </div>
     </section>
   );
@@ -986,7 +999,7 @@ function ExperienceBenchmarkPage() {
   const gate = summary.data?.gate;
   return (
     <section className="page-panel experience-benchmark-page">
-      <header className="section-heading"><div><p className="eyebrow">P7 preregistered evidence</p><h2>Experience transfer gate</h2></div><button className="primary-button" onClick={replay}>Reproduce P7 gate</button></header>
+      <header className="section-heading"><div><p className="eyebrow">P7 preregistered evidence</p><h1>Experience transfer gate</h1></div><button className="primary-button" onClick={replay}>Reproduce P7 gate</button></header>
       <div className="benchmark-summary">
         <div><strong>{summary.data?.task_count ?? 0}</strong><span>held-out tasks</span></div>
         <div><strong>{summary.data?.source_count ?? 0}</strong><span>frozen sources</span></div>
@@ -1007,8 +1020,8 @@ function ExperienceBenchmarkPage() {
         </table>
       </div>
       <div className="experience-benchmark-evidence">
-        <div><h3>Reported negative results</h3><ul>{(summary.data?.tasks ?? []).filter((task) => task.negative_transfer_treatments.length).map((task) => <li key={task.task_id}><strong>{task.task_id}</strong> · {task.title} · {task.negative_transfer_treatments.join(", ")}</li>)}</ul></div>
-        <div><h3>Frozen fixture hashes</h3><code>{summary.data?.corpus_sha256 ?? "loading corpus…"}</code><code>{summary.data?.source_sha256 ?? "loading sources…"}</code><code>{summary.data?.trace_sha256 ?? "loading traces…"}</code><code>{summary.data?.config_sha256 ?? "loading config…"}</code></div>
+        <div><h2>Reported negative results</h2><ul>{(summary.data?.tasks ?? []).filter((task) => task.negative_transfer_treatments.length).map((task) => <li key={task.task_id}><strong>{task.task_id}</strong> · {task.title} · {task.negative_transfer_treatments.join(", ")}</li>)}</ul></div>
+        <div><h2>Frozen fixture hashes</h2><code>{summary.data?.corpus_sha256 ?? "loading corpus…"}</code><code>{summary.data?.source_sha256 ?? "loading sources…"}</code><code>{summary.data?.trace_sha256 ?? "loading traces…"}</code><code>{summary.data?.config_sha256 ?? "loading config…"}</code></div>
       </div>
     </section>
   );
@@ -1017,18 +1030,26 @@ function ExperienceBenchmarkPage() {
 const navigation = [
   ["/", "Dashboard"], ["/tasks/new", "New task"], ["/runtimes", "Runtimes"],
   ["/history", "History"], ["/approvals", "Approvals"], ["/capabilities", "Capabilities"],
+  ["/admin/connections", "Connections"], ["/admin/plugins", "Plugins"],
+  ["/admin/mcp", "MCP servers"], ["/admin/capabilities/inspect", "Capability inspector"],
+  ["/admin/identity", "Identity"],
   ["/benchmarks/acr-arch", "ACR-ARCH"], ["/benchmarks/dynamic", "P5 Dynamic"],
   ["/benchmarks/search", "P6 Search"],
   ["/benchmarks/experience", "P7 Experience"],
 ] as const;
 
 function OperatorShell() {
+  const meQuery = useQuery({ queryKey: ["me"], queryFn: api.me, retry: false });
+  const me = meQuery.data;
+  const identity = me?.principal
+    ? `${me.principal.display_name ?? me.principal.subject}${me.memberships?.[0] ? " · " + me.memberships[0].role : ""}`
+    : "Control plane";
   return (
     <main>
       <nav>
         <Link className="brand-link" to="/"><span className="brand-mark">A</span><span><strong>Accretion</strong><small>Operator / v0.2</small></span></Link>
         <div className="nav-links">{navigation.map(([path, label]) => <NavLink end={path === "/"} key={path} to={path}>{label}</NavLink>)}</div>
-        <div className="nav-status"><i />Control plane</div>
+        <div className="nav-status"><i />{identity}</div>
       </nav>
       <div className="shell">
         <Routes>
@@ -1039,11 +1060,16 @@ function OperatorShell() {
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/approvals" element={<ApprovalsPage />} />
           <Route path="/capabilities" element={<CapabilitiesPage />} />
+          <Route path="/admin/connections" element={<ConnectionsPage />} />
+          <Route path="/admin/plugins" element={<PluginsPage />} />
+          <Route path="/admin/mcp" element={<McpServersPage />} />
+          <Route path="/admin/capabilities/inspect" element={<CapabilityInspectorPage />} />
+          <Route path="/admin/identity" element={<IdentityPage />} />
           <Route path="/benchmarks/acr-arch" element={<BenchmarkPage />} />
           <Route path="/benchmarks/dynamic" element={<DynamicBenchmarkPage />} />
           <Route path="/benchmarks/search" element={<SearchBenchmarkPage />} />
           <Route path="/benchmarks/experience" element={<ExperienceBenchmarkPage />} />
-          <Route path="*" element={<section className="page-panel"><h2>Page not found</h2><Link to="/">Return to dashboard</Link></section>} />
+          <Route path="*" element={<section className="page-panel"><h1>Page not found</h1><Link to="/">Return to dashboard</Link></section>} />
         </Routes>
       </div>
     </main>

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections import Counter
+from collections.abc import Callable
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
@@ -11,6 +12,7 @@ from typing import Any, Literal
 from pydantic import Field
 
 from accretion.contracts import StrictModel, TaskType
+from accretion.experience.models import MatchDisposition
 
 EVAL_ROOT = Path(__file__).resolve().parents[2] / "evals" / "experience"
 FROZEN_AT = datetime(2026, 8, 24, tzinfo=UTC)
@@ -78,6 +80,7 @@ class ExperienceBenchmarkGate(StrictModel):
     benefit_passed: bool
     success_rate_not_regressed: bool
     stale_rejection_rate: float = Field(ge=0, le=1)
+    stale_rejection_source: Literal["DECLARED", "ASSESSED"] = "DECLARED"
     negative_transfer_rate: float = Field(ge=0, le=1)
     replay_quality_uplift: float
     replay_tool_call_reduction: float
@@ -120,6 +123,10 @@ def _stable_id(value: str) -> str:
     return f"ebr_{hashlib.sha256(value.encode()).hexdigest()[:26]}"
 
 
+StaleAssessor = Callable[[str], MatchDisposition]
+"""Decides one STALE_INCOMPATIBLE source by its `source_id`."""
+
+
 class ExperienceBenchmarkRunner:
     """Reproduce the preregistered P7 gate from frozen held-out evidence."""
 
@@ -131,7 +138,24 @@ class ExperienceBenchmarkRunner:
         self.traces_path = root / "replay-traces.v1.json"
         self.config = _read_json(self.config_path)
 
-    def run(self) -> ExperienceBenchmarkSummary:
+    def run(
+        self, *, stale_assessor: StaleAssessor | None = None
+    ) -> ExperienceBenchmarkSummary:
+        """Reproduce the P7 gate.
+
+        `stale_assessor`, when supplied, decides each STALE_INCOMPATIBLE source
+        by running it through the real compatibility assessment instead of
+        reading the outcome the fixture declares, and the gate reports
+        `stale_rejection_source="ASSESSED"`. The declared outcome is then a pin
+        rather than the measurement: a disagreement raises instead of quietly
+        publishing a different number.
+
+        With no assessor the gate reports `stale_rejection_source="DECLARED"`,
+        which is what the API routes serve. That path counts a field in
+        `sources.v1.json` and is therefore a replay of a recorded judgement, not
+        a measurement of this system - stated plainly here so the summary cannot
+        be mistaken for one.
+        """
         task_items = _read_json(self.tasks_path).get("tasks", [])
         source_items = _read_json(self.sources_path).get("sources", [])
         trace_items = _read_json(self.traces_path).get("traces", [])
@@ -240,9 +264,26 @@ class ExperienceBenchmarkRunner:
         stale = [
             item for item in source_items if item["class"] == "STALE_INCOMPATIBLE"
         ]
-        stale_rejection_rate = sum(
-            item["retrieval_outcome"] == "REJECTED" for item in stale
-        ) / len(stale)
+        declared_rejections = sum(item["retrieval_outcome"] == "REJECTED" for item in stale)
+        if stale_assessor is None:
+            stale_rejection_source: Literal["DECLARED", "ASSESSED"] = "DECLARED"
+            stale_rejections = declared_rejections
+        else:
+            stale_rejection_source = "ASSESSED"
+            stale_rejections = 0
+            for item in stale:
+                source_id = str(item["source_id"])
+                disposition = stale_assessor(source_id)
+                if disposition is MatchDisposition.REJECTED:
+                    stale_rejections += 1
+                declared = str(item["retrieval_outcome"])
+                if disposition.value != declared:
+                    raise ValueError(
+                        f"source {source_id} is declared {declared} but assesses as "
+                        f"{disposition.value}; the published corpus and the "
+                        f"compatibility assessment disagree"
+                    )
+        stale_rejection_rate = stale_rejections / len(stale)
         negative_transfer_rate = len(negative_keys) / (
             required_tasks * (len(treatments) - 1)
         )
@@ -276,6 +317,7 @@ class ExperienceBenchmarkRunner:
             benefit_passed=benefit_passed,
             success_rate_not_regressed=success_safe,
             stale_rejection_rate=round(stale_rejection_rate, precision),
+            stale_rejection_source=stale_rejection_source,
             negative_transfer_rate=round(negative_transfer_rate, precision),
             replay_quality_uplift=replay.quality_uplift,
             replay_tool_call_reduction=replay.tool_call_reduction,

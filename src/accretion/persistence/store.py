@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Sequence
 from datetime import UTC, datetime
-from typing import Protocol
+from typing import Any, Protocol
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -17,22 +17,40 @@ from accretion.contracts import (
     ApprovalStatus,
     ArchitectureMetric,
     ArtifactRef,
+    AssertionStatus,
+    AuthSession,
+    AuthTransaction,
     BenchmarkRun,
     BenchmarkTask,
     Capability,
+    CapabilityBinding,
     CapabilityExecutionResult,
     CapabilityPolicy,
     Checkpoint,
+    Connection,
+    ConnectionStatus,
+    ConnectorDefinition,
     ContextBundle,
+    EnterpriseAuthGrant,
     ErrorSummary,
+    EvidenceRecord,
     ExecutionMode,
+    IdentityAssertion,
     LoopExecution,
     LoopExecutionStatus,
     LoopIteration,
     LoopState,
     LoopStopReason,
+    McpDiscoverySnapshot,
+    McpServerDefinition,
+    McpServerEvent,
     MetaPlugin,
     MetaSkill,
+    OAuthTransaction,
+    PluginAuditEvent,
+    PluginInstallation,
+    PluginVersionRecord,
+    Principal,
     Project,
     PromptContract,
     Provider,
@@ -49,9 +67,12 @@ from accretion.contracts import (
     TaskPlanning,
     TaskProfile,
     TemplateStatus,
+    TokenHandle,
     VerificationResult,
     WorkflowTemplate,
+    WorkspaceEntity,
     WorkspaceLease,
+    WorkspaceMembership,
 )
 from accretion.experience.models import (
     Experience,
@@ -81,14 +102,20 @@ from accretion.persistence.models import (
     AgentEventRow,
     ApprovalRow,
     ArchitectureMetricRow,
+    AuthSessionRow,
+    AuthTransactionRow,
     BenchmarkRunRow,
     BenchmarkTaskRow,
     CandidateScoreRow,
+    CapabilityBindingRow,
     CapabilityPolicyRow,
     CapabilityRequestRow,
     CapabilityRow,
     CheckpointRow,
+    ConnectionRow,
+    ConnectorDefinitionRow,
     ContextBundleRow,
+    EnterpriseAuthGrantRow,
     ExperienceEmbeddingRow,
     ExperienceMatchRow,
     ExperienceModerationActionRow,
@@ -96,13 +123,23 @@ from accretion.persistence.models import (
     ExperienceRow,
     ExperienceSelectionRow,
     GraphValidationResultRow,
+    IdentityAssertionRow,
     LoopExecutionRow,
     LoopIterationRow,
+    McpDiscoverySnapshotRow,
+    McpServerEventRow,
+    McpServerRow,
+    OAuthTransactionRow,
+    PluginAuditEventRow,
+    PluginInstallationRow,
     PluginRow,
+    PluginVersionRow,
+    PrincipalRow,
     ProjectFeatureSettingsRow,
     ProjectRow,
     PromptContractRow,
     ReplanRequestRow,
+    ResearchEvidenceRow,
     RunGraphEdgeRow,
     RunGraphNodeRow,
     RunGraphRevisionRow,
@@ -113,18 +150,23 @@ from accretion.persistence.models import (
     SearchCandidateRow,
     SearchPlanRow,
     SearchPromotionRow,
+    SecretRecordRow,
     SkillRow,
     StrategyDecisionRow,
     StrategyOverrideRow,
     TaskProfileRow,
     TaskRow,
+    TokenHandleRow,
     TrajectoryReplaySeedRow,
     TrajectorySegmentRow,
     VerificationRow,
     WorkflowProposalRow,
     WorkflowTemplateRow,
     WorkspaceLeaseRow,
+    WorkspaceMembershipRow,
+    WorkspaceRow,
 )
+from accretion.secrets_store import SecretRecord
 
 _TERMINAL_LOOP_EXECUTION_STATUSES = {
     LoopExecutionStatus.SUCCEEDED,
@@ -141,6 +183,28 @@ _APPROVAL_DECISION_STATUS = {
     ApprovalDecisionValue.DENY: ApprovalStatus.DENIED,
     ApprovalDecisionValue.CANCEL: ApprovalStatus.CANCELLED,
 }
+
+
+def _result_provenance(result: CapabilityExecutionResult) -> dict[str, Any] | None:
+    """Serialize the M5 connector provenance, or ``None`` when the call had none.
+
+    Written to a nullable column so that results stored before v0.3 M5 read back
+    with the contract's own defaults rather than an invented empty connector.
+    """
+
+    if (
+        result.connector_id is None
+        and result.binding_id is None
+        and result.connection_id is None
+        and not result.source_ids
+    ):
+        return None
+    return {
+        "connector_id": result.connector_id,
+        "binding_id": result.binding_id,
+        "connection_id": result.connection_id,
+        "source_ids": list(result.source_ids),
+    }
 
 
 def _ordered_context_history(contexts: Sequence[ContextBundle]) -> list[ContextBundle]:
@@ -305,6 +369,113 @@ class StateStore(Protocol):
     async def list_skills(self) -> list[MetaSkill]: ...
     async def upsert_plugin(self, plugin: MetaPlugin) -> MetaPlugin: ...
     async def list_plugins(self, allowlisted_only: bool = True) -> list[MetaPlugin]: ...
+    async def upsert_principal(self, principal: Principal) -> Principal: ...
+    async def get_principal(self, principal_id: str) -> Principal | None: ...
+    async def get_principal_by_identity(
+        self, issuer: str, subject: str
+    ) -> Principal | None: ...
+    async def list_principals(self) -> list[Principal]: ...
+    async def upsert_workspace(self, workspace: WorkspaceEntity) -> WorkspaceEntity: ...
+    async def list_workspaces_for_principal(
+        self, principal_id: str
+    ) -> list[WorkspaceEntity]: ...
+    async def upsert_workspace_membership(
+        self, membership: WorkspaceMembership
+    ) -> WorkspaceMembership: ...
+    async def list_workspace_memberships(
+        self,
+        workspace_id: str | None = None,
+        principal_id: str | None = None,
+    ) -> list[WorkspaceMembership]: ...
+    async def create_auth_session(self, session: AuthSession) -> AuthSession: ...
+    async def get_auth_session(self, auth_session_id: str) -> AuthSession | None: ...
+    async def revoke_auth_session(self, auth_session_id: str) -> None: ...
+    async def create_auth_transaction(
+        self, transaction: AuthTransaction
+    ) -> AuthTransaction: ...
+    async def consume_auth_transaction(self, state: str) -> AuthTransaction | None: ...
+    async def create_oauth_transaction(
+        self, transaction: OAuthTransaction
+    ) -> OAuthTransaction: ...
+    async def consume_oauth_transaction(self, state: str) -> OAuthTransaction | None: ...
+    async def upsert_token_handle(self, handle: TokenHandle) -> TokenHandle: ...
+    async def get_token_handle(self, token_handle_id: str) -> TokenHandle | None: ...
+    async def upsert_secret_record(self, record: SecretRecord) -> SecretRecord: ...
+    async def get_secret_record(self, secret_store_key: str) -> SecretRecord | None: ...
+    async def delete_secret_record(self, secret_store_key: str) -> None: ...
+    async def upsert_identity_assertion(
+        self, assertion: IdentityAssertion
+    ) -> IdentityAssertion: ...
+    async def get_identity_assertion_for_session(
+        self, auth_session_id: str
+    ) -> IdentityAssertion | None: ...
+    async def get_identity_assertion_for_principal(
+        self, principal_id: str
+    ) -> IdentityAssertion | None: ...
+    async def append_enterprise_auth_grant(
+        self, grant: EnterpriseAuthGrant
+    ) -> EnterpriseAuthGrant: ...
+    async def list_enterprise_auth_grants(
+        self,
+        principal_id: str | None = None,
+        connector_id: str | None = None,
+    ) -> list[EnterpriseAuthGrant]: ...
+    async def upsert_connector_definition(
+        self, connector: ConnectorDefinition
+    ) -> ConnectorDefinition: ...
+    async def get_connector_definition(self, connector_id: str) -> ConnectorDefinition | None: ...
+    async def list_connector_definitions(self) -> list[ConnectorDefinition]: ...
+    async def upsert_connection(self, connection: Connection) -> Connection: ...
+    async def get_connection(self, connection_id: str) -> Connection | None: ...
+    async def list_connections(
+        self,
+        connector_id: str | None = None,
+        status: ConnectionStatus | None = None,
+    ) -> list[Connection]: ...
+    async def upsert_capability_binding(self, binding: CapabilityBinding) -> CapabilityBinding: ...
+    async def list_capability_bindings(
+        self,
+        capability_id: str | None = None,
+        connector_id: str | None = None,
+        enabled_only: bool = True,
+    ) -> list[CapabilityBinding]: ...
+    async def upsert_mcp_server(self, server: McpServerDefinition) -> McpServerDefinition: ...
+    async def get_mcp_server(self, mcp_server_id: str) -> McpServerDefinition | None: ...
+    async def list_mcp_servers(
+        self, workspace_id: str | None = None
+    ) -> list[McpServerDefinition]: ...
+    async def save_mcp_discovery_snapshot(
+        self, snapshot: McpDiscoverySnapshot
+    ) -> McpDiscoverySnapshot: ...
+    async def list_mcp_discovery_snapshots(
+        self,
+        mcp_server_id: str,
+        connection_id: str | None = None,
+    ) -> list[McpDiscoverySnapshot]: ...
+    async def append_mcp_server_event(self, event: McpServerEvent) -> McpServerEvent: ...
+    async def list_mcp_server_events(self, mcp_server_id: str) -> list[McpServerEvent]: ...
+    async def upsert_plugin_version(self, record: PluginVersionRecord) -> PluginVersionRecord: ...
+    async def get_plugin_version(
+        self, plugin_id: str, version: str
+    ) -> PluginVersionRecord | None: ...
+    async def list_plugin_versions(
+        self, plugin_id: str | None = None
+    ) -> list[PluginVersionRecord]: ...
+    async def upsert_plugin_installation(
+        self, installation: PluginInstallation
+    ) -> PluginInstallation: ...
+    async def get_plugin_installation(
+        self, workspace_id: str, plugin_id: str
+    ) -> PluginInstallation | None: ...
+    async def list_plugin_installations(
+        self, workspace_id: str | None = None
+    ) -> list[PluginInstallation]: ...
+    async def append_plugin_audit_event(self, event: PluginAuditEvent) -> PluginAuditEvent: ...
+    async def list_plugin_audit_events(
+        self,
+        plugin_id: str | None = None,
+        installation_id: str | None = None,
+    ) -> list[PluginAuditEvent]: ...
     async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy: ...
     async def get_capability_policy(
         self, policy_id: str, version: str | None = None
@@ -313,6 +484,13 @@ class StateStore(Protocol):
         self, result: CapabilityExecutionResult
     ) -> CapabilityExecutionResult: ...
     async def list_capability_results(self, run_id: str) -> list[CapabilityExecutionResult]: ...
+    async def save_research_evidence(self, record: EvidenceRecord) -> EvidenceRecord: ...
+    async def list_research_evidence(
+        self, run_id: str, capability_id: str | None = None
+    ) -> list[EvidenceRecord]: ...
+    async def get_research_evidence_by_digest(
+        self, run_id: str, content_digest: str
+    ) -> EvidenceRecord | None: ...
     async def upsert_benchmark_task(self, task: BenchmarkTask) -> BenchmarkTask: ...
     async def get_benchmark_task(self, task_id: str) -> BenchmarkTask | None: ...
     async def list_benchmark_tasks(self) -> list[BenchmarkTask]: ...
@@ -438,7 +616,27 @@ class MemoryStore:
         self.skills: dict[tuple[str, str], MetaSkill] = {}
         self.plugins: dict[tuple[str, str], MetaPlugin] = {}
         self.capability_policies: dict[tuple[str, str], CapabilityPolicy] = {}
+        self.principals: dict[str, Principal] = {}
+        self.workspaces: dict[str, WorkspaceEntity] = {}
+        self.workspace_memberships: dict[tuple[str, str], WorkspaceMembership] = {}
+        self.auth_sessions: dict[str, AuthSession] = {}
+        self.auth_transactions: dict[str, AuthTransaction] = {}
+        self.oauth_transactions: dict[str, OAuthTransaction] = {}
+        self.token_handles: dict[str, TokenHandle] = {}
+        self.identity_assertions: dict[str, IdentityAssertion] = {}
+        self.enterprise_auth_grants: list[EnterpriseAuthGrant] = []
+        self.secret_records: dict[str, SecretRecord] = {}
+        self.connector_definitions: dict[str, ConnectorDefinition] = {}
+        self.connections: dict[str, Connection] = {}
+        self.capability_bindings: dict[str, CapabilityBinding] = {}
+        self.mcp_servers: dict[str, McpServerDefinition] = {}
+        self.mcp_discovery_snapshots: dict[str, list[McpDiscoverySnapshot]] = {}
+        self.mcp_server_events: dict[str, list[McpServerEvent]] = {}
+        self.plugin_versions: dict[tuple[str, str], PluginVersionRecord] = {}
+        self.plugin_installations: dict[tuple[str, str], PluginInstallation] = {}
+        self.plugin_audit_events: list[PluginAuditEvent] = []
         self.capability_results: dict[str, CapabilityExecutionResult] = {}
+        self.research_evidence: dict[str, EvidenceRecord] = {}
         self.benchmark_tasks: dict[tuple[str, str], BenchmarkTask] = {}
         self.benchmark_runs: dict[str, BenchmarkRun] = {}
         self.architecture_metrics: dict[str, list[ArchitectureMetric]] = {}
@@ -1249,6 +1447,356 @@ class MemoryStore:
             key=lambda item: (item.plugin_id, item.version),
         )
 
+    async def upsert_principal(self, principal: Principal) -> Principal:
+        existing = await self.get_principal_by_identity(principal.issuer, principal.subject)
+        if existing is not None:
+            principal = principal.model_copy(
+                update={
+                    "principal_id": existing.principal_id,
+                    "created_at": existing.created_at,
+                }
+            )
+        self.principals[principal.principal_id] = principal
+        return principal
+
+    async def get_principal(self, principal_id: str) -> Principal | None:
+        return self.principals.get(principal_id)
+
+    async def get_principal_by_identity(self, issuer: str, subject: str) -> Principal | None:
+        for item in self.principals.values():
+            if item.issuer == issuer and item.subject == subject:
+                return item
+        return None
+
+    async def list_principals(self) -> list[Principal]:
+        return sorted(self.principals.values(), key=lambda item: item.principal_id)
+
+    async def upsert_workspace(self, workspace: WorkspaceEntity) -> WorkspaceEntity:
+        self.workspaces[workspace.workspace_id] = workspace
+        return workspace
+
+    async def list_workspaces_for_principal(self, principal_id: str) -> list[WorkspaceEntity]:
+        member_of = {
+            item.workspace_id
+            for item in self.workspace_memberships.values()
+            if item.principal_id == principal_id
+        }
+        return sorted(
+            (item for item in self.workspaces.values() if item.workspace_id in member_of),
+            key=lambda item: item.workspace_id,
+        )
+
+    async def upsert_workspace_membership(
+        self, membership: WorkspaceMembership
+    ) -> WorkspaceMembership:
+        key = (membership.workspace_id, membership.principal_id)
+        existing = self.workspace_memberships.get(key)
+        if existing is not None:
+            membership = membership.model_copy(
+                update={
+                    "membership_id": existing.membership_id,
+                    "created_at": existing.created_at,
+                    "revision": existing.revision
+                    + (1 if existing.role != membership.role else 0),
+                }
+            )
+        self.workspace_memberships[key] = membership
+        return membership
+
+    async def list_workspace_memberships(
+        self,
+        workspace_id: str | None = None,
+        principal_id: str | None = None,
+    ) -> list[WorkspaceMembership]:
+        return sorted(
+            (
+                item
+                for item in self.workspace_memberships.values()
+                if (workspace_id is None or item.workspace_id == workspace_id)
+                and (principal_id is None or item.principal_id == principal_id)
+            ),
+            key=lambda item: item.membership_id,
+        )
+
+    async def create_auth_session(self, session: AuthSession) -> AuthSession:
+        self.auth_sessions[session.auth_session_id] = session
+        return session
+
+    async def get_auth_session(self, auth_session_id: str) -> AuthSession | None:
+        session = self.auth_sessions.get(auth_session_id)
+        if session is None or session.revoked or session.expires_at <= datetime.now(UTC):
+            return None
+        return session
+
+    async def revoke_auth_session(self, auth_session_id: str) -> None:
+        session = self.auth_sessions.get(auth_session_id)
+        if session is not None:
+            self.auth_sessions[auth_session_id] = session.model_copy(
+                update={"revoked": True}
+            )
+
+    async def create_auth_transaction(self, transaction: AuthTransaction) -> AuthTransaction:
+        self.auth_transactions[transaction.state] = transaction
+        return transaction
+
+    async def consume_auth_transaction(self, state: str) -> AuthTransaction | None:
+        transaction = self.auth_transactions.pop(state, None)
+        if transaction is None or transaction.expires_at <= datetime.now(UTC):
+            return None
+        return transaction
+
+    async def create_oauth_transaction(
+        self, transaction: OAuthTransaction
+    ) -> OAuthTransaction:
+        self.oauth_transactions[transaction.state] = transaction
+        return transaction
+
+    async def consume_oauth_transaction(self, state: str) -> OAuthTransaction | None:
+        transaction = self.oauth_transactions.pop(state, None)
+        if transaction is None or transaction.expires_at <= datetime.now(UTC):
+            return None
+        return transaction
+
+    async def upsert_token_handle(self, handle: TokenHandle) -> TokenHandle:
+        self.token_handles[handle.token_handle_id] = handle
+        return handle
+
+    async def get_token_handle(self, token_handle_id: str) -> TokenHandle | None:
+        return self.token_handles.get(token_handle_id)
+
+    async def upsert_secret_record(self, record: SecretRecord) -> SecretRecord:
+        self.secret_records[record.secret_store_key] = record
+        return record
+
+    async def get_secret_record(self, secret_store_key: str) -> SecretRecord | None:
+        return self.secret_records.get(secret_store_key)
+
+    async def delete_secret_record(self, secret_store_key: str) -> None:
+        self.secret_records.pop(secret_store_key, None)
+
+    async def upsert_identity_assertion(self, assertion: IdentityAssertion) -> IdentityAssertion:
+        self.identity_assertions[assertion.assertion_id] = assertion
+        return assertion
+
+    async def get_identity_assertion_for_session(
+        self, auth_session_id: str
+    ) -> IdentityAssertion | None:
+        candidates = sorted(
+            (
+                assertion
+                for assertion in self.identity_assertions.values()
+                if assertion.auth_session_id == auth_session_id
+            ),
+            key=lambda assertion: (assertion.created_at, assertion.assertion_id),
+        )
+        return candidates[-1] if candidates else None
+
+    async def get_identity_assertion_for_principal(
+        self, principal_id: str
+    ) -> IdentityAssertion | None:
+        candidates = sorted(
+            (
+                assertion
+                for assertion in self.identity_assertions.values()
+                if assertion.principal_id == principal_id
+                and assertion.status is AssertionStatus.ACTIVE
+            ),
+            key=lambda assertion: (assertion.created_at, assertion.assertion_id),
+        )
+        return candidates[-1] if candidates else None
+
+    async def append_enterprise_auth_grant(
+        self, grant: EnterpriseAuthGrant
+    ) -> EnterpriseAuthGrant:
+        if any(
+            existing.grant_id == grant.grant_id for existing in self.enterprise_auth_grants
+        ):
+            raise ValueError(f"enterprise auth grant {grant.grant_id} already exists")
+        self.enterprise_auth_grants.append(grant)
+        return grant
+
+    async def list_enterprise_auth_grants(
+        self,
+        principal_id: str | None = None,
+        connector_id: str | None = None,
+    ) -> list[EnterpriseAuthGrant]:
+        return sorted(
+            (
+                grant
+                for grant in self.enterprise_auth_grants
+                if (principal_id is None or grant.principal_id == principal_id)
+                and (connector_id is None or grant.connector_id == connector_id)
+            ),
+            key=lambda grant: (grant.created_at, grant.grant_id),
+        )
+
+    async def upsert_connector_definition(
+        self, connector: ConnectorDefinition
+    ) -> ConnectorDefinition:
+        self.connector_definitions[connector.connector_id] = connector
+        return connector
+
+    async def get_connector_definition(self, connector_id: str) -> ConnectorDefinition | None:
+        return self.connector_definitions.get(connector_id)
+
+    async def list_connector_definitions(self) -> list[ConnectorDefinition]:
+        return sorted(self.connector_definitions.values(), key=lambda item: item.connector_id)
+
+    async def upsert_connection(self, connection: Connection) -> Connection:
+        self.connections[connection.connection_id] = connection
+        return connection
+
+    async def get_connection(self, connection_id: str) -> Connection | None:
+        return self.connections.get(connection_id)
+
+    async def list_connections(
+        self,
+        connector_id: str | None = None,
+        status: ConnectionStatus | None = None,
+    ) -> list[Connection]:
+        return sorted(
+            (
+                item
+                for item in self.connections.values()
+                if (connector_id is None or item.connector_id == connector_id)
+                and (status is None or item.status == status)
+            ),
+            key=lambda item: item.connection_id,
+        )
+
+    async def upsert_capability_binding(self, binding: CapabilityBinding) -> CapabilityBinding:
+        self.capability_bindings[binding.binding_id] = binding
+        return binding
+
+    async def list_capability_bindings(
+        self,
+        capability_id: str | None = None,
+        connector_id: str | None = None,
+        enabled_only: bool = True,
+    ) -> list[CapabilityBinding]:
+        return sorted(
+            (
+                item
+                for item in self.capability_bindings.values()
+                if (capability_id is None or item.capability_id == capability_id)
+                and (connector_id is None or item.connector_id == connector_id)
+                and (item.enabled or not enabled_only)
+            ),
+            key=lambda item: item.binding_id,
+        )
+
+    async def upsert_mcp_server(self, server: McpServerDefinition) -> McpServerDefinition:
+        self.mcp_servers[server.mcp_server_id] = server
+        return server
+
+    async def get_mcp_server(self, mcp_server_id: str) -> McpServerDefinition | None:
+        return self.mcp_servers.get(mcp_server_id)
+
+    async def list_mcp_servers(
+        self, workspace_id: str | None = None
+    ) -> list[McpServerDefinition]:
+        return sorted(
+            (
+                server
+                for server in self.mcp_servers.values()
+                if workspace_id is None or server.workspace_id == workspace_id
+            ),
+            key=lambda server: server.mcp_server_id,
+        )
+
+    async def save_mcp_discovery_snapshot(
+        self, snapshot: McpDiscoverySnapshot
+    ) -> McpDiscoverySnapshot:
+        self.mcp_discovery_snapshots.setdefault(snapshot.mcp_server_id, []).append(snapshot)
+        return snapshot
+
+    async def list_mcp_discovery_snapshots(
+        self,
+        mcp_server_id: str,
+        connection_id: str | None = None,
+    ) -> list[McpDiscoverySnapshot]:
+        snapshots = self.mcp_discovery_snapshots.get(mcp_server_id, [])
+        if connection_id is not None:
+            snapshots = [item for item in snapshots if item.connection_id == connection_id]
+        return sorted(snapshots, key=lambda item: item.created_at, reverse=True)
+
+    async def append_mcp_server_event(self, event: McpServerEvent) -> McpServerEvent:
+        self.mcp_server_events.setdefault(event.mcp_server_id, []).append(event)
+        return event
+
+    async def list_mcp_server_events(self, mcp_server_id: str) -> list[McpServerEvent]:
+        return sorted(
+            self.mcp_server_events.get(mcp_server_id, []),
+            key=lambda item: item.created_at,
+        )
+
+    async def upsert_plugin_version(self, record: PluginVersionRecord) -> PluginVersionRecord:
+        key = (record.plugin_id, record.version)
+        current = self.plugin_versions.get(key)
+        if current is not None and current != record:
+            raise ValueError(f"plugin version {record.plugin_id}@{record.version} is immutable")
+        self.plugin_versions[key] = record
+        return record
+
+    async def get_plugin_version(self, plugin_id: str, version: str) -> PluginVersionRecord | None:
+        return self.plugin_versions.get((plugin_id, version))
+
+    async def list_plugin_versions(
+        self, plugin_id: str | None = None
+    ) -> list[PluginVersionRecord]:
+        return sorted(
+            (
+                record
+                for record in self.plugin_versions.values()
+                if plugin_id is None or record.plugin_id == plugin_id
+            ),
+            key=lambda record: (record.plugin_id, record.version),
+        )
+
+    async def upsert_plugin_installation(
+        self, installation: PluginInstallation
+    ) -> PluginInstallation:
+        self.plugin_installations[(installation.workspace_id, installation.plugin_id)] = (
+            installation
+        )
+        return installation
+
+    async def get_plugin_installation(
+        self, workspace_id: str, plugin_id: str
+    ) -> PluginInstallation | None:
+        return self.plugin_installations.get((workspace_id, plugin_id))
+
+    async def list_plugin_installations(
+        self, workspace_id: str | None = None
+    ) -> list[PluginInstallation]:
+        return sorted(
+            (
+                installation
+                for installation in self.plugin_installations.values()
+                if workspace_id is None or installation.workspace_id == workspace_id
+            ),
+            key=lambda installation: installation.installation_id,
+        )
+
+    async def append_plugin_audit_event(self, event: PluginAuditEvent) -> PluginAuditEvent:
+        self.plugin_audit_events.append(event)
+        return event
+
+    async def list_plugin_audit_events(
+        self,
+        plugin_id: str | None = None,
+        installation_id: str | None = None,
+    ) -> list[PluginAuditEvent]:
+        return sorted(
+            (
+                event
+                for event in self.plugin_audit_events
+                if (plugin_id is None or event.plugin_id == plugin_id)
+                and (installation_id is None or event.installation_id == installation_id)
+            ),
+            key=lambda event: (event.created_at, event.plugin_event_id),
+        )
+
     async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy:
         key = (policy.policy_id, policy.version)
         current = self.capability_policies.get(key)
@@ -1277,6 +1825,38 @@ class MemoryStore:
         return sorted(
             (item for item in self.capability_results.values() if item.request.run_id == run_id),
             key=lambda item: item.request.created_at,
+        )
+
+    async def save_research_evidence(self, record: EvidenceRecord) -> EvidenceRecord:
+        self.research_evidence[record.evidence_id] = record
+        return record
+
+    async def list_research_evidence(
+        self, run_id: str, capability_id: str | None = None
+    ) -> list[EvidenceRecord]:
+        return sorted(
+            (
+                record
+                for record in self.research_evidence.values()
+                if record.run_id == run_id
+                and (
+                    capability_id is None
+                    or record.candidate.provenance.capability_id == capability_id
+                )
+            ),
+            key=lambda record: (record.created_at, record.evidence_id),
+        )
+
+    async def get_research_evidence_by_digest(
+        self, run_id: str, content_digest: str
+    ) -> EvidenceRecord | None:
+        return next(
+            (
+                record
+                for record in await self.list_research_evidence(run_id)
+                if record.content_digest == content_digest
+            ),
+            None,
         )
 
     async def upsert_benchmark_task(self, task: BenchmarkTask) -> BenchmarkTask:
@@ -2985,6 +3565,839 @@ class PostgresStore:
             rows = (await session.scalars(query)).all()
         return [MetaPlugin.model_validate(row.definition) for row in rows]
 
+    async def upsert_principal(self, principal: Principal) -> Principal:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(PrincipalRow).where(
+                    PrincipalRow.issuer == principal.issuer,
+                    PrincipalRow.subject == principal.subject,
+                )
+            )
+            if row is not None:
+                existing = Principal.model_validate(row.definition)
+                principal = principal.model_copy(
+                    update={
+                        "principal_id": existing.principal_id,
+                        "created_at": existing.created_at,
+                    }
+                )
+                row.status = principal.status.value
+                row.definition = principal.model_dump(mode="json")
+            else:
+                session.add(
+                    PrincipalRow(
+                        id=new_id("principal"),
+                        principal_id=principal.principal_id,
+                        issuer=principal.issuer,
+                        subject=principal.subject,
+                        status=principal.status.value,
+                        definition=principal.model_dump(mode="json"),
+                        created_at=principal.created_at,
+                    )
+                )
+        return principal
+
+    async def get_principal(self, principal_id: str) -> Principal | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(PrincipalRow).where(PrincipalRow.principal_id == principal_id)
+            )
+        return Principal.model_validate(row.definition) if row else None
+
+    async def get_principal_by_identity(self, issuer: str, subject: str) -> Principal | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(PrincipalRow).where(
+                    PrincipalRow.issuer == issuer, PrincipalRow.subject == subject
+                )
+            )
+        return Principal.model_validate(row.definition) if row else None
+
+    async def list_principals(self) -> list[Principal]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(select(PrincipalRow).order_by(PrincipalRow.principal_id))
+            ).all()
+        return [Principal.model_validate(row.definition) for row in rows]
+
+    async def upsert_workspace(self, workspace: WorkspaceEntity) -> WorkspaceEntity:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(WorkspaceRow).where(WorkspaceRow.workspace_id == workspace.workspace_id)
+            )
+            if row is not None:
+                row.definition = workspace.model_dump(mode="json")
+            else:
+                session.add(
+                    WorkspaceRow(
+                        id=new_id("workspace_entity"),
+                        workspace_id=workspace.workspace_id,
+                        definition=workspace.model_dump(mode="json"),
+                        created_at=workspace.created_at,
+                    )
+                )
+        return workspace
+
+    async def list_workspaces_for_principal(self, principal_id: str) -> list[WorkspaceEntity]:
+        async with self.sessions() as session:
+            member_rows = (
+                await session.scalars(
+                    select(WorkspaceMembershipRow).where(
+                        WorkspaceMembershipRow.principal_id == principal_id
+                    )
+                )
+            ).all()
+            workspace_ids = {row.workspace_id for row in member_rows}
+            if not workspace_ids:
+                return []
+            rows = (
+                await session.scalars(
+                    select(WorkspaceRow)
+                    .where(WorkspaceRow.workspace_id.in_(workspace_ids))
+                    .order_by(WorkspaceRow.workspace_id)
+                )
+            ).all()
+        return [WorkspaceEntity.model_validate(row.definition) for row in rows]
+
+    async def upsert_workspace_membership(
+        self, membership: WorkspaceMembership
+    ) -> WorkspaceMembership:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(WorkspaceMembershipRow).where(
+                    WorkspaceMembershipRow.workspace_id == membership.workspace_id,
+                    WorkspaceMembershipRow.principal_id == membership.principal_id,
+                )
+            )
+            if row is not None:
+                existing = WorkspaceMembership.model_validate(row.definition)
+                membership = membership.model_copy(
+                    update={
+                        "membership_id": existing.membership_id,
+                        "created_at": existing.created_at,
+                        "revision": existing.revision
+                        + (1 if existing.role != membership.role else 0),
+                    }
+                )
+                row.role = membership.role.value
+                row.definition = membership.model_dump(mode="json")
+            else:
+                session.add(
+                    WorkspaceMembershipRow(
+                        id=new_id("workspace_membership"),
+                        membership_id=membership.membership_id,
+                        workspace_id=membership.workspace_id,
+                        principal_id=membership.principal_id,
+                        role=membership.role.value,
+                        definition=membership.model_dump(mode="json"),
+                        created_at=membership.created_at,
+                    )
+                )
+        return membership
+
+    async def list_workspace_memberships(
+        self,
+        workspace_id: str | None = None,
+        principal_id: str | None = None,
+    ) -> list[WorkspaceMembership]:
+        query = select(WorkspaceMembershipRow).order_by(WorkspaceMembershipRow.membership_id)
+        if workspace_id is not None:
+            query = query.where(WorkspaceMembershipRow.workspace_id == workspace_id)
+        if principal_id is not None:
+            query = query.where(WorkspaceMembershipRow.principal_id == principal_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [WorkspaceMembership.model_validate(row.definition) for row in rows]
+
+    async def create_auth_session(self, auth_session: AuthSession) -> AuthSession:
+        async with self.sessions.begin() as session:
+            session.add(
+                AuthSessionRow(
+                    id=new_id("auth_session"),
+                    auth_session_id=auth_session.auth_session_id,
+                    principal_id=auth_session.principal_id,
+                    expires_at=auth_session.expires_at,
+                    revoked=auth_session.revoked,
+                    definition=auth_session.model_dump(mode="json"),
+                    created_at=auth_session.issued_at,
+                )
+            )
+        return auth_session
+
+    async def get_auth_session(self, auth_session_id: str) -> AuthSession | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(AuthSessionRow).where(
+                    AuthSessionRow.auth_session_id == auth_session_id,
+                    AuthSessionRow.revoked.is_(False),
+                    AuthSessionRow.expires_at > datetime.now(UTC),
+                )
+            )
+        return AuthSession.model_validate(row.definition) if row else None
+
+    async def revoke_auth_session(self, auth_session_id: str) -> None:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(AuthSessionRow).where(
+                    AuthSessionRow.auth_session_id == auth_session_id
+                )
+            )
+            if row is not None:
+                revoked = AuthSession.model_validate(row.definition).model_copy(
+                    update={"revoked": True}
+                )
+                row.revoked = True
+                row.definition = revoked.model_dump(mode="json")
+
+    async def create_auth_transaction(self, transaction: AuthTransaction) -> AuthTransaction:
+        async with self.sessions.begin() as session:
+            session.add(
+                AuthTransactionRow(
+                    id=new_id("auth_transaction"),
+                    state=transaction.state,
+                    expires_at=transaction.expires_at,
+                    definition=transaction.model_dump(mode="json"),
+                    created_at=transaction.created_at,
+                )
+            )
+        return transaction
+
+    async def consume_auth_transaction(self, state: str) -> AuthTransaction | None:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(AuthTransactionRow)
+                .where(AuthTransactionRow.state == state)
+                .with_for_update()
+            )
+            if row is None:
+                return None
+            transaction = AuthTransaction.model_validate(row.definition)
+            await session.delete(row)
+            if transaction.expires_at <= datetime.now(UTC):
+                return None
+        return transaction
+
+    async def create_oauth_transaction(
+        self, transaction: OAuthTransaction
+    ) -> OAuthTransaction:
+        async with self.sessions.begin() as session:
+            session.add(
+                OAuthTransactionRow(
+                    id=new_id("oauth_transaction"),
+                    state=transaction.state,
+                    connector_id=transaction.connector_id,
+                    principal_id=transaction.principal_id,
+                    expires_at=transaction.expires_at,
+                    definition=transaction.model_dump(mode="json"),
+                    created_at=transaction.created_at,
+                )
+            )
+        return transaction
+
+    async def consume_oauth_transaction(self, state: str) -> OAuthTransaction | None:
+        """Single-use redemption; the row is deleted whether or not it had expired.
+
+        The row lock plus delete is what makes a replayed state fail closed
+        (AC3-SEC-04), so it must stay inside one transaction.
+        """
+
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(OAuthTransactionRow)
+                .where(OAuthTransactionRow.state == state)
+                .with_for_update()
+            )
+            if row is None:
+                return None
+            transaction = OAuthTransaction.model_validate(row.definition)
+            await session.delete(row)
+            if transaction.expires_at <= datetime.now(UTC):
+                return None
+        return transaction
+
+    async def upsert_token_handle(self, handle: TokenHandle) -> TokenHandle:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(TokenHandleRow).where(
+                    TokenHandleRow.token_handle_id == handle.token_handle_id
+                )
+            )
+            definition = handle.model_dump(mode="json")
+            if row is not None:
+                row.status = handle.status.value
+                row.expires_at = handle.expires_at
+                row.principal_id = handle.principal_id
+                row.workspace_id = handle.workspace_id
+                row.definition = definition
+            else:
+                session.add(
+                    TokenHandleRow(
+                        id=new_id("token_handle"),
+                        token_handle_id=handle.token_handle_id,
+                        connector_id=handle.connector_id,
+                        workspace_id=handle.workspace_id,
+                        principal_id=handle.principal_id,
+                        status=handle.status.value,
+                        expires_at=handle.expires_at,
+                        definition=definition,
+                        created_at=handle.created_at,
+                    )
+                )
+        return handle
+
+    async def get_token_handle(self, token_handle_id: str) -> TokenHandle | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(TokenHandleRow).where(
+                    TokenHandleRow.token_handle_id == token_handle_id
+                )
+            )
+        return TokenHandle.model_validate(row.definition) if row else None
+
+    async def upsert_secret_record(self, record: SecretRecord) -> SecretRecord:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(SecretRecordRow).where(
+                    SecretRecordRow.secret_store_key == record.secret_store_key
+                )
+            )
+            if row is not None:
+                row.key_id = record.key_id
+                row.nonce = record.nonce
+                row.ciphertext = record.ciphertext
+            else:
+                session.add(
+                    SecretRecordRow(
+                        id=new_id("secret_record"),
+                        secret_store_key=record.secret_store_key,
+                        key_id=record.key_id,
+                        nonce=record.nonce,
+                        ciphertext=record.ciphertext,
+                        created_at=datetime.now(UTC),
+                    )
+                )
+        return record
+
+    async def get_secret_record(self, secret_store_key: str) -> SecretRecord | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(SecretRecordRow).where(
+                    SecretRecordRow.secret_store_key == secret_store_key
+                )
+            )
+        if row is None:
+            return None
+        return SecretRecord(
+            secret_store_key=row.secret_store_key,
+            key_id=row.key_id,
+            nonce=row.nonce,
+            ciphertext=row.ciphertext,
+        )
+
+    async def delete_secret_record(self, secret_store_key: str) -> None:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(SecretRecordRow).where(
+                    SecretRecordRow.secret_store_key == secret_store_key
+                )
+            )
+            if row is not None:
+                await session.delete(row)
+
+    async def upsert_identity_assertion(self, assertion: IdentityAssertion) -> IdentityAssertion:
+        definition = assertion.model_dump(mode="json")
+        now = datetime.now(UTC)
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(IdentityAssertionRow).where(
+                    IdentityAssertionRow.assertion_id == assertion.assertion_id
+                )
+            )
+            if row is None:
+                session.add(
+                    IdentityAssertionRow(
+                        id=new_id("identity_assertion"),
+                        assertion_id=assertion.assertion_id,
+                        auth_session_id=assertion.auth_session_id,
+                        principal_id=assertion.principal_id,
+                        status=assertion.status.value,
+                        expires_at=assertion.expires_at,
+                        definition=definition,
+                        created_at=assertion.created_at,
+                        updated_at=now,
+                    )
+                )
+            else:
+                row.auth_session_id = assertion.auth_session_id
+                row.principal_id = assertion.principal_id
+                row.status = assertion.status.value
+                row.expires_at = assertion.expires_at
+                row.definition = definition
+                row.updated_at = now
+        return assertion
+
+    async def get_identity_assertion_for_session(
+        self, auth_session_id: str
+    ) -> IdentityAssertion | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(IdentityAssertionRow)
+                .where(IdentityAssertionRow.auth_session_id == auth_session_id)
+                .order_by(
+                    IdentityAssertionRow.created_at.desc(),
+                    IdentityAssertionRow.assertion_id.desc(),
+                )
+                .limit(1)
+            )
+        return IdentityAssertion.model_validate(row.definition) if row else None
+
+    async def get_identity_assertion_for_principal(
+        self, principal_id: str
+    ) -> IdentityAssertion | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(IdentityAssertionRow)
+                .where(
+                    IdentityAssertionRow.principal_id == principal_id,
+                    IdentityAssertionRow.status == AssertionStatus.ACTIVE.value,
+                )
+                .order_by(
+                    IdentityAssertionRow.created_at.desc(),
+                    IdentityAssertionRow.assertion_id.desc(),
+                )
+                .limit(1)
+            )
+        return IdentityAssertion.model_validate(row.definition) if row else None
+
+    async def append_enterprise_auth_grant(
+        self, grant: EnterpriseAuthGrant
+    ) -> EnterpriseAuthGrant:
+        async with self.sessions.begin() as session:
+            existing = await session.scalar(
+                select(EnterpriseAuthGrantRow.id).where(
+                    EnterpriseAuthGrantRow.grant_id == grant.grant_id
+                )
+            )
+            if existing is not None:
+                raise ValueError(f"enterprise auth grant {grant.grant_id} already exists")
+            session.add(
+                EnterpriseAuthGrantRow(
+                    id=new_id("enterprise_auth_grant"),
+                    grant_id=grant.grant_id,
+                    principal_id=grant.principal_id,
+                    workspace_id=grant.workspace_id,
+                    connector_id=grant.connector_id,
+                    mcp_server_id=grant.mcp_server_id,
+                    connection_id=grant.connection_id,
+                    outcome=grant.outcome.value,
+                    definition=grant.model_dump(mode="json"),
+                    created_at=grant.created_at,
+                )
+            )
+        return grant
+
+    async def list_enterprise_auth_grants(
+        self,
+        principal_id: str | None = None,
+        connector_id: str | None = None,
+    ) -> list[EnterpriseAuthGrant]:
+        query = select(EnterpriseAuthGrantRow).order_by(
+            EnterpriseAuthGrantRow.created_at, EnterpriseAuthGrantRow.grant_id
+        )
+        if principal_id is not None:
+            query = query.where(EnterpriseAuthGrantRow.principal_id == principal_id)
+        if connector_id is not None:
+            query = query.where(EnterpriseAuthGrantRow.connector_id == connector_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [EnterpriseAuthGrant.model_validate(row.definition) for row in rows]
+
+    async def upsert_connector_definition(
+        self, connector: ConnectorDefinition
+    ) -> ConnectorDefinition:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(ConnectorDefinitionRow).where(
+                    ConnectorDefinitionRow.connector_id == connector.connector_id
+                )
+            )
+            definition = connector.model_dump(mode="json")
+            if row is not None:
+                row.auth_type = connector.auth_type.value
+                row.definition = definition
+            else:
+                session.add(
+                    ConnectorDefinitionRow(
+                        id=new_id("conndef"),
+                        connector_id=connector.connector_id,
+                        auth_type=connector.auth_type.value,
+                        definition=definition,
+                        created_at=connector.created_at,
+                    )
+                )
+        return connector
+
+    async def get_connector_definition(self, connector_id: str) -> ConnectorDefinition | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(ConnectorDefinitionRow).where(
+                    ConnectorDefinitionRow.connector_id == connector_id
+                )
+            )
+        return ConnectorDefinition.model_validate(row.definition) if row else None
+
+    async def list_connector_definitions(self) -> list[ConnectorDefinition]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(ConnectorDefinitionRow).order_by(ConnectorDefinitionRow.connector_id)
+                )
+            ).all()
+        return [ConnectorDefinition.model_validate(row.definition) for row in rows]
+
+    async def upsert_connection(self, connection: Connection) -> Connection:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(ConnectionRow).where(ConnectionRow.connection_id == connection.connection_id)
+            )
+            definition = connection.model_dump(mode="json")
+            if row is not None:
+                # Ownership can change on re-consent; the indexed columns must follow the
+                # model or any query filtering on them reads a stale owner.
+                row.workspace_id = connection.workspace_id
+                row.principal_id = connection.principal_id
+                row.status = connection.status.value
+                row.scope = connection.scope.value
+                row.definition = definition
+            else:
+                session.add(
+                    ConnectionRow(
+                        id=new_id("conn"),
+                        connection_id=connection.connection_id,
+                        connector_id=connection.connector_id,
+                        workspace_id=connection.workspace_id,
+                        principal_id=connection.principal_id,
+                        scope=connection.scope.value,
+                        status=connection.status.value,
+                        definition=definition,
+                        created_at=connection.created_at,
+                    )
+                )
+        return connection
+
+    async def get_connection(self, connection_id: str) -> Connection | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(ConnectionRow).where(ConnectionRow.connection_id == connection_id)
+            )
+        return Connection.model_validate(row.definition) if row else None
+
+    async def list_connections(
+        self,
+        connector_id: str | None = None,
+        status: ConnectionStatus | None = None,
+    ) -> list[Connection]:
+        query = select(ConnectionRow).order_by(ConnectionRow.connection_id)
+        if connector_id is not None:
+            query = query.where(ConnectionRow.connector_id == connector_id)
+        if status is not None:
+            query = query.where(ConnectionRow.status == status.value)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [Connection.model_validate(row.definition) for row in rows]
+
+    async def upsert_capability_binding(self, binding: CapabilityBinding) -> CapabilityBinding:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(CapabilityBindingRow).where(
+                    CapabilityBindingRow.binding_id == binding.binding_id
+                )
+            )
+            definition = binding.model_dump(mode="json")
+            if row is not None:
+                row.enabled = binding.enabled
+                row.definition = definition
+            else:
+                session.add(
+                    CapabilityBindingRow(
+                        id=new_id("capbind"),
+                        binding_id=binding.binding_id,
+                        capability_id=binding.capability_id,
+                        connector_id=binding.connector_id,
+                        enabled=binding.enabled,
+                        definition=definition,
+                        created_at=binding.created_at,
+                    )
+                )
+        return binding
+
+    async def list_capability_bindings(
+        self,
+        capability_id: str | None = None,
+        connector_id: str | None = None,
+        enabled_only: bool = True,
+    ) -> list[CapabilityBinding]:
+        query = select(CapabilityBindingRow).order_by(CapabilityBindingRow.binding_id)
+        if capability_id is not None:
+            query = query.where(CapabilityBindingRow.capability_id == capability_id)
+        if connector_id is not None:
+            query = query.where(CapabilityBindingRow.connector_id == connector_id)
+        if enabled_only:
+            query = query.where(CapabilityBindingRow.enabled.is_(True))
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [CapabilityBinding.model_validate(row.definition) for row in rows]
+
+    async def upsert_mcp_server(self, server: McpServerDefinition) -> McpServerDefinition:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(McpServerRow).where(McpServerRow.mcp_server_id == server.mcp_server_id)
+            )
+            definition = server.model_dump(mode="json")
+            if row is not None:
+                row.workspace_id = server.workspace_id
+                row.connector_id = server.connector_id
+                row.state = server.state.value
+                row.enabled = server.enabled
+                row.revision = server.revision
+                row.definition = definition
+                row.updated_at = server.updated_at
+            else:
+                session.add(
+                    McpServerRow(
+                        id=new_id("mcp_server"),
+                        mcp_server_id=server.mcp_server_id,
+                        workspace_id=server.workspace_id,
+                        connector_id=server.connector_id,
+                        state=server.state.value,
+                        enabled=server.enabled,
+                        revision=server.revision,
+                        definition=definition,
+                        created_at=server.created_at,
+                        updated_at=server.updated_at,
+                    )
+                )
+        return server
+
+    async def get_mcp_server(self, mcp_server_id: str) -> McpServerDefinition | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(McpServerRow).where(McpServerRow.mcp_server_id == mcp_server_id)
+            )
+        return McpServerDefinition.model_validate(row.definition) if row else None
+
+    async def list_mcp_servers(
+        self, workspace_id: str | None = None
+    ) -> list[McpServerDefinition]:
+        query = select(McpServerRow).order_by(McpServerRow.mcp_server_id)
+        if workspace_id is not None:
+            query = query.where(McpServerRow.workspace_id == workspace_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [McpServerDefinition.model_validate(row.definition) for row in rows]
+
+    async def save_mcp_discovery_snapshot(
+        self, snapshot: McpDiscoverySnapshot
+    ) -> McpDiscoverySnapshot:
+        async with self.sessions.begin() as session:
+            session.add(
+                McpDiscoverySnapshotRow(
+                    id=new_id("mcp_snapshot"),
+                    discovery_snapshot_id=snapshot.discovery_snapshot_id,
+                    mcp_server_id=snapshot.mcp_server_id,
+                    connection_id=snapshot.connection_id,
+                    valid=snapshot.valid,
+                    content_sha256=snapshot.content_sha256,
+                    definition=snapshot.model_dump(mode="json"),
+                    created_at=snapshot.created_at,
+                )
+            )
+        return snapshot
+
+    async def list_mcp_discovery_snapshots(
+        self,
+        mcp_server_id: str,
+        connection_id: str | None = None,
+    ) -> list[McpDiscoverySnapshot]:
+        query = (
+            select(McpDiscoverySnapshotRow)
+            .where(McpDiscoverySnapshotRow.mcp_server_id == mcp_server_id)
+            .order_by(McpDiscoverySnapshotRow.created_at.desc())
+        )
+        if connection_id is not None:
+            query = query.where(McpDiscoverySnapshotRow.connection_id == connection_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [McpDiscoverySnapshot.model_validate(row.definition) for row in rows]
+
+    async def append_mcp_server_event(self, event: McpServerEvent) -> McpServerEvent:
+        async with self.sessions.begin() as session:
+            session.add(
+                McpServerEventRow(
+                    id=new_id("mcp_event"),
+                    mcp_event_id=event.mcp_event_id,
+                    mcp_server_id=event.mcp_server_id,
+                    event_type=event.event_type,
+                    correlation_id=event.correlation_id,
+                    definition=event.model_dump(mode="json"),
+                    created_at=event.created_at,
+                )
+            )
+        return event
+
+    async def list_mcp_server_events(self, mcp_server_id: str) -> list[McpServerEvent]:
+        async with self.sessions() as session:
+            rows = (
+                await session.scalars(
+                    select(McpServerEventRow)
+                    .where(McpServerEventRow.mcp_server_id == mcp_server_id)
+                    .order_by(McpServerEventRow.created_at)
+                )
+            ).all()
+        return [McpServerEvent.model_validate(row.definition) for row in rows]
+
+    async def upsert_plugin_version(self, record: PluginVersionRecord) -> PluginVersionRecord:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(PluginVersionRow).where(
+                    PluginVersionRow.plugin_id == record.plugin_id,
+                    PluginVersionRow.version == record.version,
+                )
+            )
+            definition = record.model_dump(mode="json")
+            if row is not None:
+                if row.definition != definition:
+                    raise ValueError(
+                        f"plugin version {record.plugin_id}@{record.version} is immutable"
+                    )
+                return PluginVersionRecord.model_validate(row.definition)
+            session.add(
+                PluginVersionRow(
+                    id=new_id("plugin_version"),
+                    plugin_version_id=record.plugin_version_id,
+                    plugin_id=record.plugin_id,
+                    version=record.version,
+                    manifest_digest=record.manifest_digest,
+                    trust_level=record.trust_level.value,
+                    definition=definition,
+                    created_at=record.created_at,
+                )
+            )
+        return record
+
+    async def get_plugin_version(self, plugin_id: str, version: str) -> PluginVersionRecord | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(PluginVersionRow).where(
+                    PluginVersionRow.plugin_id == plugin_id,
+                    PluginVersionRow.version == version,
+                )
+            )
+        return PluginVersionRecord.model_validate(row.definition) if row else None
+
+    async def list_plugin_versions(
+        self, plugin_id: str | None = None
+    ) -> list[PluginVersionRecord]:
+        query = select(PluginVersionRow).order_by(
+            PluginVersionRow.plugin_id, PluginVersionRow.version
+        )
+        if plugin_id is not None:
+            query = query.where(PluginVersionRow.plugin_id == plugin_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [PluginVersionRecord.model_validate(row.definition) for row in rows]
+
+    async def upsert_plugin_installation(
+        self, installation: PluginInstallation
+    ) -> PluginInstallation:
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(PluginInstallationRow).where(
+                    PluginInstallationRow.workspace_id == installation.workspace_id,
+                    PluginInstallationRow.plugin_id == installation.plugin_id,
+                )
+            )
+            definition = installation.model_dump(mode="json")
+            if row is not None:
+                row.installation_id = installation.installation_id
+                row.version = installation.version
+                row.state = installation.state.value
+                row.trust_level = installation.trust_level.value
+                row.revision = installation.revision
+                row.definition = definition
+                row.updated_at = installation.updated_at
+            else:
+                session.add(
+                    PluginInstallationRow(
+                        id=new_id("plugin_installation"),
+                        installation_id=installation.installation_id,
+                        workspace_id=installation.workspace_id,
+                        plugin_id=installation.plugin_id,
+                        version=installation.version,
+                        state=installation.state.value,
+                        trust_level=installation.trust_level.value,
+                        revision=installation.revision,
+                        definition=definition,
+                        created_at=installation.created_at,
+                        updated_at=installation.updated_at,
+                    )
+                )
+        return installation
+
+    async def get_plugin_installation(
+        self, workspace_id: str, plugin_id: str
+    ) -> PluginInstallation | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(PluginInstallationRow).where(
+                    PluginInstallationRow.workspace_id == workspace_id,
+                    PluginInstallationRow.plugin_id == plugin_id,
+                )
+            )
+        return PluginInstallation.model_validate(row.definition) if row else None
+
+    async def list_plugin_installations(
+        self, workspace_id: str | None = None
+    ) -> list[PluginInstallation]:
+        query = select(PluginInstallationRow).order_by(PluginInstallationRow.installation_id)
+        if workspace_id is not None:
+            query = query.where(PluginInstallationRow.workspace_id == workspace_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [PluginInstallation.model_validate(row.definition) for row in rows]
+
+    async def append_plugin_audit_event(self, event: PluginAuditEvent) -> PluginAuditEvent:
+        async with self.sessions.begin() as session:
+            session.add(
+                PluginAuditEventRow(
+                    id=new_id("plugin_event"),
+                    plugin_event_id=event.plugin_event_id,
+                    plugin_id=event.plugin_id,
+                    installation_id=event.installation_id,
+                    event_type=event.event_type,
+                    correlation_id=event.correlation_id,
+                    definition=event.model_dump(mode="json"),
+                    created_at=event.created_at,
+                )
+            )
+        return event
+
+    async def list_plugin_audit_events(
+        self,
+        plugin_id: str | None = None,
+        installation_id: str | None = None,
+    ) -> list[PluginAuditEvent]:
+        query = select(PluginAuditEventRow).order_by(
+            PluginAuditEventRow.created_at, PluginAuditEventRow.plugin_event_id
+        )
+        if plugin_id is not None:
+            query = query.where(PluginAuditEventRow.plugin_id == plugin_id)
+        if installation_id is not None:
+            query = query.where(PluginAuditEventRow.installation_id == installation_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [PluginAuditEvent.model_validate(row.definition) for row in rows]
+
     async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy:
         async with self.sessions.begin() as session:
             row = await session.scalar(
@@ -3040,6 +4453,7 @@ class PostgresStore:
                     output=result.output,
                     error=result.error.model_dump(mode="json") if result.error else None,
                     side_effect_operation_id=result.side_effect_operation_id,
+                    provenance=_result_provenance(result),
                     created_at=result.request.created_at,
                     completed_at=result.completed_at,
                 )
@@ -3050,6 +4464,7 @@ class PostgresStore:
                 row.output = result.output
                 row.error = result.error.model_dump(mode="json") if result.error else None
                 row.side_effect_operation_id = result.side_effect_operation_id
+                row.provenance = _result_provenance(result)
                 row.completed_at = result.completed_at
         return result
 
@@ -3071,9 +4486,75 @@ class PostgresStore:
                 error=row.error,
                 side_effect_operation_id=row.side_effect_operation_id,
                 completed_at=row.completed_at,
+                connector_id=(row.provenance or {}).get("connector_id"),
+                binding_id=(row.provenance or {}).get("binding_id"),
+                connection_id=(row.provenance or {}).get("connection_id"),
+                source_ids=(row.provenance or {}).get("source_ids", []),
             )
             for row in rows
         ]
+
+    async def save_research_evidence(self, record: EvidenceRecord) -> EvidenceRecord:
+        provenance = record.candidate.provenance
+        definition = record.model_dump(mode="json")
+        async with self.sessions.begin() as session:
+            row = await session.scalar(
+                select(ResearchEvidenceRow).where(
+                    ResearchEvidenceRow.evidence_id == record.evidence_id
+                )
+            )
+            if row is None:
+                session.add(
+                    ResearchEvidenceRow(
+                        id=new_id("evidence"),
+                        evidence_id=record.evidence_id,
+                        run_id=record.run_id,
+                        capability_id=provenance.capability_id,
+                        connector_id=provenance.connector_id,
+                        source_id=provenance.source_id,
+                        content_digest=record.content_digest,
+                        trust=record.trust.value,
+                        trust_score=record.trust_score,
+                        definition=definition,
+                        created_at=record.created_at,
+                    )
+                )
+            else:
+                # Trust is re-labelled after verification, so the row is mutable in
+                # its trust columns; identity and digest are not rewritten.
+                row.trust = record.trust.value
+                row.trust_score = record.trust_score
+                row.definition = definition
+        return record
+
+    async def list_research_evidence(
+        self, run_id: str, capability_id: str | None = None
+    ) -> list[EvidenceRecord]:
+        query = (
+            select(ResearchEvidenceRow)
+            .where(ResearchEvidenceRow.run_id == run_id)
+            .order_by(ResearchEvidenceRow.created_at, ResearchEvidenceRow.evidence_id)
+        )
+        if capability_id is not None:
+            query = query.where(ResearchEvidenceRow.capability_id == capability_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [EvidenceRecord.model_validate(row.definition) for row in rows]
+
+    async def get_research_evidence_by_digest(
+        self, run_id: str, content_digest: str
+    ) -> EvidenceRecord | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(ResearchEvidenceRow)
+                .where(
+                    ResearchEvidenceRow.run_id == run_id,
+                    ResearchEvidenceRow.content_digest == content_digest,
+                )
+                .order_by(ResearchEvidenceRow.created_at, ResearchEvidenceRow.evidence_id)
+                .limit(1)
+            )
+        return EvidenceRecord.model_validate(row.definition) if row else None
 
     async def upsert_benchmark_task(self, task: BenchmarkTask) -> BenchmarkTask:
         async with self.sessions.begin() as session:

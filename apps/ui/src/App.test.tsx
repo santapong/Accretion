@@ -118,6 +118,14 @@ test("renders the v0.2 runtime dashboard and operator navigation", async () => {
   expect(screen.getByRole("link", { name: "Capabilities" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "ACR-ARCH" })).toBeInTheDocument();
   expect(screen.getByRole("link", { name: "P5 Dynamic" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Connections" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Plugins" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "MCP servers" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Capability inspector" })).toBeInTheDocument();
+  expect(screen.getByRole("link", { name: "Identity" })).toBeInTheDocument();
+  // Brand link plus one link per navigation entry; a route added without a way to
+  // reach it, or a nav entry added without a route, moves this count.
+  expect(within(screen.getByRole("navigation")).getAllByRole("link")).toHaveLength(16);
   expect(screen.getByText("No runs yet. Create and profile a task.")).toBeInTheDocument();
 });
 
@@ -131,6 +139,20 @@ test("navigates to the required operator screens", async () => {
   expect(await screen.findByRole("heading", { name: "Verifiers / approvals" })).toBeInTheDocument();
   fireEvent.click(screen.getByRole("link", { name: "History" }));
   expect(await screen.findByRole("heading", { name: "Run history / trace replay" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("link", { name: "Connections" }));
+  expect(await screen.findByRole("heading", { level: 1, name: "Connections" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("link", { name: "Plugins" }));
+  expect(await screen.findByRole("heading", { level: 1, name: "Plugins" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("link", { name: "MCP servers" }));
+  expect(await screen.findByRole("heading", { level: 1, name: "MCP servers" })).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("link", { name: "Capability inspector" }));
+  expect(
+    await screen.findByRole("heading", { level: 1, name: "Capability inspector" }),
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("link", { name: "Identity" }));
+  expect(
+    await screen.findByRole("heading", { level: 1, name: "Identity and roles" }),
+  ).toBeInTheDocument();
 });
 
 test("filters and reproduces the versioned ACR-ARCH benchmark", async () => {
@@ -174,6 +196,7 @@ test("filters and reproduces the versioned ACR-ARCH benchmark", async () => {
   fireEvent.change(screen.getByLabelText("mode"), { target: { value: "LOOP" } });
   await waitFor(() => expect(fetch).toHaveBeenCalledWith(
     expect.stringContaining("mode=LOOP"),
+    expect.anything(),
   ));
   fireEvent.click(await screen.findByRole("button", { name: "acr-001" }));
   expect(await screen.findByRole("heading", { name: "Direct fixture" })).toBeInTheDocument();
