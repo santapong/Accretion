@@ -11,7 +11,7 @@ dependencies = [
   # Direct: the token broker seals credentials with AES-GCM. It already arrived
   # transitively through pyjwt[crypto]; depending on it explicitly keeps that honest.
   "cryptography>=50.0.0,<51",
-  "fastapi>=0.116,<1",
+  "fastapi>=0.141.1,<1",
   "httpx>=0.28",
   # MCP SDK v2 uses its separately-versioned HTTP client for remote transports.
   "httpx2>=2.12,<3",
