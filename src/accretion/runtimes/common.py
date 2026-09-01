@@ -22,6 +22,16 @@ from accretion.redaction import redact
 
 RuntimeSubmission = TaskEnvelope | RuntimeExecutionRequest
 
+# asyncio's StreamReader defaults to a 64 KiB line limit, and every provider
+# frames its protocol as one JSON object per line. A single tool result carrying
+# a modest file therefore overruns it and `readline()` raises ValueError, killing
+# the call -- a run reading 30 KB notes died exactly that way. Sized off this
+# repository's own bound on captured subprocess output: CommandVerifier caps
+# `max_output_bytes` at 10 MB (contracts.py), so a line carrying that much output,
+# JSON-escaped and wrapped in a protocol envelope, still fits. Bounded rather than
+# unbounded on purpose: a runaway child must not be able to exhaust memory.
+RUNTIME_STREAM_LIMIT = 16 * 1024 * 1024
+
 _PROVIDER_ENV_ALLOWLIST = {
     "PATH",
     "HOME",

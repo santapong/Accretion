@@ -29,6 +29,7 @@ from accretion.contracts import (
 from accretion.ids import new_id
 from accretion.redaction import redact, redact_text
 from accretion.runtimes.common import (
+    RUNTIME_STREAM_LIMIT,
     RuntimeSubmission,
     classify_runtime_health,
     command_result,
@@ -345,6 +346,7 @@ class CodexRuntime:
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 env=provider_environment(),
+                limit=RUNTIME_STREAM_LIMIT,
             )
             self.process = process
             self.reader_task = asyncio.create_task(self._reader(process))

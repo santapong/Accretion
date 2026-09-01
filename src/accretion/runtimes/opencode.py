@@ -32,6 +32,7 @@ from accretion.contracts import (
 from accretion.ids import new_id
 from accretion.redaction import redact, redact_text
 from accretion.runtimes.common import (
+    RUNTIME_STREAM_LIMIT,
     RuntimeSubmission,
     classify_runtime_health,
     command_result,
@@ -432,6 +433,7 @@ class OpencodeRuntime:
                         ),
                     }
                 ),
+                limit=RUNTIME_STREAM_LIMIT,
             )
             self.process = process
             self.stderr_task = asyncio.create_task(self._stderr_reader(process))
