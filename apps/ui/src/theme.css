@@ -1,0 +1,103 @@
+/* Accretion design tokens and the Tailwind entry point.
+ *
+ * This file exists alongside `styles.css` rather than inside it. `styles.css` is 305
+ * lines of hand-minified CSS carrying the whole v0.3 surface; keeping the Tailwind
+ * introduction in its own file makes this change reviewable and leaves that sheet
+ * byte-identical.
+ *
+ * ---------------------------------------------------------------------------
+ * PREFLIGHT IS DELIBERATELY OMITTED.
+ *
+ * `@import "tailwindcss"` expands to four lines, one of which is
+ * `@import "tailwindcss/preflight.css" layer(base)` - an opinionated reset of headings,
+ * lists, borders and form controls. Importing it here would restyle every page at once,
+ * and it would do so *before* the Playwright + axe gate exists to measure the damage,
+ * invalidating the accessibility evidence that discharges issue #52.
+ *
+ * So the import is written out explicitly, minus preflight. The `base` layer is still
+ * DECLARED, so that turning preflight on later slots it into the right place in the
+ * cascade rather than reordering everything. That happens at the end of the migration,
+ * when `styles.css` is deleted and the app has no reset of its own.
+ *
+ * ---------------------------------------------------------------------------
+ * WHY THIS CHANGES NOTHING ON SCREEN.
+ *
+ * `styles.css` contains no `@layer` at all, and unlayered normal declarations beat every
+ * layered one regardless of specificity. Everything below therefore sits *underneath*
+ * the existing stylesheet in the cascade, and no utility defined here can currently win
+ * against it.
+ *
+ * That is the point: this step is zero-diff by construction, not by testing - which
+ * matters because the test suite cannot see CSS at all (`vite.config.ts` sets no `css`,
+ * so Vitest stubs stylesheets to empty modules).
+ *
+ * The consequence lands on the migration: adding a utility class beside a surviving
+ * `styles.css` rule does nothing. Each step has to delete the old rule and add the
+ * utility in the same edit. A half-migrated element shows the old style; it can never
+ * show a broken hybrid.
+ */
+
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+/* Scope class detection to the app's own source.
+ *
+ * Tailwind v4 auto-detects content by walking up from this file to the git root, which
+ * here is the whole Accretion repository - Python, Markdown, the 9,766-line generated
+ * `schema.d.ts`. It duly emitted `.collapse`, `.invisible`, `.static` and `.container`
+ * from bare words in files that have nothing to do with the UI. `source(none)` turns that
+ * off. Scoped to `.tsx` because `src/` also holds the 9,766-line generated
+ * `schema.d.ts`, whose prose alone was enough to conjure four utilities. Class names live
+ * in components; when a `.ts` module needs one, widen this deliberately.
+ *
+ * Specs are excluded because they never ship: `container` was being generated from
+ * `const { container } = render(...)`. The scanner matches bare identifiers, not just
+ * class strings, so the production stylesheet should depend only on production code. One
+ * inert utility still survives this (`.static`, from the word appearing in App.tsx) - it
+ * is harmless, since nothing carries that class and a layered utility loses to
+ * `styles.css` regardless. */
+@source "./**/*.tsx";
+@source not "./**/*.test.tsx";
+
+/* The cosmic palette. Named under Tailwind's `--color-*` namespace so each token also
+ * generates its utilities (`--color-void` gives `bg-void`, `text-void`, `border-void`).
+ * These are additive: Tailwind's default palette is not cleared, because clearing it is
+ * a migration decision, not a token decision. */
+/* `static` forces every variable below into `:root` whether or not a utility references
+ * it. Without it Tailwind tree-shakes unused theme variables, and since nothing uses the
+ * palette yet, NONE of these reached the build - the tokens existed in source and were
+ * absent from the stylesheet. They have to be real CSS custom properties now, because
+ * hand-written rules in `styles.css` will reference them during the migration long before
+ * any utility does. */
+@theme static {
+  /* Ground. Darkest first; `void` is the page behind everything. */
+  --color-void: #05060a;
+  --color-deep-space: #090c14;
+  --color-orbital-surface: #0f1420;
+
+  /* Ink. */
+  --color-starlight: #f4f7ff;
+  --color-moon-dust: #8d98ad;
+
+  /* Accents. Used sparingly - most surfaces stay dark and quiet. */
+  --color-ion-violet: #7857ff;
+  --color-plasma-cyan: #39d9ff;
+  --color-accretion-gold: #ffb45b;
+
+  /* Status. */
+  --color-spectral-green: #43e7a2;
+  --color-solar-amber: #ffc857;
+  --color-red-shift: #ff5573;
+
+  /* Metadata ink, carried over from `styles.css` unchanged.
+   *
+   * These three are not palette choices - they are MEASURED values. Each clears WCAG AA
+   * 4.5:1 on every surface the app paints, and the ratios are recorded in
+   * docs/releases/v0.3/browser-a11y-evidence.md. They are duplicated here rather than
+   * moved so that `styles.css` stays byte-identical in this change; the duplication
+   * resolves when that file is deleted. Do not "tidy" these to nearby round numbers. */
+  --color-ink-dim: #828e86;
+  --color-ink-muted: #8d998f;
+  --color-ink-amber: #c2a468;
+}

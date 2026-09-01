@@ -65,6 +65,12 @@ The UI is intentionally a projection, not an execution authority:
 - FastAPI responses are the typed snapshot source of truth.
 - `openapi-typescript` generates `apps/ui/src/api/schema.d.ts`; handwritten UI
   types alias that generated contract.
+- Styling is mid-migration. `apps/ui/src/theme.css` holds the design tokens and
+  the Tailwind v4 layers; `apps/ui/src/styles.css` still holds every rule the app
+  actually renders and is deliberately unlayered, so it takes precedence over any
+  utility. Tailwind's Preflight reset is not imported yet. Moving a rule therefore
+  means deleting it and adding the utility in the same edit — a utility placed
+  beside a surviving rule has no effect.
 - React Query keys cache entries by durable resource identity and polls active
   projections where needed.
 - Live runs load an authoritative audit snapshot first, then subscribe to

@@ -1,5 +1,11 @@
 {
+  // `composite` forbids `noEmit`, so `tsc -b` must emit somewhere. Left at the default it
+  // wrote `vite.config.js` next to `vite.config.ts` - and Vite resolves the `.js` FIRST,
+  // so a stale emit silently shadowed edits to the real config until `tsc -b` reran. In
+  // CI that never bit (`build` is `tsc -b && vite build`, always fresh), but locally it
+  // looks exactly like a plugin failing to load. Emit out of the way instead.
   "compilerOptions": {
+    "outDir": "./node_modules/.tmp/tsconfig-node",
     "composite": true,
     "skipLibCheck": true,
     "module": "ESNext",

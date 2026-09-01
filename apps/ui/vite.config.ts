@@ -1,5 +1,6 @@
 import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import { readFileSync } from "node:fs";
 
 // The header version is read from package.json at build time rather than typed into the
@@ -9,7 +10,7 @@ import { readFileSync } from "node:fs";
 const { version } = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), tailwindcss()],
   define: { __APP_VERSION__: JSON.stringify(version) },
   server: {
     port: 5173,
