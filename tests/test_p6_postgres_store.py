@@ -29,6 +29,7 @@ pytestmark = [
 ]
 
 
+@pytest.mark.acceptance("V02-P6-007")
 async def test_p6_search_evidence_round_trips_in_postgres(tmp_path: Path) -> None:
     assert POSTGRES_URL is not None
     engine = create_engine(POSTGRES_URL)

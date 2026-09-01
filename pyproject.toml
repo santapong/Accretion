@@ -1,6 +1,6 @@
 [project]
 name = "accretion"
-version = "0.2.0"
+version = "0.3.0"
 description = "Observable local-first multi-runtime meta-harness"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -8,11 +8,19 @@ license = { text = "MIT" }
 dependencies = [
   "alembic>=1.19.1,<2",
   "asyncpg>=0.30,<1",
+  # Direct: the token broker seals credentials with AES-GCM. It already arrived
+  # transitively through pyjwt[crypto]; depending on it explicitly keeps that honest.
+  "cryptography>=50.0.0,<51",
   "fastapi>=0.116,<1",
+  "httpx>=0.28",
+  # MCP SDK v2 uses its separately-versioned HTTP client for remote transports.
+  "httpx2>=2.12,<3",
   "jsonschema>=4.26.0,<5",
+  "mcp>=2,<3",
   "pgvector>=0.5,<0.6",
   "pydantic>=2.13.4,<3",
   "pydantic-settings>=2.10,<3",
+  "pyjwt[crypto]>=2.13.0",
   "sqlalchemy[asyncio]>=2.0.41,<3",
   "uvicorn[standard]>=0.35,<1",
 ]
@@ -21,11 +29,11 @@ dependencies = [
 dev = [
   "httpx>=0.28,<1",
   "mypy>=1.17,<2",
-  "pytest>=9.0.3,<10",
+  "pytest>=9.1.1,<10",
   "pytest-asyncio>=1.4.0,<2",
   "pytest-cov>=6.2,<7",
-  "ruff>=0.16.3,<1",
-  "types-jsonschema>=4.25,<5",
+  "ruff>=0.16.4,<1",
+  "types-jsonschema>=4.26.0.20260518,<5",
 ]
 
 [build-system]
@@ -39,7 +47,11 @@ packages = ["src/accretion"]
 addopts = "-ra --strict-markers"
 asyncio_mode = "auto"
 testpaths = ["tests"]
-markers = ["integration: requires PostgreSQL", "live: invokes a signed-in provider CLI"]
+markers = [
+  "integration: requires PostgreSQL",
+  "live: invokes a signed-in provider CLI",
+  "acceptance(*ids): proves the named SDD acceptance criteria",
+]
 
 [tool.ruff]
 target-version = "py312"

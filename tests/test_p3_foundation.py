@@ -121,6 +121,7 @@ def test_p3_identifiers_have_stable_prefixes(kind: str) -> None:
 
 
 @pytest.mark.parametrize("status", [TemplateStatus.DRAFT, TemplateStatus.RETIRED])
+@pytest.mark.acceptance("V01-P3-001")
 def test_non_validated_template_cannot_instantiate(status: TemplateStatus) -> None:
     template = DIRECT_V1.model_copy(update={"status": status})
     with pytest.raises(ValueError, match="VALIDATED"):

@@ -5,7 +5,7 @@ integrators, researchers, and release reviewers. Start with the path that
 matches what you want to do; supporting documents are grouped by purpose so the
 folder root stays uncluttered.
 
-<img src="assets/project-overview.svg" alt="Accretion project overview from bounded operator intent through deterministic control, isolated runtime execution, and independent verification, with the v0.2.0 release and immutable v0.1.0 static-control evidence" width="100%" />
+<img src="assets/project-overview.svg" alt="Accretion project overview from bounded operator intent through deterministic control, isolated runtime execution, and independent verification, with the v0.3.0 release, the preceding v0.2.0 release, and immutable v0.1.0 static-control evidence" width="100%" />
 
 <img src="assets/developer-journey.svg" alt="Six-step developer journey from cloning Accretion through running, observing, verifying, and contributing" width="100%" />
 
@@ -13,7 +13,7 @@ folder root stays uncluttered.
 
 | Goal | Start here | Continue with |
 |---|---|---|
-| Understand the project and release status | [Project README](../README.md) | [v0.2 delivery plan](releases/v0.2/plan.md) |
+| Understand the project and release status | [Project README](../README.md) | [v0.3 release notes](releases/v0.3/notes.md) |
 | Run Accretion locally | [Developer guide](guides/developer.md) | [Showcase](guides/showcase.md) |
 | Use or extend the React operator UI | [Frontend guide](guides/frontend.md) | [Developer guide](guides/developer.md), [showcase](guides/showcase.md) |
 | Understand the system | [README architecture](../README.md#architecture) | [v0.1 SDD](sdd/Accretion_SDD_v0.1.md) |
@@ -22,17 +22,25 @@ folder root stays uncluttered.
 | Operate P5 dynamic workflows | [P5 runbook](runbooks/p5-dynamic-workflows.md) | [Dynamic benchmark](research/p5/benchmark.md), [decisions](research/p5/decisions.md), [acceptance](research/p5/acceptance.md) |
 | Compare P6 candidates | [P6 runbook](runbooks/p6-candidate-search.md) | [Developer showcase](research/p6/showcase.md), [decisions](research/p6/decisions.md), [acceptance](research/p6/acceptance.md) |
 | Reuse verified experience | [P7 runbook](runbooks/p7-verified-experience.md) | [Developer showcase](research/p7/showcase.md), [decisions](research/p7/decisions.md), [acceptance](research/p7/acceptance.md) |
+| Operate the token broker | [Token broker runbook](runbooks/v03-token-broker.md) | [SDD v0.3](sdd/Accretion_SDD_v0.3.md), [v0.3 backlog](releases/v0.3/backlog.md) |
+| Install and govern plugins | [Plugins runbook](runbooks/v03-plugins.md) | [SDD v0.3](sdd/Accretion_SDD_v0.3.md) |
+| Administer connections, MCP and identity | [Frontend and administration runbook](runbooks/v03-frontend-admin.md) | [Capability inspector](releases/v0.3/acceptance-baseline.md) |
+| Use the research capability set | [Research runbook](runbooks/v03-research.md) | [Experiments and results](research/README.md) |
+| Enable enterprise-managed authorization | [Enterprise authorization runbook](runbooks/v03-enterprise-auth.md) | [SDD v0.3 §24.9](sdd/Accretion_SDD_v0.3.md) |
+| Check acceptance criteria | [Acceptance baseline](releases/v0.3/acceptance-baseline.md) | [verification policy](acceptance/criteria.toml) |
 | Review or reproduce experiments | [Experiments and results](research/README.md) | [ACR-ARCH](research/acr-arch-v0.1.md), [P5](research/p5/benchmark.md), [P6](research/p6/acceptance.md), [P7](research/p7/acceptance.md) |
 | Review security | [Security policy](../SECURITY.md) | [Trust-boundary diagram](assets/trust-boundary.svg) |
-| Review the current release | [v0.2 release audit](releases/v0.2/audit.md) | [v0.2 release notes](releases/v0.2/notes.md), [delivery plan](releases/v0.2/plan.md) |
-| Plan post-v0.2 work | [v0.3 backlog](releases/v0.3/backlog.md) | [v0.3 SDD](sdd/Accretion_SDD_v0.3.md) |
+| Review the current release | [v0.3 release notes](releases/v0.3/notes.md) | [release audit](releases/v0.3/audit.md), [acceptance baseline](releases/v0.3/acceptance-baseline.md), [browser and accessibility evidence](releases/v0.3/browser-a11y-evidence.md) |
+| Reproduce the release gate | [Release-hardening runbook](runbooks/v03-release-hardening.md) | [SDD v0.3 §24.8](sdd/Accretion_SDD_v0.3.md), [`scripts/release_gate.py`](../scripts/release_gate.py) |
+| Review the previous release | [Frozen v0.2 baseline](releases/v0.2/baseline.md) | [release audit](releases/v0.2/audit.md), [release notes](releases/v0.2/notes.md), [delivery plan](releases/v0.2/plan.md) |
+| Plan post-v0.3 work | [v0.3 backlog](releases/v0.3/backlog.md) | [v0.3 SDD](sdd/Accretion_SDD_v0.3.md) |
 
 ## Folder map
 
 | Folder | Use it for |
 |---|---|
 | [`guides/`](guides/) | Local setup, frontend use, extension, and the product showcase |
-| [`runbooks/`](runbooks/) | Operating, diagnosing, and recovering P0–P7 behavior |
+| [`runbooks/`](runbooks/) | Operating, diagnosing, and recovering P0–P7 and v0.3 M0–M8 behavior |
 | [`research/`](research/) | Experiment design, frozen results, acceptance evidence, and decisions |
 | [`releases/`](releases/) | Versioned plans, audits, notes, and released baselines |
 | [`governance/`](governance/) | Branch workflow and documentation maintenance rules |
@@ -70,8 +78,12 @@ bitmap in the showcase is illustrative and never defines behavior.
 
 ## Version authority
 
-- The immutable `v0.2.0` tag defines the current release. The immutable `v0.1.0`
-  tag remains the [frozen static control](releases/v0.1/baseline.md).
+- The `v0.3.0` tag defines the current release; its
+  [release notes](releases/v0.3/notes.md) and [audit](releases/v0.3/audit.md)
+  record what it claims and what it deliberately does not.
+- The immutable `v0.2.0` tag and [frozen v0.2 baseline](releases/v0.2/baseline.md)
+  remain the previous release. The immutable `v0.1.0` tag remains the
+  [frozen static control](releases/v0.1/baseline.md).
 - `main` is the stable branch; `develop` integrates the next release.
 - `codex/v0.1-local-control-plane` is an unmerged historical prototype, not a
   release branch or source of current contracts.
@@ -79,12 +91,14 @@ bitmap in the showcase is illustrative and never defines behavior.
 
 ## Frontend completion
 
-The React frontend is implemented for every P0–P7 release surface, including
-the P5, P6, and P7 research pages. The deterministic v0.2 checks cover 22
-component tests, generated OpenAPI, ESLint, TypeScript, and production build.
-Rendered browser/accessibility evidence was not run for the tag; the documented
-release exception and post-release work are tracked in
-[issue #52](https://github.com/santapong/Accretion/issues/52). The
+The React frontend is implemented for every P0–P7 release surface plus the v0.3
+M6 administration pages — seventeen routes in all. The deterministic checks cover
+97 component tests, generated OpenAPI, ESLint, TypeScript, and production build.
+For v0.3.0 rendered browser and accessibility evidence **was** collected: axe-core
+4.10.2 reports zero violations across all seventeen routes, which discharges the
+v0.2 release exception tracked in
+[issue #52](https://github.com/santapong/Accretion/issues/52). See
+[browser and accessibility evidence](releases/v0.3/browser-a11y-evidence.md). The
 [frontend guide](guides/frontend.md) records the exact routes and evidence model.
 
 ## Documentation rules

@@ -38,6 +38,120 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/audit/enterprise-auth": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Enterprise Auth Audit Events
+         * @description Every enterprise authorization decision the caller may see.
+         *
+         *     Mirrors ``/api/v1/audit/plugins``: naming a workspace the caller is not a
+         *     member of is a 403, and naming none falls back to the workspaces they can
+         *     see. Session-wide rows — retention and revocation, which belong to no single
+         *     workspace — are recorded against ``UNSCOPED`` and are shown only to the
+         *     principal they are about, and only when no workspace was named.
+         *
+         *     ``detail`` is prose written by the enterprise auth manager and never carries
+         *     assertion or token material; AC3-EMA-05 scans every row returned here.
+         */
+        get: operations["list_enterprise_auth_audit_events_api_v1_audit_enterprise_auth_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/audit/plugins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Plugin Audit Events */
+        get: operations["list_plugin_audit_events_api_v1_audit_plugins_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/callback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Auth Callback */
+        get: operations["auth_callback_api_v1_auth_callback_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Auth Login */
+        get: operations["auth_login_api_v1_auth_login_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Auth Logout */
+        post: operations["auth_logout_api_v1_auth_logout_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/providers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Auth Providers */
+        get: operations["auth_providers_api_v1_auth_providers_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/benchmarks/acr-arch": {
         parameters: {
             query?: never;
@@ -106,6 +220,356 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/capabilities/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve Capability */
+        post: operations["resolve_capability_api_v1_capabilities_resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Connections
+         * @description List only the connections this principal may see.
+         *
+         *     Returns a summary rather than the stored model: a Connection carries
+         *     ``token_handle_ref``, which is broker-internal and never leaves the API (INV3-002).
+         */
+        get: operations["list_connections_api_v1_connections_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connections/{connection_id}/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Connection Health */
+        get: operations["connection_health_api_v1_connections__connection_id__health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connections/{connection_id}/reauthorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reauthorize Connection
+         * @description Re-consent, the only way scopes ever widen (SDD 6.3).
+         */
+        post: operations["reauthorize_connection_api_v1_connections__connection_id__reauthorize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connections/{connection_id}/revoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Revoke Connection */
+        post: operations["revoke_connection_api_v1_connections__connection_id__revoke_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Connectors */
+        get: operations["list_connectors_api_v1_connectors_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/connectors/{connector_id}/connect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Connect Connector
+         * @description Begin an OAuth authorization for the calling principal.
+         */
+        post: operations["connect_connector_api_v1_connectors__connector_id__connect_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/enterprise-auth/profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Enterprise Auth Profile
+         * @description What enterprise-managed authorization can do for the calling principal.
+         *
+         *     Lives under ``/api/v1/enterprise-auth/`` rather than ``/api/v1/auth/`` because
+         *     the latter prefix is exempt from the session middleware, and this answer is
+         *     per-principal. No token, no ``secret_store_key``, no assertion id.
+         */
+        get: operations["get_enterprise_auth_profile_api_v1_enterprise_auth_profile_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp/servers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Mcp Servers */
+        get: operations["list_mcp_servers_api_v1_mcp_servers_get"];
+        put?: never;
+        /** Register Mcp Server */
+        post: operations["register_mcp_server_api_v1_mcp_servers_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp/servers/{mcp_server_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Mcp Server */
+        get: operations["get_mcp_server_api_v1_mcp_servers__mcp_server_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp/servers/{mcp_server_id}/capabilities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Mcp Server Capabilities */
+        get: operations["list_mcp_server_capabilities_api_v1_mcp_servers__mcp_server_id__capabilities_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp/servers/{mcp_server_id}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable Mcp Server */
+        post: operations["disable_mcp_server_api_v1_mcp_servers__mcp_server_id__disable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp/servers/{mcp_server_id}/discovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Mcp Server Discovery
+         * @description The most recent discovery snapshot for one server.
+         *
+         *     Read-only: unlike ``refresh-discovery`` this never contacts the server, so any
+         *     workspace member may call it. A server with no snapshot yet is a 404, which is
+         *     also what a non-existent server returns.
+         */
+        get: operations["get_mcp_server_discovery_api_v1_mcp_servers__mcp_server_id__discovery_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp/servers/{mcp_server_id}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enable Mcp Server */
+        post: operations["enable_mcp_server_api_v1_mcp_servers__mcp_server_id__enable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp/servers/{mcp_server_id}/enterprise-authorize": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Enterprise Authorize Mcp Server
+         * @description Mint the caller's own enterprise-authorized connection to one MCP server.
+         *
+         *     Workspace membership is required and nothing more: the connection is USER
+         *     scoped and belongs to the caller alone (INV3-008), so demanding an
+         *     administrator here would make AC3-EMA-02 unreachable for ordinary members
+         *     while granting them nothing they could not obtain by invoking a tool. A
+         *     non-member never gets this far — ``_mcp_server_for_request`` raises, and a
+         *     server in an invisible workspace 404s rather than 403s.
+         */
+        post: operations["enterprise_authorize_mcp_server_api_v1_mcp_servers__mcp_server_id__enterprise_authorize_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/mcp/servers/{mcp_server_id}/refresh-discovery": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Mcp Discovery */
+        post: operations["refresh_mcp_discovery_api_v1_mcp_servers__mcp_server_id__refresh_discovery_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Me */
+        get: operations["get_me_api_v1_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/oauth/callback/{connector_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Oauth Callback
+         * @description Redeem an authorization code.
+         *
+         *     Deliberately *not* exempt from the session middleware. The cookie is SameSite=Lax,
+         *     so it accompanies this top-level redirect, and requiring it gives a second binding
+         *     beyond ``state``: the returning browser must be the session that began the flow.
+         */
+        get: operations["oauth_callback_api_v1_oauth_callback__connector_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/plugins": {
         parameters: {
             query?: never;
@@ -113,10 +577,140 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List Plugins */
+        /**
+         * List Plugins
+         * @description Built-in plugins, plus whatever is installed in the caller's workspaces.
+         *
+         *     The v0.1 shape is unchanged so the console keeps rendering, but the listing is no
+         *     longer global: before M4 every authenticated principal saw every registry row,
+         *     including rows contributed by another tenant's installation.
+         */
         get: operations["list_plugins_api_v1_plugins_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/install": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Install Plugin */
+        post: operations["install_plugin_api_v1_plugins_install_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/installations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Plugin Installations */
+        get: operations["list_plugin_installations_api_v1_plugins_installations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/{plugin_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Plugin Detail */
+        get: operations["get_plugin_detail_api_v1_plugins__plugin_id__get"];
+        put?: never;
+        post?: never;
+        /**
+         * Remove Plugin
+         * @description Retire an installation. Prior-run evidence is never touched (AC3-PLG-05).
+         */
+        delete: operations["remove_plugin_api_v1_plugins__plugin_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/{plugin_id}/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Disable Plugin */
+        post: operations["disable_plugin_api_v1_plugins__plugin_id__disable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/{plugin_id}/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Enable Plugin */
+        post: operations["enable_plugin_api_v1_plugins__plugin_id__enable_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/{plugin_id}/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rollback Plugin */
+        post: operations["rollback_plugin_api_v1_plugins__plugin_id__rollback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/plugins/{plugin_id}/upgrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upgrade Plugin */
+        post: operations["upgrade_plugin_api_v1_plugins__plugin_id__upgrade_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -305,6 +899,40 @@ export interface paths {
         put?: never;
         /** Pause Run */
         post: operations["pause_run_api_v1_runs__run_id__pause_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/runs/{run_id}/research-evidence": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Run Research Evidence
+         * @description Read a run's Evidence Store, in the store's own deterministic order.
+         *
+         *     Read-only by construction: evidence is written on the gateway's execution path,
+         *     where the trust label is assigned, and there is deliberately no HTTP way to put a
+         *     record here or to relabel one.
+         *
+         *     ``workspace_id`` is a required parameter rather than something derived from the
+         *     run because ``Run`` carries no workspace: it links to a task, a project and a
+         *     principal, and none of the three reaches a workspace today. Requiring the caller
+         *     to name a workspace they are a member of is therefore the strongest gate available
+         *     at this boundary, and narrowing it to the run's own workspace is M6 work that
+         *     needs the missing link first.
+         *
+         *     Ordering is ``(created_at, evidence_id)`` in all three store implementations, so a
+         *     caller may page or diff two responses without re-sorting.
+         */
+        get: operations["list_run_research_evidence_api_v1_runs__run_id__research_evidence_get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -575,6 +1203,23 @@ export interface paths {
         };
         /** Get Verification */
         get: operations["get_verification_api_v1_verifications__verification_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Workspaces */
+        get: operations["list_workspaces_api_v1_workspaces_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1424,11 +2069,23 @@ export interface components {
          * @enum {string}
          */
         AuthMode: "SUBSCRIPTION" | "API" | "LOCAL";
+        /** AuthProviderInfo */
+        AuthProviderInfo: {
+            /** Issuer */
+            issuer?: string | null;
+            /** Mode */
+            mode: string;
+        };
         /**
          * AuthorizationOutcome
          * @enum {string}
          */
         AuthorizationOutcome: "ALLOW" | "DENY" | "REQUIRE_APPROVAL";
+        /** AuthorizationStart */
+        AuthorizationStart: {
+            /** Authorization Url */
+            authorization_url: string;
+        };
         /**
          * BenchmarkCategory
          * @enum {string}
@@ -1760,11 +2417,59 @@ export interface components {
          * @enum {string}
          */
         CapabilityBackend: "MCP" | "NATIVE" | "HTTP" | "CLI" | "PYTHON" | "AGENT_RUNTIME";
+        /** CapabilityBinding */
+        CapabilityBinding: {
+            backend: components["schemas"]["CapabilityBindingBackend"];
+            /** Binding Id */
+            binding_id: string;
+            /** Capability Id */
+            capability_id: string;
+            /** Connector Id */
+            connector_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /**
+             * Enabled
+             * @default true
+             */
+            enabled: boolean;
+            /** Input Transform Ref */
+            input_transform_ref?: string | null;
+            /** Output Transform Ref */
+            output_transform_ref?: string | null;
+            /** Policy Ref */
+            policy_ref?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+        };
+        /** CapabilityBindingBackend */
+        CapabilityBindingBackend: {
+            /** Method */
+            method?: string | null;
+            /** Server Ref */
+            server_ref?: string | null;
+            /** Tool Name */
+            tool_name?: string | null;
+            type: components["schemas"]["CapabilityBackend"];
+        };
         /** CapabilityExecutionResult */
         CapabilityExecutionResult: {
             authorization: components["schemas"]["CapabilityAuthorization"];
+            /** Binding Id */
+            binding_id?: string | null;
             /** Completed At */
             completed_at?: string | null;
+            /** Connection Id */
+            connection_id?: string | null;
+            /** Connector Id */
+            connector_id?: string | null;
             error?: components["schemas"]["ErrorSummary"] | null;
             /** Output */
             output?: {
@@ -1773,6 +2478,8 @@ export interface components {
             request: components["schemas"]["CapabilityRequest"];
             /** Side Effect Operation Id */
             side_effect_operation_id?: string | null;
+            /** Source Ids */
+            source_ids?: string[];
             status: components["schemas"]["CapabilityExecutionStatus"];
         };
         /**
@@ -1818,6 +2525,22 @@ export interface components {
             schema_version: "1.0";
         };
         /**
+         * CapabilityResolutionOutcome
+         * @enum {string}
+         */
+        CapabilityResolutionOutcome: "OK" | "NO_CONNECTOR_REQUIRED" | "REQUIRE_REAUTH" | "NO_CONNECTION" | "DISABLED";
+        /** CapabilityResolveRequest */
+        CapabilityResolveRequest: {
+            /** Capability Id */
+            capability_id: string;
+            /** Principal Id */
+            principal_id?: string | null;
+            /** Version */
+            version?: string | null;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
+        /**
          * CheckpointKind
          * @enum {string}
          */
@@ -1837,6 +2560,40 @@ export interface components {
             schema_version: "1.0";
             /** Sequence */
             sequence: number;
+        };
+        /**
+         * CitationCheck
+         * @description One deterministic verification of a claimed citation against a resolver.
+         *
+         *     The check is the *evidence about the evidence*: it records what the candidate
+         *     claimed, what the resolver actually returned, and whether they agree.
+         */
+        CitationCheck: {
+            /** Check Id */
+            check_id: string;
+            /**
+             * Checked At
+             * Format: date-time
+             */
+            checked_at?: string;
+            /** Claimed Identifier */
+            claimed_identifier: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Resolved Identifier */
+            resolved_identifier?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            status: components["schemas"]["VerificationStatus"];
+            /** Verifier Id */
+            verifier_id: string;
         };
         /** CompatibilityAssessment */
         CompatibilityAssessment: {
@@ -1877,6 +2634,117 @@ export interface components {
          * @enum {string}
          */
         ConditionOperator: "ALL" | "ANY" | "NOT" | "EQ" | "NE" | "LT" | "LTE" | "GT" | "GTE" | "IN";
+        /**
+         * ConnectCreate
+         * @description Start an authorization. Scopes default to the connector's declared minimum.
+         */
+        ConnectCreate: {
+            /**
+             * Redirect Target
+             * @default /
+             */
+            redirect_target: string;
+            /** Scopes */
+            scopes?: string[] | null;
+            /**
+             * Workspace Id
+             * @default workspace_local
+             */
+            workspace_id: string;
+        };
+        /** ConnectionRef */
+        ConnectionRef: {
+            /** Connection Id */
+            connection_id: string;
+            /** Connector Id */
+            connector_id: string;
+            status: components["schemas"]["ConnectionStatus"];
+        };
+        /**
+         * ConnectionScope
+         * @enum {string}
+         */
+        ConnectionScope: "USER" | "WORKSPACE";
+        /**
+         * ConnectionStatus
+         * @enum {string}
+         */
+        ConnectionStatus: "PENDING" | "ACTIVE" | "DEGRADED" | "REAUTH_REQUIRED" | "REVOKED";
+        /**
+         * ConnectionSummary
+         * @description Read-only connection listing; token handles never enter the API (INV3-002).
+         */
+        ConnectionSummary: {
+            /** Connection Id */
+            connection_id: string;
+            /** Connector Id */
+            connector_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Granted Scopes */
+            granted_scopes?: string[];
+            /** Last Health Check */
+            last_health_check?: string | null;
+            /** Principal Id */
+            principal_id?: string | null;
+            scope: components["schemas"]["ConnectionScope"];
+            status: components["schemas"]["ConnectionStatus"];
+            /** Workspace Id */
+            workspace_id: string;
+            /**
+             * Workspace Shareable
+             * @default false
+             */
+            workspace_shareable: boolean;
+        };
+        /**
+         * ConnectorAuthType
+         * @enum {string}
+         */
+        ConnectorAuthType: "NONE" | "OAUTH2" | "OIDC" | "API_KEY" | "SERVICE_ACCOUNT" | "EMA";
+        /** ConnectorDefinition */
+        ConnectorDefinition: {
+            /** @default NONE */
+            auth_type: components["schemas"]["ConnectorAuthType"];
+            /** Authorization Server */
+            authorization_server?: string | null;
+            /** @default USER */
+            connection_scope: components["schemas"]["ConnectionScope"];
+            /** Connector Id */
+            connector_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Default Scopes */
+            default_scopes?: string[];
+            /** Health Check Ref */
+            health_check_ref?: string | null;
+            kind: components["schemas"]["ConnectorKind"];
+            /** Name */
+            name: string;
+            /** Optional Scopes */
+            optional_scopes?: string[];
+            /** Plugin Id */
+            plugin_id?: string | null;
+            /** Resource Server */
+            resource_server?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+        };
+        /**
+         * ConnectorKind
+         * @enum {string}
+         */
+        ConnectorKind: "MCP" | "REST" | "GRAPHQL" | "SDK" | "LOCAL";
         /** ContextBundle */
         ContextBundle: {
             /** Artifact Refs */
@@ -2211,6 +3079,79 @@ export interface components {
          * @enum {string}
          */
         EdgeGuard: "ON_SUCCESS" | "ON_FAIL" | "ON_INCONCLUSIVE" | "ON_APPROVED" | "ON_DENIED" | "ON_REPLAN_AVAILABLE" | "ON_REPLAN_EXHAUSTED";
+        /**
+         * EnterpriseAuthGrant
+         * @description Append-only record of one enterprise authorization decision (SDD 8, M7).
+         *
+         *     Every exit path of the enterprise auth manager writes exactly one row.
+         *     ``detail`` is prose for an operator and never carries an assertion, a grant,
+         *     or an access token.
+         */
+        EnterpriseAuthGrant: {
+            /** Connection Id */
+            connection_id?: string | null;
+            /** Connector Id */
+            connector_id: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /**
+             * Detail
+             * @default
+             */
+            detail: string;
+            /** Grant Id */
+            grant_id: string;
+            /** Mcp Server Id */
+            mcp_server_id?: string | null;
+            outcome: components["schemas"]["EnterpriseAuthOutcome"];
+            /** Principal Id */
+            principal_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * EnterpriseAuthOutcome
+         * @enum {string}
+         */
+        EnterpriseAuthOutcome: "GRANTED" | "REFRESHED" | "REFUSED_ISSUER" | "REFUSED_AUDIENCE" | "REFUSED_EXPIRED" | "REFUSED_DISABLED" | "REFUSED_MISSING" | "REFUSED_UPSTREAM" | "REFUSED_CONFIGURATION" | "REFUSED_REVOKED" | "REVOKED";
+        /**
+         * EnterpriseAuthProfileResponse
+         * @description What the caller may know about enterprise-managed authorization (M7).
+         *
+         *     Deliberately a description of *configuration and state*, never of material:
+         *     the retained identity assertion, its ``secret_store_key``, the identity
+         *     assertion grant and the enterprise-issued access token are all absent by
+         *     construction, and AC3-EMA-05 scans this response to keep it that way. The
+         *     only thing said about the assertion is whether the caller currently holds a
+         *     live one and when it expires, which an operator needs in order to understand
+         *     why an enterprise authorization would or would not succeed right now.
+         */
+        EnterpriseAuthProfileResponse: {
+            /** Assertion Expires At */
+            assertion_expires_at?: string | null;
+            /** Audiences */
+            audiences?: {
+                [key: string]: string;
+            };
+            /** Enabled */
+            enabled: boolean;
+            /**
+             * Has Live Assertion
+             * @default false
+             */
+            has_live_assertion: boolean;
+            /** Token Exchange Configured */
+            token_exchange_configured: boolean;
+        };
         /** ErrorSummary */
         ErrorSummary: {
             /** Code */
@@ -2228,6 +3169,134 @@ export interface components {
          * @enum {string}
          */
         EventType: "RUN_CREATED" | "WORKFLOW_PROPOSAL_CREATED" | "WORKFLOW_PROPOSAL_REPAIRED" | "GRAPH_VALIDATION_STARTED" | "GRAPH_VALIDATION_RESULT" | "GRAPH_REVISION_ACTIVATED" | "REPLAN_REQUESTED" | "REPLAN_STARTED" | "REPLAN_COMPLETED" | "RUNTIME_DECISION" | "SEARCH_STARTED" | "SEARCH_CANDIDATE_STARTED" | "SEARCH_CANDIDATE_COMPLETED" | "SEARCH_CANDIDATE_PRUNED" | "SEARCH_SELECTION" | "SEARCH_PROMOTION_STARTED" | "SEARCH_PROMOTION_COMPLETED" | "SEARCH_STOPPED" | "EXPERIENCE_QUERY" | "EXPERIENCE_RETRIEVED" | "TRAJECTORY_REPLAY_STARTED" | "TRAJECTORY_REPLAY_REJECTED" | "RUN_STARTED" | "RUN_PROGRESS" | "NODE_ENTERED" | "NODE_EXITED" | "TOOL_REQUESTED" | "TOOL_STARTED" | "TOOL_COMPLETED" | "TOOL_FAILED" | "FILE_CHANGED" | "DIFF_AVAILABLE" | "APPROVAL_REQUIRED" | "APPROVAL_RESOLVED" | "ARTIFACT_CREATED" | "CHECKPOINT_SAVED" | "RUNTIME_CALL_STARTED" | "RUNTIME_CALL_COMPLETED" | "RUNTIME_CALL_FAILED" | "RUNTIME_CALL_CANCELLED" | "LOOP_ITERATION_STARTED" | "LOOP_ITERATION_COMPLETED" | "VERIFICATION_STARTED" | "VERIFICATION_RESULT" | "RUN_PAUSED" | "RUN_RESUMED" | "RUN_COMPLETED" | "RUN_FAILED" | "RUN_CANCELLED";
+        /**
+         * EvidenceCandidate
+         * @description One normalized result (SDD 10.1), before any verifier has looked at it.
+         *
+         *     Backend-specific wire shapes are flattened here, which is what lets the
+         *     connector swap without the workflow's capability ids moving.
+         */
+        EvidenceCandidate: {
+            /** Authors */
+            authors?: string[];
+            /** Candidate Id */
+            candidate_id: string;
+            /** Content Digest */
+            content_digest: string;
+            /** @default EXTERNAL_SOURCE */
+            evidence_class: components["schemas"]["EvidenceClass"];
+            /** Identifiers */
+            identifiers?: {
+                [key: string]: string;
+            };
+            /** Payload */
+            payload?: {
+                [key: string]: unknown;
+            };
+            provenance: components["schemas"]["EvidenceProvenance"];
+            /** Published At */
+            published_at?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /**
+             * Snippet
+             * @default
+             */
+            snippet: string;
+            /** Title */
+            title: string;
+        };
+        /**
+         * EvidenceClass
+         * @description How the world was observed. Names are pinned by the v0.4 cross-release registry.
+         * @enum {string}
+         */
+        EvidenceClass: "DIGITAL" | "SIMULATION" | "PHYSICAL" | "HUMAN_ATTESTATION" | "EXTERNAL_SOURCE";
+        /**
+         * EvidenceProvenance
+         * @description AC3-RES-03 as a type.
+         *
+         *     Connector, capability, query, timestamp and source identifier are required and
+         *     non-optional, so evidence that cannot say where it came from cannot be
+         *     constructed at all — the criterion is enforced by validation rather than by
+         *     reviewer discipline. ``binding_id`` and ``connection_id`` are optional because
+         *     a deterministic local source has neither.
+         */
+        EvidenceProvenance: {
+            /** Binding Id */
+            binding_id?: string | null;
+            /** Capability Id */
+            capability_id: string;
+            /** Connection Id */
+            connection_id?: string | null;
+            /** Connector Id */
+            connector_id: string;
+            /** Query */
+            query: string;
+            /**
+             * Retrieved At
+             * Format: date-time
+             */
+            retrieved_at: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Source Id */
+            source_id: string;
+            /** Source Uri */
+            source_uri?: string | null;
+        };
+        /**
+         * EvidenceRecord
+         * @description A stored, trust-labelled candidate — the unit the Evidence Store persists.
+         *
+         *     ``trust_score`` mirrors ``CandidateScore.total_score``: it is ``None`` unless
+         *     verifiers accepted the candidate, so unverified evidence is structurally
+         *     unrankable rather than merely low-scored (AC3-RES-04).
+         */
+        EvidenceRecord: {
+            candidate: components["schemas"]["EvidenceCandidate"];
+            /** Citation Checks */
+            citation_checks?: components["schemas"]["CitationCheck"][];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** @default EXTERNAL_SOURCE */
+            evidence_class: components["schemas"]["EvidenceClass"];
+            /** Evidence Id */
+            evidence_id: string;
+            /** Node Id */
+            node_id?: string | null;
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** @default UNVERIFIED */
+            trust: components["schemas"]["EvidenceTrust"];
+            /** Trust Score */
+            trust_score?: number | null;
+            /** Verification Ids */
+            verification_ids?: string[];
+        };
+        /**
+         * EvidenceTrust
+         * @description Ordered low to high. Assigned by the normalizer, never read from connector output.
+         * @enum {string}
+         */
+        EvidenceTrust: "QUARANTINED" | "UNVERIFIED" | "CORROBORATED" | "VERIFIED";
         /**
          * ExecutionMode
          * @enum {string}
@@ -2394,6 +3463,12 @@ export interface components {
             stale_rejection_passed: boolean;
             /** Stale Rejection Rate */
             stale_rejection_rate: number;
+            /**
+             * Stale Rejection Source
+             * @default DECLARED
+             * @enum {string}
+             */
+            stale_rejection_source: "DECLARED" | "ASSESSED";
             /** Success Rate Not Regressed */
             success_rate_not_regressed: boolean;
             /** Thresholds */
@@ -3089,6 +4164,270 @@ export interface components {
          * @enum {string}
          */
         MatchDisposition: "ACCEPTED" | "DOWNRANKED" | "REJECTED";
+        /** McpCacheHint */
+        McpCacheHint: {
+            /** @default PRIVATE */
+            scope: components["schemas"]["McpCacheScope"];
+            /** Ttl Ms */
+            ttl_ms: number;
+        };
+        /**
+         * McpCacheScope
+         * @enum {string}
+         */
+        McpCacheScope: "PUBLIC" | "PRIVATE";
+        /** McpDiscoveryPolicy */
+        McpDiscoveryPolicy: {
+            /**
+             * Default Ttl Ms
+             * @default 300000
+             */
+            default_ttl_ms: number;
+            /**
+             * Max Items Per Kind
+             * @default 1000
+             */
+            max_items_per_kind: number;
+            /**
+             * Prompts
+             * @default true
+             */
+            prompts: boolean;
+            /**
+             * Resources
+             * @default true
+             */
+            resources: boolean;
+            /**
+             * Tools
+             * @default true
+             */
+            tools: boolean;
+        };
+        /** McpDiscoverySnapshot */
+        McpDiscoverySnapshot: {
+            /** Cache Hints */
+            cache_hints?: {
+                [key: string]: components["schemas"]["McpCacheHint"];
+            };
+            /** Connection Id */
+            connection_id?: string | null;
+            /** Content Sha256 */
+            content_sha256: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Discovery Snapshot Id */
+            discovery_snapshot_id: string;
+            /** Mcp Server Id */
+            mcp_server_id: string;
+            /** Prompts */
+            prompts?: {
+                [key: string]: unknown;
+            }[];
+            /** Protocol Version */
+            protocol_version: string;
+            /** Resource Templates */
+            resource_templates?: {
+                [key: string]: unknown;
+            }[];
+            /** Resources */
+            resources?: {
+                [key: string]: unknown;
+            }[];
+            /** Schema Errors */
+            schema_errors?: string[];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Server Info */
+            server_info?: {
+                [key: string]: unknown;
+            };
+            /** Tools */
+            tools?: {
+                [key: string]: unknown;
+            }[];
+            /**
+             * Valid
+             * @default true
+             */
+            valid: boolean;
+        };
+        /** McpHealthPolicy */
+        McpHealthPolicy: {
+            /**
+             * Cooldown Seconds
+             * @default 30
+             */
+            cooldown_seconds: number;
+            /**
+             * Failure Threshold
+             * @default 3
+             */
+            failure_threshold: number;
+            /**
+             * Max Discovery Retries
+             * @default 1
+             */
+            max_discovery_retries: number;
+            /**
+             * Max Response Bytes
+             * @default 2000000
+             */
+            max_response_bytes: number;
+            /**
+             * Timeout Ms
+             * @default 10000
+             */
+            timeout_ms: number;
+        };
+        /** McpServerCreate */
+        McpServerCreate: {
+            /** Allowed Tool Patterns */
+            allowed_tool_patterns?: string[];
+            /** Auth Profile Ref */
+            auth_profile_ref?: string | null;
+            /** Connector Id */
+            connector_id: string;
+            /** Denied Tool Patterns */
+            denied_tool_patterns?: string[];
+            discovery_policy?: components["schemas"]["McpDiscoveryPolicy"];
+            /** Endpoint */
+            endpoint: string;
+            health_policy?: components["schemas"]["McpHealthPolicy"];
+            /** Name */
+            name: string;
+            /** Protocol Versions */
+            protocol_versions?: string[];
+            /** Tool Mappings */
+            tool_mappings?: components["schemas"]["McpToolMapping"][];
+            /** @default RESTRICTED */
+            trust_level: components["schemas"]["McpTrustLevel"];
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /** McpServerDefinition */
+        McpServerDefinition: {
+            /** Allowed Tool Patterns */
+            allowed_tool_patterns?: string[];
+            /** Auth Profile Ref */
+            auth_profile_ref?: string | null;
+            /** Circuit Open Until */
+            circuit_open_until?: string | null;
+            /** Command */
+            command?: string[];
+            /** Connector Id */
+            connector_id: string;
+            /**
+             * Consecutive Failures
+             * @default 0
+             */
+            consecutive_failures: number;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Denied Tool Patterns */
+            denied_tool_patterns?: string[];
+            discovery_policy?: components["schemas"]["McpDiscoveryPolicy"];
+            /**
+             * Enabled
+             * @default false
+             */
+            enabled: boolean;
+            /** Endpoint */
+            endpoint?: string | null;
+            health_policy?: components["schemas"]["McpHealthPolicy"];
+            /** Last Health Check */
+            last_health_check?: string | null;
+            /** Mcp Server Id */
+            mcp_server_id: string;
+            /** Name */
+            name: string;
+            /** Owner Principal Id */
+            owner_principal_id: string;
+            /** Protocol Versions */
+            protocol_versions?: string[];
+            /**
+             * Revision
+             * @default 1
+             */
+            revision: number;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** @default DISABLED */
+            state: components["schemas"]["McpServerState"];
+            /** Tool Mappings */
+            tool_mappings?: components["schemas"]["McpToolMapping"][];
+            /** @default HTTP */
+            transport: components["schemas"]["McpTransport"];
+            /** @default RESTRICTED */
+            trust_level: components["schemas"]["McpTrustLevel"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at?: string;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * McpServerState
+         * @enum {string}
+         */
+        McpServerState: "DISABLED" | "READY" | "DEGRADED" | "UNREACHABLE" | "AUTH_REQUIRED" | "SCHEMA_ERROR" | "BLOCKED";
+        /**
+         * McpToolMapping
+         * @description An explicit canonical capability-to-remote-tool publication decision.
+         */
+        McpToolMapping: {
+            /** Capability Id */
+            capability_id: string;
+            /** @default NONE */
+            idempotency: components["schemas"]["IdempotencyMode"];
+            /** Required Permissions */
+            required_permissions?: string[];
+            /** @default LOW */
+            risk: components["schemas"]["RiskLevel"];
+            /** Side Effects */
+            side_effects?: string[];
+            /** Tool Name */
+            tool_name: string;
+            /**
+             * Version
+             * @default 1.0.0
+             */
+            version: string;
+        };
+        /**
+         * McpTransport
+         * @enum {string}
+         */
+        McpTransport: "STDIO" | "HTTP";
+        /**
+         * McpTrustLevel
+         * @enum {string}
+         */
+        McpTrustLevel: "TRUSTED" | "RESTRICTED" | "UNTRUSTED";
+        /** MeResponse */
+        MeResponse: {
+            /** Auth Mode */
+            auth_mode: string;
+            /** Memberships */
+            memberships: components["schemas"]["WorkspaceMembership"][];
+            principal: components["schemas"]["Principal"];
+        };
         /** MetaPlugin */
         MetaPlugin: {
             /**
@@ -3128,6 +4467,51 @@ export interface components {
             skill_refs?: string[];
             /** Verifier Refs */
             verifier_refs?: string[];
+            /** Version */
+            version: string;
+        };
+        /**
+         * MetaPluginManifest
+         * @description SDD 9.1 package declaration. ``MetaPlugin`` stays its narrow registry projection.
+         */
+        MetaPluginManifest: {
+            /** Capabilities */
+            capabilities?: components["schemas"]["Capability"][];
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /** Id */
+            id: string;
+            /** Mcp Servers */
+            mcp_servers?: {
+                [key: string]: unknown;
+            }[];
+            /** Name */
+            name: string;
+            /** Optional Connectors */
+            optional_connectors?: components["schemas"]["PluginConnectorRequirement"][];
+            /** Policies */
+            policies?: string[];
+            /** Provider Projections */
+            provider_projections?: {
+                [key: string]: string;
+            };
+            /** Required Connectors */
+            required_connectors?: components["schemas"]["PluginConnectorRequirement"][];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            signature?: components["schemas"]["PluginSignature"] | null;
+            /** Skills */
+            skills?: components["schemas"]["MetaSkill"][];
+            ui?: components["schemas"]["PluginUiContribution"];
+            /** Verifiers */
+            verifiers?: string[];
             /** Version */
             version: string;
         };
@@ -3243,6 +4627,350 @@ export interface components {
          * @enum {string}
          */
         PlannerRuntime: "AUTO" | "CLAUDE" | "CODEX" | "DETERMINISTIC";
+        /**
+         * PluginAuditEvent
+         * @description Append-only lifecycle record (SDD 20.3). Written for every state transition.
+         */
+        PluginAuditEvent: {
+            /** Actor Principal Id */
+            actor_principal_id?: string | null;
+            /** Correlation Id */
+            correlation_id?: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Details */
+            details?: {
+                [key: string]: unknown;
+            };
+            /** Event Type */
+            event_type: string;
+            from_state?: components["schemas"]["PluginState"] | null;
+            /** Installation Id */
+            installation_id?: string | null;
+            /** Plugin Event Id */
+            plugin_event_id: string;
+            /** Plugin Id */
+            plugin_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            to_state?: components["schemas"]["PluginState"] | null;
+            /** Workspace Id */
+            workspace_id?: string | null;
+        };
+        /**
+         * PluginCapabilityDecision
+         * @enum {string}
+         */
+        PluginCapabilityDecision: "GRANTED" | "DENIED" | "DOWNGRADED_READ_ONLY";
+        /**
+         * PluginCapabilityGrant
+         * @description What the manifest requested next to what policy actually granted.
+         */
+        PluginCapabilityGrant: {
+            /** Capability Id */
+            capability_id: string;
+            /** @default GRANTED */
+            decision: components["schemas"]["PluginCapabilityDecision"];
+            /** Granted Permissions */
+            granted_permissions?: string[];
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /** Requested Permissions */
+            requested_permissions?: string[];
+        };
+        /**
+         * PluginConnectorRequirement
+         * @description A connector a plugin asks for; policy decides whether it is ever satisfied.
+         */
+        PluginConnectorRequirement: {
+            /** Connector Id */
+            connector_id: string;
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+            /** Scopes */
+            scopes?: string[];
+        };
+        /** PluginConnectorResolution */
+        PluginConnectorResolution: {
+            /** Connection Id */
+            connection_id?: string | null;
+            /** Connector Id */
+            connector_id: string;
+            /** Missing Scopes */
+            missing_scopes?: string[];
+            /**
+             * Required
+             * @default true
+             */
+            required: boolean;
+            /**
+             * Satisfied
+             * @default false
+             */
+            satisfied: boolean;
+        };
+        /**
+         * PluginConsent
+         * @description Administrator consent, bound to the exact digest that was shown.
+         */
+        PluginConsent: {
+            /**
+             * Granted At
+             * Format: date-time
+             */
+            granted_at?: string;
+            /** Granted By Principal Id */
+            granted_by_principal_id: string;
+            /** Granted Capability Ids */
+            granted_capability_ids?: string[];
+            /** Manifest Digest */
+            manifest_digest: string;
+        };
+        /**
+         * PluginDetail
+         * @description The SDD 16.1 plugin detail projection, assembled from stored state.
+         */
+        PluginDetail: {
+            installation?: components["schemas"]["PluginInstallation"] | null;
+            /** Known Versions */
+            known_versions?: components["schemas"]["PluginRef"][];
+            /** Plugin Id */
+            plugin_id: string;
+            /** Recent Events */
+            recent_events?: components["schemas"]["PluginAuditEvent"][];
+            registry_entry?: components["schemas"]["MetaPlugin"] | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            version_record?: components["schemas"]["PluginVersionRecord"] | null;
+        };
+        /**
+         * PluginInstallRequest
+         * @description Install or upgrade a package into one workspace.
+         *
+         *     ``consent_digest`` must echo the manifest digest the administrator was shown, and
+         *     ``consent_capability_ids`` may narrow what policy granted but never widen it.
+         */
+        PluginInstallRequest: {
+            /** Consent Capability Ids */
+            consent_capability_ids?: string[];
+            /** Consent Digest */
+            consent_digest: string;
+            /** Expected Digest */
+            expected_digest?: string | null;
+            /** Reference */
+            reference: string;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * PluginInstallation
+         * @description Mutable, workspace-scoped lifecycle state. Never stored in ``MetaPlugin``.
+         */
+        PluginInstallation: {
+            /** Capability Grants */
+            capability_grants?: components["schemas"]["PluginCapabilityGrant"][];
+            /** Connector Resolutions */
+            connector_resolutions?: components["schemas"]["PluginConnectorResolution"][];
+            consent?: components["schemas"]["PluginConsent"] | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Failure Reason */
+            failure_reason?: string | null;
+            /** Installation Id */
+            installation_id: string;
+            /** Installed By Principal Id */
+            installed_by_principal_id?: string | null;
+            /** Manifest Digest */
+            manifest_digest: string;
+            /** Plugin Id */
+            plugin_id: string;
+            /** Previous Version */
+            previous_version?: string | null;
+            /** Registered Capability Ids */
+            registered_capability_ids?: string[];
+            /** Registered Mcp Server Ids */
+            registered_mcp_server_ids?: string[];
+            /** Registered Skill Ids */
+            registered_skill_ids?: string[];
+            /** Requested Capability Ids */
+            requested_capability_ids?: string[];
+            /**
+             * Revision
+             * @default 1
+             */
+            revision: number;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** @default DISCOVERED */
+            state: components["schemas"]["PluginState"];
+            /** @default UNVERIFIED_DEV */
+            trust_level: components["schemas"]["PluginTrustLevel"];
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at?: string;
+            /** Version */
+            version: string;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * PluginRef
+         * @description The locked v0.4 historical reference triple. Nothing may be added to it.
+         */
+        PluginRef: {
+            /** Manifest Digest */
+            manifest_digest: string;
+            /** Plugin Id */
+            plugin_id: string;
+            /** Version */
+            version: string;
+        };
+        /**
+         * PluginSignature
+         * @description Detached authenticity claim over the manifest digest.
+         */
+        PluginSignature: {
+            /** @default SHA256_PIN */
+            algorithm: components["schemas"]["PluginSignatureAlgorithm"];
+            /**
+             * Key Id
+             * @default
+             */
+            key_id: string;
+            /** Signed At */
+            signed_at?: string | null;
+            /** Value */
+            value: string;
+        };
+        /**
+         * PluginSignatureAlgorithm
+         * @enum {string}
+         */
+        PluginSignatureAlgorithm: "SHA256_PIN" | "ED25519";
+        /**
+         * PluginState
+         * @description SDD 20.3 plugin lifecycle states, adopted verbatim (ADR3-M4-001).
+         * @enum {string}
+         */
+        PluginState: "DISCOVERED" | "VALIDATING" | "INSTALLED" | "SETUP_REQUIRED" | "READY" | "ENABLED" | "DISABLED" | "FAILED" | "REMOVED";
+        /**
+         * PluginTrustLevel
+         * @enum {string}
+         */
+        PluginTrustLevel: "BUILTIN" | "WORKSPACE_APPROVED" | "SIGNED_THIRD_PARTY" | "UNVERIFIED_DEV" | "BLOCKED";
+        /**
+         * PluginUiContribution
+         * @description Declarative-only UI surface (OQ3-09); validated and persisted, rendered in M6.
+         */
+        PluginUiContribution: {
+            /** Node Badges */
+            node_badges?: {
+                [key: string]: unknown;
+            }[];
+            /** Pages */
+            pages?: {
+                [key: string]: unknown;
+            }[];
+        };
+        /**
+         * PluginVersionRecord
+         * @description Immutable global registry entry for one ``(plugin_id, version)`` manifest.
+         */
+        PluginVersionRecord: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            manifest: components["schemas"]["MetaPluginManifest"];
+            /** Manifest Digest */
+            manifest_digest: string;
+            /** Plugin Id */
+            plugin_id: string;
+            /** Plugin Version Id */
+            plugin_version_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Source Uri */
+            source_uri?: string | null;
+            /** @default UNVERIFIED_DEV */
+            trust_level: components["schemas"]["PluginTrustLevel"];
+            /** Version */
+            version: string;
+        };
+        /** PluginWorkspaceRequest */
+        PluginWorkspaceRequest: {
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /** Principal */
+        Principal: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Display Name */
+            display_name?: string | null;
+            /** Email */
+            email?: string | null;
+            /** Issuer */
+            issuer: string;
+            /** Principal Id */
+            principal_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** @default ACTIVE */
+            status: components["schemas"]["PrincipalStatus"];
+            /** Subject */
+            subject: string;
+            /** @default HUMAN */
+            type: components["schemas"]["PrincipalType"];
+        };
+        /**
+         * PrincipalStatus
+         * @enum {string}
+         */
+        PrincipalStatus: "ACTIVE" | "DISABLED";
+        /**
+         * PrincipalType
+         * @enum {string}
+         */
+        PrincipalType: "HUMAN" | "SERVICE";
         /** Project */
         Project: {
             /**
@@ -3369,7 +5097,7 @@ export interface components {
          * Provider
          * @enum {string}
          */
-        Provider: "CLAUDE" | "CODEX" | "FAKE" | "DETERMINISTIC" | "HUMAN";
+        Provider: "CLAUDE" | "CODEX" | "OPENCODE" | "FAKE" | "DETERMINISTIC" | "HUMAN";
         /** ProviderSearchBenchmark */
         ProviderSearchBenchmark: {
             /** Acceptance Rate */
@@ -3453,6 +5181,18 @@ export interface components {
          * @enum {string}
          */
         ReplanStatus: "REQUESTED" | "VALIDATING" | "ACTIVATED" | "REJECTED" | "REQUIRES_HUMAN";
+        /** ResolvedCapability */
+        ResolvedCapability: {
+            binding?: components["schemas"]["CapabilityBinding"] | null;
+            capability: components["schemas"]["Capability"];
+            connection?: components["schemas"]["ConnectionRef"] | null;
+            outcome: components["schemas"]["CapabilityResolutionOutcome"];
+            /**
+             * Reason
+             * @default
+             */
+            reason: string;
+        };
         /**
          * RiskLevel
          * @enum {string}
@@ -3476,6 +5216,8 @@ export interface components {
             last_sequence: number;
             /** Loop Execution Id */
             loop_execution_id?: string | null;
+            /** Principal Id */
+            principal_id?: string | null;
             /** Project Id */
             project_id: string;
             provider: components["schemas"]["Provider"];
@@ -4590,6 +6332,8 @@ export interface components {
         };
         /** WorkflowNodeSpec */
         WorkflowNodeSpec: {
+            /** Capability Refs */
+            capability_refs?: string[];
             /** Instruction */
             instruction?: string | null;
             /** Key */
@@ -4736,6 +6480,55 @@ export interface components {
             schema_version: "2.0";
             validation: components["schemas"]["GraphValidationResult"];
         };
+        /** WorkspaceEntity */
+        WorkspaceEntity: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Name */
+            name: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /** WorkspaceMembership */
+        WorkspaceMembership: {
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            /** Membership Id */
+            membership_id: string;
+            /** Principal Id */
+            principal_id: string;
+            /**
+             * Revision
+             * @default 1
+             */
+            revision: number;
+            role: components["schemas"]["WorkspaceRole"];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * WorkspaceRole
+         * @enum {string}
+         */
+        WorkspaceRole: "OWNER" | "ADMIN" | "DEVELOPER" | "RESEARCHER" | "VIEWER" | "SERVICE";
     };
     responses: never;
     parameters: never;
@@ -4808,6 +6601,161 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_enterprise_auth_audit_events_api_v1_audit_enterprise_auth_get: {
+        parameters: {
+            query?: {
+                connector_id?: string | null;
+                principal_id?: string | null;
+                workspace_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnterpriseAuthGrant"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_plugin_audit_events_api_v1_audit_plugins_get: {
+        parameters: {
+            query?: {
+                plugin_id?: string | null;
+                workspace_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginAuditEvent"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    auth_callback_api_v1_auth_callback_get: {
+        parameters: {
+            query: {
+                state: string;
+                code: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    auth_login_api_v1_auth_login_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+        };
+    };
+    auth_logout_api_v1_auth_logout_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    auth_providers_api_v1_auth_providers_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthProviderInfo"][];
                 };
             };
         };
@@ -4931,6 +6879,570 @@ export interface operations {
             };
         };
     };
+    resolve_capability_api_v1_capabilities_resolve_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CapabilityResolveRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolvedCapability"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_connections_api_v1_connections_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionSummary"][];
+                };
+            };
+        };
+    };
+    connection_health_api_v1_connections__connection_id__health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    reauthorize_connection_api_v1_connections__connection_id__reauthorize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizationStart"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    revoke_connection_api_v1_connections__connection_id__revoke_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connection_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_connectors_api_v1_connectors_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectorDefinition"][];
+                };
+            };
+        };
+    };
+    connect_connector_api_v1_connectors__connector_id__connect_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                connector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizationStart"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_enterprise_auth_profile_api_v1_enterprise_auth_profile_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EnterpriseAuthProfileResponse"];
+                };
+            };
+        };
+    };
+    list_mcp_servers_api_v1_mcp_servers_get: {
+        parameters: {
+            query?: {
+                workspace_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpServerDefinition"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_mcp_server_api_v1_mcp_servers_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["McpServerCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpServerDefinition"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mcp_server_api_v1_mcp_servers__mcp_server_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpServerDefinition"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_mcp_server_capabilities_api_v1_mcp_servers__mcp_server_id__capabilities_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Capability"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disable_mcp_server_api_v1_mcp_servers__mcp_server_id__disable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpServerDefinition"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_mcp_server_discovery_api_v1_mcp_servers__mcp_server_id__discovery_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpDiscoverySnapshot"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enable_mcp_server_api_v1_mcp_servers__mcp_server_id__enable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpServerDefinition"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enterprise_authorize_mcp_server_api_v1_mcp_servers__mcp_server_id__enterprise_authorize_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                mcp_server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_mcp_discovery_api_v1_mcp_servers__mcp_server_id__refresh_discovery_post: {
+        parameters: {
+            query?: {
+                force?: boolean;
+            };
+            header?: never;
+            path: {
+                mcp_server_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["McpDiscoverySnapshot"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_me_api_v1_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeResponse"];
+                };
+            };
+        };
+    };
+    oauth_callback_api_v1_oauth_callback__connector_id__get: {
+        parameters: {
+            query: {
+                state: string;
+                code: string;
+            };
+            header?: never;
+            path: {
+                connector_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_plugins_api_v1_plugins_get: {
         parameters: {
             query?: never;
@@ -4947,6 +7459,277 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MetaPlugin"][];
+                };
+            };
+        };
+    };
+    install_plugin_api_v1_plugins_install_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginInstallRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginInstallation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_plugin_installations_api_v1_plugins_installations_get: {
+        parameters: {
+            query?: {
+                workspace_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginInstallation"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_plugin_detail_api_v1_plugins__plugin_id__get: {
+        parameters: {
+            query?: {
+                workspace_id?: string | null;
+            };
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_plugin_api_v1_plugins__plugin_id__delete: {
+        parameters: {
+            query: {
+                workspace_id: string;
+                force?: boolean;
+            };
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginInstallation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    disable_plugin_api_v1_plugins__plugin_id__disable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginWorkspaceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginInstallation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    enable_plugin_api_v1_plugins__plugin_id__enable_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginWorkspaceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginInstallation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rollback_plugin_api_v1_plugins__plugin_id__rollback_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginWorkspaceRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginInstallation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    upgrade_plugin_api_v1_plugins__plugin_id__upgrade_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plugin_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PluginInstallRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PluginInstallation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -5305,6 +8088,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Run"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_run_research_evidence_api_v1_runs__run_id__research_evidence_get: {
+        parameters: {
+            query: {
+                workspace_id: string;
+                capability_id?: string | null;
+            };
+            header?: never;
+            path: {
+                run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EvidenceRecord"][];
                 };
             };
             /** @description Validation Error */
@@ -5802,6 +8619,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_workspaces_api_v1_workspaces_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WorkspaceEntity"][];
                 };
             };
         };

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 import shutil
 from pathlib import Path
@@ -9,10 +8,6 @@ from httpx import ASGITransport, AsyncClient
 
 from accretion.api.main import app
 from accretion.dynamic_benchmark import DynamicWorkflowBenchmarkRunner
-
-
-def digest(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def test_frozen_dynamic_gate_reports_benefit_fallback_and_non_inferiority() -> None:
@@ -41,9 +36,19 @@ def test_frozen_dynamic_gate_reports_benefit_fallback_and_non_inferiority() -> N
     invalid = [item for item in first.tasks if item.dynamic_invalid_proposal]
     assert len(invalid) == 1
     assert invalid[0].dynamic_fallback_used
-    assert first.corpus_sha256 == digest(runner.tasks_path)
-    assert first.trace_sha256 == digest(runner.traces_path)
-    assert first.config_sha256 == digest(runner.config_path)
+    # Literal digests, not `sha256(runner.tasks_path)`: a self-hashing assertion
+    # re-derives the expected value from the same bytes the runner read, so it holds
+    # even when the frozen corpus is edited. Pinning the constants means any change
+    # to the replayed inputs fails here and has to be re-argued.
+    assert first.corpus_sha256 == (
+        "b411b0573d514a496b81b82e25ccee146b66af7fd990187ede6e7ea4c1c399db"
+    )
+    assert first.trace_sha256 == (
+        "77645b41f35430bb886fae558a6ee684664d87b7adcb755c68a92c3db6dd3616"
+    )
+    assert first.config_sha256 == (
+        "55678342830491bc20ceea16332b6385c3f6afba3f8fd35fee6342d1260da8de"
+    )
 
 
 def test_dynamic_gate_fails_when_research_benefit_is_below_threshold(
@@ -77,7 +82,12 @@ def test_dynamic_gate_fails_when_research_benefit_is_below_threshold(
 
 
 async def test_dynamic_benchmark_api_is_replay_only() -> None:
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+    # Enter the app lifespan here rather than relying on another test having
+    # initialised the module-level `app` singleton: the session middleware reads
+    # `app.state.manager`, which only `lifespan()` sets.
+    async with app.router.lifespan_context(app), AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
         summary = await client.get("/api/v2/benchmarks/dynamic")
         replay = await client.post(
             "/api/v2/benchmarks/dynamic/run", json={"execution_source": "REPLAY"}

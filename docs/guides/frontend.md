@@ -2,17 +2,22 @@
 
 The Accretion frontend is the browser-based operator console for the same typed
 HTTP API and durable records used by automation. It is implemented for the full
-P0–P7 scope currently on `develop`: project and task setup, deterministic
-planning, live run control, graph and verifier evidence, governance, bounded
-candidate search, verified-experience replay, and reproducible benchmark views.
+P0–P7 scope plus the v0.3 M6 administration surface: project and task setup,
+deterministic planning, live run control, graph and verifier evidence,
+governance, bounded candidate search, verified-experience replay, reproducible
+benchmark views, and the Plugins, Connections, MCP Servers, Capability Inspector
+and Identity pages.
 
-<img src="../assets/operator-ui-map.svg" alt="Map of the eleven implemented Accretion frontend routes, the central live-run surface, and the authoritative FastAPI snapshot, React Query, and resumable event data flow" width="100%" />
+<img src="../assets/operator-ui-map.svg" alt="Map of the implemented Accretion frontend routes, the central live-run surface, and the authoritative FastAPI snapshot, React Query, and resumable event data flow" width="100%" />
 
 > [!IMPORTANT]
-> The frontend is feature-complete for the v0.2 release. Its generated
-> contract, lint, TypeScript, 22 component tests, and production build pass.
-> No rendered browser/accessibility PASS is claimed; the release exception and
-> post-release validation are recorded in the v0.2 audit and issue #52.
+> The frontend is feature-complete for the v0.3 release. Its generated
+> contract, lint, TypeScript, 97 component tests, and production build pass.
+> Rendered browser and accessibility evidence **is** claimed for v0.3.0: axe-core
+> 4.10.2 reports zero violations across all seventeen routes, no route scrolls
+> horizontally at 390 px, and no measured text falls below WCAG AA. See
+> [browser and accessibility evidence](../releases/v0.3/browser-a11y-evidence.md).
+> The v0.2 release exception in issue #52 is thereby discharged.
 
 ## What an operator can do
 
@@ -29,6 +34,11 @@ candidate search, verified-experience replay, and reproducible benchmark views.
 | P5 Dynamic | `/benchmarks/dynamic` | Frozen static/dynamic cohort comparison, structure/replan metrics, safety, fallback, and release classification |
 | P6 Search | `/benchmarks/search` | Frozen N=1/2/4 quality-versus-compute results and provider/null-result comparison |
 | P7 Experience | `/benchmarks/experience` | Frozen fresh/success/failure/replay treatments, transfer-safety metrics, task results, and gate reproduction |
+| Plugins | `/admin/plugins` | Installed plugin version, state, requested capabilities, grants, connector status, and lifecycle history |
+| Connections | `/admin/connections` | Per-connection status, scopes, owner and last health check, with connect, reauthorize, revoke and health actions that never render a credential |
+| MCP servers | `/admin/mcp` | Server transport, patterns, discovered tools and capabilities, cache hints, and circuit-breaker state |
+| Capability inspector | `/admin/capabilities/inspect` | Resolution of a capability onto its binding, connection, risk and policy, stating the reason when resolution is refused |
+| Identity and roles | `/admin/identity` | The caller's issuer, subject and session, plus enterprise-authorization state; read-only, with no way to change a role |
 
 Unknown routes render an explicit not-found page. Live provider actions remain
 disabled unless the deployment and project gates permit them.
@@ -104,8 +114,9 @@ npm run test
 npm run build
 ```
 
-The v0.2 release gate records 22 component tests plus successful ESLint,
-TypeScript, generated-contract, and production-build checks. The build currently
+The v0.3 release gate records 97 component tests plus successful ESLint,
+TypeScript, generated-contract, and production-build checks, and the
+accessibility evidence above. The build currently
 reports a non-blocking bundle-size advisory; it is visible technical debt, not a
 failed correctness gate.
 

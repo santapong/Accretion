@@ -271,6 +271,7 @@ class _ClaudeProcess:
         self.returncode = 137
 
 
+@pytest.mark.acceptance("V01-P0-003")
 async def test_claude_uses_session_id_once_then_resume(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

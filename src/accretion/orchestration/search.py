@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from accretion.contracts import (
+    LIVE_PROVIDERS,
     AcceptancePolicy,
     AgentEvent,
     AgentRuntime,
@@ -591,7 +592,7 @@ class SearchService:
             if provider in {Provider.HUMAN, Provider.DETERMINISTIC}:
                 continue
             if (
-                provider in {Provider.CLAUDE, Provider.CODEX}
+                provider in LIVE_PROVIDERS
                 and not self.manager.live_providers_enabled
             ):
                 continue
@@ -604,6 +605,8 @@ class SearchService:
             if item.status in {RuntimeStatus.READY, RuntimeStatus.BUSY}
         }
         if record.plan.mode in {SearchMode.CROSS_PROVIDER, SearchMode.GENERATOR_REVIEWER}:
+            # Deliberately Claude+Codex only, not LIVE_PROVIDERS: the pairing below assumes
+            # exactly two providers. Generalising it is tracked separately.
             if Provider.CLAUDE not in available or Provider.CODEX not in available:
                 return []
             if record.plan.mode is SearchMode.GENERATOR_REVIEWER:

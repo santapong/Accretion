@@ -25,6 +25,7 @@ def digest(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+@pytest.mark.acceptance("V01-BENCH-001", "V01-BENCH-003")
 def test_frozen_corpus_has_required_composition_and_reproducible_hashes() -> None:
     runner = AcrArchRunner()
     tasks = runner.tasks()
@@ -45,6 +46,7 @@ def test_frozen_corpus_has_required_composition_and_reproducible_hashes() -> Non
     )
 
 
+@pytest.mark.acceptance("V01-BENCH-002")
 def test_replay_computes_raw_dimensions_utility_and_regret_for_every_task() -> None:
     run, metrics = AcrArchRunner().replay()
     assert run.scenario_count == len(metrics) == 68
@@ -71,6 +73,7 @@ def test_replay_computes_raw_dimensions_utility_and_regret_for_every_task() -> N
     assert any(next(iter(values)) > 0 for values in regrets.values())
 
 
+@pytest.mark.acceptance("V01-BENCH-004")
 async def test_summary_filters_and_task_detail_api(tmp_path: Path) -> None:
     store = MemoryStore()
     first = await seed_acr_arch(store)

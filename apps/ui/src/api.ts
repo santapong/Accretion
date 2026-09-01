@@ -5,6 +5,7 @@ import type {
   BenchmarkRun,
   BenchmarkTaskDetail,
   Capability,
+  CapabilityResolveRequest,
   ExecutionTrace,
   ExperienceBenchmarkSummary,
   ExperienceDetail,
@@ -16,6 +17,21 @@ import type {
   LoopExecution,
   MetaPlugin,
   MetaSkill,
+  AuthProviderInfo,
+  AuthorizationStart,
+  ConnectCreate,
+  ConnectionSummary,
+  ConnectorDefinition,
+  EnterpriseAuthGrant,
+  EnterpriseAuthProfileResponse,
+  McpDiscoverySnapshot,
+  McpServerDefinition,
+  MeResponse,
+  PluginAuditEvent,
+  PluginDetail,
+  PluginInstallation,
+  ResolvedCapability,
+  WorkspaceEntity,
   Project,
   ProjectCreate,
   ProjectFeatureSettings,
@@ -55,21 +71,45 @@ export interface AcrArchFilters {
   selector_version?: string;
 }
 
+export type { MeResponse };
+
+export interface PluginAuditFilters {
+  plugin_id?: string;
+  workspace_id?: string;
+}
+
+export interface EnterpriseAuthAuditFilters {
+  connector_id?: string;
+  principal_id?: string;
+  workspace_id?: string;
+}
+
 const API_ROOT = import.meta.env.VITE_API_URL ?? "";
 
+function redirectToLogin(status: number): void {
+  if (status === 401) {
+    window.location.assign(`${API_ROOT}/api/v1/auth/login`);
+  }
+}
+
 async function getJson<T>(path: string): Promise<T> {
-  const response = await fetch(`${API_ROOT}${path}`);
-  if (!response.ok) throw new Error(`Request failed (${response.status})`);
+  const response = await fetch(`${API_ROOT}${path}`, { credentials: "include" });
+  if (!response.ok) {
+    redirectToLogin(response.status);
+    throw new Error(`Request failed (${response.status})`);
+  }
   return response.json() as Promise<T>;
 }
 
 async function postJson<T>(path: string, payload: unknown): Promise<T> {
   const response = await fetch(`${API_ROOT}${path}`, {
     method: "POST",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
+    redirectToLogin(response.status);
     const body = await response.json().catch(() => null) as { message?: string } | null;
     throw new Error(body?.message ?? `Request failed (${response.status})`);
   }
@@ -79,10 +119,12 @@ async function postJson<T>(path: string, payload: unknown): Promise<T> {
 async function patchJson<T>(path: string, payload: unknown): Promise<T> {
   const response = await fetch(`${API_ROOT}${path}`, {
     method: "PATCH",
+    credentials: "include",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
+    redirectToLogin(response.status);
     const body = await response.json().catch(() => null) as { message?: string } | null;
     throw new Error(body?.message ?? `Request failed (${response.status})`);
   }
@@ -90,6 +132,7 @@ async function patchJson<T>(path: string, payload: unknown): Promise<T> {
 }
 
 export const api = {
+  me: () => getJson<MeResponse>("/api/v1/me"),
   runtimes: () => getJson<RuntimeHealth[]>("/api/v1/runtimes"),
   runtimeSessions: (runtimeId: string) =>
     getJson<SessionRef[]>(`/api/v1/runtimes/${runtimeId}/sessions`),
@@ -211,6 +254,58 @@ export const api = {
   capabilities: () => getJson<Capability[]>("/api/v1/capabilities"),
   skills: () => getJson<MetaSkill[]>("/api/v1/skills"),
   plugins: () => getJson<MetaPlugin[]>("/api/v1/plugins"),
+  pluginDetail: (pluginId: string, workspaceId?: string) =>
+    getJson<PluginDetail>(
+      `/api/v1/plugins/${pluginId}${workspaceId ? `?workspace_id=${workspaceId}` : ""}`,
+    ),
+  pluginInstallations: (workspaceId?: string) =>
+    getJson<PluginInstallation[]>(
+      `/api/v1/plugins/installations${workspaceId ? `?workspace_id=${workspaceId}` : ""}`,
+    ),
+  pluginAudit: (filters: PluginAuditFilters = {}) => {
+    const query = new URLSearchParams(
+      Object.entries(filters).filter((entry): entry is [string, string] => Boolean(entry[1])),
+    );
+    return getJson<PluginAuditEvent[]>(`/api/v1/audit/plugins?${query}`);
+  },
+  enterpriseAuthProfile: () =>
+    getJson<EnterpriseAuthProfileResponse>("/api/v1/enterprise-auth/profile"),
+  enterpriseAuthAudit: (filters: EnterpriseAuthAuditFilters = {}) => {
+    const query = new URLSearchParams(
+      Object.entries(filters).filter((entry): entry is [string, string] => Boolean(entry[1])),
+    );
+    return getJson<EnterpriseAuthGrant[]>(`/api/v1/audit/enterprise-auth?${query}`);
+  },
+  enterpriseAuthorizeMcpServer: (mcpServerId: string) =>
+    postJson<ConnectionSummary>(
+      `/api/v1/mcp/servers/${mcpServerId}/enterprise-authorize`,
+      {},
+    ),
+  connectors: () => getJson<ConnectorDefinition[]>("/api/v1/connectors"),
+  connections: () => getJson<ConnectionSummary[]>("/api/v1/connections"),
+  connect: (connectorId: string, payload: ConnectCreate) =>
+    postJson<AuthorizationStart>(`/api/v1/connectors/${connectorId}/connect`, payload),
+  reauthorize: (connectionId: string, payload: ConnectCreate) =>
+    postJson<AuthorizationStart>(
+      `/api/v1/connections/${connectionId}/reauthorize`,
+      payload,
+    ),
+  revoke: (connectionId: string) =>
+    postJson<ConnectionSummary>(`/api/v1/connections/${connectionId}/revoke`, {}),
+  connectionHealth: (connectionId: string) =>
+    getJson<Record<string, unknown>>(`/api/v1/connections/${connectionId}/health`),
+  mcpServers: (workspaceId?: string) =>
+    getJson<McpServerDefinition[]>(
+      `/api/v1/mcp/servers${workspaceId ? `?workspace_id=${workspaceId}` : ""}`,
+    ),
+  mcpServerCapabilities: (mcpServerId: string) =>
+    getJson<Capability[]>(`/api/v1/mcp/servers/${mcpServerId}/capabilities`),
+  mcpServerDiscovery: (mcpServerId: string) =>
+    getJson<McpDiscoverySnapshot>(`/api/v1/mcp/servers/${mcpServerId}/discovery`),
+  resolveCapability: (payload: CapabilityResolveRequest) =>
+    postJson<ResolvedCapability>("/api/v1/capabilities/resolve", payload),
+  workspaces: () => getJson<WorkspaceEntity[]>("/api/v1/workspaces"),
+  authProviders: () => getJson<AuthProviderInfo[]>("/api/v1/auth/providers"),
   acrArch: (filters: AcrArchFilters = {}) => {
     const query = new URLSearchParams(
       Object.entries(filters).filter((entry): entry is [string, string] => Boolean(entry[1])),

@@ -3,23 +3,42 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
-from typing import cast
+from contextlib import asynccontextmanager, suppress
+from datetime import UTC, datetime
+from typing import Any, cast
 from uuid import uuid4
 
+import httpx
 from fastapi import FastAPI, Header, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, RedirectResponse, Response, StreamingResponse
 
 from accretion import __version__
+from accretion.api.auth import (
+    auth_runtime,
+    authenticate_request,
+    build_auth_runtime,
+    is_exempt,
+)
+from accretion.api.auth import principal as current_principal
 from accretion.api.schemas import (
     ApprovalDecisionCreate,
+    AuthorizationStart,
+    AuthProviderInfo,
     BenchmarkRunCreate,
+    CapabilityResolveRequest,
+    ConnectCreate,
+    ConnectionSummary,
+    EnterpriseAuthProfileResponse,
     ErrorEnvelope,
     ExperienceMaterializeCreate,
     ExperienceQueryCreate,
     ExperienceRetractCreate,
     ExperienceSelectionCreate,
+    McpServerCreate,
+    MeResponse,
+    PluginInstallRequest,
+    PluginWorkspaceRequest,
     ProjectCreate,
     ProjectFeatureUpdate,
     ReplanCreate,
@@ -38,6 +57,9 @@ from accretion.benchmark import (
 )
 from accretion.concurrency import ConcurrencyLimiter
 from accretion.config import get_settings
+from accretion.connections import ConnectionError as ConnectionServiceError
+from accretion.connections import ConnectionService
+from accretion.connectors import GITHUB_CONNECTOR_ID, github_connector, github_endpoints
 from accretion.contracts import (
     TERMINAL_RUN_STATES,
     AcrArchSummary,
@@ -49,15 +71,25 @@ from accretion.contracts import (
     BenchmarkRun,
     BenchmarkTaskDetail,
     Capability,
+    Connection,
+    ConnectionScope,
+    ConnectorDefinition,
+    EnterpriseAuthGrant,
     EventType,
+    EvidenceRecord,
     ExecutionMode,
     ExecutionTrace,
     GraphProjection,
     LoopExecution,
+    McpDiscoverySnapshot,
+    McpServerDefinition,
     MetaPlugin,
     MetaSkill,
+    PluginAuditEvent,
+    PluginInstallation,
     Project,
     Provider,
+    ResolvedCapability,
     Run,
     RunAudit,
     RuntimeHealth,
@@ -69,10 +101,19 @@ from accretion.contracts import (
     TaskType,
     TemplateStatus,
     VerificationResult,
+    WorkspaceEntity,
+    WorkspaceRole,
 )
 from accretion.dynamic_benchmark import (
     DynamicWorkflowBenchmarkRunner,
     DynamicWorkflowBenchmarkSummary,
+)
+from accretion.enterprise_auth import (
+    UNSCOPED,
+    EnterpriseAuthDisabled,
+    EnterpriseAuthError,
+    EnterpriseAuthManager,
+    build_enterprise_auth_manager,
 )
 from accretion.experience.models import (
     Experience,
@@ -90,7 +131,25 @@ from accretion.experience_benchmark import (
     ExperienceBenchmarkRunner,
     ExperienceBenchmarkSummary,
 )
-from accretion.governance import seed_governance
+from accretion.governance import (
+    CapabilityExecutor,
+    CapabilityGateway,
+    CapabilityPolicyEngine,
+    CredentialBroker,
+    GatewayCapabilityInvoker,
+    default_capability_handlers,
+    seed_governance,
+)
+from accretion.identity import AuthenticationError, AuthorizationError
+from accretion.ids import new_id
+from accretion.mcp.endpoint_policy import McpEndpointPolicy, McpEndpointPolicyError
+from accretion.mcp.manager import (
+    McpManagerError,
+    McpServerAuthRequired,
+    RemoteMcpManager,
+)
+from accretion.mcp.remote_client import SdkRemoteMcpClient
+from accretion.oauth import OAuthClient
 from accretion.orchestration.models import (
     CandidateScore,
     CandidateTrajectory,
@@ -119,15 +178,34 @@ from accretion.orchestration.service import (
 from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.side_effects import PostgresSideEffectLedger
 from accretion.persistence.store import PostgresStore
-from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime
+from accretion.plugins.errors import (
+    PluginDependencyError,
+    PluginManagerError,
+    PluginManifestError,
+    PluginPolicyDenied,
+    PluginSignatureError,
+    PluginTrustError,
+)
+from accretion.plugins.manager import PluginManager
+from accretion.plugins.registration import PluginDetail
+from accretion.plugins.trust import PluginTrustVerifier, load_trusted_keys
+from accretion.research.transforms import default_transform_registry
+from accretion.resolver import CapabilityResolver
+from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime, OpencodeRuntime
 from accretion.search_benchmark import SearchBenchmarkRunner, SearchBenchmarkSummary
+from accretion.secrets_store import EnvelopeSecretStore
 from accretion.services.run_manager import (
     ProjectionUnavailableError,
     RunManager,
     WorkflowTemplateError,
 )
 from accretion.templates import seed_templates
-from accretion.verifiers.registry import VerifierUnavailableError
+from accretion.token_broker import EncryptedTokenBroker
+from accretion.verifiers.git_diff import GitDiffVerifier
+from accretion.verifiers.output_contract import OutputContractVerifier
+from accretion.verifiers.registry import VerifierRegistry, VerifierUnavailableError
+from accretion.verifiers.research import research_verifiers
+from accretion.verifiers.trajectory import TrajectoryPolicyVerifier
 from accretion.workspace import WorktreeManager
 
 SSE_TERMINAL_EVENTS = {
@@ -162,7 +240,63 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         Provider.FAKE: FakeRuntime(),
         Provider.CODEX: CodexRuntime(settings.codex_command, gateway_environment),
         Provider.CLAUDE: ClaudeRuntime(settings.claude_command, gateway_environment),
+        Provider.OPENCODE: OpencodeRuntime(
+            settings.opencode_command,
+            gateway_environment,
+            model=settings.opencode_model,
+        ),
     }
+    secrets_store = EnvelopeSecretStore()
+    token_broker = (
+        EncryptedTokenBroker(store, secrets_store)
+        if settings.token_encryption_key
+        else None
+    )
+    # Optional, off by default, and inert without an exchange endpoint (OQ3-08).
+    enterprise_auth = build_enterprise_auth_manager(
+        store, secrets_store, token_broker, settings
+    )
+    app.state.enterprise_auth = enterprise_auth
+    if token_broker is not None and settings.github_client_id:
+        github = github_connector(
+            authorization_server=settings.github_authorization_server
+        )
+        await store.upsert_connector_definition(github)
+        app.state.connections = ConnectionService(
+            store=store,
+            broker=token_broker,
+            clients={
+                GITHUB_CONNECTOR_ID: OAuthClient(
+                    client_id=settings.github_client_id,
+                    client_secret=settings.github_client_secret,
+                    redirect_url=settings.github_redirect_url,
+                    endpoints=github_endpoints(settings.github_authorization_server),
+                    http=httpx.AsyncClient(),
+                )
+            },
+        )
+    app.state.remote_mcp = RemoteMcpManager(
+        store=store,
+        client=SdkRemoteMcpClient(),
+        endpoint_policy=McpEndpointPolicy(
+            allowed_hosts=settings.mcp_allowed_hosts,
+            allowed_ports=settings.mcp_allowed_ports,
+            allow_local_http=settings.mcp_allow_local_http,
+        ),
+        token_broker=token_broker,
+        enterprise_auth=enterprise_auth,
+    )
+    app.state.plugins = PluginManager(
+        store=store,
+        trust_verifier=PluginTrustVerifier(
+            trusted_keys=load_trusted_keys(settings.plugin_trusted_keys),
+            allow_unverified_dev=settings.plugin_allow_unverified_dev,
+            builtin_ids=settings.plugin_builtin_ids,
+        ),
+        policy_engine=CapabilityPolicyEngine(set(settings.granted_permissions)),
+        remote_mcp=app.state.remote_mcp,
+        policy_id=settings.capability_policy_id,
+    )
     manager = RunManager(
         store=store,
         worktrees=WorktreeManager(settings.worktree_dir, settings.artifact_dir),
@@ -175,10 +309,45 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         live_providers_enabled=settings.enable_live_providers,
         side_effect_ledger=PostgresSideEffectLedger(sessions),
         operator_identity=settings.operator_identity,
+        # Built explicitly rather than left to RunManager's default. The default is
+        # the hardcoded three, so until M5 the API process resolved every research
+        # verifier id to VerifierUnavailableError in production while the same ids
+        # resolved fine in tests that passed their own registry — a gap visible only
+        # once a policy actually required one. The registry is now assembled in one
+        # place and the research verifiers read evidence from the real store.
+        verifier_registry=VerifierRegistry(
+            [
+                GitDiffVerifier(),
+                OutputContractVerifier(),
+                TrajectoryPolicyVerifier(),
+                *research_verifiers(store),
+            ]
+        ),
         auto_resume_on_reconcile=settings.auto_resume_on_reconcile,
     )
     app.state.engine = engine
     app.state.manager = manager
+    # The section 27 exit seam, wired for the API process. Without this the scheduler
+    # holds a `capability_invoker` of `None` in production and a real one only in
+    # tests --- the same asymmetry the verifier registry above had until M5. The
+    # gateway is the governed path: policy engine, token broker and side-effect ledger
+    # are all the production objects, and the transform registry is supplied so the
+    # research bindings' `output_transform_ref` resolves here as it does in the MCP
+    # gateway process.
+    manager.capability_invoker = GatewayCapabilityInvoker(
+        resolver=CapabilityResolver(store),
+        gateway=CapabilityGateway(
+            store=store,
+            side_effects=PostgresSideEffectLedger(sessions),
+            broker=CredentialBroker(settings.credential_env_map),
+            executor=CapabilityExecutor(default_capability_handlers()),
+            policy_engine=CapabilityPolicyEngine(set(settings.granted_permissions)),
+            policy_id=settings.capability_policy_id,
+            token_broker=token_broker,
+            remote_mcp=app.state.remote_mcp,
+            transforms=default_transform_registry(),
+        ),
+    )
     app.state.dynamic_workflows = DynamicWorkflowService(
         manager,
         globally_enabled=settings.enable_dynamic_workflows,
@@ -197,6 +366,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         experience_service=experience,
     )
     app.state.candidate_search = search_service
+    app.state.auth = build_auth_runtime(store, settings, enterprise_auth=enterprise_auth)
     await seed_templates(store)
     await seed_governance(store)
     await seed_acr_arch(store)
@@ -206,9 +376,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     for task in manager.background.values():
         if not task.done():
             task.cancel()
-    codex = runtimes[Provider.CODEX]
-    if isinstance(codex, CodexRuntime):
-        await codex.close()
+    for runtime in runtimes.values():
+        closer = getattr(runtime, "close", None)
+        if callable(closer):
+            # One adapter failing to shut down must not orphan another's server process.
+            with suppress(Exception):
+                await closer()
     await engine.dispose()
 
 
@@ -217,10 +390,23 @@ settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
-    allow_credentials=False,
-    allow_methods=["GET", "POST", "PATCH"],
-    allow_headers=["Content-Type", "Last-Event-ID"],
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
+    allow_headers=["Content-Type", "Last-Event-ID", "X-Request-ID"],
 )
+
+
+@app.middleware("http")
+async def session_middleware(request: Request, call_next: Any) -> Any:
+    if request.method == "OPTIONS" or is_exempt(request.url.path):
+        return await call_next(request)
+    try:
+        request.state.principal = await authenticate_request(request)
+    except AuthenticationError as exc:
+        return _error(401, "UNAUTHENTICATED", str(exc))
+    except AuthorizationError as exc:
+        return _error(403, "FORBIDDEN", str(exc))
+    return await call_next(request)
 
 
 def manager(request: Request) -> RunManager:
@@ -239,6 +425,35 @@ def experience_service(request: Request) -> ExperienceService:
     return cast(ExperienceService, request.app.state.experience)
 
 
+def remote_mcp(request: Request) -> RemoteMcpManager:
+    service = getattr(request.app.state, "remote_mcp", None)
+    if service is None:
+        raise ValueError("remote MCP manager is unavailable")
+    return cast(RemoteMcpManager, service)
+
+
+def plugins(request: Request) -> PluginManager:
+    service = getattr(request.app.state, "plugins", None)
+    if service is None:
+        raise ValueError("plugin manager is unavailable")
+    return cast(PluginManager, service)
+
+
+def enterprise_auth(request: Request) -> EnterpriseAuthManager | None:
+    """The enterprise authorization manager, or ``None`` when it was not built.
+
+    Unlike every other service accessor this one may legitimately answer ``None``:
+    enterprise-managed authorization is optional (OQ3-08), and a deployment that
+    never switched it on has no manager at all. Callers turn that into a 409 rather
+    than a 500, because "off" is a configuration answer, not a fault.
+    """
+
+    return cast(
+        "EnterpriseAuthManager | None",
+        getattr(request.app.state, "enterprise_auth", None),
+    )
+
+
 @app.exception_handler(KeyError)
 async def key_error_handler(request: Request, exc: KeyError) -> JSONResponse:
     return _error(404, "NOT_FOUND", f"Resource {exc.args[0]} was not found")
@@ -252,6 +467,108 @@ async def permission_error_handler(request: Request, exc: PermissionError) -> JS
 @app.exception_handler(ValueError)
 async def value_error_handler(request: Request, exc: ValueError) -> JSONResponse:
     return _error(400, "INVALID_REQUEST", str(exc))
+
+
+@app.exception_handler(AuthenticationError)
+async def authentication_error_handler(
+    request: Request, exc: AuthenticationError
+) -> JSONResponse:
+    return _error(401, "UNAUTHENTICATED", str(exc))
+
+
+@app.exception_handler(AuthorizationError)
+async def authorization_error_handler(
+    request: Request, exc: AuthorizationError
+) -> JSONResponse:
+    return _error(403, "FORBIDDEN", str(exc))
+
+
+@app.exception_handler(ConnectionServiceError)
+async def connection_error_handler(
+    request: Request, exc: ConnectionServiceError
+) -> JSONResponse:
+    # One shape for unknown, replayed, expired, and cross-principal states, so a
+    # caller cannot probe which of those it hit (AC3-SEC-04).
+    return _error(400, "CONNECTION_REJECTED", str(exc))
+
+
+@app.exception_handler(McpEndpointPolicyError)
+async def mcp_endpoint_policy_handler(
+    request: Request, exc: McpEndpointPolicyError
+) -> JSONResponse:
+    return _error(400, "MCP_ENDPOINT_BLOCKED", str(exc))
+
+
+@app.exception_handler(McpServerAuthRequired)
+async def mcp_auth_required_handler(
+    request: Request, exc: McpServerAuthRequired
+) -> JSONResponse:
+    return _error(409, "MCP_AUTH_REQUIRED", str(exc))
+
+
+@app.exception_handler(McpManagerError)
+async def mcp_manager_error_handler(
+    request: Request, exc: McpManagerError
+) -> JSONResponse:
+    return _error(409, "MCP_SERVER_REJECTED", str(exc))
+
+
+@app.exception_handler(EnterpriseAuthDisabled)
+async def enterprise_auth_disabled_handler(
+    request: Request, exc: EnterpriseAuthDisabled
+) -> JSONResponse:
+    return _error(409, "ENTERPRISE_AUTH_DISABLED", str(exc))
+
+
+@app.exception_handler(EnterpriseAuthError)
+async def enterprise_auth_error_handler(
+    request: Request, exc: EnterpriseAuthError
+) -> JSONResponse:
+    # The refusal reason is already recorded as an EnterpriseAuthGrant row; the
+    # caller gets one shape for every refusal so it cannot probe which one it hit.
+    return _error(409, "ENTERPRISE_AUTH_REFUSED", str(exc))
+
+
+@app.exception_handler(PluginManifestError)
+async def plugin_manifest_handler(
+    request: Request, exc: PluginManifestError
+) -> JSONResponse:
+    return _error(400, "PLUGIN_MANIFEST_INVALID", str(exc))
+
+
+@app.exception_handler(PluginSignatureError)
+async def plugin_signature_handler(
+    request: Request, exc: PluginSignatureError
+) -> JSONResponse:
+    return _error(400, "PLUGIN_SIGNATURE_INVALID", str(exc))
+
+
+@app.exception_handler(PluginTrustError)
+async def plugin_trust_handler(request: Request, exc: PluginTrustError) -> JSONResponse:
+    return _error(403, "PLUGIN_TRUST_INSUFFICIENT", str(exc))
+
+
+@app.exception_handler(PluginPolicyDenied)
+async def plugin_policy_denied_handler(
+    request: Request, exc: PluginPolicyDenied
+) -> JSONResponse:
+    return _error(403, "PLUGIN_POLICY_DENIED", str(exc))
+
+
+@app.exception_handler(PluginDependencyError)
+async def plugin_dependency_handler(
+    request: Request, exc: PluginDependencyError
+) -> JSONResponse:
+    return _error(409, "PLUGIN_DEPENDENCY_UNSATISFIED", str(exc))
+
+
+# Registered last on purpose: the specific plugin failures above keep their own
+# status codes, and only what none of them matched falls through to this one.
+@app.exception_handler(PluginManagerError)
+async def plugin_manager_error_handler(
+    request: Request, exc: PluginManagerError
+) -> JSONResponse:
+    return _error(409, "PLUGIN_REJECTED", str(exc))
 
 
 @app.exception_handler(WorkflowTemplateError)
@@ -453,7 +770,9 @@ async def create_strategy_override(
 
 @app.post("/api/v1/tasks/{task_id}/runs", response_model=Run, status_code=202)
 async def start_run(task_id: str, payload: RunCreate, request: Request) -> Run:
-    return await manager(request).start_run(task_id, payload.provider)
+    return await manager(request).start_run(
+        task_id, payload.provider, current_principal(request).principal_id
+    )
 
 
 @app.get("/api/v1/runs", response_model=list[Run])
@@ -925,9 +1244,478 @@ async def runtime_sessions(runtime_id: str, request: Request) -> list[SessionRef
     raise KeyError(runtime_id)
 
 
+@app.get("/api/v1/me", response_model=MeResponse)
+async def get_me(request: Request) -> MeResponse:
+    who = current_principal(request)
+    memberships = await manager(request).store.list_workspace_memberships(
+        principal_id=who.principal_id
+    )
+    return MeResponse(
+        principal=who,
+        memberships=memberships,
+        auth_mode=auth_runtime(request.app).mode,
+    )
+
+
+@app.get("/api/v1/workspaces", response_model=list[WorkspaceEntity])
+async def list_workspaces(request: Request) -> list[WorkspaceEntity]:
+    who = current_principal(request)
+    return await manager(request).store.list_workspaces_for_principal(who.principal_id)
+
+
+@app.get("/api/v1/auth/providers", response_model=list[AuthProviderInfo])
+async def auth_providers(request: Request) -> list[AuthProviderInfo]:
+    runtime = auth_runtime(request.app)
+    if runtime.mode == "OIDC" and runtime.identity.oidc is not None:
+        return [AuthProviderInfo(mode="OIDC", issuer=runtime.identity.oidc.config.issuer)]
+    return [AuthProviderInfo(mode="LOCAL_PRINCIPAL")]
+
+
+@app.get("/api/v1/auth/login")
+async def auth_login(request: Request) -> RedirectResponse:
+    runtime = auth_runtime(request.app)
+    if runtime.mode != "OIDC":
+        raise ValueError("login is not required in LOCAL_PRINCIPAL mode")
+    url = await runtime.identity.begin_login()
+    return RedirectResponse(url, status_code=302)
+
+
+@app.get("/api/v1/auth/callback")
+async def auth_callback(request: Request, state: str, code: str) -> RedirectResponse:
+    runtime = auth_runtime(request.app)
+    _, session = await runtime.identity.complete_login(state=state, code=code)
+    response = RedirectResponse("/", status_code=302)
+    response.set_cookie(
+        runtime.cookie_name,
+        session.auth_session_id,
+        max_age=runtime.session_ttl_seconds,
+        httponly=True,
+        samesite="lax",
+        secure=runtime.cookie_secure,
+    )
+    return response
+
+
+@app.post("/api/v1/auth/logout", status_code=204)
+async def auth_logout(request: Request) -> Response:
+    runtime = auth_runtime(request.app)
+    auth_session_id = request.cookies.get(runtime.cookie_name)
+    if auth_session_id:
+        await runtime.identity.logout(auth_session_id)
+    response = Response(status_code=204)
+    response.delete_cookie(runtime.cookie_name)
+    return response
+
+
 @app.get("/api/v1/capabilities", response_model=list[Capability])
 async def list_capabilities(request: Request) -> list[Capability]:
     return await manager(request).store.list_capabilities()
+
+
+async def _require_workspace_access(
+    request: Request,
+    workspace_id: str,
+    *,
+    administer: bool = False,
+) -> None:
+    who = current_principal(request)
+    memberships = await manager(request).store.list_workspace_memberships(
+        workspace_id=workspace_id,
+        principal_id=who.principal_id,
+    )
+    if not memberships:
+        raise AuthorizationError("principal is not a member of the requested workspace")
+    if administer and memberships[0].role not in {WorkspaceRole.OWNER, WorkspaceRole.ADMIN}:
+        raise AuthorizationError("workspace owner or admin role is required")
+
+
+@app.get(
+    "/api/v1/runs/{run_id}/research-evidence",
+    response_model=list[EvidenceRecord],
+)
+async def list_run_research_evidence(
+    run_id: str,
+    request: Request,
+    workspace_id: str,
+    capability_id: str | None = None,
+) -> list[EvidenceRecord]:
+    """Read a run's Evidence Store, in the store's own deterministic order.
+
+    Read-only by construction: evidence is written on the gateway's execution path,
+    where the trust label is assigned, and there is deliberately no HTTP way to put a
+    record here or to relabel one.
+
+    ``workspace_id`` is a required parameter rather than something derived from the
+    run because ``Run`` carries no workspace: it links to a task, a project and a
+    principal, and none of the three reaches a workspace today. Requiring the caller
+    to name a workspace they are a member of is therefore the strongest gate available
+    at this boundary, and narrowing it to the run's own workspace is M6 work that
+    needs the missing link first.
+
+    Ordering is ``(created_at, evidence_id)`` in all three store implementations, so a
+    caller may page or diff two responses without re-sorting.
+    """
+
+    await _require_workspace_access(request, workspace_id)
+    if await manager(request).store.get_run(run_id) is None:
+        raise KeyError(run_id)
+    return await manager(request).store.list_research_evidence(
+        run_id, capability_id=capability_id
+    )
+
+
+@app.get("/api/v1/mcp/servers", response_model=list[McpServerDefinition])
+async def list_mcp_servers(
+    request: Request, workspace_id: str | None = None
+) -> list[McpServerDefinition]:
+    who = current_principal(request)
+    memberships = await manager(request).store.list_workspace_memberships(
+        principal_id=who.principal_id
+    )
+    visible = {item.workspace_id for item in memberships}
+    if workspace_id is not None:
+        if workspace_id not in visible:
+            raise AuthorizationError("principal is not a member of the requested workspace")
+        visible = {workspace_id}
+    return [
+        server
+        for server in await remote_mcp(request).store.list_mcp_servers(workspace_id)
+        if server.workspace_id in visible
+    ]
+
+
+@app.post("/api/v1/mcp/servers", response_model=McpServerDefinition, status_code=201)
+async def register_mcp_server(
+    payload: McpServerCreate, request: Request
+) -> McpServerDefinition:
+    await _require_workspace_access(request, payload.workspace_id, administer=True)
+    who = current_principal(request)
+    return await remote_mcp(request).register(
+        McpServerDefinition(
+            mcp_server_id=new_id("mcp_server"),
+            workspace_id=payload.workspace_id,
+            connector_id=payload.connector_id,
+            name=payload.name,
+            endpoint=payload.endpoint,
+            protocol_versions=payload.protocol_versions,
+            auth_profile_ref=payload.auth_profile_ref,
+            trust_level=payload.trust_level,
+            owner_principal_id=who.principal_id,
+            health_policy=payload.health_policy,
+            discovery_policy=payload.discovery_policy,
+            allowed_tool_patterns=payload.allowed_tool_patterns,
+            denied_tool_patterns=payload.denied_tool_patterns,
+            tool_mappings=payload.tool_mappings,
+        )
+    )
+
+
+async def _mcp_server_for_request(
+    mcp_server_id: str, request: Request, *, administer: bool = False
+) -> McpServerDefinition:
+    server = await remote_mcp(request).store.get_mcp_server(mcp_server_id)
+    if server is None:
+        raise KeyError(mcp_server_id)
+    await _require_workspace_access(request, server.workspace_id, administer=administer)
+    return server
+
+
+@app.get("/api/v1/mcp/servers/{mcp_server_id}", response_model=McpServerDefinition)
+async def get_mcp_server(mcp_server_id: str, request: Request) -> McpServerDefinition:
+    return await _mcp_server_for_request(mcp_server_id, request)
+
+
+@app.post(
+    "/api/v1/mcp/servers/{mcp_server_id}/refresh-discovery",
+    response_model=McpDiscoverySnapshot,
+)
+async def refresh_mcp_discovery(
+    mcp_server_id: str,
+    request: Request,
+    force: bool = Query(default=False),
+) -> McpDiscoverySnapshot:
+    server = await _mcp_server_for_request(mcp_server_id, request, administer=True)
+    who = current_principal(request)
+    return await remote_mcp(request).refresh_discovery(
+        server.mcp_server_id,
+        principal_id=who.principal_id,
+        workspace_id=server.workspace_id,
+        force=force,
+        correlation_id=request.headers.get("x-request-id"),
+    )
+
+
+@app.get(
+    "/api/v1/mcp/servers/{mcp_server_id}/discovery",
+    response_model=McpDiscoverySnapshot,
+)
+async def get_mcp_server_discovery(
+    mcp_server_id: str, request: Request
+) -> McpDiscoverySnapshot:
+    """The most recent discovery snapshot for one server.
+
+    Read-only: unlike ``refresh-discovery`` this never contacts the server, so any
+    workspace member may call it. A server with no snapshot yet is a 404, which is
+    also what a non-existent server returns.
+    """
+
+    server = await _mcp_server_for_request(mcp_server_id, request)
+    snapshots = await remote_mcp(request).store.list_mcp_discovery_snapshots(
+        server.mcp_server_id
+    )
+    if not snapshots:
+        raise KeyError(mcp_server_id)
+    return snapshots[0]
+
+
+@app.post("/api/v1/mcp/servers/{mcp_server_id}/enable", response_model=McpServerDefinition)
+async def enable_mcp_server(mcp_server_id: str, request: Request) -> McpServerDefinition:
+    server = await _mcp_server_for_request(mcp_server_id, request, administer=True)
+    return await remote_mcp(request).enable(
+        server.mcp_server_id,
+        principal_id=current_principal(request).principal_id,
+        workspace_id=server.workspace_id,
+    )
+
+
+@app.post("/api/v1/mcp/servers/{mcp_server_id}/disable", response_model=McpServerDefinition)
+async def disable_mcp_server(mcp_server_id: str, request: Request) -> McpServerDefinition:
+    server = await _mcp_server_for_request(mcp_server_id, request, administer=True)
+    return await remote_mcp(request).disable(
+        server.mcp_server_id,
+        principal_id=current_principal(request).principal_id,
+        workspace_id=server.workspace_id,
+    )
+
+
+@app.get(
+    "/api/v1/mcp/servers/{mcp_server_id}/capabilities",
+    response_model=list[Capability],
+)
+async def list_mcp_server_capabilities(
+    mcp_server_id: str, request: Request
+) -> list[Capability]:
+    server = await _mcp_server_for_request(mcp_server_id, request)
+    return await remote_mcp(request).capabilities(
+        server.mcp_server_id, workspace_id=server.workspace_id
+    )
+
+
+def _connection_summary(connection: Connection) -> ConnectionSummary:
+    """Project a stored connection for the API. Never carries the token handle."""
+
+    return ConnectionSummary(
+        connection_id=connection.connection_id,
+        connector_id=connection.connector_id,
+        workspace_id=connection.workspace_id,
+        principal_id=connection.principal_id,
+        scope=connection.scope,
+        status=connection.status,
+        granted_scopes=connection.granted_scopes,
+        workspace_shareable=connection.workspace_shareable,
+        created_at=connection.created_at,
+        last_health_check=connection.last_health_check,
+    )
+
+
+@app.get(
+    "/api/v1/enterprise-auth/profile", response_model=EnterpriseAuthProfileResponse
+)
+async def get_enterprise_auth_profile(request: Request) -> EnterpriseAuthProfileResponse:
+    """What enterprise-managed authorization can do for the calling principal.
+
+    Lives under ``/api/v1/enterprise-auth/`` rather than ``/api/v1/auth/`` because
+    the latter prefix is exempt from the session middleware, and this answer is
+    per-principal. No token, no ``secret_store_key``, no assertion id.
+    """
+
+    service = enterprise_auth(request)
+    config = service.settings if service is not None else settings
+    expires_at: datetime | None = None
+    if service is not None:
+        assertion = await service.store.get_identity_assertion_for_principal(
+            current_principal(request).principal_id
+        )
+        # A row can outlive the token it addresses, so "live" means unexpired as
+        # well as ACTIVE — the same reading acquisition uses.
+        if assertion is not None and assertion.expires_at > datetime.now(UTC):
+            expires_at = assertion.expires_at
+    return EnterpriseAuthProfileResponse(
+        enabled=service is not None,
+        token_exchange_configured=bool(config.enterprise_auth_token_exchange_url),
+        audiences=dict(config.enterprise_auth_audiences),
+        has_live_assertion=expires_at is not None,
+        assertion_expires_at=expires_at,
+    )
+
+
+@app.post(
+    "/api/v1/mcp/servers/{mcp_server_id}/enterprise-authorize",
+    response_model=ConnectionSummary,
+)
+async def enterprise_authorize_mcp_server(
+    mcp_server_id: str, request: Request
+) -> ConnectionSummary:
+    """Mint the caller's own enterprise-authorized connection to one MCP server.
+
+    Workspace membership is required and nothing more: the connection is USER
+    scoped and belongs to the caller alone (INV3-008), so demanding an
+    administrator here would make AC3-EMA-02 unreachable for ordinary members
+    while granting them nothing they could not obtain by invoking a tool. A
+    non-member never gets this far — ``_mcp_server_for_request`` raises, and a
+    server in an invisible workspace 404s rather than 403s.
+    """
+
+    server = await _mcp_server_for_request(mcp_server_id, request)
+    service = enterprise_auth(request)
+    if service is None:
+        raise EnterpriseAuthDisabled(
+            "enterprise-managed authorization is not enabled for this deployment"
+        )
+    connector = await service.store.get_connector_definition(server.connector_id)
+    if connector is None:
+        raise KeyError(server.connector_id)
+    connection = await service.ensure_access(
+        connector,
+        server,
+        principal_id=current_principal(request).principal_id,
+        workspace_id=server.workspace_id,
+    )
+    return _connection_summary(connection)
+
+
+@app.get("/api/v1/connectors", response_model=list[ConnectorDefinition])
+async def list_connectors(request: Request) -> list[ConnectorDefinition]:
+    return await manager(request).store.list_connector_definitions()
+
+
+@app.get("/api/v1/connections", response_model=list[ConnectionSummary])
+async def list_connections(request: Request) -> list[ConnectionSummary]:
+    """List only the connections this principal may see.
+
+    Returns a summary rather than the stored model: a Connection carries
+    ``token_handle_ref``, which is broker-internal and never leaves the API (INV3-002).
+    """
+
+    store = manager(request).store
+    who = current_principal(request)
+    memberships = await store.list_workspace_memberships(principal_id=who.principal_id)
+    workspaces = {item.workspace_id for item in memberships}
+    return [
+        _connection_summary(item)
+        for item in await store.list_connections()
+        # A user connection is private to its owner (INV3-008); a workspace
+        # connection is visible only to members of that workspace.
+        if item.principal_id == who.principal_id
+        or (item.scope is ConnectionScope.WORKSPACE and item.workspace_id in workspaces)
+    ]
+
+
+def connections(request: Request) -> ConnectionService:
+    service = getattr(request.app.state, "connections", None)
+    if service is None:
+        raise ValueError("no OAuth connector is configured")
+    return cast(ConnectionService, service)
+
+
+@app.post("/api/v1/connectors/{connector_id}/connect", response_model=AuthorizationStart)
+async def connect_connector(
+    connector_id: str, payload: ConnectCreate, request: Request
+) -> AuthorizationStart:
+    """Begin an OAuth authorization for the calling principal."""
+
+    url = await connections(request).begin(
+        connector_id=connector_id,
+        principal=current_principal(request),
+        workspace_id=payload.workspace_id,
+        scopes=payload.scopes,
+        redirect_target=payload.redirect_target,
+    )
+    return AuthorizationStart(authorization_url=url)
+
+
+@app.get("/api/v1/oauth/callback/{connector_id}", response_model=ConnectionSummary)
+async def oauth_callback(
+    connector_id: str, state: str, code: str, request: Request
+) -> ConnectionSummary:
+    """Redeem an authorization code.
+
+    Deliberately *not* exempt from the session middleware. The cookie is SameSite=Lax,
+    so it accompanies this top-level redirect, and requiring it gives a second binding
+    beyond ``state``: the returning browser must be the session that began the flow.
+    """
+
+    connection = await connections(request).complete(
+        connector_id=connector_id,
+        state=state,
+        code=code,
+        principal=current_principal(request),
+    )
+    return _connection_summary(connection)
+
+
+@app.post(
+    "/api/v1/connections/{connection_id}/reauthorize", response_model=AuthorizationStart
+)
+async def reauthorize_connection(
+    connection_id: str, payload: ConnectCreate, request: Request
+) -> AuthorizationStart:
+    """Re-consent, the only way scopes ever widen (SDD 6.3)."""
+
+    service = connections(request)
+    who = current_principal(request)
+    existing = await service.store.get_connection(connection_id)
+    if existing is None or existing.principal_id != who.principal_id:
+        raise KeyError(connection_id)
+    url = await service.begin(
+        connector_id=existing.connector_id,
+        principal=who,
+        workspace_id=existing.workspace_id,
+        scopes=payload.scopes,
+        connection_id=connection_id,
+        redirect_target=payload.redirect_target,
+    )
+    return AuthorizationStart(authorization_url=url)
+
+
+@app.post("/api/v1/connections/{connection_id}/revoke", response_model=ConnectionSummary)
+async def revoke_connection(connection_id: str, request: Request) -> ConnectionSummary:
+    connection = await connections(request).revoke(
+        connection_id=connection_id, principal=current_principal(request)
+    )
+    return _connection_summary(connection)
+
+
+@app.get("/api/v1/connections/{connection_id}/health")
+async def connection_health(connection_id: str, request: Request) -> dict[str, Any]:
+    return await connections(request).health(
+        connection_id=connection_id, principal=current_principal(request)
+    )
+
+
+@app.post("/api/v1/capabilities/resolve", response_model=ResolvedCapability)
+async def resolve_capability(
+    payload: CapabilityResolveRequest, request: Request
+) -> ResolvedCapability:
+    store = manager(request).store
+    who = current_principal(request)
+    if payload.principal_id is not None and payload.principal_id != who.principal_id:
+        # Resolving as another principal would disclose whether they hold a
+        # connection, and which one (INV3-008).
+        raise AuthorizationError("cannot resolve capabilities for another principal")
+    if payload.workspace_id is not None:
+        memberships = await store.list_workspace_memberships(principal_id=who.principal_id)
+        if payload.workspace_id not in {item.workspace_id for item in memberships}:
+            raise AuthorizationError("principal is not a member of the requested workspace")
+    resolved = await CapabilityResolver(store).resolve(
+        payload.capability_id,
+        version=payload.version,
+        principal_id=who.principal_id,
+        workspace_id=payload.workspace_id,
+    )
+    if resolved is None:
+        raise KeyError(payload.capability_id)
+    return resolved
 
 
 @app.get("/api/v1/skills", response_model=list[MetaSkill])
@@ -935,9 +1723,207 @@ async def list_skills(request: Request) -> list[MetaSkill]:
     return await manager(request).store.list_skills()
 
 
+async def _visible_workspaces(request: Request) -> set[str]:
+    who = current_principal(request)
+    memberships = await manager(request).store.list_workspace_memberships(
+        principal_id=who.principal_id
+    )
+    return {item.workspace_id for item in memberships}
+
+
 @app.get("/api/v1/plugins", response_model=list[MetaPlugin])
 async def list_plugins(request: Request) -> list[MetaPlugin]:
-    return await manager(request).store.list_plugins()
+    """Built-in plugins, plus whatever is installed in the caller's workspaces.
+
+    The v0.1 shape is unchanged so the console keeps rendering, but the listing is no
+    longer global: before M4 every authenticated principal saw every registry row,
+    including rows contributed by another tenant's installation.
+    """
+
+    visible = await _visible_workspaces(request)
+    installations = await plugins(request).list_installations()
+    installed_anywhere = {item.plugin_id for item in installations}
+    installed_here = {
+        item.plugin_id for item in installations if item.workspace_id in visible
+    }
+    return [
+        entry
+        for entry in await manager(request).store.list_plugins()
+        # A registry row nobody installed is a seeded built-in and belongs to everyone;
+        # anything a workspace installed belongs only to that workspace's members.
+        if entry.plugin_id not in installed_anywhere or entry.plugin_id in installed_here
+    ]
+
+
+@app.get("/api/v1/plugins/installations", response_model=list[PluginInstallation])
+async def list_plugin_installations(
+    request: Request, workspace_id: str | None = None
+) -> list[PluginInstallation]:
+    visible = await _visible_workspaces(request)
+    if workspace_id is not None:
+        if workspace_id not in visible:
+            raise AuthorizationError("principal is not a member of the requested workspace")
+        visible = {workspace_id}
+    return [
+        installation
+        for installation in await plugins(request).list_installations(workspace_id)
+        if installation.workspace_id in visible
+    ]
+
+
+@app.get("/api/v1/audit/plugins", response_model=list[PluginAuditEvent])
+async def list_plugin_audit_events(
+    request: Request,
+    plugin_id: str | None = None,
+    workspace_id: str | None = None,
+) -> list[PluginAuditEvent]:
+    visible = await _visible_workspaces(request)
+    if workspace_id is not None:
+        if workspace_id not in visible:
+            raise AuthorizationError("principal is not a member of the requested workspace")
+        visible = {workspace_id}
+    return [
+        event
+        for event in await plugins(request).store.list_plugin_audit_events(plugin_id=plugin_id)
+        if event.workspace_id is not None and event.workspace_id in visible
+    ]
+
+
+@app.get("/api/v1/audit/enterprise-auth", response_model=list[EnterpriseAuthGrant])
+async def list_enterprise_auth_audit_events(
+    request: Request,
+    connector_id: str | None = None,
+    principal_id: str | None = None,
+    workspace_id: str | None = None,
+) -> list[EnterpriseAuthGrant]:
+    """Every enterprise authorization decision the caller may see.
+
+    Mirrors ``/api/v1/audit/plugins``: naming a workspace the caller is not a
+    member of is a 403, and naming none falls back to the workspaces they can
+    see. Session-wide rows — retention and revocation, which belong to no single
+    workspace — are recorded against ``UNSCOPED`` and are shown only to the
+    principal they are about, and only when no workspace was named.
+
+    ``detail`` is prose written by the enterprise auth manager and never carries
+    assertion or token material; AC3-EMA-05 scans every row returned here.
+    """
+
+    visible = await _visible_workspaces(request)
+    unscoped_for: str | None = current_principal(request).principal_id
+    if workspace_id is not None:
+        if workspace_id not in visible:
+            raise AuthorizationError("principal is not a member of the requested workspace")
+        visible = {workspace_id}
+        unscoped_for = None
+    grants = await manager(request).store.list_enterprise_auth_grants(
+        principal_id=principal_id, connector_id=connector_id
+    )
+    return [
+        grant
+        for grant in grants
+        if grant.workspace_id in visible
+        or (grant.workspace_id == UNSCOPED and grant.principal_id == unscoped_for)
+    ]
+
+
+@app.post("/api/v1/plugins/install", response_model=PluginInstallation, status_code=201)
+async def install_plugin(
+    payload: PluginInstallRequest, request: Request
+) -> PluginInstallation:
+    await _require_workspace_access(request, payload.workspace_id, administer=True)
+    return await plugins(request).install(
+        payload.reference,
+        workspace_id=payload.workspace_id,
+        principal_id=current_principal(request).principal_id,
+        consent_digest=payload.consent_digest,
+        consent_capability_ids=payload.consent_capability_ids,
+        expected_digest=payload.expected_digest,
+        correlation_id=request.headers.get("x-request-id"),
+    )
+
+
+@app.get("/api/v1/plugins/{plugin_id}", response_model=PluginDetail)
+async def get_plugin_detail(
+    plugin_id: str, request: Request, workspace_id: str | None = None
+) -> PluginDetail:
+    if workspace_id is not None:
+        await _require_workspace_access(request, workspace_id)
+    return await plugins(request).detail(plugin_id, workspace_id=workspace_id)
+
+
+@app.post("/api/v1/plugins/{plugin_id}/enable", response_model=PluginInstallation)
+async def enable_plugin(
+    plugin_id: str, payload: PluginWorkspaceRequest, request: Request
+) -> PluginInstallation:
+    await _require_workspace_access(request, payload.workspace_id, administer=True)
+    return await plugins(request).enable(
+        plugin_id,
+        workspace_id=payload.workspace_id,
+        principal_id=current_principal(request).principal_id,
+        correlation_id=request.headers.get("x-request-id"),
+    )
+
+
+@app.post("/api/v1/plugins/{plugin_id}/disable", response_model=PluginInstallation)
+async def disable_plugin(
+    plugin_id: str, payload: PluginWorkspaceRequest, request: Request
+) -> PluginInstallation:
+    await _require_workspace_access(request, payload.workspace_id, administer=True)
+    return await plugins(request).disable(
+        plugin_id,
+        workspace_id=payload.workspace_id,
+        principal_id=current_principal(request).principal_id,
+        correlation_id=request.headers.get("x-request-id"),
+    )
+
+
+@app.post("/api/v1/plugins/{plugin_id}/upgrade", response_model=PluginInstallation)
+async def upgrade_plugin(
+    plugin_id: str, payload: PluginInstallRequest, request: Request
+) -> PluginInstallation:
+    await _require_workspace_access(request, payload.workspace_id, administer=True)
+    return await plugins(request).upgrade(
+        plugin_id,
+        payload.reference,
+        workspace_id=payload.workspace_id,
+        principal_id=current_principal(request).principal_id,
+        consent_digest=payload.consent_digest,
+        consent_capability_ids=payload.consent_capability_ids,
+        expected_digest=payload.expected_digest,
+        correlation_id=request.headers.get("x-request-id"),
+    )
+
+
+@app.post("/api/v1/plugins/{plugin_id}/rollback", response_model=PluginInstallation)
+async def rollback_plugin(
+    plugin_id: str, payload: PluginWorkspaceRequest, request: Request
+) -> PluginInstallation:
+    await _require_workspace_access(request, payload.workspace_id, administer=True)
+    return await plugins(request).rollback(
+        plugin_id,
+        workspace_id=payload.workspace_id,
+        principal_id=current_principal(request).principal_id,
+        correlation_id=request.headers.get("x-request-id"),
+    )
+
+
+@app.delete("/api/v1/plugins/{plugin_id}", response_model=PluginInstallation)
+async def remove_plugin(
+    plugin_id: str,
+    request: Request,
+    workspace_id: str,
+    force: bool = Query(default=False),
+) -> PluginInstallation:
+    """Retire an installation. Prior-run evidence is never touched (AC3-PLG-05)."""
+
+    await _require_workspace_access(request, workspace_id, administer=True)
+    return await plugins(request).remove(
+        plugin_id,
+        workspace_id=workspace_id,
+        principal_id=current_principal(request).principal_id,
+        force=force,
+        correlation_id=request.headers.get("x-request-id"),
+    )
 
 
 @app.get("/api/v1/benchmarks/acr-arch", response_model=AcrArchSummary)

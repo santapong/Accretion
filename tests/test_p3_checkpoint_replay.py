@@ -5,6 +5,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import pytest
+
 from accretion.checkpoints import (
     CheckpointEvaluation,
     CheckpointInvalidReason,
@@ -201,6 +203,7 @@ async def crashed_loop_fixture(
     return store, bootstrap, run
 
 
+@pytest.mark.acceptance("V01-P2-003", "V01-P3-003")
 async def test_reconcile_auto_resumes_from_last_valid_checkpoint(tmp_path: Path) -> None:
     store, bootstrap, run = await crashed_loop_fixture(tmp_path, with_checkpoint=True)
     stored_checkpoint = await store.get_latest_checkpoint(run.run_id)
@@ -237,6 +240,7 @@ async def test_reconcile_auto_resumes_from_last_valid_checkpoint(tmp_path: Path)
     assert execution.stop_reason is LoopStopReason.VERIFIED_SUCCESS
 
 
+@pytest.mark.acceptance("V01-P3-003")
 async def test_p2_recovery_behavior_unchanged_without_checkpoints(tmp_path: Path) -> None:
     store, bootstrap, run = await crashed_loop_fixture(tmp_path, with_checkpoint=False)
     replacement = build_manager(tmp_path, store, FakeRuntime(), auto_resume=True)
@@ -337,6 +341,7 @@ async def test_reconcile_recreates_workspace_when_no_candidate_work_lost(
     assert classified and classified[-1].payload["classification"] == "recreate"
 
 
+@pytest.mark.acceptance("V01-P3-004", "V01-P3-005")
 async def test_restart_reproduces_projection_and_trace(tmp_path: Path) -> None:
     repository = tmp_path / "repository"
     repository.mkdir()
@@ -399,6 +404,7 @@ def test_evaluate_checkpoint_pure_rules() -> None:
     assert ok.valid and not ok.stale
 
 
+@pytest.mark.acceptance("V01-P0-005")
 def test_classify_run_pure_rules() -> None:
     escalated = classify_run(
         workspace_status="MISSING",

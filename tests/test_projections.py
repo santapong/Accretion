@@ -176,6 +176,7 @@ def test_loop_projection_fallback_folds_latest_iteration_results_fail_closed() -
     assert verifier_node.verifier_state is VerificationStatus.FAIL
 
 
+@pytest.mark.acceptance("V01-P2-006")
 def test_loop_projection_traversals_and_artifact_count_follow_trace() -> None:
     run = Run(
         run_id="run_projection_trace",
@@ -311,6 +312,7 @@ def node_event(run: Run, key: str, *, entered: bool, entered_via: str | None = N
     )
 
 
+@pytest.mark.acceptance("V01-P3-006")
 def test_graph_projection_never_expands_nodes_with_iterations() -> None:
     from accretion.projections import build_graph_projection
 
@@ -440,6 +442,7 @@ def test_graph_projection_marks_waiting_gate_and_active_approval_edge() -> None:
     assert approval_edge.active
 
 
+@pytest.mark.acceptance("V01-P3-005")
 def test_graph_projection_rejects_template_mismatch() -> None:
     from accretion.projections import build_graph_projection
 

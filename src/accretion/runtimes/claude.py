@@ -39,6 +39,47 @@ from accretion.runtimes.common import (
     submission_timeout_seconds,
 )
 
+# Deny rules take precedence over allow rules, so these hold even if an allow prefix
+# is later widened. Codex is network-denied by its own sandbox
+# (``sandbox_workspace_write.network_access: False``); Claude Code exposes no
+# equivalent OS-level switch on the pinned version, so egress is narrowed by policy
+# instead. That is defence in depth, not parity: a deny list enumerates, and an
+# interpreter reached through an allowed command can still open a socket. The residual
+# gap is recorded in docs/runbooks/p0-runtime.md.
+_DENIED_TOOLS = (
+    # Direct network clients.
+    "Bash(curl*)",
+    "Bash(wget*)",
+    "Bash(nc*)",
+    "Bash(ncat*)",
+    "Bash(netcat*)",
+    "Bash(telnet*)",
+    "Bash(ssh*)",
+    "Bash(scp*)",
+    "Bash(sftp*)",
+    "Bash(rsync*)",
+    # Anything that reaches a remote to mutate or fetch code.
+    "Bash(git push*)",
+    "Bash(git fetch*)",
+    "Bash(git pull*)",
+    "Bash(git clone*)",
+    "Bash(git remote*)",
+    # Package installers, which are arbitrary code execution over the network.
+    "Bash(pip*)",
+    "Bash(uv add*)",
+    "Bash(uv pip*)",
+    "Bash(uv sync*)",
+    "Bash(npm install*)",
+    "Bash(npm i *)",
+    "Bash(npm ci*)",
+    "Bash(npx*)",
+    "Bash(pnpm*)",
+    "Bash(yarn*)",
+    # Provider-native fetch paths, denied as well as withheld from --tools.
+    "WebFetch",
+    "WebSearch",
+)
+
 _CALL_TERMINALS = {
     EventType.RUNTIME_CALL_COMPLETED,
     EventType.RUNTIME_CALL_FAILED,
@@ -195,12 +236,19 @@ class ClaudeRuntime:
             "Write",
             "Glob",
             "Grep",
+            # Narrow prefixes only. `Bash(uv run*)` and `Bash(npm run*)` used to be
+            # allowed, and both match an arbitrary interpreter: `uv run python -c ...`
+            # satisfies the first, so the allowlist did not constrain what ran.
             "Bash(git status*)",
             "Bash(git diff*)",
+            "Bash(git log*)",
             "Bash(pytest*)",
-            "Bash(uv run*)",
+            "Bash(uv run pytest*)",
+            "Bash(uv run ruff*)",
+            "Bash(uv run mypy*)",
             "Bash(npm test*)",
-            "Bash(npm run*)",
+            "Bash(npm run build*)",
+            "Bash(npm run check*)",
             *gateway_tools,
         ]
         command.extend(
@@ -212,6 +260,8 @@ class ClaudeRuntime:
                 ",".join([*native_tools, *gateway_tools]),
                 "--allowedTools",
                 ",".join(allowed_tools),
+                "--disallowedTools",
+                ",".join(_DENIED_TOOLS),
                 "--disable-slash-commands",
                 "--no-chrome",
             ]

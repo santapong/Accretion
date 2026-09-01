@@ -38,7 +38,18 @@ jobs:
       - run: uv run --no-sync alembic upgrade head
       - run: uv run --no-sync alembic downgrade base
       - run: uv run --no-sync alembic upgrade head
+      # Kept alongside the acceptance harness on purpose: the harness decides
+      # criteria, and does not fail on a test failure that claims no criterion.
+      # Without this step an unrelated regression would go unreported.
       - run: uv run --no-sync pytest -p pytest_asyncio.plugin
+      # M8 cutover. The eight stage-scoped gates this replaces each ran the whole
+      # suite, and every criterion they covered is in scope here: as of M8 the full
+      # harness reports `unmet MUST: 0`, so the narrower gates were both redundant
+      # and weaker. A stage gate also prints PASS on an empty scope, which the full
+      # harness cannot do.
+      - run: uv run --no-sync python scripts/check_acceptance.py
+      # SDD 24.8, each condition independently failable.
+      - run: uv run --no-sync python scripts/release_gate.py
 
   frontend:
     runs-on: ubuntu-latest
@@ -55,4 +66,48 @@ jobs:
       - run: git diff --exit-code -- apps/ui/src/api/schema.d.ts
       - run: npm run check
       - run: npm run test
+      - run: npm run build
+
+  clean-checkout:
+    # SDD 24.8 requires the release to reproduce from a clean checkout. This job
+    # deliberately shares nothing with `backend`: no uv cache, no reused
+    # artifacts, and the generated API surface is rebuilt from source and
+    # compared, so a fixture or schema that only exists on a developer's machine
+    # fails here rather than after the tag is cut.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.6-pg16
+        env:
+          POSTGRES_DB: accretion
+          POSTGRES_USER: accretion
+          POSTGRES_PASSWORD: accretion
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U accretion -d accretion"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ACCRETION_DATABASE_URL: postgresql+asyncpg://accretion:accretion@localhost:5432/accretion
+      ACCRETION_TEST_POSTGRES_URL: postgresql+asyncpg://accretion:accretion@localhost:5432/accretion
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - run: uv sync --all-groups
+      - run: uv run --no-sync alembic upgrade head
+      # The frozen evidence corpora must hash to the values the documents
+      # publish when read from a fresh clone.
+      - run: uv run --no-sync python scripts/check_acceptance.py
+      - run: uv run --no-sync python scripts/release_gate.py
+      - run: npm ci
+      - run: npm run api:generate
+      - run: git diff --exit-code -- apps/ui/src/api/schema.d.ts
       - run: npm run build

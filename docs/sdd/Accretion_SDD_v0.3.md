@@ -935,6 +935,28 @@ Possible projection elements:
 - App Server approvals;
 - installed plugin/app capabilities when supported.
 
+## 15.4 Opencode projection
+
+Possible projection elements:
+
+- inline server configuration via `OPENCODE_CONFIG_CONTENT`;
+- per-prompt tool allow/deny map on `prompt_async`;
+- non-interactive permission policy (`edit`/`bash` patterns, `webfetch`, `external_directory`);
+- per-session working directory, which is how a run is pinned to its worktree.
+
+Two constraints distinguish this adapter from §15.2 and §15.3:
+
+- **No capability gateway.** opencode resolves `mcp` once per server process, while the
+  Accretion gateway pins one `ACCRETION_GATEWAY_RUN_ID` for its lifetime. On a server shared
+  by concurrent runs that would attribute every governed side effect to whichever run started
+  first, so the adapter configures no gateway and refuses any task carrying a non-empty
+  capability set. Such tasks must be routed to Claude or Codex.
+- **The model is configuration, never code.** `prompt_async` takes an explicit
+  `providerID`/`modelID`, supplied by `ACCRETION_OPENCODE_MODEL` or `SessionConfig.model`.
+  `health()` verifies the configured model still appears in `opencode models` and reports
+  `DEGRADED` when it does not, so a withdrawn preview model fails at planning time rather
+  than mid-run.
+
 Provider differences remain isolated in adapters.
 
 ---
@@ -1416,6 +1438,18 @@ release_v0_3 =
     AND connection_isolation_tests == PASS
     AND v0.1/v0.2 regression suite == PASS
 ```
+
+## 24.9 Enterprise-managed authorization
+
+| ID | Priority | Acceptance criterion |
+|---|---|---|
+| AC3-EMA-01 | MUST | With `enterprise_auth` disabled, an EMA connector behaves exactly as an unauthorized OAuth connector: `AUTH_REQUIRED`, and no identity assertion is retained or exchanged. |
+| AC3-EMA-02 | MUST | With `enterprise_auth` enabled, a principal who has signed in once can invoke a centrally managed MCP server with no further end-user authorization step. |
+| AC3-EMA-03 | MUST | An identity assertion or enterprise grant with a wrong issuer, wrong audience, or expired lifetime is refused, and the refusal is recorded. |
+| AC3-EMA-04 | MUST | Ending the session or revoking the connection prevents subsequent enterprise-authorized invocation and destroys the retained assertion. |
+| AC3-EMA-05 | MUST | No identity assertion, enterprise grant, or enterprise-issued access token appears in AgentEvent, TaskEnvelope, ContextBundle, frontend payload, or OpenTelemetry export. |
+| AC3-EMA-06 | MUST | An enterprise-authorized connection cannot be resolved for a different principal. |
+| AC3-EMA-07 | MUST | Expiry of an enterprise-issued access token within a valid session is renewed without end-user interaction; expiry of the retained assertion fails closed to `REAUTH_REQUIRED`. |
 
 ---
 

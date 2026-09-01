@@ -14,7 +14,7 @@ as a research result.
 | [ACR-ARCH v0.1](acr-arch-v0.1.md) | 30 tasks, 68 balanced Claude/Codex replay scenarios | Immutable static architecture-selection control with raw quality, cost, latency, risk, and human-burden dimensions | CONTROL |
 | [P5 dynamic workflows](p5/benchmark.md) | 12 tasks, 24 paired static/dynamic traces | Heterogeneous/uncertain utility uplift `+0.224631`; success `9/12 → 12/12`; predictable uplift `+0.009195`; static fallback and safety gates pass | PASS · POSITIVE |
 | [P6 bounded search](p6/acceptance.md#frozen-benchmark-result) | 12 held-out tasks at N=1, 2, and 4 | Verified accepts `8/12 → 12/12`; mean quality `0.472500 → 0.768333`; explicit null-gain result preserved | PASS |
-| [P7 verified experience](p7/acceptance.md#frozen-benchmark-result) | 20 tasks, 50 sources, 80 traces, four treatments | Replay quality uplift `+0.070500`; 20% fewer tool calls; 95% stale rejection; 3.33% negative transfer; false accepts do not increase | PASS |
+| [P7 verified experience](p7/acceptance.md#frozen-benchmark-result) | 20 tasks, 50 sources, 80 traces, four treatments | Replay quality uplift `+0.070500`; 20% fewer tool calls; 95% stale rejection (corpus-declared, see ADR3-M8-005); 3.33% negative transfer; false accepts do not increase | PASS |
 
 The P5–P7 values above are deterministic properties of versioned fixtures. They
 do not claim that a currently hosted model will reproduce those exact values.
@@ -36,9 +36,12 @@ SHA-256 is
 This remains calibration evidence, not a frozen benchmark replacement.
 
 The v0.2.0 release used a documented maintainer exception because no supported
-browser instance was connected. No rendered browser or accessibility PASS is
-part of the research evidence; [issue #52](https://github.com/santapong/Accretion/issues/52)
-tracks that separate post-release validation.
+browser instance was connected. That exception is discharged for v0.3.0: a real
+browser was available and axe-core 4.10.2 reported zero violations across all
+seventeen routes, recorded in
+[browser and accessibility evidence](../releases/v0.3/browser-a11y-evidence.md).
+Rendered browser and accessibility results remain **separate from** the
+deterministic research claims below, which are unchanged by them.
 
 ## Reproduce the experiments
 

@@ -379,6 +379,369 @@ class PluginRow(Base):
     )
 
 
+class PluginVersionRow(Base):
+    __tablename__ = "plugin_versions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    plugin_version_id: Mapped[str] = mapped_column(String(255), unique=True)
+    plugin_id: Mapped[str] = mapped_column(String(255))
+    version: Mapped[str] = mapped_column(String(64))
+    manifest_digest: Mapped[str] = mapped_column(String(64))
+    trust_level: Mapped[str] = mapped_column(String(32))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("plugin_id", "version", name="uq_plugin_versions_id_version"),
+        Index("ix_plugin_versions_digest", "manifest_digest"),
+    )
+
+
+class PluginInstallationRow(Base):
+    __tablename__ = "plugin_installations"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    installation_id: Mapped[str] = mapped_column(String(255), unique=True)
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    plugin_id: Mapped[str] = mapped_column(String(255))
+    version: Mapped[str] = mapped_column(String(64))
+    state: Mapped[str] = mapped_column(String(32))
+    trust_level: Mapped[str] = mapped_column(String(32))
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "plugin_id", name="uq_plugin_installations_ws_plugin"),
+        Index("ix_plugin_installations_workspace_state", "workspace_id", "state"),
+    )
+
+
+class PluginAuditEventRow(Base):
+    """Append-only: no ``updated_at``, and nothing in the store ever deletes a row."""
+
+    __tablename__ = "plugin_audit_events"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    plugin_event_id: Mapped[str] = mapped_column(String(255), unique=True)
+    plugin_id: Mapped[str] = mapped_column(String(255))
+    installation_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    event_type: Mapped[str] = mapped_column(String(64))
+    correlation_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_plugin_audit_events_plugin_created", "plugin_id", "created_at"),
+        Index("ix_plugin_audit_events_installation", "installation_id"),
+    )
+
+
+class PrincipalRow(Base):
+    __tablename__ = "principals"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    principal_id: Mapped[str] = mapped_column(String(255), unique=True)
+    issuer: Mapped[str] = mapped_column(String(512))
+    subject: Mapped[str] = mapped_column(String(512))
+    status: Mapped[str] = mapped_column(String(32))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("issuer", "subject", name="uq_principals_issuer_subject"),
+    )
+
+
+class WorkspaceRow(Base):
+    __tablename__ = "workspaces"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(255), unique=True)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class WorkspaceMembershipRow(Base):
+    __tablename__ = "workspace_memberships"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    membership_id: Mapped[str] = mapped_column(String(255), unique=True)
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    principal_id: Mapped[str] = mapped_column(String(255))
+    role: Mapped[str] = mapped_column(String(32))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "principal_id", name="uq_workspace_memberships_pair"
+        ),
+    )
+
+
+class AuthSessionRow(Base):
+    __tablename__ = "auth_sessions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    auth_session_id: Mapped[str] = mapped_column(String(255), unique=True)
+    principal_id: Mapped[str] = mapped_column(String(255))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_auth_sessions_principal", "principal_id", "revoked"),)
+
+
+class OAuthTransactionRow(Base):
+    """Short-lived connector authorization state, single-use by state."""
+
+    __tablename__ = "oauth_transactions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    state: Mapped[str] = mapped_column(String(255), unique=True)
+    connector_id: Mapped[str] = mapped_column(String(255))
+    principal_id: Mapped[str] = mapped_column(String(255))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class TokenHandleRow(Base):
+    """Opaque handle metadata. Carries no token material (SDD 18: secrets stay outside)."""
+
+    __tablename__ = "token_handles"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    token_handle_id: Mapped[str] = mapped_column(String(255), unique=True)
+    connector_id: Mapped[str] = mapped_column(String(255))
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    principal_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    status: Mapped[str] = mapped_column(String(32))
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_token_handles_owner", "connector_id", "principal_id"),
+        Index("ix_token_handles_status", "status", "expires_at"),
+    )
+
+
+class SecretRecordRow(Base):
+    """Ciphertext envelope. The master key lives outside PostgreSQL (SDD 13.3)."""
+
+    __tablename__ = "secret_records"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    secret_store_key: Mapped[str] = mapped_column(String(255), unique=True)
+    key_id: Mapped[str] = mapped_column(String(64))
+    nonce: Mapped[str] = mapped_column(String(64))
+    ciphertext: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class AuthTransactionRow(Base):
+    __tablename__ = "auth_transactions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    state: Mapped[str] = mapped_column(String(255), unique=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class ConnectorDefinitionRow(Base):
+    __tablename__ = "connector_definitions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    connector_id: Mapped[str] = mapped_column(String(255), unique=True)
+    auth_type: Mapped[str] = mapped_column(String(32))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (Index("ix_connector_definitions_auth", "auth_type", "connector_id"),)
+
+
+class ConnectionRow(Base):
+    __tablename__ = "connections"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    connection_id: Mapped[str] = mapped_column(String(255), unique=True)
+    connector_id: Mapped[str] = mapped_column(String(255))
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    principal_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    scope: Mapped[str] = mapped_column(String(32))
+    status: Mapped[str] = mapped_column(String(32))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_connections_connector_status", "connector_id", "status"),
+        Index("ix_connections_workspace", "workspace_id", "principal_id"),
+    )
+
+
+class CapabilityBindingRow(Base):
+    __tablename__ = "capability_bindings"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    binding_id: Mapped[str] = mapped_column(String(255), unique=True)
+    capability_id: Mapped[str] = mapped_column(String(255))
+    connector_id: Mapped[str] = mapped_column(String(255))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint("capability_id", "connector_id", name="uq_capability_bindings_cap_conn"),
+        Index("ix_capability_bindings_capability", "enabled", "capability_id"),
+    )
+
+
+class McpServerRow(Base):
+    __tablename__ = "mcp_servers"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    mcp_server_id: Mapped[str] = mapped_column(String(255), unique=True)
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    connector_id: Mapped[str] = mapped_column(String(255))
+    state: Mapped[str] = mapped_column(String(32))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_mcp_servers_workspace_state", "workspace_id", "state"),
+        Index("ix_mcp_servers_connector", "connector_id", "enabled"),
+    )
+
+
+class McpDiscoverySnapshotRow(Base):
+    __tablename__ = "mcp_server_discovery_snapshots"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    discovery_snapshot_id: Mapped[str] = mapped_column(String(255), unique=True)
+    mcp_server_id: Mapped[str] = mapped_column(String(255))
+    connection_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    valid: Mapped[bool] = mapped_column(Boolean)
+    content_sha256: Mapped[str] = mapped_column(String(64))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index(
+            "ix_mcp_snapshots_server_connection_created",
+            "mcp_server_id",
+            "connection_id",
+            "created_at",
+        ),
+    )
+
+
+class McpServerEventRow(Base):
+    __tablename__ = "mcp_server_events"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    mcp_event_id: Mapped[str] = mapped_column(String(255), unique=True)
+    mcp_server_id: Mapped[str] = mapped_column(String(255))
+    event_type: Mapped[str] = mapped_column(String(64))
+    correlation_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_mcp_events_server_created", "mcp_server_id", "created_at"),
+        Index("ix_mcp_events_correlation", "correlation_id"),
+    )
+
+
+class ResearchEvidenceRow(Base):
+    """v0.3 M5 Evidence Store.
+
+    Deliberately not the orphaned ``evidence`` table: the v0.4 registry pins
+    ``EvidenceRef`` identity there, and squatting it would force a Major
+    migration later. No foreign key to ``runs``: evidence must outlive the run
+    it was gathered for, and a cascading delete would destroy it.
+    """
+
+    __tablename__ = "research_evidence"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    evidence_id: Mapped[str] = mapped_column(String(255), unique=True)
+    run_id: Mapped[str] = mapped_column(String(255))
+    capability_id: Mapped[str] = mapped_column(String(255))
+    connector_id: Mapped[str] = mapped_column(String(255))
+    source_id: Mapped[str] = mapped_column(String(1024))
+    content_digest: Mapped[str] = mapped_column(String(64))
+    trust: Mapped[str] = mapped_column(String(32))
+    trust_score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_research_evidence_run_created", "run_id", "created_at"),
+        Index("ix_research_evidence_run_digest", "run_id", "content_digest"),
+        Index("ix_research_evidence_connector_capability", "connector_id", "capability_id"),
+        Index("ix_research_evidence_source", "source_id"),
+        Index("ix_research_evidence_trust", "trust"),
+    )
+
+
+class IdentityAssertionRow(Base):
+    """Retained identity assertion metadata (v0.3 M7).
+
+    Carries no assertion material: the sealed assertion lives in
+    ``secret_records`` under ``secret_store_key``.
+    """
+
+    __tablename__ = "identity_assertions"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    assertion_id: Mapped[str] = mapped_column(String(255), unique=True)
+    auth_session_id: Mapped[str] = mapped_column(String(255))
+    principal_id: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(32))
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_identity_assertions_session", "auth_session_id"),
+        Index("ix_identity_assertions_principal_status", "principal_id", "status"),
+        Index("ix_identity_assertions_status_expires", "status", "expires_at"),
+    )
+
+
+class EnterpriseAuthGrantRow(Base):
+    """Append-only: no ``updated_at``, and nothing in the store ever updates or
+    deletes a row."""
+
+    __tablename__ = "enterprise_auth_grants"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    grant_id: Mapped[str] = mapped_column(String(255), unique=True)
+    principal_id: Mapped[str] = mapped_column(String(255))
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    connector_id: Mapped[str] = mapped_column(String(255))
+    mcp_server_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    connection_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    outcome: Mapped[str] = mapped_column(String(32))
+    definition: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        Index("ix_enterprise_grants_principal_created", "principal_id", "created_at"),
+        Index("ix_enterprise_grants_connector_created", "connector_id", "created_at"),
+        Index("ix_enterprise_grants_outcome", "outcome"),
+    )
+
+
 class CapabilityPolicyRow(Base):
     __tablename__ = "policies"
 
@@ -406,6 +769,9 @@ class CapabilityRequestRow(Base):
     side_effect_operation_id: Mapped[str | None] = mapped_column(
         ForeignKey("side_effect_operations.id", ondelete="SET NULL"), nullable=True
     )
+    # v0.3 M5: which connector, binding and connection served the call, and the
+    # source ids it yielded. Nullable because every row written before M5 has none.
+    provenance: Mapped[dict[str, Any] | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 

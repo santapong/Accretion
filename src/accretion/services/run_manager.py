@@ -17,6 +17,7 @@ from accretion.checkpoints import (
 )
 from accretion.concurrency import ConcurrencyLimiter
 from accretion.contracts import (
+    LIVE_PROVIDERS,
     RISK_RANK,
     TERMINAL_RUN_STATES,
     AcceptancePolicy,
@@ -72,6 +73,7 @@ from accretion.contracts import (
     VerificationStatus,
     VerificationTarget,
     VerificationTargetKind,
+    WorkflowNodeSpec,
     WorkflowTemplate,
     WorkspaceLease,
 )
@@ -101,6 +103,7 @@ from accretion.verifiers.git_diff import GitDiffVerifier
 from accretion.verifiers.output_contract import OutputContractVerifier
 from accretion.verifiers.policy import evaluate_acceptance as evaluate_acceptance_policy
 from accretion.verifiers.registry import VerifierRegistry, VerifierUnavailableError
+from accretion.verifiers.research import RESEARCH_VERIFIER_IDS
 from accretion.verifiers.results import finding, verification_result
 from accretion.verifiers.trajectory import TrajectoryPolicyVerifier
 from accretion.workspace import WorktreeManager
@@ -115,6 +118,31 @@ class RuntimeCallOutcome:
     tool_calls: int
     error: ErrorSummary | None = None
     stop_reason: LoopStopReason | None = None
+
+
+class CapabilityNodeInvoker(Protocol):
+    """Executes one capability reference hung on a workflow node.
+
+    A Protocol rather than a concrete gateway for the same reason
+    :class:`SearchNodeExecutor` is one: ``CapabilityGateway`` is constructed in the MCP
+    gateway process, not alongside ``RunManager``, so binding the scheduler to that
+    class would either drag the whole governance stack into every run or force a fake
+    that is not the real path. ``accretion.governance.GatewayCapabilityInvoker`` is the
+    production implementation and does resolve-then-execute through the real gateway.
+
+    Returning ``None`` means "not invoked" --- unresolvable or unauthorized --- and is
+    deliberately not an error: a node that also captures a diff must not lose that
+    outcome because a capability could not be reached.
+    """
+
+    async def __call__(
+        self,
+        *,
+        run_id: str,
+        node_id: str,
+        capability_id: str,
+        arguments: dict[str, object],
+    ) -> object | None: ...
 
 
 class SearchNodeExecutor(Protocol):
@@ -215,6 +243,11 @@ class RunManager:
         self.terminal_locks: dict[str, asyncio.Lock] = {}
         self.approval_conditions: dict[str, asyncio.Condition] = {}
         self.search_executor: SearchNodeExecutor | None = None
+        # Set after construction, exactly like ``search_executor`` above: the capability
+        # gateway lives in its own process, so the scheduler is handed an invoker rather
+        # than building one. ``None`` means capability-bearing nodes execute precisely as
+        # they did before v0.3 M5.
+        self.capability_invoker: CapabilityNodeInvoker | None = None
 
     async def create_project(self, name: str, repository_path: Path) -> Project:
         repository_path = repository_path.resolve(strict=True)
@@ -291,7 +324,9 @@ class RunManager:
             current_decision=decision or planning.current_decision,
         )
 
-    async def start_run(self, task_id: str, provider: Provider) -> Run:
+    async def start_run(
+        self, task_id: str, provider: Provider, principal_id: str | None = None
+    ) -> Run:
         task = await self.store.get_task(task_id)
         if task is None:
             raise KeyError(task_id)
@@ -372,6 +407,7 @@ class RunManager:
             project_id=task.envelope.project_id,
             provider=provider,
             state=RunState.PENDING,
+            principal_id=principal_id,
             strategy_decision_id=decision.decision_id,
             execution_mode=decision.selected_mode,
             workflow_template_id=decision.selected_template_id,
@@ -641,7 +677,7 @@ class RunManager:
     def _require_runtime(self, provider: Provider) -> None:
         if provider not in self.runtimes:
             raise ValueError(f"runtime {provider.value} is not configured")
-        if provider in {Provider.CODEX, Provider.CLAUDE} and not self.live_providers_enabled:
+        if provider in LIVE_PROVIDERS and not self.live_providers_enabled:
             raise PermissionError(
                 "live providers are disabled; set ACCRETION_ENABLE_LIVE_PROVIDERS=true"
             )
@@ -1083,7 +1119,7 @@ class RunManager:
         deadline: float,
         cursor: _GraphCursor,
     ) -> tuple[NodeOutcome, SessionRef]:
-        from accretion.contracts import GateSpec, WorkflowNodeSpec
+        from accretion.contracts import GateSpec
 
         spec = template_node if isinstance(template_node, WorkflowNodeSpec) else None
         entered_via = cursor.entry_edge_key
@@ -1113,6 +1149,13 @@ class RunManager:
             await self._node_transition(
                 run, session.session_id, node.key, entered=True, entered_via=entered_via
             )
+            # The section 27 exit criterion. Capability references travel from the
+            # proposal through materialization to here, and are spent through the
+            # governed gateway, which normalizes and stores the evidence itself. A node
+            # with no references does not reach this call at all, so the diff capture
+            # below --- the entirety of pre-M5 TOOL behaviour --- is untouched.
+            if spec is not None and spec.capability_refs:
+                await self._invoke_node_capabilities(run, node, spec)
             captures = cursor.entered_via.get(f"capture:{node.key}", 0) + 1
             cursor.entered_via[f"capture:{node.key}"] = captures
             artifact = await self.worktrees.capture_diff(
@@ -1165,6 +1208,40 @@ class RunManager:
                 entered_via=entered_via,
             )
         raise RuntimeError(f"unsupported graph node kind {node.kind.value}")
+
+    async def _invoke_node_capabilities(
+        self, run: Run, node: RunNode, spec: WorkflowNodeSpec
+    ) -> None:
+        """Spend each of the node's capability references, in declared order.
+
+        Order is the template's, not a set's, so two runs of the same template invoke
+        the same capabilities in the same sequence and the evidence they produce sorts
+        identically.
+
+        The query is the node's own text. Per-capability argument binding is genuinely
+        richer than one string --- it is what ``input_transform_ref`` exists for --- but
+        binding arbitrary node inputs is M6 work; what M5 needs is that the canonical
+        capability id, and only the capability id, crosses this seam.
+
+        One reference failing does not stop the next, and none of them changes the
+        node's outcome: this loop cannot make a TOOL node fail.
+        """
+
+        if self.capability_invoker is None:
+            return
+        query = (spec.instruction or spec.label).strip()
+        if not query:
+            return
+        for capability_id in spec.capability_refs:
+            try:
+                await self.capability_invoker(
+                    run_id=run.run_id,
+                    node_id=node.key,
+                    capability_id=capability_id,
+                    arguments={"query": query},
+                )
+            except Exception:  # noqa: BLE001 - a reference must not abort the run
+                continue
 
     async def _graph_agent(
         self,
@@ -2564,6 +2641,14 @@ class RunManager:
             kind = VerificationTargetKind.GIT_DIFF
         elif verifier_id == "trajectory-policy":
             kind = VerificationTargetKind.TRAJECTORY_POLICY
+        elif verifier_id in RESEARCH_VERIFIER_IDS:
+            # Without this branch a research verifier id falls through to the
+            # COMMAND_SUITE default below, and every research verifier then rejects
+            # its own target as a kind mismatch: an INCONCLUSIVE that reads as a
+            # configuration fault and is really a missing elif. ``evidence_refs`` is
+            # left empty on purpose here — a run-scoped acceptance policy judges
+            # every record the run gathered.
+            kind = VerificationTargetKind.EXTERNAL_EVIDENCE
         else:
             kind = VerificationTargetKind.COMMAND_SUITE
         return VerificationTarget(
@@ -3675,7 +3760,7 @@ class RunManager:
     def _runtime_available(self, provider: Provider) -> bool:
         if provider not in self.runtimes:
             return False
-        if provider in {Provider.CODEX, Provider.CLAUDE} and not self.live_providers_enabled:
+        if provider in LIVE_PROVIDERS and not self.live_providers_enabled:
             return False
         return True
 
