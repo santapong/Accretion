@@ -1,6 +1,6 @@
 ---
 name: ci-gate-runner
-description: Runs Accretion's full CI gate chain locally and reports exactly what passed and what failed, with output. Use before opening or merging a PR, after an implementation change, to reproduce a CI failure, or to confirm a milestone's acceptance stage gate. Knows the local-only invocation traps (both pytest flags together, Postgres on 5433, migrate before integration tests). Executes and reports; it does not fix code or judge evidence quality.
+description: Runs Accretion's full CI gate chain locally and reports exactly what passed and what failed, with output. Use before opening or merging a PR, after an implementation change, to reproduce a CI failure, or to confirm the acceptance harness and release gate. Knows the local-only invocation traps (both pytest flags together, Postgres on 5433, migrate before integration tests). Executes and reports; it does not fix code or judge evidence quality.
 tools: Bash, Read, Grep, Glob
 model: sonnet
 ---
@@ -54,19 +54,24 @@ uv run --no-sync alembic upgrade head    # REQUIRED before integration tests
 docker stop accretion-ci-pg              # always clean up, even on failure
 ```
 
-## Acceptance stage gates
+## Acceptance and the release gate
+
+Since M8 these two commands are what CI runs. Run both.
 
 ```bash
-PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync python scripts/check_acceptance.py --stage M4
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync python scripts/check_acceptance.py
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync python scripts/release_gate.py
 ```
 
-**Report the counts line, not the banner.** This command prints `PASS` even against an empty tree when its criteria are still marked `not_yet_due` — it will show `PASS` above `in scope: 0   proven: 0`. Always quote the literal `in scope: N   proven: N   unmet MUST: N` line and the exit code. Anything with `in scope: 0` is meaningless, no matter what the last line says.
+The unscoped harness now exits **PASS** with `unmet MUST: 0`; it is no longer expected to fail. A regression shows up as a non-zero unmet count, so report the literal `in scope: N   proven: N   unmet MUST: N` line and the exit code, never the banner alone.
 
-Run every stage the repo currently gates (check `.github/workflows/ci.yml`) so you catch regressions in earlier milestones, not just the one being worked on. Note that the **bare full harness still exits FAIL** on inherited v0.1/v0.2 unmet MUSTs — that is expected and is why the gate is stage-scoped.
+`--stage <milestone>` still exists and is a faster local diagnostic while iterating on one milestone, but it is **not** what gates the repository, and it prints `PASS` over an empty scope — `PASS` above `in scope: 0   proven: 0` is meaningless. The unscoped run cannot do that, which is why CI uses it.
+
+`release_gate.py` reports SDD §24.8's five conditions separately; quote the per-condition table, since a single failing condition is the finding.
 
 ## Integration-test isolation
 
-Run any `test_*_postgres_store.py` file **twice in a row** against the same database. The repo has a history of tests that pass only against a fresh container, and the stage gates re-run the suite in-process, which surfaces it. Report a second-run failure as a real finding.
+Run any `test_*_postgres_store.py` file **twice in a row** against the same database. The repo has a history of tests that pass only against a fresh container, and the acceptance harness re-runs the suite in-process, which surfaces it. Report a second-run failure as a real finding.
 
 ## Output
 
@@ -75,6 +80,6 @@ A table: gate, command, exit code, pass/fail, and the output tail (last few line
 - the single most important failure first, with the actual error text
 - for a test failure: the test id and the assertion that failed
 - confirmation the Postgres container was stopped
-- the literal acceptance counts line for each stage run
+- the literal acceptance counts line, and the release gate's per-condition table
 
 Report faithfully. If something fails, say so plainly with the output — never summarize a failure as a pass, and never suppress a flaky-looking result without saying it looked flaky.

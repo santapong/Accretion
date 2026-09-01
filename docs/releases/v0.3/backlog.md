@@ -1,15 +1,22 @@
 # v0.3 prioritized backlog
 
-Status: M0–M7 delivered; work is parked before M8. Every M0–M7 acceptance
-criterion is proven by a claiming test (`make acceptance`), and the per-stage gates
-`--stage M1` through `--stage M7`, plus `--stage v0.2-ui`, all report
-`in scope: n   proven: n   unmet MUST: 0`. No criterion is `not_yet_due` any more.
-The remaining uncovered criteria are inherited v0.1/v0.2 items listed in the
-[acceptance baseline](acceptance-baseline.md).
+Status: **M0–M8 delivered; v0.3.0 released.** Every criterion in the three SDDs
+is proven — `make acceptance` reports `in scope: 117   proven: 111   unmet MUST: 0`
+with nothing uncovered and nothing `not_yet_due`, and `make release-gate` passes
+all five SDD §24.8 conditions. CI gates that full harness rather than the eight
+stage-scoped subsets it replaces; `--stage` survives as a local diagnostic. Per-
+criterion status is in the [acceptance baseline](acceptance-baseline.md).
 
 The normative contract remains [Accretion SDD v0.3](../../sdd/Accretion_SDD_v0.3.md).
 This ledger orders its existing milestones without changing acceptance criteria
 or unlocking the hash-manifested v0.4+ designs.
+
+> **M8 complete as of 2026-09-01.** All ten inherited unmet MUSTs are closed and
+> the acceptance harness reports `unmet MUST: 0`. Everything still listed below is
+> deliberately deferred to v0.4 — none of it is an acceptance criterion, and each
+> item would have added contracts, routes or migrations during a release freeze.
+> See the [release-hardening runbook](../../runbooks/v03-release-hardening.md) for
+> the decisions, and the [release audit](audit.md) for the disclosed limitations.
 
 ## Delivery order
 
@@ -23,25 +30,30 @@ or unlocking the hash-manifested v0.4+ designs.
 | 6 | M5 research intelligence plugin — **delivered** | Provider-neutral research capabilities, normalized evidence, provenance, and citation verification |
 | 7 | M6 frontend and administration — **delivered** | Plugins, Connections, MCP Servers, capability resolution, identity, and roles without exposing secrets |
 | 8 | M7 enterprise authorization — **delivered** | Optional EMA behind `enable_enterprise_auth`: sign in once, RFC 8693 exchange to an ID-JAG, RFC 7523 jwt-bearer grant, a real `Connection` + `TokenHandle`, broker-driven renewal without user interaction, and destruction of the retained assertion on logout or revoke |
-| 9 | M8 release hardening — **next** | Clean-checkout reproduction of every inherited v0.1, v0.2, and v0.3 MUST criterion |
+| 9 | M8 release hardening — **delivered** | Executable SDD §24.8 release gate, every inherited MUST criterion claimed (`unmet MUST: 0`), CI gating the full harness, and a clean-checkout reproduction job |
 
-## M7 deferrals
+## M7 deferrals — carried to v0.4
 
 Recorded here rather than in the runbook because they are backlog items, not operating
-instructions. Each is out of scope for M7 by decision, not by omission:
+instructions. Each is out of scope for M7 by decision, not by omission.
 
-- **Workspace-shared and `SERVICE_ACCOUNT` EMA → M8/v0.4.** M7 mints `USER`-scoped
+> **These originally read "→ M8".** M8 was scoped to release hardening — closing the
+> inherited acceptance criteria and making the release gate executable — and
+> deliberately took none of them, because each adds contracts, routes or migrations
+> during a release freeze. They are v0.4 items.
+
+- **Workspace-shared and `SERVICE_ACCOUNT` EMA → v0.4.** M7 mints `USER`-scoped
   connections only. INV3-009 requires admin policy for a shared connection, and that
   policy surface does not exist yet; shipping shared EMA without it would let one
   principal's enterprise grant serve another's invocation.
-- **Session enumeration UI → M8.** The identity page reports whether *the caller* holds
+- **Session enumeration UI → v0.4.** The identity page reports whether *the caller* holds
   a live assertion. Listing and ending another principal's sessions is an administrative
   surface with its own authorization questions (ADR3-M6-003 deferred the same thing).
-- **Real identity-provider interoperability (Entra, Okta) → M8, as an expiring `manual`
+- **Real identity-provider interoperability (Entra, Okta) → v0.4, as an expiring `manual`
   record if at all.** The seven criteria are proven against in-process fakes; no
   commercial IdP has been exercised. If it is recorded, it must be a `manual` entry with
   a `last_verified` date that goes stale in 180 days, never a test.
-- **Token-exchange egress allowlist → M8.** `enterprise_auth_token_exchange_url` is
+- **Token-exchange egress allowlist → v0.4.** `enterprise_auth_token_exchange_url` is
   reached without a host allowlist of the kind M3 applies to MCP endpoints and M5 to
   research upstreams. The URL is operator-supplied and the flag is off by default, so it
   is a hardening gap rather than a live exposure — but it is the one place in the M7 path
@@ -49,7 +61,7 @@ instructions. Each is out of scope for M7 by decision, not by omission:
   plane presents no client credentials on either hop, so the exchange endpoint must
   authenticate it by network path or mutual TLS today.
 
-## M8 inherited UI findings (F1–F4)
+## Inherited UI findings (F1–F4) — closed in M8
 
 Minor findings deferred from the v0.2.0 post-release browser/accessibility
 validation ([evidence](../v0.2/browser-a11y-evidence.md), issue #52 / PR #55).
@@ -65,6 +77,16 @@ Resolve within M8 release hardening:
 - **F4** — The normalized-trace `event-list` scroll region on `/runs/:id` is
   not keyboard-focusable; add `tabindex="0"` with an appropriate role/label.
 
+**All four closed in M8** — see
+[browser-a11y-evidence.md](browser-a11y-evidence.md): axe-core 4.10.2 reports
+zero violations across all 17 routes, no route scrolls horizontally at 390 px,
+and 0 of 1,421 measured text nodes fall below WCAG AA. Two corrections to the
+findings as written are recorded there: the status-pill palette itself always
+passed AA (the pills lost their colour to a more specific `.panel-header > span`
+rule), and the five `/admin/*` pages already had an `h1`. One new finding was
+found and fixed in the same pass: the M6 admin pages scrolled the document
+sideways at 390 px because their registry tables had no scroll container.
+
 ## Carried technical debt
 
 ### Inherited from v0.2 release hardening
@@ -75,6 +97,24 @@ Resolve within M8 release hardening:
   current deterministic component tests.
 - Turn the v0.2 evidence manifest, dependency audits, secret scan, and fixture
   hash validation into a repeatable release command or protected workflow.
+
+### P7 experience benchmark provenance — v0.4
+
+- **Serve the assessed stale-rejection figure from the API.** M8 gave
+  `ExperienceBenchmarkRunner.run()` an optional `stale_assessor` and a
+  `stale_rejection_source` field on the gate (`DECLARED` / `ASSESSED`). The
+  acceptance evidence exercises the `ASSESSED` path against the real
+  `MatchDisposition` values, but the two API routes still take the `DECLARED`
+  path, which counts `retrieval_outcome` in `sources.v1.json` rather than
+  measuring this system. Closing that means an async runner holding a store, a
+  verifier registry and a repository, extending `sources.v1.json` with the
+  fields an assessment needs, and changing both routes — contracts, fixtures and
+  routes during a release freeze, so it is deliberately out of M8's scope.
+- Note the limit of what any test can prove here while the declared outcome
+  stays a hard pin: the assessed count and the declared count are necessarily
+  equal, so only "every stale source is assessed, and disagreement is fatal" is
+  falsifiable. Making the assessment authoritative — reporting disagreement on
+  the gate instead of raising — is the v0.4 design question.
 
 ### Runtime adapter pattern
 
@@ -174,8 +214,9 @@ later reader needs to know without re-deriving it:
   source as the single seam. Live plugin health probing → M5, and **re-deferred by M5 to M6** (see below). `ui.pages` and
   `node_badges` rendering → M6, validated and persisted here but drawn nowhere. Key
   rotation/revocation and archive ingestion (zip-slip, quarantine) → v0.4. A real
-  `capability_policy_bypass` counter — §24.8 is currently a number with no counter
-  behind it — → M8.
+  `capability_policy_bypass` counter — §24.8 was a number with no counter behind it
+  — was addressed in M8 by deriving it from `CapabilityGateway` audit rows
+  (`scripts/release_gate.py`, ADR3-M8-002). Real telemetry remains v0.4.
 - **Open product question.** `allowlisted` means "trusted" while installation state
   means "enabled", and `ExperienceService` filters replay on
   `list_plugins(allowlisted_only=True)`. M4 deliberately pinned that behaviour with
@@ -293,9 +334,11 @@ reader needs without re-deriving it:
   adding an import the test forbids.
 - **Deferrals, stated rather than silent.**
   - *`GET /audit/connections`, `GET /audit/capabilities`, `POST /capabilities/{id}/dry-run`
-    → M8.* Each needs a contract and a store method that do not exist plus a migration,
-    which is not a frontend milestone's work.
-  - *F1 (390 px overflow) and F2 (WCAG AA contrast) stay open.* jsdom has no layout engine
+    → v0.4.* Each needs a contract and a store method that do not exist plus a migration,
+    which is neither a frontend milestone's work nor a release freeze's.
+  - *F1 (390 px overflow) and F2 (WCAG AA contrast) stay open at M6.* Closed in M8
+    against a real browser; see [browser-a11y-evidence.md](browser-a11y-evidence.md).
+    jsdom has no layout engine
     and `apps/ui/src/test/setup.ts` fakes `offsetWidth` and `getBoundingClientRect` with
     constants, so an assertion about either would assert the stub. They remain browser/axe
     evidence for M8. F3 and F4 are unchanged for the inherited routes; the five new pages
@@ -304,7 +347,7 @@ reader needs without re-deriving it:
     The reason is unchanged and is not about the UI: probing is a scheduled activity and
     there is still no scheduler. `/admin/plugins` renders the health the store holds; it
     does not collect it.
-  - *First-class `consent_records` and `scope_grants` tables → M8.* M6 adds no persisted
+  - *First-class `consent_records` and `scope_grants` tables → v0.4.* M6 adds no persisted
     field and no table; `PluginDetail` already composes what the page renders, so the lift
     stays additive.
 - **M4's open product question is still open.** Whether a disabled-but-allowlisted

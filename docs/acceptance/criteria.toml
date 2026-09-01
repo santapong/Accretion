@@ -6,7 +6,11 @@
 #
 #   verification = "test"          proven by a marked, passing test (the default)
 #   verification = "manual"        needs evidence + last_verified; goes stale after 180 days
-#   verification = "waived"        needs reason + issue + expires; fails once expired
+#   verification = "waived"        needs reason + issue + expires; fails once expired.
+#                                  `expires` must be an ISO-8601 date (YYYY-MM-DD) no
+#                                  more than 180 days out: a release name such as
+#                                  "v0.4.0" is a policy error, not an end date, and an
+#                                  unreadable end date counts as already expired
 #   verification = "frontend"      proven by the vitest suite CI runs; evidence must be
 #                                  one or more `apps/ui/<path>.test.tsx:<line> <test title>`
 #                                  pointers separated by ` + `, each anchored on the
@@ -20,6 +24,12 @@
 #
 # Both escape hatches expire on purpose. An audit records what someone believed on one
 # day; this file makes every belief carry an end date.
+#
+# Neither escape hatch outranks a test. If a criterion recorded "manual" or "waived" is
+# also claimed by a marked test and that test fails, the criterion reports FAILING: the
+# failing test is the newer and more specific evidence. For the same reason a claimed
+# test that reports no outcome at all --- a fixture that raised during setup, a node
+# collected but never run --- classifies FAILING rather than PROVEN.
 
 [criteria]
 
@@ -29,6 +39,21 @@
 V01-P4-004 = { verification = "frontend", evidence = "apps/ui/src/App.test.tsx:132 navigates to the required operator screens + apps/ui/src/EventStream.test.tsx:61 recovers a missed SSE sequence from the authoritative audit snapshot + apps/ui/src/RunExecution.test.tsx:131 renders the persisted loop projection, budgets, and curved loop-back route" }
 V02-P6-008 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:490 renders P6 candidate lineage, provenance, scores, spend, and selection reason" }
 V02-P7-007 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:549 renders P7 experience provenance, compatibility, transfer risk, and reused segments" }
+
+# --- Proven by a recorded live-provider run ---------------------------------
+# These three name real vendor CLIs. CI never sets ACCRETION_LIVE_PROVIDERS=1, so
+# no test in the suite can claim them without reporting a skip - and the harness
+# classifies a claimed test that reports no outcome as FAILING, which is exactly
+# right. They are therefore manual, pointing at the evidence file that
+# `scripts/live_acceptance.py` wrote on a real run. Re-run that script and move
+# `last_verified` before the 180-day window closes.
+#
+# The protocol regressions that CAN be checked offline are covered by unmarked
+# tests in tests/test_v03_m8_live_protocol.py: those guard the wiring without
+# overclaiming that a fake binary proves a signed-in vendor CLI works.
+V01-P0-002 = { verification = "manual", evidence = "docs/releases/v0.3/evidence/live-acceptance-2026-09-01.md", last_verified = "2026-09-01" }
+V01-P0-004 = { verification = "manual", evidence = "docs/releases/v0.3/evidence/live-acceptance-2026-09-01.md", last_verified = "2026-09-01" }
+V01-P4-008 = { verification = "manual", evidence = "docs/releases/v0.3/evidence/live-acceptance-2026-09-01.md", last_verified = "2026-09-01" }
 
 # --- Not yet due: milestone M7 has not started ------------------------------
 # The seven AC3-EMA criteria (SDD v0.3 §24.9) cover optional enterprise-managed

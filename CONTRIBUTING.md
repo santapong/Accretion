@@ -20,7 +20,16 @@ Frontend contributors should also read the
 
    ```bash
    make check
+   make test
+   make acceptance
    ```
+
+   `make acceptance` is what CI gates: every SDD acceptance criterion must be
+   proven by a claiming test, a current `manual` record, or an unexpired waiver.
+   A change that adds behaviour an SDD criterion names must add a test claiming
+   it with `@pytest.mark.acceptance("<id>")`. `--stage` is a local diagnostic
+   only and no longer gates the repository. `make release-gate` additionally
+   evaluates the five SDD §24.8 release conditions.
 
 4. Use Conventional Commit style for commits and the pull request title, for
    example `feat: add runtime health history` or `fix: preserve event order`.

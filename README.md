@@ -12,13 +12,13 @@ isolated workspaces, and a durable normalized execution trace.
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-MIT-6f42c1.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-v0.2.0%20released-2ea44f)](#project-status)
+[![Status](https://img.shields.io/badge/status-v0.3.0%20released-2ea44f)](#project-status)
 
 [Author: resume.draveniq.dev](https://resume.draveniq.dev) ·
 [Documentation](docs/README.md) · [Frontend guide](docs/guides/frontend.md) ·
 [Developer guide](docs/guides/developer.md) · [Showcase](docs/guides/showcase.md) ·
 [Research results](docs/research/README.md) · [Project status](#project-status) ·
-[v0.2 plan](docs/releases/v0.2/plan.md)
+[v0.3 release notes](docs/releases/v0.3/notes.md)
 
 <br />
 
@@ -27,14 +27,23 @@ isolated workspaces, and a durable normalized execution trace.
 </div>
 
 > [!IMPORTANT]
-> The `v0.2.0` release adds opt-in P5 validated dynamic workflows,
-> P6 bounded candidate search, P7 verified-experience replay, and frozen research
-> gates while retaining the immutable `v0.1.0` release as the static control.
-> The [frozen v0.2 baseline](docs/releases/v0.2/baseline.md) identifies the exact
-> tag, release commit, tree, and evidence fingerprints. The
-> [v0.2 release audit](docs/releases/v0.2/audit.md) records all gate evidence and
-> the documented browser/accessibility exception tracked in
+> The `v0.3.0` release turns the control plane into an integration platform:
+> capabilities resolve through connectors, connections and bindings; principals
+> sign in through OIDC; credentials live in an encrypted broker; and remote MCP
+> servers, plugins and a research capability set are governed by the same policy,
+> audit and isolation rules as everything before them. Every v0.3 feature is
+> **off by default**. The [release notes](docs/releases/v0.3/notes.md) and
+> [release audit](docs/releases/v0.3/audit.md) record the gate evidence and the
+> disclosed limitations; every acceptance criterion is claimed
+> (`unmet MUST: 0`), and axe-core reports zero violations across all seventeen
+> routes, which discharges the v0.2 accessibility exception tracked in
 > [issue #52](https://github.com/santapong/Accretion/issues/52).
+>
+> The preceding `v0.2.0` release added opt-in P5 validated dynamic workflows, P6
+> bounded candidate search and P7 verified-experience replay; its
+> [frozen baseline](docs/releases/v0.2/baseline.md) and
+> [audit](docs/releases/v0.2/audit.md) remain the immutable record, as does the
+> `v0.1.0` static control.
 > The inherited v0.1 foundation includes P0 runtime feasibility, P1
 > deterministic planning, P2 verifier-gated feedback loops, P3 static graph
 > execution, and the P4 governed harness/operator release gate. Its five validated
@@ -44,7 +53,7 @@ isolated workspaces, and a durable normalized execution trace.
 
 <div align="center">
   <a href="docs/assets/project-overview.svg">
-    <img src="docs/assets/project-overview.svg" alt="Accretion project overview showing operator intent flowing through deterministic control, isolated runtime execution, and independent verification, with the v0.2.0 release and immutable v0.1.0 static-control evidence" width="100%" />
+    <img src="docs/assets/project-overview.svg" alt="Accretion project overview showing operator intent flowing through deterministic control, isolated runtime execution, and independent verification, with the v0.3.0 release, the preceding v0.2.0 release, and immutable v0.1.0 static-control evidence" width="100%" />
   </a>
 </div>
 
@@ -58,8 +67,8 @@ fixtures, examples, and operational documentation in one workspace.
 
 | I want to… | Use | Release position |
 |---|---|---|
-| Evaluate the current release | Clone the `v0.2.0` tag, check the [frozen baseline](docs/releases/v0.2/baseline.md), and follow [Quick start](#quick-start) | Released and immutable |
-| Follow ongoing development | Check out `develop` | Post-v0.2 integration work |
+| Evaluate the current release | Clone the `v0.3.0` tag, read the [release notes](docs/releases/v0.3/notes.md) and [audit](docs/releases/v0.3/audit.md), and follow [Quick start](#quick-start) | Released and immutable |
+| Follow ongoing development | Check out `develop` | Post-v0.3 work toward v0.4 |
 | Reproduce the static control | Clone `v0.1.0` and read the [frozen baseline](docs/releases/v0.1/baseline.md) | Preserved v0.1 evidence |
 | Understand the safety model | Read [Architecture](#architecture), the [trust boundary](docs/assets/trust-boundary.svg), and [SECURITY.md](SECURITY.md) | Applies across releases |
 | Build a contribution | Start with the [developer guide](docs/guides/developer.md) and [CONTRIBUTING.md](CONTRIBUTING.md) | Pull requests target `develop` |
@@ -98,7 +107,7 @@ operator can answer five questions before and during every run:
 | Isolation | One Git worktree lease per mutable run with captured diff artifacts |
 | Recovery | Atomic iteration commits, optimistic revisions, session continuation, and restart reconciliation without replaying committed work |
 | Observability | Durable PostgreSQL state, immutable verifier evidence, monotonic normalized events, resumable SSE, runtime health, and usage pressure |
-| Operator frontend | Eleven implemented routes for dashboard, task/planning, live graph and controls, runtime monitor, history/audit, approvals, capability registries, ACR-ARCH, and P5–P7 research |
+| Operator frontend | Seventeen implemented routes for dashboard, task/planning, live graph and controls, runtime monitor, history/audit, approvals, capability registries, ACR-ARCH, P5–P7 research, and the v0.3 administration pages (Plugins, Connections, MCP Servers, Capability Inspector, Identity) |
 | Governed capabilities | Immutable capability/skill/plugin/policy registries, task-scoped MCP exposure, approval-bound idempotent side effects, and executor-boundary credential injection |
 | Architecture benchmark | Frozen 30-task ACR-ARCH corpus, 68 balanced replay scenarios, raw dimensions, utility/regret, filterable operator UI, and opt-in live provider calibration |
 | Dynamic workflow research | Frozen 12-task P5 static-versus-dynamic suite with cohort uplift, architecture regret, structural variation, invalid-proposal fallback, and a release-gate UI |
@@ -107,7 +116,8 @@ operator can answer five questions before and during every run:
 
 ## Frontend status
 
-Yes—the frontend is implemented for the P0–P7 v0.2 release scope.
+Yes—the frontend is implemented for the P0–P7 scope plus the v0.3 M6
+administration pages, seventeen routes in all.
 It is not a mock dashboard: it calls the generated API contract, starts from
 authoritative snapshots, follows active runs through resumable server-sent
 events, and exposes the decision and verifier evidence needed to explain a run.
@@ -120,10 +130,10 @@ events, and exposes the decision and verifier evidence needed to explain a run.
 
 | Frontend gate | Current evidence |
 |---|---|
-| User-facing scope | Dashboard, New Task/Planning, Live Run, Runtimes, History, Approvals, Capabilities, ACR-ARCH, P5 Dynamic, P6 Search, and P7 Experience |
+| User-facing scope | Dashboard, New Task/Planning, Live Run, Runtimes, History, Approvals, Capabilities, ACR-ARCH, P5 Dynamic, P6 Search, P7 Experience, and the v0.3 administration pages (Plugins, Connections, MCP Servers, Capability Inspector, Identity) |
 | API safety | Generated OpenAPI TypeScript schema; backend remains the authority for policy and transitions |
 | Live behavior | Snapshot-first state, monotonic SSE, reconnect and sequence-gap recovery |
-| Verification | 22 component tests, ESLint, TypeScript, OpenAPI idempotence, and production build pass; rendered browser/accessibility follow-up is tracked in [issue #52](https://github.com/santapong/Accretion/issues/52) under the documented release exception |
+| Verification | 97 component tests, ESLint, TypeScript, OpenAPI idempotence, and production build pass; axe-core 4.10.2 reports zero violations across all seventeen routes, discharging the v0.2 exception in [issue #52](https://github.com/santapong/Accretion/issues/52) — see [browser and accessibility evidence](docs/releases/v0.3/browser-a11y-evidence.md) |
 
 See the [operator frontend guide](docs/guides/frontend.md) for every route, the
 operator journey, data flow, P5–P7 coverage, source map, and frontend commands.
@@ -212,6 +222,20 @@ runtime, verification, graph, trace, and audit records.
 | P6 — Bounded candidate search | Released (opt-in) | Evidence-based routing, isolated branches, shared budgets, fail-closed ranking, promotion recovery, operator lineage, and frozen N=1/2/4 replay research |
 | P7 — Verified experience | Released (opt-in) | Explicit materialization/selection, exact deterministic retrieval, invalidation, negative guidance, isolated fresh-control replay, operator provenance, and frozen negative-transfer research |
 
+The v0.3 integration platform, delivered as nine milestones:
+
+| Milestone | Status | Scope |
+|---|---|---|
+| M0 — Connection-aware capabilities | Released | Connector, connection and binding contracts with a capability resolver; every v0.1/v0.2 capability resolves unchanged |
+| M1 — Identity and SSO | Released | Principals keyed by issuer and subject, workspaces and memberships, OIDC Authorization Code + PKCE, session middleware with a `LOCAL_PRINCIPAL` default |
+| M2 — Token broker | Released | Encrypted secret store, single-use OAuth transactions, broker-backed capability invocation, and the GitHub connector lifecycle |
+| M3 — Remote MCP | Released | Authenticated MCP SDK v2 discovery and invocation, durable discovery snapshots, server lifecycle/audit records, health and circuit breaker |
+| M4 — Plugin manager | Released | Version registry, workspace-scoped installations, manifest trust and dependency resolution, resolver gate |
+| M5 — Research intelligence | Released | MCP-backed research capabilities, evidence normalization, connector-attributed sources with trust the connector cannot assert for itself |
+| M6 — Operator administration | Released | Plugins, Connections, MCP Servers, Capability Inspector and Identity pages, plus run-detail provenance inspectors |
+| M7 — Enterprise-managed authorization | Released (off by default) | Optional EMA in which a centrally issued token still passes through capability policy, connection isolation and the audit trail unchanged |
+| M8 — Release hardening | Released | Executable SDD §24.8 release gate, every acceptance criterion claimed (`unmet MUST: 0`), CI gating the full harness, and zero axe violations across all seventeen routes |
+
 ### Research result summary
 
 <div align="center">
@@ -260,7 +284,8 @@ selection, promotion, and recovery.
 
 All eight P7 criteria (`V02-P7-001` through `V02-P7-008`) are mapped in the
 [P7 acceptance report](docs/research/p7/acceptance.md). The frozen P7 gate contains
-20 tasks, 50 sources, and 80 traces; it records 95% stale rejection, 3.33%
+20 tasks, 50 sources, and 80 traces; it records 95% stale rejection (corpus-declared;
+the criterion itself is proven against the live assessor, see ADR3-M8-005), 3.33%
 negative transfer, +0.0705 replay quality, 20% fewer replay tool calls, and no
 false-accept or success-rate regression. These are fixture results, not live
 provider claims.
@@ -273,7 +298,7 @@ decision. The [frozen v0.1 baseline](docs/releases/v0.1/baseline.md) identifies 
 release and experimental control; the [v0.1.0 release notes](docs/releases/v0.1/notes.md)
 describe its shipped scope, compatibility, and reproducibility hashes.
 
-The v0.2 release includes the opt-in P5 dynamic-workflow, P6 bounded-search, and P7
+The v0.2 release added the opt-in P5 dynamic-workflow, P6 bounded-search, and P7
 verified-experience slices. Start with the [P5 dynamic benchmark](docs/research/p5/benchmark.md), [P7 runbook](docs/runbooks/p7-verified-experience.md),
 [developer showcase](docs/research/p7/showcase.md), [acceptance report](docs/research/p7/acceptance.md),
 and [delivery plan](docs/releases/v0.2/plan.md). The [frozen v0.2 baseline](docs/releases/v0.2/baseline.md)
@@ -281,6 +306,21 @@ records the exact release identifiers and evidence fingerprints. The
 [v0.2 release audit](docs/releases/v0.2/audit.md) records the release authorization
 and browser exception; the
 [v0.2 SDD](docs/sdd/Accretion_SDD_v0.2.md) remains the normative contract.
+
+The current `v0.3.0` release adds the integration platform: connections and
+bindings, identity and SSO, the token broker, remote MCP, plugins, research
+capabilities, operator administration, optional enterprise-managed
+authorization, and the release hardening that made the gate executable. Start
+with the [release notes](docs/releases/v0.3/notes.md) and
+[release audit](docs/releases/v0.3/audit.md); the
+[acceptance baseline](docs/releases/v0.3/acceptance-baseline.md) gives the
+per-criterion status, the
+[release-hardening runbook](docs/runbooks/v03-release-hardening.md) records the
+M8 decisions and how to reproduce the gate, and
+[browser and accessibility evidence](docs/releases/v0.3/browser-a11y-evidence.md)
+records the axe-core results. The
+[v0.3 SDD](docs/sdd/Accretion_SDD_v0.3.md) is the normative contract for this
+release.
 
 ## Quick start
 
@@ -293,15 +333,18 @@ and browser exception; the
 - Docker with Compose
 - Optional: supported, signed-in Codex, Claude Code, and opencode CLIs for live providers
 
-The validated v0.2 live-provider range is Codex CLI `>=0.148,<0.149`, Claude
-Code `>=2.1.231,<2.2`, and opencode `>=1.18,<1.19`.
+The validated live-provider range is carried unchanged from v0.2: Codex CLI
+`>=0.148,<0.149`, Claude Code `>=2.1.231,<2.2`, and opencode `>=1.18,<1.19`. The
+v0.3.0 evidence was recorded against Codex CLI `0.148.0` and Claude Code
+`2.1.252` — see
+[live-acceptance-2026-09-01.md](docs/releases/v0.3/evidence/live-acceptance-2026-09-01.md).
 
 ### Choose and clone a version
 
 For the current immutable release:
 
 ```bash
-git clone --branch v0.2.0 https://github.com/santapong/Accretion.git
+git clone --branch v0.3.0 https://github.com/santapong/Accretion.git
 cd Accretion
 ```
 

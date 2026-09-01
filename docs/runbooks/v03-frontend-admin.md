@@ -1,5 +1,13 @@
 # Frontend and administration runbook
 
+> **Deferral note (M8).** Items below recorded as "deferred to M8" were not taken:
+> M8 was scoped to release hardening — closing the inherited acceptance criteria and
+> making the release gate executable — and each deferral adds contracts, routes or
+> migrations. They are v0.4 items; see
+> [the v0.3 backlog](../releases/v0.3/backlog.md). The F1–F4 accessibility findings
+> *were* closed in M8; see
+> [browser and accessibility evidence](../releases/v0.3/browser-a11y-evidence.md).
+
 How to operate the administration surface introduced by v0.3 M6. The normative
 contract is [Accretion SDD v0.3](../sdd/Accretion_SDD_v0.3.md) §16, §17 and §27.
 
@@ -101,7 +109,8 @@ was flipped in PR3–PR6 rather than held to PR7. Second, `verification = "front
 merging marked tests that prove a criterion while claiming nothing, or deleting the
 in-process proof that the API half is real. `frontend_evidence` keeps both.
 
-**Consequences.** `--stage M6` reports `in scope: 5   proven: 5   unmet MUST: 0`, and
+**Consequences.** `--stage M6` reports `in scope: 5   proven: 5   unmet MUST: 0`
+(a local diagnostic since M8; CI gates the unscoped harness), and
 `make acceptance` reports `FRONTEND: 3` — the three pre-existing pointers
 `V01-P4-004`, `V02-P6-008`, `V02-P7-007` — because `FRONTEND` counts criteria whose
 *only* proof is vitest and none of M6's are. The plan's `proven: 2` and `FRONTEND 9` do

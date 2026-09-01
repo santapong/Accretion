@@ -13,8 +13,13 @@ policy, connection isolation and the audit trail unchanged (INV3-002, AC3-SEC-01
 
 Seven MUST criteria, `AC3-EMA-01..07`, recorded in SDD §24.9. All seven are now claimed
 by a marked, passing test: `scripts/check_acceptance.py --stage M7` reports
-`in scope: 7   proven: 7   unmet MUST: 0`, and CI runs it on every pull request. Nothing
-in `docs/acceptance/criteria.toml` is `not_yet_due` any more.
+`in scope: 7   proven: 7   unmet MUST: 0`. Nothing in `docs/acceptance/criteria.toml`
+is `not_yet_due` any more.
+
+> **Superseded in M8.** `--stage M7` remains a useful local diagnostic, but CI no
+> longer runs it: the eight stage gates were replaced by a single unscoped
+> `check_acceptance.py`, which covers these seven criteria along with every other.
+> See [the release-hardening runbook](v03-release-hardening.md).
 
 | Criterion | Claimed by |
 |---|---|
@@ -274,10 +279,10 @@ cd apps/ui && npm run check && npm run test && npm run build
 git diff --exit-code apps/ui/src/api/schema.d.ts
 ```
 
-`--stage M7` reports `in scope: 7   proven: 7   unmet MUST: 0` and runs in CI after
-`--stage M6`. The full `make acceptance` still reports
+`--stage M7` reports `in scope: 7   proven: 7   unmet MUST: 0`. At the time of
+writing the full `make acceptance` reported
 `in scope: 117   proven: 103   unmet MUST: 10` — M7 added seven in-scope criteria and
-proved all seven; the ten unmet MUSTs are the inherited v0.1/v0.2 items in the
+proved all seven; the ten unmet MUSTs were the inherited v0.1/v0.2 items in the
 [acceptance baseline](../releases/v0.3/acceptance-baseline.md), which M8 owns.
 
 Migration `0016_v03_m7_enterprise_auth` must be reversible, against PostgreSQL on port
