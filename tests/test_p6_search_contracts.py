@@ -75,6 +75,7 @@ async def prepared_run(
     *,
     runtime: FakeRuntime | None = None,
     allowed_capabilities: list[str] | None = None,
+    task_budgets: TaskBudgets | None = None,
 ) -> tuple[RunManager, DynamicWorkflowService, SearchService, str]:
     repository = tmp_path / "repository"
     repository.mkdir()
@@ -107,7 +108,9 @@ async def prepared_run(
             "task_type": "REVIEW",
             "required_outputs": [{"path": "candidate.txt", "kind": "file"}],
             "allowed_capabilities": allowed_capabilities or [],
-            "budgets": TaskBudgets(max_parallel_runs=2).model_dump(mode="json"),
+            "budgets": (task_budgets or TaskBudgets(max_parallel_runs=2)).model_dump(
+                mode="json"
+            ),
         },
     )
     proposal = await dynamic.propose(task.envelope.task_id, execution_provider=Provider.FAKE)
