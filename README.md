@@ -133,7 +133,7 @@ events, and exposes the decision and verifier evidence needed to explain a run.
 | User-facing scope | Dashboard, New Task/Planning, Live Run, Runtimes, History, Approvals, Capabilities, ACR-ARCH, P5 Dynamic, P6 Search, P7 Experience, and the v0.3 administration pages (Plugins, Connections, MCP Servers, Capability Inspector, Identity) |
 | API safety | Generated OpenAPI TypeScript schema; backend remains the authority for policy and transitions |
 | Live behavior | Snapshot-first state, monotonic SSE, reconnect and sequence-gap recovery |
-| Verification | 97 component tests, ESLint, TypeScript, OpenAPI idempotence, and production build pass; axe-core 4.10.2 reports zero violations across all seventeen routes, discharging the v0.2 exception in [issue #52](https://github.com/santapong/Accretion/issues/52) — see [browser and accessibility evidence](docs/releases/v0.3/browser-a11y-evidence.md) |
+| Verification | The component test suite, ESLint, TypeScript, OpenAPI idempotence, and production build all pass; axe-core 4.10.2 reports zero violations across all seventeen routes, discharging the v0.2 exception in [issue #52](https://github.com/santapong/Accretion/issues/52) — see [browser and accessibility evidence](docs/releases/v0.3/browser-a11y-evidence.md) |
 
 See the [operator frontend guide](docs/guides/frontend.md) for every route, the
 operator journey, data flow, P5–P7 coverage, source map, and frontend commands.

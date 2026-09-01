@@ -93,7 +93,8 @@ bitmap in the showcase is illustrative and never defines behavior.
 
 The React frontend is implemented for every P0–P7 release surface plus the v0.3
 M6 administration pages — seventeen routes in all. The deterministic checks cover
-97 component tests, generated OpenAPI, ESLint, TypeScript, and production build.
+the component test suite, generated OpenAPI, ESLint, TypeScript, and production
+build.
 For v0.3.0 rendered browser and accessibility evidence **was** collected: axe-core
 4.10.2 reports zero violations across all seventeen routes, which discharges the
 v0.2 release exception tracked in
