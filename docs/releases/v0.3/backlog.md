@@ -76,6 +76,24 @@ Resolve within M8 release hardening:
 - Turn the v0.2 evidence manifest, dependency audits, secret scan, and fixture
   hash validation into a repeatable release command or protected workflow.
 
+### P7 experience benchmark provenance — v0.4
+
+- **Serve the assessed stale-rejection figure from the API.** M8 gave
+  `ExperienceBenchmarkRunner.run()` an optional `stale_assessor` and a
+  `stale_rejection_source` field on the gate (`DECLARED` / `ASSESSED`). The
+  acceptance evidence exercises the `ASSESSED` path against the real
+  `MatchDisposition` values, but the two API routes still take the `DECLARED`
+  path, which counts `retrieval_outcome` in `sources.v1.json` rather than
+  measuring this system. Closing that means an async runner holding a store, a
+  verifier registry and a repository, extending `sources.v1.json` with the
+  fields an assessment needs, and changing both routes — contracts, fixtures and
+  routes during a release freeze, so it is deliberately out of M8's scope.
+- Note the limit of what any test can prove here while the declared outcome
+  stays a hard pin: the assessed count and the declared count are necessarily
+  equal, so only "every stale source is assessed, and disagreement is fatal" is
+  falsifiable. Making the assessment authoritative — reporting disagreement on
+  the gate instead of raising — is the v0.4 design question.
+
 ### Runtime adapter pattern
 
 Recorded while adding the third runtime adapter (#59). Each item is a pattern

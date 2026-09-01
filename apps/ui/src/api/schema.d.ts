@@ -3463,6 +3463,12 @@ export interface components {
             stale_rejection_passed: boolean;
             /** Stale Rejection Rate */
             stale_rejection_rate: number;
+            /**
+             * Stale Rejection Source
+             * @default DECLARED
+             * @enum {string}
+             */
+            stale_rejection_source: "DECLARED" | "ASSESSED";
             /** Success Rate Not Regressed */
             success_rate_not_regressed: boolean;
             /** Thresholds */
