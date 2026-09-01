@@ -127,7 +127,7 @@ def test_frontend_evidence_outside_the_ui_tree_fails_policy() -> None:
 
 def test_frontend_evidence_that_resolves_passes_policy() -> None:
     evidence = (
-        "apps/ui/src/App.test.tsx:132 navigates to the required operator screens"
+        "apps/ui/src/App.test.tsx:136 navigates to the required operator screens"
         " + apps/ui/src/EventStream.test.tsx:61 recovers a missed SSE sequence "
         "from the authoritative audit snapshot"
     )
@@ -148,7 +148,7 @@ def test_frontend_evidence_without_a_line_anchor_fails_policy() -> None:
     assert (
         harness.frontend_evidence_errors(
             "V01-P4-004",
-            "apps/ui/src/App.test.tsx:132 navigates to the required operator screens",
+            "apps/ui/src/App.test.tsx:136 navigates to the required operator screens",
         )
         == []
     )
@@ -162,25 +162,25 @@ def test_frontend_evidence_whose_line_drifts_off_its_test_fails_policy() -> None
     a neighbouring test proves nothing, so the gate reads the anchored line itself.
     """
 
-    real = "apps/ui/src/App.test.tsx:132 navigates to the required operator screens"
+    real = "apps/ui/src/App.test.tsx:136 navigates to the required operator screens"
     assert harness.frontend_evidence_errors("V01-P4-004", real) == []
 
-    drifted = "apps/ui/src/App.test.tsx:133 navigates to the required operator screens"
+    drifted = "apps/ui/src/App.test.tsx:137 navigates to the required operator screens"
     source = (harness.ROOT / "apps/ui/src/App.test.tsx").read_text().splitlines()
     assert harness.frontend_evidence_errors("V01-P4-004", drifted) == [
-        f"V01-P4-004: frontend evidence apps/ui/src/App.test.tsx:133 lands on "
-        f"{source[132]!r}, not the test it names"
+        f"V01-P4-004: frontend evidence apps/ui/src/App.test.tsx:137 lands on "
+        f"{source[136]!r}, not the test it names"
     ]
 
-    renamed = "apps/ui/src/App.test.tsx:132 navigates to some other screens"
+    renamed = "apps/ui/src/App.test.tsx:136 navigates to some other screens"
     assert harness.frontend_evidence_errors("V01-P4-004", renamed) == [
-        f"V01-P4-004: frontend evidence apps/ui/src/App.test.tsx:132 lands on "
-        f"{source[131]!r}, not the test it names"
+        f"V01-P4-004: frontend evidence apps/ui/src/App.test.tsx:136 lands on "
+        f"{source[135]!r}, not the test it names"
     ]
 
-    untitled = "apps/ui/src/App.test.tsx:132"
+    untitled = "apps/ui/src/App.test.tsx:136"
     assert harness.frontend_evidence_errors("V01-P4-004", untitled) == [
-        "V01-P4-004: frontend evidence apps/ui/src/App.test.tsx:132 names no test title"
+        "V01-P4-004: frontend evidence apps/ui/src/App.test.tsx:136 names no test title"
     ]
 
 
@@ -296,7 +296,7 @@ def test_apply_policy_rejects_a_frontend_pointer_whose_test_file_was_deleted(
     monkeypatch.setattr(
         harness, "POLICY_PATH", write_policy(
             tmp_path,
-            "apps/ui/src/App.test.tsx:132 navigates to the required operator screens",
+            "apps/ui/src/App.test.tsx:136 navigates to the required operator screens",
         )
     )
     assert harness.apply_policy(criteria) == []
@@ -389,7 +389,7 @@ def test_a_pytest_proven_criterion_keeps_its_claim_while_its_vitest_pointer_is_c
         harness,
         "POLICY_PATH",
         policy_file(
-            "apps/ui/src/App.test.tsx:132 navigates to the required operator screens"
+            "apps/ui/src/App.test.tsx:136 navigates to the required operator screens"
         ),
     )
     assert harness.apply_policy(good) == []  # type: ignore[arg-type]
@@ -414,7 +414,7 @@ def test_a_misspelled_policy_key_is_rejected_rather_than_silently_dropped(
     pointer and still print PASS — is reported as an unknown key.
     """
 
-    pointer = "apps/ui/src/App.test.tsx:132 navigates to the required operator screens"
+    pointer = "apps/ui/src/App.test.tsx:136 navigates to the required operator screens"
 
     def policy_file(key: str) -> object:
         path = tmp_path / f"criteria-{key}.toml"  # type: ignore[operator]
