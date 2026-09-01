@@ -67,7 +67,7 @@ fixtures, examples, and operational documentation in one workspace.
 
 | I want to… | Use | Release position |
 |---|---|---|
-| Evaluate the current release | Clone the `v0.3.0` tag, read the [release notes](docs/releases/v0.3/notes.md) and [audit](docs/releases/v0.3/audit.md), and follow [Quick start](#quick-start) | Released and immutable |
+| Evaluate the current release | Clone the `v0.3.0` tag, check the [frozen baseline](docs/releases/v0.3/baseline.md), read the [release notes](docs/releases/v0.3/notes.md) and [audit](docs/releases/v0.3/audit.md), and follow [Quick start](#quick-start) | Released and immutable |
 | Follow ongoing development | Check out `develop` | Post-v0.3 work toward v0.4 |
 | Reproduce the static control | Clone `v0.1.0` and read the [frozen baseline](docs/releases/v0.1/baseline.md) | Preserved v0.1 evidence |
 | Understand the safety model | Read [Architecture](#architecture), the [trust boundary](docs/assets/trust-boundary.svg), and [SECURITY.md](SECURITY.md) | Applies across releases |
