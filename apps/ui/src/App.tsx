@@ -31,11 +31,33 @@ import type {
   WorkflowValidationOutcome,
 } from "./types";
 import "./styles.css";
+import { durationLabel } from "./runDuration";
 
 const terminal = new Set(["SUCCEEDED", "FAILED", "CANCELLED"]);
 
 function shortId(value: string) {
   return `${value.slice(0, 8)}…${value.slice(-5)}`;
+}
+
+/**
+ * A clock that ticks only while something on screen is still running.
+ *
+ * A live run's elapsed time has to advance on its own — the run list polls every 2.5s,
+ * but `HistoryPage` does not poll at all, so without this a live row there would show a
+ * duration frozen at first render. The interval is created only when `active`, so a page
+ * of finished runs installs no timer and the common case costs nothing.
+ */
+function useNow(active: boolean): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!active) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, [active]);
+  // Up to one second stale on the tick that first activates the timer, which a duration
+  // label cannot show. Resynchronising on activation would mean setting state inside the
+  // effect, and a cascading render is a worse trade than a second of lag.
+  return now;
 }
 
 function StatePill({ state }: { state: string }) {
@@ -644,6 +666,7 @@ function DashboardPage() {
   });
   const runs = runQuery.data ?? [];
   const activeCount = runs.filter((run) => !terminal.has(run.state)).length;
+  const now = useNow(activeCount > 0);
   const failureCount = runs.filter((run) => run.state === "FAILED").length;
   return (
     <>
@@ -662,7 +685,7 @@ function DashboardPage() {
           {runs.map((run) => (
             <Link className="run" key={run.run_id} to={`/runs/${run.run_id}`}>
               <span className="provider-dot">{run.provider.slice(0, 1)}</span>
-              <span><strong>{shortId(run.run_id)}</strong><small>{run.provider} · {run.last_sequence} events</small></span>
+              <span><strong>{shortId(run.run_id)}</strong><small>{run.provider} · {run.last_sequence} events{durationLabel(run, now) ? ` · ${durationLabel(run, now)}` : ""}</small></span>
               <StatePill state={run.state} />
             </Link>
           ))}
@@ -693,9 +716,10 @@ function LiveRunPage() {
   const { runId } = useParams();
   const runQuery = useQuery({ queryKey: ["runs"], queryFn: api.runs, refetchInterval: 2500 });
   const selected = (runQuery.data ?? []).find((run) => run.run_id === runId);
+  const now = useNow(Boolean(selected) && !terminal.has(selected!.state));
   return (
     <div className="inspector-stack page-stack">
-      <header className="section-heading"><div><p className="eyebrow">Live run</p><h1>{runId ? shortId(runId) : "Run not selected"}</h1></div>{selected ? <StatePill state={selected.state} /> : null}</header>
+      <header className="section-heading"><div><p className="eyebrow">Live run</p><h1>{runId ? shortId(runId) : "Run not selected"}</h1>{durationLabel(selected, now) ? <p className="run-duration">Elapsed {durationLabel(selected, now)}</p> : null}</div>{selected ? <StatePill state={selected.state} /> : null}</header>
       <RunExecution run={selected} />
       <EventStream run={selected} />
     </div>
@@ -739,6 +763,7 @@ function RuntimeMonitorPage() {
 function HistoryPage() {
   const runs = useQuery({ queryKey: ["runs"], queryFn: api.runs });
   const [selectedId, setSelectedId] = useState<string>();
+  const now = useNow((runs.data ?? []).some((run) => !terminal.has(run.state)));
   const selected = selectedId ?? runs.data?.[0]?.run_id;
   const audit = useQuery({
     queryKey: ["run-audit", selected],
@@ -749,7 +774,7 @@ function HistoryPage() {
     <section className="page-panel">
       <header className="section-heading"><div><p className="eyebrow">Immutable evidence</p><h1>Run history / trace replay</h1></div></header>
       <div className="history-grid">
-        <div className="run-list">{(runs.data ?? []).map((run) => <button className={selected === run.run_id ? "run selected" : "run"} key={run.run_id} onClick={() => setSelectedId(run.run_id)}><span><strong>{shortId(run.run_id)}</strong><small>{run.provider} · {run.last_sequence} events</small></span><StatePill state={run.state} /></button>)}</div>
+        <div className="run-list">{(runs.data ?? []).map((run) => <button className={selected === run.run_id ? "run selected" : "run"} key={run.run_id} onClick={() => setSelectedId(run.run_id)}><span><strong>{shortId(run.run_id)}</strong><small>{run.provider} · {run.last_sequence} events{durationLabel(run, now) ? ` · ${durationLabel(run, now)}` : ""}</small></span><StatePill state={run.state} /></button>)}</div>
         {audit.data ? (
           <article className="audit-chain">
             <h2>Complete provenance</h2>
@@ -1047,7 +1072,7 @@ function OperatorShell() {
   return (
     <main>
       <nav>
-        <Link className="brand-link" to="/"><span className="brand-mark">A</span><span><strong>Accretion</strong><small>Operator / v0.2</small></span></Link>
+        <Link className="brand-link" to="/"><span className="brand-mark">A</span><span><strong>Accretion</strong><small>Operator / v{__APP_VERSION__}</small></span></Link>
         <div className="nav-links">{navigation.map(([path, label]) => <NavLink end={path === "/"} key={path} to={path}>{label}</NavLink>)}</div>
         <div className="nav-status"><i />{identity}</div>
       </nav>
