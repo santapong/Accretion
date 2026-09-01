@@ -101,7 +101,8 @@ was flipped in PR3–PR6 rather than held to PR7. Second, `verification = "front
 merging marked tests that prove a criterion while claiming nothing, or deleting the
 in-process proof that the API half is real. `frontend_evidence` keeps both.
 
-**Consequences.** `--stage M6` reports `in scope: 5   proven: 5   unmet MUST: 0`, and
+**Consequences.** `--stage M6` reports `in scope: 5   proven: 5   unmet MUST: 0`
+(a local diagnostic since M8; CI gates the unscoped harness), and
 `make acceptance` reports `FRONTEND: 3` — the three pre-existing pointers
 `V01-P4-004`, `V02-P6-008`, `V02-P7-007` — because `FRONTEND` counts criteria whose
 *only* proof is vitest and none of M6's are. The plan's `proven: 2` and `FRONTEND 9` do

@@ -11,6 +11,13 @@ The normative contract remains [Accretion SDD v0.3](../../sdd/Accretion_SDD_v0.3
 This ledger orders its existing milestones without changing acceptance criteria
 or unlocking the hash-manifested v0.4+ designs.
 
+> **M8 complete as of 2026-09-01.** All ten inherited unmet MUSTs are closed and
+> the acceptance harness reports `unmet MUST: 0`. Everything still listed below is
+> deliberately deferred to v0.4 — none of it is an acceptance criterion, and each
+> item would have added contracts, routes or migrations during a release freeze.
+> See the [release-hardening runbook](../../runbooks/v03-release-hardening.md) for
+> the decisions, and the [release audit](audit.md) for the disclosed limitations.
+
 ## Delivery order
 
 | Priority | Milestone | Outcome required before continuing |

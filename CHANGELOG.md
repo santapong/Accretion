@@ -4,7 +4,14 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
-Status: v0.3 milestones M0–M7 delivered on `develop`; parked 2026-08-30 before M8.
+Nothing yet.
+
+## [0.3.0] - 2026-09-01
+
+Theme: **Plugin, MCP & Identity Integration Platform**. Full notes in
+[docs/releases/v0.3/notes.md](docs/releases/v0.3/notes.md); the release audit and
+its disclosed limitations are in
+[docs/releases/v0.3/audit.md](docs/releases/v0.3/audit.md).
 
 ### Added
 
@@ -264,6 +271,57 @@ Status: v0.3 milestones M0–M7 delivered on `develop`; parked 2026-08-30 before
   flags without deleting rows; `StateStore` exposes exactly one deletion method
   in the whole interface (`delete_secret_record`), a structural test asserts it
   gains no second, and migration 0014 introduces no `ON DELETE CASCADE`.
+
+### Release hardening (M8)
+
+- Closed the ten inherited unmet MUST acceptance criteria. Seven needed a
+  claiming test rather than a behaviour change: the graph validator's cycle,
+  fan-out, denied-capability, privilege-expansion and risk-expansion branches,
+  the six search stop reasons, the N=1,2,4 quality curve and the benchmark
+  version axes were all implemented and simply unclaimed, so a regression would
+  not have named what it broke.
+- `V02-P7-003` is now proven against the real `ExperienceService.assess()`, with
+  all 19 compatibility reason codes provoked by distinct single-variable
+  perturbations and a guard test that fails if a code is added without coverage.
+- Added `scripts/release_gate.py` and `make release-gate`, making each of SDD
+  §24.8's five conditions independently executable and independently failable.
+  `capability_policy_bypass` is derived from `CapabilityGateway` audit rows and
+  `secret_exposure_incidents` from the secret-scan suites (ADR3-M8-002).
+- Added `scripts/live_acceptance.py`, which produces a dated evidence document
+  from a real signed-in Codex and Claude run. `V01-P0-002`, `V01-P0-004` and
+  `V01-P4-008` are recorded as `manual` criteria expiring 2027-02-28.
+- Hardened the acceptance harness before widening its authority: an unreadable
+  waiver end date now counts as expired, waivers need an ISO date inside 180
+  days, a failing claimed test outranks any recorded belief, and a claimed test
+  that reports no outcome classifies `FAILING` rather than `PROVEN`
+  (ADR3-M8-001).
+- Pinned all four ACR-ARCH fixtures to literal digests — `config.v1.json` and
+  `environments.v1.json` were previously unhashed — and proved the three version
+  axes move independently (ADR3-M8-004).
+- CI now gates the full unscoped acceptance harness plus the release gate,
+  replacing eight stage-scoped gates that each re-ran the whole suite and could
+  report PASS over an empty scope. A `clean-checkout` job proves the result
+  reproduces from a fresh clone with no caches.
+
+### Fixed
+
+- Closed the four accessibility findings inherited from v0.2 (F1–F4). axe-core
+  4.10.2 now reports zero violations across all seventeen routes, no route
+  scrolls horizontally at 390 px, and none of 1,421 measured text nodes falls
+  below WCAG AA. Two of the findings were partly misdiagnosed and the
+  corrections are recorded in
+  [browser-a11y-evidence.md](docs/releases/v0.3/browser-a11y-evidence.md): the
+  status-pill palette always passed AA (pills lost their colour to a more
+  specific `.panel-header > span` rule), and the five `/admin/*` pages already
+  had an `h1`.
+- Fixed the M6 administration pages scrolling the document sideways at 390 px:
+  their registry tables had no horizontal scroll container.
+- Introduced the stylesheet's first CSS custom properties (`--ink-dim`,
+  `--ink-muted`, `--ink-amber`); every colour had previously been a repeated
+  literal.
+- Isolated `tests/test_p5_postgres_store.py`, which failed on a second run
+  against the same database and was green in CI only because each run used a
+  fresh container.
 
 ## [0.2.0] - 2026-08-24
 
