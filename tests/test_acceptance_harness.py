@@ -35,6 +35,53 @@ def criterion(**overrides: object) -> object:
     return harness.Criterion(**defaults)  # type: ignore[arg-type]
 
 
+# --- a synthetic vitest tree, so these tests do not ride on the real app -----
+#
+# `frontend_evidence_errors` resolves a pointer as ``ROOT / relative``, so pointing
+# ``harness.ROOT`` at a temporary tree lets these tests author the exact spec file they
+# reason about. They used to point at `apps/ui/src/App.test.tsx:136` and hardcode both
+# the line and, in the drift test, the *neighbouring* line via ``source[136]``. That
+# made a purely cosmetic frontend edit - one test added above another - fail the backend
+# pytest job, which is the opposite of what these tests are for: they exercise the
+# helper's behaviour, not the app's current layout.
+#
+# The live policy is still checked against the real tree, by
+# `test_every_recorded_frontend_pointer_lands_on_the_test_it_describes`. That separation
+# is the point: hermetic tests for the mechanism, one live test for the actual claims.
+
+ANCHOR_SPEC = "apps/ui/src/anchored.test.tsx"
+ANCHOR_TITLE = "the test a pointer anchors on"
+NEIGHBOUR_TITLE = "the test living next door"
+
+# Written out with the line numbers spelled in the comments, because these tests assert
+# against specific lines and a reader has to be able to check them by eye.
+ANCHOR_SOURCE = (
+    'import { expect, test } from "vitest";\n'  # 1
+    "\n"  # 2
+    f'test("{ANCHOR_TITLE}", () => {{\n'  # 3  <- the anchor
+    "  expect(1).toBe(1);\n"  # 4  <- a body line, never a valid anchor
+    "}});\n"  # 5
+    "\n"  # 6
+    f'test("{NEIGHBOUR_TITLE}", async () => {{\n'  # 7  <- the neighbour
+    "  expect(1).toBe(1);\n"  # 8
+    "}});\n"  # 9
+)
+ANCHOR_LINE = 3
+BODY_LINE = 4
+NEIGHBOUR_LINE = 7
+
+
+@pytest.fixture
+def anchored(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Install the synthetic spec and point the helper's ROOT at it."""
+
+    spec = tmp_path / ANCHOR_SPEC
+    spec.parent.mkdir(parents=True)
+    spec.write_text(ANCHOR_SOURCE)
+    monkeypatch.setattr(harness, "ROOT", tmp_path)
+    return spec
+
+
 def test_a_criterion_with_no_claiming_test_is_uncovered() -> None:
     assert harness.classify(criterion()) == "UNCOVERED"
 
@@ -102,13 +149,15 @@ def test_frontend_evidence_naming_a_missing_file_fails_policy() -> None:
     ]
 
 
-def test_frontend_evidence_pointing_past_the_end_of_a_file_fails_policy() -> None:
-    length = len((harness.ROOT / "apps/ui/src/App.test.tsx").read_text().splitlines())
+def test_frontend_evidence_pointing_past_the_end_of_a_file_fails_policy(
+    anchored: Path,
+) -> None:
+    length = len(ANCHOR_SOURCE.splitlines())
     errors = harness.frontend_evidence_errors(
-        "V01-P4-004", f"apps/ui/src/App.test.tsx:{length + 1} renders the routes"
+        "V01-P4-004", f"{ANCHOR_SPEC}:{length + 1} renders the routes"
     )
     assert errors == [
-        f"V01-P4-004: frontend evidence apps/ui/src/App.test.tsx:{length + 1} "
+        f"V01-P4-004: frontend evidence {ANCHOR_SPEC}:{length + 1} "
         f"is past end of file ({length} lines)"
     ]
 
@@ -125,36 +174,36 @@ def test_frontend_evidence_outside_the_ui_tree_fails_policy() -> None:
     ]
 
 
-def test_frontend_evidence_that_resolves_passes_policy() -> None:
+def test_frontend_evidence_that_resolves_passes_policy(anchored: Path) -> None:
+    """Two pointers joined by ` + `, both resolving, produce no errors."""
+
     evidence = (
-        "apps/ui/src/App.test.tsx:132 navigates to the required operator screens"
-        " + apps/ui/src/EventStream.test.tsx:61 recovers a missed SSE sequence "
-        "from the authoritative audit snapshot"
+        f"{ANCHOR_SPEC}:{ANCHOR_LINE} {ANCHOR_TITLE}"
+        f" + {ANCHOR_SPEC}:{NEIGHBOUR_LINE} {NEIGHBOUR_TITLE}"
     )
     assert harness.frontend_evidence_errors("V01-P4-004", evidence) == []
 
 
-def test_frontend_evidence_without_a_line_anchor_fails_policy() -> None:
+def test_frontend_evidence_without_a_line_anchor_fails_policy(anchored: Path) -> None:
     """Existence alone proves nothing: the pointer must name one test, not one file."""
 
-    errors = harness.frontend_evidence_errors(
-        "V01-P4-004", "apps/ui/src/App.test.tsx navigates to the required operator screens"
-    )
+    errors = harness.frontend_evidence_errors("V01-P4-004", f"{ANCHOR_SPEC} {ANCHOR_TITLE}")
     assert errors == [
-        "V01-P4-004: frontend evidence apps/ui/src/App.test.tsx needs a :line anchor "
-        "naming the vitest test"
+        f"V01-P4-004: frontend evidence {ANCHOR_SPEC} needs a :line anchor "
+        f"naming the vitest test"
     ]
     # Differential: the identical pointer with an anchor is accepted.
     assert (
         harness.frontend_evidence_errors(
-            "V01-P4-004",
-            "apps/ui/src/App.test.tsx:132 navigates to the required operator screens",
+            "V01-P4-004", f"{ANCHOR_SPEC}:{ANCHOR_LINE} {ANCHOR_TITLE}"
         )
         == []
     )
 
 
-def test_frontend_evidence_whose_line_drifts_off_its_test_fails_policy() -> None:
+def test_frontend_evidence_whose_line_drifts_off_its_test_fails_policy(
+    anchored: Path,
+) -> None:
     """One inserted line above the anchor must redden the gate, not just the pytest suite.
 
     The line number and the title are one claim: *this* test proves the criterion. A
@@ -162,25 +211,29 @@ def test_frontend_evidence_whose_line_drifts_off_its_test_fails_policy() -> None
     a neighbouring test proves nothing, so the gate reads the anchored line itself.
     """
 
-    real = "apps/ui/src/App.test.tsx:132 navigates to the required operator screens"
+    source = ANCHOR_SOURCE.splitlines()
+
+    real = f"{ANCHOR_SPEC}:{ANCHOR_LINE} {ANCHOR_TITLE}"
     assert harness.frontend_evidence_errors("V01-P4-004", real) == []
 
-    drifted = "apps/ui/src/App.test.tsx:133 navigates to the required operator screens"
-    source = (harness.ROOT / "apps/ui/src/App.test.tsx").read_text().splitlines()
+    # One line past the anchor is the test's own body, not a test declaration.
+    drifted = f"{ANCHOR_SPEC}:{BODY_LINE} {ANCHOR_TITLE}"
     assert harness.frontend_evidence_errors("V01-P4-004", drifted) == [
-        f"V01-P4-004: frontend evidence apps/ui/src/App.test.tsx:133 lands on "
-        f"{source[132]!r}, not the test it names"
+        f"V01-P4-004: frontend evidence {ANCHOR_SPEC}:{BODY_LINE} lands on "
+        f"{source[BODY_LINE - 1]!r}, not the test it names"
     ]
 
-    renamed = "apps/ui/src/App.test.tsx:132 navigates to some other screens"
+    # The right line carrying the neighbour's title is just as wrong: the line and the
+    # title are one claim, and half of it matching proves nothing.
+    renamed = f"{ANCHOR_SPEC}:{ANCHOR_LINE} {NEIGHBOUR_TITLE}"
     assert harness.frontend_evidence_errors("V01-P4-004", renamed) == [
-        f"V01-P4-004: frontend evidence apps/ui/src/App.test.tsx:132 lands on "
-        f"{source[131]!r}, not the test it names"
+        f"V01-P4-004: frontend evidence {ANCHOR_SPEC}:{ANCHOR_LINE} lands on "
+        f"{source[ANCHOR_LINE - 1]!r}, not the test it names"
     ]
 
-    untitled = "apps/ui/src/App.test.tsx:132"
+    untitled = f"{ANCHOR_SPEC}:{ANCHOR_LINE}"
     assert harness.frontend_evidence_errors("V01-P4-004", untitled) == [
-        "V01-P4-004: frontend evidence apps/ui/src/App.test.tsx:132 names no test title"
+        f"V01-P4-004: frontend evidence {ANCHOR_SPEC}:{ANCHOR_LINE} names no test title"
     ]
 
 
@@ -282,7 +335,7 @@ def write_policy(tmp_path: object, evidence: str) -> object:
 
 
 def test_apply_policy_rejects_a_frontend_pointer_whose_test_file_was_deleted(
-    tmp_path: object, monkeypatch: pytest.MonkeyPatch
+    anchored: Path, tmp_path: object, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The whole gate, not just the helper, must go red when a pointer rots.
 
@@ -296,7 +349,7 @@ def test_apply_policy_rejects_a_frontend_pointer_whose_test_file_was_deleted(
     monkeypatch.setattr(
         harness, "POLICY_PATH", write_policy(
             tmp_path,
-            "apps/ui/src/App.test.tsx:132 navigates to the required operator screens",
+            f"{ANCHOR_SPEC}:{ANCHOR_LINE} {ANCHOR_TITLE}",
         )
     )
     assert harness.apply_policy(criteria) == []
@@ -360,7 +413,7 @@ def test_every_recorded_frontend_pointer_lands_on_the_test_it_describes() -> Non
 
 
 def test_a_pytest_proven_criterion_keeps_its_claim_while_its_vitest_pointer_is_checked(
-    tmp_path: object, monkeypatch: pytest.MonkeyPatch
+    anchored: Path, tmp_path: object, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """``frontend_evidence`` must guard the page test without stealing the pytest proof.
 
@@ -388,9 +441,7 @@ def test_a_pytest_proven_criterion_keeps_its_claim_while_its_vitest_pointer_is_c
     monkeypatch.setattr(
         harness,
         "POLICY_PATH",
-        policy_file(
-            "apps/ui/src/App.test.tsx:132 navigates to the required operator screens"
-        ),
+        policy_file(f"{ANCHOR_SPEC}:{ANCHOR_LINE} {ANCHOR_TITLE}"),
     )
     assert harness.apply_policy(good) == []  # type: ignore[arg-type]
     assert harness.classify(good["AC3-UI-02"]) == "PROVEN"
@@ -405,7 +456,7 @@ def test_a_pytest_proven_criterion_keeps_its_claim_while_its_vitest_pointer_is_c
 
 
 def test_a_misspelled_policy_key_is_rejected_rather_than_silently_dropped(
-    tmp_path: object, monkeypatch: pytest.MonkeyPatch
+    anchored: Path, tmp_path: object, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """A typo in a key name must fail the gate, not discard the value it carried.
 
@@ -414,7 +465,7 @@ def test_a_misspelled_policy_key_is_rejected_rather_than_silently_dropped(
     pointer and still print PASS — is reported as an unknown key.
     """
 
-    pointer = "apps/ui/src/App.test.tsx:132 navigates to the required operator screens"
+    pointer = f"{ANCHOR_SPEC}:{ANCHOR_LINE} {ANCHOR_TITLE}"
 
     def policy_file(key: str) -> object:
         path = tmp_path / f"criteria-{key}.toml"  # type: ignore[operator]

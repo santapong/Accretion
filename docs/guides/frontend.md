@@ -12,7 +12,7 @@ and Identity pages.
 
 > [!IMPORTANT]
 > The frontend is feature-complete for the v0.3 release. Its generated
-> contract, lint, TypeScript, 97 component tests, and production build pass.
+> contract, lint, TypeScript, component tests, and production build pass.
 > Rendered browser and accessibility evidence **is** claimed for v0.3.0: axe-core
 > 4.10.2 reports zero violations across all seventeen routes, no route scrolls
 > horizontally at 390 px, and no measured text falls below WCAG AA. See

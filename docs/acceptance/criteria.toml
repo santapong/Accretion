@@ -36,7 +36,7 @@
 # --- Proven by the frontend suite -------------------------------------------
 # This gate reads pytest markers, so a criterion whose proof lives in vitest is
 # recorded with a pointer. `npm run test` runs these in CI on every pull request.
-V01-P4-004 = { verification = "frontend", evidence = "apps/ui/src/App.test.tsx:132 navigates to the required operator screens + apps/ui/src/EventStream.test.tsx:61 recovers a missed SSE sequence from the authoritative audit snapshot + apps/ui/src/RunExecution.test.tsx:131 renders the persisted loop projection, budgets, and curved loop-back route" }
+V01-P4-004 = { verification = "frontend", evidence = "apps/ui/src/App.test.tsx:136 navigates to the required operator screens + apps/ui/src/EventStream.test.tsx:61 recovers a missed SSE sequence from the authoritative audit snapshot + apps/ui/src/RunExecution.test.tsx:131 renders the persisted loop projection, budgets, and curved loop-back route" }
 V02-P6-008 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:490 renders P6 candidate lineage, provenance, scores, spend, and selection reason" }
 V02-P7-007 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:549 renders P7 experience provenance, compatibility, transfer risk, and reused segments" }
 

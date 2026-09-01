@@ -34,7 +34,7 @@ nav strong { display:block; font-size: 14px; letter-spacing:.04em; } nav span { 
 .shell { width:min(1440px,92vw); margin:0 auto; padding:64px 0 80px; }
 .task-studio,.planning-review { border:1px solid #29322c;background:linear-gradient(145deg,rgba(25,31,27,.96),rgba(15,20,16,.96));margin-bottom:20px; }
 .section-heading { min-height:86px;padding:22px 24px;border-bottom:1px solid #29322c;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px}
-.section-heading h1,.section-heading h2 { margin:0;font-size:24px;font-weight:500; }.section-heading>span:not(.pill){font:10px "DM Mono";color:var(--ink-dim)}
+.section-heading h1,.section-heading h2 { margin:0;font-size:24px;font-weight:500; }.run-duration{margin:6px 0 0;font:10px "DM Mono";color:var(--ink-dim);letter-spacing:.06em}.section-heading>span:not(.pill){font:10px "DM Mono";color:var(--ink-dim)}
 .project-form { display:grid;grid-template-columns:1fr 2fr auto;gap:12px;padding:18px 24px;border-bottom:1px solid #29322c;align-items:end; }
 .task-form { display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:24px; }
 .task-form .field-wide { grid-column:span 2; }.form-actions{display:flex;align-items:center;gap:16px}
