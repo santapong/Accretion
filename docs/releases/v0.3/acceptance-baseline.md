@@ -3,9 +3,13 @@
 > Computed: 2026-08-25 · Base: `develop` at `519ab2b`
 > Numbers refreshed: 2026-08-30 · `develop` at `3e7f9c1` plus M6 (frontend and
 > administration) and M7 (enterprise-managed authorization)
+> **Carried through M8 and refreshed for the v0.3.0 release: 2026-09-01.**
 >
-> Produced by `make acceptance`. This document records a **starting position**, not a
-> release decision. It supersedes hand-written status claims.
+> Produced by `make acceptance`. It began as a record of a **starting position**
+> rather than a release decision, and has been kept current through every
+> milestone since; the table below is the release-time status. It supersedes
+> hand-written status claims. The release decision itself is in
+> [audit.md](audit.md).
 
 ## Why this exists
 
@@ -76,8 +80,9 @@ real `IdentityService.complete_login`, the real sealed secret store, the real
 and the real `CapabilityGateway`. What the numbers establish is that the *protocol
 path* behaves correctly — sign in once, exchange, grant, invoke, renew, revoke — not
 that any commercial identity provider has been interoperated with. Real IdP interop
-(Entra, Okta) is M8's, and would be recorded as an expiring `manual` record rather than
-as a test.
+(Entra, Okta) is a v0.4 item — M8 was scoped to release hardening and deliberately did
+not take it — and would be recorded as an expiring `manual` record rather than as a
+test.
 
 ### What M6's numbers do and do not measure
 
@@ -156,18 +161,16 @@ These need work, not annotation.
 
 **Security**
 
-- `V01-P4-001` — sandbox asymmetry. Codex runs network-denied
-  (`sandbox_workspace_write.network_access = False`); Claude does not, and its
-  `--allowedTools` list includes `Bash(uv run*)` and `Bash(npm run*)` under
-  `--permission-mode dontAsk`, so `uv run python -c "<network call>"` matches the
-  prefix. No test attempts a denied capability through a native shell escape.
-- `AC3-CON-06` — the audience guard is fail-open. `if audience and handle.audience`
-  skips validation entirely when either side is empty, and `handle.audience` is empty
-  whenever a connector has no `resource_server`. `TokenHandle.issuer` is written and
-  read by nothing, so the issuer half is unimplemented.
-- `AC3-SEC-03` — the token broker is unwired. `EncryptedTokenBroker` has zero call
-  sites in `src/`; `CapabilityGateway.execute` still resolves credentials through the
-  v0.2 env-var `CredentialBroker`, and the resolved connection is discarded.
+- ~~`V01-P4-001` — sandbox asymmetry. Codex runs network-denied; Claude does not,
+  and its `--allowedTools` list makes `uv run python -c "<network call>"` match a
+  permitted prefix.~~ Closed in M2 (#78): Claude Code runs now carry a sandbox and
+  a meaningful tool allowlist, closing the runtime egress asymmetry.
+- ~~`AC3-CON-06` — the audience guard is fail-open, skipping validation entirely
+  when either side is empty.~~ Closed in M2 (#61, #77): the token audience and
+  issuer guard now fails closed.
+- ~~`AC3-SEC-03` — the token broker is unwired. `EncryptedTokenBroker` has zero
+  call sites in `src/`.~~ Closed in M2 (#75, #77), which put the broker into the
+  execution path — the five criteria noted above.
 - `command_result` passes no child environment, so every runtime health probe inherits
   the full control-plane environment including the database URL and OIDC client secret.
 
@@ -219,9 +222,10 @@ These need work, not annotation.
 
 ## What happens next
 
-Phase 2 closes the v0.3 M0–M2 gaps, Phase 3 the inherited ones, Phase 4 gates
-`make acceptance` in CI. Each criterion closed gains a claiming test, so this table
-moves on evidence rather than assertion.
+Phase 2 closed the v0.3 M0–M2 gaps, Phase 3 the inherited ones, and Phase 4 (M8)
+made the unscoped `make acceptance` plus `make release-gate` the CI gate. Each
+criterion closed gained a claiming test, so this table moved on evidence rather
+than assertion. **All phases are complete as of v0.3.0.**
 
 CI gates the milestone stages rather than the full harness: the backend job runs
 `--stage M1` through `--stage M7` and `--stage v0.2-ui`. **Superseded in M8**: CI now

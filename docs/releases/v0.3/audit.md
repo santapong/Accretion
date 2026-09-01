@@ -146,6 +146,11 @@ Recorded here so the release is not read as claiming more than it proved.
 3. Tag `v0.3.0` on `main` after the merge lands.
 4. Verify the tag's peeled commit matches the merged `main` tip and record both
    in this file.
+5. Write `docs/releases/v0.3/baseline.md` from the resulting identifiers,
+   matching [the v0.2 frozen baseline](../v0.2/baseline.md): tag object, release
+   commit, release tree, authorized `develop` commit and evidence fingerprints.
+   That file cannot be written before the tag exists, which is why it is a
+   post-release step rather than part of this candidate.
 
-Steps 1–4 had not been performed when this audit was written; the audited
+Steps 1–5 had not been performed when this audit was written; the audited
 artifact is the branch tip named above.

@@ -348,4 +348,4 @@ no `ui.pages` or `node_badges` rendering — declarations are validated and pers
 nothing draws them (M6); no first-class `consent_records` or `scope_grants` tables,
 consent is embedded in the installation (M6); no YAML manifests, JSON only, so digests
 stay consistent with the governance checksum convention; no key rotation or revocation
-and no archive ingestion (v0.4); no `capability_policy_bypass` counter (M8).
+and no archive ingestion (v0.4). The `capability_policy_bypass` counter now exists: M8 derives it from `CapabilityGateway` audit rows in `scripts/release_gate.py` (ADR3-M8-002), and `make release-gate` reports it.

@@ -13,6 +13,15 @@ Theme: **Plugin, MCP & Identity Integration Platform**. Full notes in
 its disclosed limitations are in
 [docs/releases/v0.3/audit.md](docs/releases/v0.3/audit.md).
 
+Acceptance at release: 117 criteria in scope, 111 proven by a passing claiming
+test, 3 by the frontend suite, 3 by a recorded live-provider run, **0 uncovered
+and `unmet MUST: 0`**. All five SDD §24.8 release-gate conditions pass. The
+per-milestone figures quoted in the entries below are historical — each records
+what was true when that milestone merged.
+
+Three criteria (`V01-P0-002`, `V01-P0-004`, `V01-P4-008`) are `manual` records
+backed by a real signed-in provider run and **expire on 2027-02-28**.
+
 ### Added
 
 - Added the v0.3 M0 connection-aware capability layer: connector, connection,

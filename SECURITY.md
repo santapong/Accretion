@@ -16,8 +16,10 @@ the implementation boundary.
 
 ## Supported versions
 
-Accretion is pre-release software. Security fixes are applied to the latest
-commit on `main` and included in the next tagged release.
+Accretion is pre-release software. The supported version is the latest release,
+`v0.3.0`. Security fixes are applied to the latest commit on `main` and included
+in the next tagged release; `v0.1.0` and `v0.2.0` are immutable historical
+records and receive no backports.
 
 ## Reporting a vulnerability
 

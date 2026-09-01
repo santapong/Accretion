@@ -1,5 +1,13 @@
 # Frontend and administration runbook
 
+> **Deferral note (M8).** Items below recorded as "deferred to M8" were not taken:
+> M8 was scoped to release hardening — closing the inherited acceptance criteria and
+> making the release gate executable — and each deferral adds contracts, routes or
+> migrations. They are v0.4 items; see
+> [the v0.3 backlog](../releases/v0.3/backlog.md). The F1–F4 accessibility findings
+> *were* closed in M8; see
+> [browser and accessibility evidence](../releases/v0.3/browser-a11y-evidence.md).
+
 How to operate the administration surface introduced by v0.3 M6. The normative
 contract is [Accretion SDD v0.3](../sdd/Accretion_SDD_v0.3.md) §16, §17 and §27.
 
