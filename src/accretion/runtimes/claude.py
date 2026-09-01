@@ -28,6 +28,7 @@ from accretion.contracts import (
 from accretion.ids import new_id
 from accretion.redaction import redact, redact_text
 from accretion.runtimes.common import (
+    RUNTIME_STREAM_LIMIT,
     RuntimeSubmission,
     classify_runtime_health,
     command_result,
@@ -39,6 +40,7 @@ from accretion.runtimes.common import (
     submission_timeout_seconds,
 )
 
+
 # Deny rules take precedence over allow rules, so these hold even if an allow prefix
 # is later widened. Codex is network-denied by its own sandbox
 # (``sandbox_workspace_write.network_access: False``); Claude Code exposes no
@@ -46,6 +48,14 @@ from accretion.runtimes.common import (
 # instead. That is defence in depth, not parity: a deny list enumerates, and an
 # interpreter reached through an allowed command can still open a socket. The residual
 # gap is recorded in docs/runbooks/p0-runtime.md.
+class _StreamLineTooLong(RuntimeError):
+    """A single protocol line exceeded the stdout stream limit.
+
+    Distinguished from a generic failure so the terminal event can say the
+    reader gave up rather than implying the child process exited.
+    """
+
+
 _DENIED_TOOLS = (
     # Direct network clients.
     "Bash(curl*)",
@@ -287,6 +297,7 @@ class ClaudeRuntime:
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                     env=provider_environment(),
+                    limit=RUNTIME_STREAM_LIMIT,
                 )
                 self.processes[call_id] = process
                 self.started_sessions.add(session.session_id)
@@ -294,7 +305,22 @@ class ClaudeRuntime:
                     stderr_task = asyncio.create_task(process.stderr.read())
                 if not process.stdout:
                     raise RuntimeError("Claude process did not expose stdout")
-                while line := await process.stdout.readline():
+                while True:
+                    try:
+                        line = await process.stdout.readline()
+                    except ValueError as exc:
+                        # asyncio raises a bare ValueError when a single line
+                        # exceeds the StreamReader limit. The message names
+                        # neither the stream nor the ceiling, so an operator
+                        # reading the event cannot tell what happened.
+                        raise _StreamLineTooLong(
+                            "Claude emitted a single protocol line larger than the "
+                            f"{RUNTIME_STREAM_LIMIT} byte stdout limit "
+                            f"({exc}). The process was still healthy; the reader "
+                            "gave up."
+                        ) from exc
+                    if not line:
+                        break
                     try:
                         message = json.loads(line)
                     except json.JSONDecodeError:
@@ -381,7 +407,21 @@ class ClaudeRuntime:
             if terminal_message is not None:
                 await self._finish_terminal_message(call_id, run, terminal_message)
             else:
-                await self._terminal_failure(call_id, run, str(exc), metadata=metadata)
+                # The clean-exit path records the child's stderr; this path used
+                # to discard it, which is why a real reader-side failure carried
+                # no diagnostic context at all.
+                await self._terminal_failure(
+                    call_id,
+                    run,
+                    str(exc),
+                    stderr=await self._stderr(stderr_task),
+                    native_type=(
+                        "reader/line-too-long"
+                        if isinstance(exc, _StreamLineTooLong)
+                        else "process/exit"
+                    ),
+                    metadata=metadata,
+                )
         finally:
             if stderr_task and not stderr_task.done():
                 stderr_task.cancel()
@@ -420,11 +460,12 @@ class ClaudeRuntime:
         stderr: str = "",
         return_code: int | None = None,
         metadata: dict[str, Any] | None = None,
+        native_type: str = "process/exit",
     ) -> None:
         await self._finish_call(
             call_id,
             run,
-            native_type="process/exit",
+            native_type=native_type,
             normalized_type=EventType.RUNTIME_CALL_FAILED,
             payload={
                 "runtime_call_id": call_id,

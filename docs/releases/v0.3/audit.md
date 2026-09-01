@@ -6,6 +6,12 @@
 >
 > Decision: **RELEASE CANDIDATE AUTHORIZED — no maintainer exception required.**
 
+> Released: `v0.3.0` on 2026-09-01 from
+> `bf5b774eb964252d448b44ec3ea9d6b7b7511213` (annotated tag object
+> `6d20bc6a3b4df4ba2f01920b3717b4cf3c69a2e0`); see the
+> [frozen baseline](baseline.md) and
+> [published release](https://github.com/santapong/Accretion/releases/tag/v0.3.0).
+
 Unlike v0.2.0, this candidate carries no accessibility exception: a real browser
 was available, and axe-core reports zero violations across all seventeen routes.
 Issue [#52](https://github.com/santapong/Accretion/issues/52), which tracked the
@@ -140,17 +146,27 @@ Recorded here so the release is not read as claiming more than it proved.
 
 ## Release procedure
 
-1. Open `feat/v03-m8` → `develop` and squash-merge.
-2. Open `develop` → `main` as `chore: release v0.3.0` and squash-merge, matching
-   the v0.2.0 bridge (`de146cd`, #46).
-3. Tag `v0.3.0` on `main` after the merge lands.
-4. Verify the tag's peeled commit matches the merged `main` tip and record both
-   in this file.
-5. Write `docs/releases/v0.3/baseline.md` from the resulting identifiers,
-   matching [the v0.2 frozen baseline](../v0.2/baseline.md): tag object, release
-   commit, release tree, authorized `develop` commit and evidence fingerprints.
-   That file cannot be written before the tag exists, which is why it is a
-   post-release step rather than part of this candidate.
+1. ~~Open `feat/v03-m8` → `develop` and squash-merge.~~ Done —
+   [#102](https://github.com/santapong/Accretion/pull/102), `develop` at
+   `0bf1d747eb9428efe13d8e71b13e3866e9cebb92`.
+2. ~~Open `develop` → `main` and squash-merge.~~ Done —
+   [#103](https://github.com/santapong/Accretion/pull/103). `main` and `develop`
+   had no usable merge ancestry, as at v0.2.0, so the protected release bridge
+   from [branch-policy.md](../../governance/branch-policy.md) was used: branch
+   `release/v0.3.0` created from `main` at `b849ca0`, its complete tree replaced
+   with the audited `develop` tree, and `git diff --exit-code origin/develop
+   release/v0.3.0` verified to pass before the pull request was opened.
+3. ~~Tag `v0.3.0` on `main`.~~ Done — annotated tag object
+   `6d20bc6a3b4df4ba2f01920b3717b4cf3c69a2e0`.
+4. ~~Verify the tag's peeled commit matches the merged `main` tip.~~ Verified —
+   both are `bf5b774eb964252d448b44ec3ea9d6b7b7511213`, and
+   `git diff --exit-code origin/develop origin/main` passes, so the promoted
+   tree `902c5c75aa899ecb2306cf26696bbccb867fc797` is byte-identical to the
+   audited one.
+5. ~~Write `docs/releases/v0.3/baseline.md`.~~ Done — see
+   [the frozen v0.3 baseline](baseline.md).
 
-Steps 1–5 had not been performed when this audit was written; the audited
-artifact is the branch tip named above.
+All required CI checks — `backend`, `frontend`, and the new `clean-checkout`
+job — passed on both pull requests and again on `main` after the merge. The
+`v0.1.0` and `v0.2.0` tag objects and peeled commits are unchanged from the
+values recorded in their own baselines.
