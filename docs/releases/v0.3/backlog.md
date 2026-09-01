@@ -65,6 +65,16 @@ Resolve within M8 release hardening:
 - **F4** — The normalized-trace `event-list` scroll region on `/runs/:id` is
   not keyboard-focusable; add `tabindex="0"` with an appropriate role/label.
 
+**All four closed in M8** — see
+[browser-a11y-evidence.md](browser-a11y-evidence.md): axe-core 4.10.2 reports
+zero violations across all 17 routes, no route scrolls horizontally at 390 px,
+and 0 of 1,421 measured text nodes fall below WCAG AA. Two corrections to the
+findings as written are recorded there: the status-pill palette itself always
+passed AA (the pills lost their colour to a more specific `.panel-header > span`
+rule), and the five `/admin/*` pages already had an `h1`. One new finding was
+found and fixed in the same pass: the M6 admin pages scrolled the document
+sideways at 390 px because their registry tables had no scroll container.
+
 ## Carried technical debt
 
 ### Inherited from v0.2 release hardening
