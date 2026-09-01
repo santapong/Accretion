@@ -40,6 +40,21 @@ V01-P4-004 = { verification = "frontend", evidence = "apps/ui/src/App.test.tsx:1
 V02-P6-008 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:490 renders P6 candidate lineage, provenance, scores, spend, and selection reason" }
 V02-P7-007 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:549 renders P7 experience provenance, compatibility, transfer risk, and reused segments" }
 
+# --- Proven by a recorded live-provider run ---------------------------------
+# These three name real vendor CLIs. CI never sets ACCRETION_LIVE_PROVIDERS=1, so
+# no test in the suite can claim them without reporting a skip - and the harness
+# classifies a claimed test that reports no outcome as FAILING, which is exactly
+# right. They are therefore manual, pointing at the evidence file that
+# `scripts/live_acceptance.py` wrote on a real run. Re-run that script and move
+# `last_verified` before the 180-day window closes.
+#
+# The protocol regressions that CAN be checked offline are covered by unmarked
+# tests in tests/test_v03_m8_live_protocol.py: those guard the wiring without
+# overclaiming that a fake binary proves a signed-in vendor CLI works.
+V01-P0-002 = { verification = "manual", evidence = "docs/releases/v0.3/evidence/live-acceptance-2026-09-01.md", last_verified = "2026-09-01" }
+V01-P0-004 = { verification = "manual", evidence = "docs/releases/v0.3/evidence/live-acceptance-2026-09-01.md", last_verified = "2026-09-01" }
+V01-P4-008 = { verification = "manual", evidence = "docs/releases/v0.3/evidence/live-acceptance-2026-09-01.md", last_verified = "2026-09-01" }
+
 # --- Not yet due: milestone M7 has not started ------------------------------
 # The seven AC3-EMA criteria (SDD v0.3 §24.9) cover optional enterprise-managed
 # authorization. Each leaves this list as the M7 PR that proves it lands.
