@@ -1,4 +1,4 @@
-.PHONY: dev-db migrate api ui check docs-check test acceptance
+.PHONY: dev-db migrate api ui check docs-check test acceptance release-gate
 
 dev-db:
 	docker compose up -d postgres
@@ -27,3 +27,6 @@ test:
 
 acceptance:
 	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync python scripts/check_acceptance.py
+
+release-gate:
+	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync python scripts/release_gate.py
