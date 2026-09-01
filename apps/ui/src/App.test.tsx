@@ -109,66 +109,6 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-// --- run duration wiring ----------------------------------------------------
-// `runDuration.test.ts` proves the arithmetic. These prove it reaches the screen on
-// every surface that lists a run, which is the half a pure unit test cannot see.
-
-const DURATION_RUNS = [
-  {
-    schema_version: "2.0", run_id: "run_done", task_id: "tsk_fixture", project_id: "prj_fixture",
-    provider: "FAKE", state: "SUCCEEDED", last_sequence: 12, revision: 1,
-    created_at: "2026-08-20T00:00:00Z", updated_at: "2026-08-20T00:03:21Z",
-  },
-  {
-    schema_version: "2.0", run_id: "run_live", task_id: "tsk_fixture", project_id: "prj_fixture",
-    provider: "FAKE", state: "RUNNING", last_sequence: 3, revision: 1,
-    created_at: "2026-08-20T00:00:00Z", updated_at: "2026-08-20T00:00:05Z",
-  },
-];
-
-function installRunsApi() {
-  vi.mocked(fetch).mockImplementation(async (input) => {
-    const url = String(input);
-    if (url.includes("/runs?limit=")) return response(DURATION_RUNS);
-    // The run page mounts the full execution inspector. Anything it asks for beyond the
-    // run itself is out of scope here, and an empty array is the wrong shape for the
-    // single-object endpoints, so those answer 404 rather than a malformed body.
-    if (/\/(loop|audit|graph|trace)$/.test(url)) return response(null, 404);
-    return response([]);
-  });
-}
-
-test("the run list shows a finished run's real duration, not a live estimate", async () => {
-  installRunsApi();
-  renderApp();
-  // 00:00:00 -> 00:03:21 is 3m 21s, read from updated_at. A wall-clock reading would
-  // give years, since the fixture is dated in the past.
-  expect(await screen.findByText(/3m 21s/)).toBeInTheDocument();
-  expect(screen.getByText(/3m 21s/).textContent).not.toContain("…");
-});
-
-test("a live run is marked as still counting and measured against the clock", async () => {
-  installRunsApi();
-  renderApp();
-  const live = await screen.findByText(/FAKE · 3 events/);
-  // The ellipsis is the whole point: an operator must not read a ticking number as a
-  // final one. And it must not be 5s - that is updated_at, the last event, not elapsed.
-  expect(live.textContent).toMatch(/…$/);
-  expect(live.textContent).not.toMatch(/ 5\.0s/);
-});
-
-test("history rows carry durations too", async () => {
-  installRunsApi();
-  renderApp("/history");
-  expect(await screen.findByText(/3m 21s/)).toBeInTheDocument();
-});
-
-test("the run page states the elapsed time of the run it is showing", async () => {
-  installRunsApi();
-  renderApp("/runs/run_done");
-  expect(await screen.findByText("Elapsed 3m 21s")).toBeInTheDocument();
-});
-
 test("renders the runtime dashboard and operator navigation", async () => {
   renderApp();
   expect(screen.getByText("Runtime observatory")).toBeInTheDocument();
@@ -524,4 +464,69 @@ test("override template options come from the validated template registry", asyn
   await screen.findByRole("option", { name: "hybrid-rd-v1" });
   expect(screen.getByRole("option", { name: "safe-unknown-v1" })).toBeInTheDocument();
   expect(screen.queryByRole("option", { name: "fixed-graph-v1" })).not.toBeInTheDocument();
+});
+
+// --- run duration wiring ----------------------------------------------------
+// These live at the end of the file on purpose. `docs/acceptance/criteria.toml`
+// anchors V01-P4-004 to "navigates to the required operator screens" BY LINE
+// NUMBER, and `test_every_recorded_frontend_pointer_lands_on_the_test_it_describes`
+// fails the acceptance gate if a line is inserted above it. Append here; do not
+// insert above that test without moving the anchor.
+// `runDuration.test.ts` proves the arithmetic. These prove it reaches the screen on
+// every surface that lists a run, which is the half a pure unit test cannot see.
+
+const DURATION_RUNS = [
+  {
+    schema_version: "2.0", run_id: "run_done", task_id: "tsk_fixture", project_id: "prj_fixture",
+    provider: "FAKE", state: "SUCCEEDED", last_sequence: 12, revision: 1,
+    created_at: "2026-08-20T00:00:00Z", updated_at: "2026-08-20T00:03:21Z",
+  },
+  {
+    schema_version: "2.0", run_id: "run_live", task_id: "tsk_fixture", project_id: "prj_fixture",
+    provider: "FAKE", state: "RUNNING", last_sequence: 3, revision: 1,
+    created_at: "2026-08-20T00:00:00Z", updated_at: "2026-08-20T00:00:05Z",
+  },
+];
+
+function installRunsApi() {
+  vi.mocked(fetch).mockImplementation(async (input) => {
+    const url = String(input);
+    if (url.includes("/runs?limit=")) return response(DURATION_RUNS);
+    // The run page mounts the full execution inspector. Anything it asks for beyond the
+    // run itself is out of scope here, and an empty array is the wrong shape for the
+    // single-object endpoints, so those answer 404 rather than a malformed body.
+    if (/\/(loop|audit|graph|trace)$/.test(url)) return response(null, 404);
+    return response([]);
+  });
+}
+
+test("the run list shows a finished run's real duration, not a live estimate", async () => {
+  installRunsApi();
+  renderApp();
+  // 00:00:00 -> 00:03:21 is 3m 21s, read from updated_at. A wall-clock reading would
+  // give years, since the fixture is dated in the past.
+  expect(await screen.findByText(/3m 21s/)).toBeInTheDocument();
+  expect(screen.getByText(/3m 21s/).textContent).not.toContain("…");
+});
+
+test("a live run is marked as still counting and measured against the clock", async () => {
+  installRunsApi();
+  renderApp();
+  const live = await screen.findByText(/FAKE · 3 events/);
+  // The ellipsis is the whole point: an operator must not read a ticking number as a
+  // final one. And it must not be 5s - that is updated_at, the last event, not elapsed.
+  expect(live.textContent).toMatch(/…$/);
+  expect(live.textContent).not.toMatch(/ 5\.0s/);
+});
+
+test("history rows carry durations too", async () => {
+  installRunsApi();
+  renderApp("/history");
+  expect(await screen.findByText(/3m 21s/)).toBeInTheDocument();
+});
+
+test("the run page states the elapsed time of the run it is showing", async () => {
+  installRunsApi();
+  renderApp("/runs/run_done");
+  expect(await screen.findByText("Elapsed 3m 21s")).toBeInTheDocument();
 });
