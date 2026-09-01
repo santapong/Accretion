@@ -70,6 +70,10 @@ h1 em { color:#89d9a0; font-style:normal; }
 .inspector-stack{display:grid;gap:12px;min-width:0;align-content:start}
 .inspector-stack>*,.page-stack>*{min-width:0}
 .registry-card{overflow-x:auto}
+/* These scroll horizontally when their content is wider than the viewport, so they are
+   keyboard-reachable (axe: scrollable-region-focusable). A tab stop nobody can see is
+   worse than no tab stop, hence the ring - matching .event-list and .revision-timeline. */
+.registry-card:focus-visible,.benchmark-table-wrap:focus-visible{outline:2px solid #75db91;outline-offset:-2px}
 .registry-card>.benchmark-table{min-width:max-content}
 .projection-flow{max-width:100%;overflow:hidden}
 .execution-content{display:grid;gap:12px;padding:12px}.execution-panel>.empty{min-height:160px}.projection-unavailable{padding:22px;border:1px dashed #354039;background:#101612}.projection-unavailable strong{font-size:12px}.projection-unavailable p{color:var(--ink-muted);font-size:10px;line-height:1.6;margin:7px 0 0}

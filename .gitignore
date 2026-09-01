@@ -16,3 +16,8 @@ apps/ui/vite.config.d.ts
 .accretion/
 artifacts/
 openapi.json
+
+# Playwright accessibility gate: browser artefacts and the seeded run id it writes.
+apps/ui/playwright-report/
+apps/ui/test-results/
+apps/ui/e2e/.seed.json

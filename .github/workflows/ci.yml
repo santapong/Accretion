@@ -119,3 +119,54 @@ jobs:
       - run: npm run api:generate
       - run: git diff --exit-code -- apps/ui/src/api/schema.d.ts
       - run: npm run build
+
+  browser:
+    # The accessibility claim that discharges issue #52 was, until now, a static document
+    # that nothing re-measured - and jsdom cannot re-measure it, because it has no layout
+    # engine and src/test/setup.ts fakes getBoundingClientRect. This job runs the recorded
+    # procedure against the PRODUCTION BUILD on every push, so a restyle cannot quietly
+    # invalidate the evidence.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.6-pg16
+        env:
+          POSTGRES_DB: accretion
+          POSTGRES_USER: accretion
+          POSTGRES_PASSWORD: accretion
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U accretion -d accretion"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      ACCRETION_DATABASE_URL: postgresql+asyncpg://accretion:accretion@localhost:5432/accretion
+      # Keep this `development`: any other value flips cookie_secure on (api/auth.py), and
+      # a plain-HTTP browser then cannot store the session cookie.
+      ACCRETION_ENVIRONMENT: development
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - run: uv sync --all-groups
+      - run: npm ci
+      - run: uv run --no-sync alembic upgrade head
+      # The gate drives `vite preview` over dist/, so the build has to exist first.
+      - run: npm run build
+      - run: npx playwright install --with-deps chromium
+        working-directory: apps/ui
+      - run: npx playwright test
+        working-directory: apps/ui
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: apps/ui/playwright-report/
+          retention-days: 7

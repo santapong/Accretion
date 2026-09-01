@@ -879,7 +879,7 @@ function BenchmarkPage() {
         ))}
       </div>
       {status ? <p className="form-status benchmark-status" role="status">{status}</p> : null}
-      <div className="benchmark-table-wrap">
+      <div className="benchmark-table-wrap" role="region" aria-label="Benchmark results" tabIndex={0}>
         <table className="benchmark-table">
           <thead><tr><th>Task</th><th>Mode</th><th>Provider</th><th>Success</th><th>Quality</th><th>Cost</th><th>Latency</th><th>Risk</th><th>Human</th><th>Utility</th><th>Regret</th></tr></thead>
           <tbody>{(summary.data?.metrics ?? []).map((metric) => <tr key={metric.metric_id}><td><button onClick={() => setSelectedTask(metric.benchmark_task_id)}>{metric.benchmark_task_id}</button></td><td>{metric.mode}</td><td>{metric.provider}</td><td><StatePill state={metric.success ? "PASS" : "FAIL"} /></td><td>{metric.quality.toFixed(3)}</td><td>{metric.cost.toFixed(3)}</td><td>{metric.latency.toFixed(3)}</td><td>{metric.risk.toFixed(3)}</td><td>{metric.human_burden.toFixed(3)}</td><td>{metric.utility.toFixed(3)}</td><td>{metric.architecture_regret.toFixed(3)}</td></tr>)}</tbody>
@@ -945,7 +945,7 @@ function SearchBenchmarkPage() {
           <code>{summary.data?.config_sha256 ?? "loading config…"}</code>
         </div>
       </div>
-      <div className="benchmark-table-wrap">
+      <div className="benchmark-table-wrap" role="region" aria-label="Benchmark results" tabIndex={0}>
         <table className="benchmark-table">
           <thead><tr><th>Task</th><th>Family</th><th>N=1</th><th>N=2</th><th>N=4</th><th>N2→N4 gain</th><th>Selected provider</th></tr></thead>
           <tbody>{(summary.data?.tasks ?? []).map((task) => <tr key={task.task_id} className={summary.data?.null_gain_task_ids.includes(task.task_id) ? "null-result" : undefined}><td>{task.task_id} · {task.title}</td><td>{task.family}</td><td>{task.quality_by_candidate_count["1"].toFixed(3)}</td><td>{task.quality_by_candidate_count["2"].toFixed(3)}</td><td>{task.quality_by_candidate_count["4"].toFixed(3)}</td><td>{task.gain_from_two_to_four.toFixed(3)}</td><td>{task.selected_provider_at_four ?? "none"}</td></tr>)}</tbody>
@@ -991,7 +991,7 @@ function DynamicBenchmarkPage() {
         <article><StatePill state={gate.safety_invariants_passed ? "PASS" : "FAIL"} /><strong>v0.1 invariants</strong><span>No risk or false-accept regression</span></article>
         <article><StatePill state={gate.static_fallback_operational ? "PASS" : "FAIL"} /><strong>Static fallback</strong><span>Invalid proposals degrade safely</span></article>
       </div> : null}
-      <div className="benchmark-table-wrap">
+      <div className="benchmark-table-wrap" role="region" aria-label="Benchmark results" tabIndex={0}>
         <table className="benchmark-table">
           <thead><tr><th>Treatment</th><th>Success</th><th>Quality</th><th>Utility</th><th>Turns</th><th>Tools</th><th>Invalid</th><th>Replan</th><th>Human</th><th>Graph nodes/depth</th><th>Variation</th></tr></thead>
           <tbody>{(summary.data?.treatments ?? []).map((treatment) => <tr key={treatment.treatment}><td>{treatment.treatment}</td><td>{Math.round(treatment.success_rate * 100)}%</td><td>{treatment.mean_quality.toFixed(3)}</td><td>{treatment.mean_utility.toFixed(3)}</td><td>{treatment.mean_turns.toFixed(1)}</td><td>{treatment.mean_tool_calls.toFixed(1)}</td><td>{Math.round(treatment.invalid_proposal_rate * 100)}%</td><td>{Math.round(treatment.replan_rate * 100)}%</td><td>{Math.round(treatment.human_intervention_rate * 100)}%</td><td>{treatment.mean_graph_nodes.toFixed(1)} / {treatment.mean_graph_depth.toFixed(1)}</td><td>{Math.round(treatment.structural_variation_rate * 100)}%</td></tr>)}</tbody>
@@ -1041,7 +1041,7 @@ function ExperienceBenchmarkPage() {
         <article><StatePill state={gate.negative_transfer_passed ? "PASS" : "FAIL"} /><strong>Negative transfer</strong><span>{(gate.negative_transfer_rate * 100).toFixed(2)}%</span></article>
         <article><StatePill state={gate.benefit_passed ? "PASS" : "FAIL"} /><strong>Replay benefit</strong><span>+{gate.replay_quality_uplift.toFixed(3)} quality · {Math.round(gate.replay_tool_call_reduction * 100)}% fewer tools</span></article>
       </div> : null}
-      <div className="benchmark-table-wrap">
+      <div className="benchmark-table-wrap" role="region" aria-label="Benchmark results" tabIndex={0}>
         <table className="benchmark-table">
           <thead><tr><th>Treatment</th><th>Success</th><th>Quality</th><th>Uplift</th><th>Turns</th><th>Tools</th><th>Tool reduction</th><th>Negative transfer</th><th>False accepts</th><th>Use / reject / null</th></tr></thead>
           <tbody>{(summary.data?.treatments ?? []).map((treatment) => <tr key={treatment.treatment}><td>{treatment.treatment.replaceAll("_", " ")}</td><td>{Math.round(treatment.success_rate * 100)}%</td><td>{treatment.mean_quality.toFixed(3)}</td><td>{treatment.quality_uplift.toFixed(3)}</td><td>{treatment.mean_turns.toFixed(1)}</td><td>{treatment.mean_tool_calls.toFixed(1)}</td><td>{Math.round(treatment.tool_call_reduction * 100)}%</td><td>{treatment.negative_transfers}</td><td>{treatment.false_accepts}</td><td>{Math.round(treatment.experience_use_rate * 100)} / {Math.round(treatment.experience_rejection_rate * 100)} / {Math.round(treatment.experience_null_rate * 100)}%</td></tr>)}</tbody>
