@@ -30,6 +30,9 @@ import type {
   WorkflowProposal,
   WorkflowValidationOutcome,
 } from "./types";
+// Tokens and the Tailwind layers first, then the legacy sheet. Order is documentation
+// rather than cascade: styles.css is unlayered, so it wins either way.
+import "./theme.css";
 import "./styles.css";
 import { durationLabel } from "./runDuration";
 
