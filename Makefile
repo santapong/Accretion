@@ -13,6 +13,7 @@ ui:
 	npm run dev --workspace @accretion/ui
 
 check:
+	uv lock --check
 	uv run ruff check .
 	uv run mypy src
 	uv run --no-sync python scripts/check_docs.py

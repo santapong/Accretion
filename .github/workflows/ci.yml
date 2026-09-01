@@ -31,6 +31,10 @@ jobs:
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+      # `uv sync` silently re-resolves, so a manifest/lock mismatch is invisible
+      # to it — v0.3.0 shipped a uv.lock still naming version 0.2.0. Check first:
+      # the lockfile must already agree with pyproject.toml.
+      - run: uv lock --check
       - run: uv sync --all-groups
       - run: uv run --no-sync ruff check .
       - run: uv run --no-sync mypy src
@@ -101,6 +105,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 24
+      # `uv sync` silently re-resolves, so a manifest/lock mismatch is invisible
+      # to it — v0.3.0 shipped a uv.lock still naming version 0.2.0. Check first:
+      # the lockfile must already agree with pyproject.toml.
+      - run: uv lock --check
       - run: uv sync --all-groups
       - run: uv run --no-sync alembic upgrade head
       # The frozen evidence corpora must hash to the values the documents
