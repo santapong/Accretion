@@ -22,7 +22,7 @@ function DetailPanel({ detail }: { detail: PluginDetail }) {
   const scopes = scopeRequirements(manifest);
   const projections = providerProjections(manifest);
   return (
-    <section aria-label={`Plugin detail ${detail.plugin_id}`} tabIndex={-1} className="registry-card">
+    <section aria-label={`Plugin detail ${detail.plugin_id}`} tabIndex={0} className="registry-card">
       <h2>{detail.plugin_id}</h2>
       {installation === null || installation === undefined ? (
         <p>Not installed in this workspace, so it has no capability grants to show.</p>
@@ -161,7 +161,7 @@ export function PluginsPage() {
         </div>
       </header>
 
-      <section aria-label="Installed plugins" tabIndex={-1} className="registry-card">
+      <section aria-label="Installed plugins" tabIndex={0} className="registry-card">
         <h2>Registry and installations</h2>
         <table className="benchmark-table">
           <thead>

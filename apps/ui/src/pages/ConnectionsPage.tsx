@@ -89,7 +89,7 @@ export function ConnectionsPage() {
       </header>
       <p className="page-status" role="status">{status ?? "No connection action taken yet."}</p>
 
-      <section aria-label="Connectors" tabIndex={-1} className="registry-card">
+      <section aria-label="Connectors" tabIndex={0} className="registry-card">
         <h2>Connectors</h2>
         <ul className="registry-list">
           {(connectors.data ?? []).map((connector) => (
@@ -102,7 +102,7 @@ export function ConnectionsPage() {
         </ul>
       </section>
 
-      <section aria-label="Connections" tabIndex={-1} className="registry-card">
+      <section aria-label="Connections" tabIndex={0} className="registry-card">
         <h2>Established connections</h2>
         <table className="benchmark-table">
           <thead>

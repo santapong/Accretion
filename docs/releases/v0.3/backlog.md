@@ -93,8 +93,12 @@ sideways at 390 px because their registry tables had no scroll container.
 
 - Split or lazy-load the operator bundle to remove the current Vite chunk-size
   advisory without changing routing or backend authority.
-- Automate the manual browser/accessibility release smoke while preserving the
-  current deterministic component tests.
+- ~~Automate the manual browser/accessibility release smoke while preserving the
+  current deterministic component tests.~~ **Done — M9 PR2.** `apps/ui/e2e/a11y.spec.ts`
+  and the `browser` CI job re-run the recorded procedure against the production build on
+  every push. The vitest suite is untouched. It found five real
+  `scrollable-region-focusable` violations at 390 px on its first run — regions made
+  scrollable by M8's own F1 fix, which a keyboard could see but never reach.
 - Turn the v0.2 evidence manifest, dependency audits, secret scan, and fixture
   hash validation into a repeatable release command or protected workflow.
 

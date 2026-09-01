@@ -120,6 +120,20 @@ npm run test
 npm run build
 ```
 
+Accessibility is gated separately, in a real browser, because jsdom cannot decide it. With
+Postgres up and migrated:
+
+```bash
+npm run build --workspace @accretion/ui
+cd apps/ui && npx playwright install chromium && npx playwright test
+```
+
+The gate starts its own API and preview server, seeds a deterministic run through
+`examples/showcase.py`, then sweeps all seventeen routes: axe-core with its **full default
+ruleset**, one `h1` per route, no horizontal overflow at 390 px and no element overflowing
+without a scrollable ancestor, and WCAG AA on every text node. Waivers live in
+`apps/ui/e2e/allowlist.ts` and expire.
+
 The v0.3 release gate records 97 component tests plus successful ESLint,
 TypeScript, generated-contract, and production-build checks, and the
 accessibility evidence above. The build currently

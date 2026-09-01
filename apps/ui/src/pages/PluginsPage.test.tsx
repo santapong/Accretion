@@ -183,7 +183,13 @@ test("the listing is a focusable scroll region so it can be reached without a mo
   renderPage();
 
   const region = await screen.findByRole("region", { name: "Installed plugins" });
-  expect(region).toHaveAttribute("tabindex", "-1");
+  // 0, not -1. This test is named for reaching the region WITHOUT A MOUSE, and -1 is
+  // exactly what prevents that: it makes an element focusable only from script, and
+  // removes it from the tab order. The assertion contradicted the test's own name until
+  // axe-core 4.13's `scrollable-region-focusable` rule reported it on five routes -
+  // `.registry-card` scrolls horizontally at narrow widths, so a keyboard user could see
+  // the region and never reach its clipped content.
+  expect(region).toHaveAttribute("tabindex", "0");
   region.focus();
   expect(document.activeElement).toBe(region);
 });

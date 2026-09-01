@@ -98,8 +98,8 @@ AC3-UI-05 = { verification = "test", frontend_evidence = "apps/ui/src/RunExecuti
 # says so outright and offers no enterprise action, and that the enabled one offers an
 # action which POSTs enterprise-authorize and re-reads the state it changed --- is proven
 # by vitest and named here as checked pointers.
-AC3-EMA-01 = { verification = "test", frontend_evidence = "apps/ui/src/pages/IdentityPage.test.tsx:211 a disabled profile is stated as disabled rather than rendered as an empty panel + apps/ui/src/pages/McpServersPage.test.tsx:313 only the EMA server offers the enterprise action, and it is disabled while the profile is off" }
-AC3-EMA-02 = { verification = "test", frontend_evidence = "apps/ui/src/pages/IdentityPage.test.tsx:187 the enterprise authorization panel reports an enabled profile with its audiences + apps/ui/src/pages/IdentityPage.test.tsx:234 an enabled profile with no live assertion is distinguished from one that holds one + apps/ui/src/pages/McpServersPage.test.tsx:340 with the profile enabled the action POSTs enterprise-authorize and re-reads the servers" }
+AC3-EMA-01 = { verification = "test", frontend_evidence = "apps/ui/src/pages/IdentityPage.test.tsx:211 a disabled profile is stated as disabled rather than rendered as an empty panel + apps/ui/src/pages/McpServersPage.test.tsx:319 only the EMA server offers the enterprise action, and it is disabled while the profile is off" }
+AC3-EMA-02 = { verification = "test", frontend_evidence = "apps/ui/src/pages/IdentityPage.test.tsx:187 the enterprise authorization panel reports an enabled profile with its audiences + apps/ui/src/pages/IdentityPage.test.tsx:234 an enabled profile with no live assertion is distinguished from one that holds one + apps/ui/src/pages/McpServersPage.test.tsx:346 with the profile enabled the action POSTs enterprise-authorize and re-reads the servers" }
 
 # The inherited v0.2 run-page criteria. Their pytest claims in
 # tests/test_v03_m6_run_inspectors.py exercise the real planner, the real replan path and

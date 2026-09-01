@@ -147,7 +147,7 @@ export function McpServersPage() {
         </div>
       </header>
 
-      <section aria-label="MCP servers" tabIndex={-1} className="registry-card">
+      <section aria-label="MCP servers" tabIndex={0} className="registry-card">
         <h2>Registered servers</h2>
         <table className="benchmark-table">
           <thead>

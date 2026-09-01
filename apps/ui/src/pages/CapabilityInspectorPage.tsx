@@ -108,7 +108,7 @@ export function CapabilityInspectorPage() {
       ) : null}
 
       {resolution ? (
-        <section aria-label="Resolution" tabIndex={-1} className="registry-card">
+        <section aria-label="Resolution" tabIndex={0} className="registry-card">
           <h2>{resolution.capability.capability_id}@{resolution.capability.version}</h2>
           <dl className="registry-list">
             <dt>Outcome</dt>

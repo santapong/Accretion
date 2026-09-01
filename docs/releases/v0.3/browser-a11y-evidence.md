@@ -1,5 +1,21 @@
 # v0.3.0 browser and accessibility evidence
 
+> [!IMPORTANT]
+> **Superseded as the sole evidence, and now re-measured automatically.** This document
+> records a hand-driven Chromium session on 2026-09-01 and remains the record of what was
+> true at the `v0.3.0` tag. Since M9 PR2 the same procedure runs in CI on every push —
+> `apps/ui/e2e/a11y.spec.ts`, the `browser` job — against the production build rather than
+> the dev server, with axe-core 4.13.0 in place of 4.10.2. See
+> [the frontend guide](../../guides/frontend.md) for how to run it.
+>
+> The contrast sweep below covered 16 routes and 1,421 text nodes; the gate covers all 17.
+> Its node count is **not** a fixed figure and is deliberately not asserted as one:
+> `examples/showcase.py` is additive, so every seeding adds a run to the dashboard and
+> history lists and with it more text nodes. Two consecutive local runs measured 1,979 and
+> 2,155. What the gate asserts is what actually matters — zero failures and, just as
+> importantly, **zero skipped** nodes, since a node whose background could not be resolved
+> is unmeasured rather than passing.
+
 Closes the four inherited findings F1–F4 carried from the
 [v0.2 post-release validation](../v0.2/browser-a11y-evidence.md) (issue #52 /
 PR #55) and recorded under "M8 inherited UI findings" in

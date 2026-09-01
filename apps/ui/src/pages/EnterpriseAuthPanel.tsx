@@ -24,7 +24,7 @@ export function EnterpriseAuthPanel() {
   });
 
   return (
-    <section aria-label="Enterprise authorization" tabIndex={-1} className="registry-card">
+    <section aria-label="Enterprise authorization" tabIndex={0} className="registry-card">
       <h2>Enterprise authorization</h2>
       {profile.data ? (
         <>
