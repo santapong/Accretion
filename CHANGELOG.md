@@ -28,7 +28,7 @@ the three milestone PRs that merged before this file was updated.
   `apps/ui/vite.config.ts` splits the app into an app chunk plus four static
   vendor chunks so no chunk exceeds 500,000 B, with the stylesheet cascade
   provably unchanged. Discharges the v0.2 chunk-size advisory carried in
-  `docs/releases/v0.3/backlog.md` (#TBD).
+  `docs/releases/v0.3/backlog.md` (#113).
 
 ## [0.3.0] - 2026-09-01
 
