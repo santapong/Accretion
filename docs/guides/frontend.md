@@ -181,8 +181,15 @@ assistive technology.
 
 | Path | Responsibility |
 |---|---|
-| `apps/ui/src/App.tsx` | Shell, routing, dashboard, task/planning, governance, runtime, history, and benchmark pages |
+| `apps/ui/src/App.tsx` | The root: `BrowserRouter` around the shell, plus the two stylesheet imports. Thirteen lines |
+| `apps/ui/src/OperatorShell.tsx` | Navigation bar and router outlet, both derived from `ROUTES`; `end` derived at the call site |
+| `apps/ui/src/routes.tsx` | `RouteEntry` and `ROUTES`: the seventeen rows the nav and the router both read |
+| `apps/ui/src/pages/*Page.tsx` | One screen per file, named export, with its private sub-components — the M6 convention |
+| `apps/ui/src/pages/formLines.ts` | Textarea-to-list parsing shared by the task form and the planning review |
 | `apps/ui/src/RunExecution.tsx` | Live graph, controls, approvals, verifiers, P6 candidate tree, P7 experience lineage, and materialization |
+| `apps/ui/src/EventStream.tsx` | Resumable normalized event trace: audit snapshot, SSE, and gap recovery |
+| `apps/ui/src/StatePill.tsx` | The single state badge every screen reuses |
+| `apps/ui/src/runState.ts` | `terminal`, `shortId`, and the `useNow` clock that ticks only while a run is live |
 | `apps/ui/src/api.ts` | Typed HTTP client and resumable event URL construction |
 | `apps/ui/src/api/schema.d.ts` | Generated OpenAPI TypeScript contract; do not hand-edit |
 | `apps/ui/src/types.ts` | Small aliases over generated schemas |
@@ -196,6 +203,10 @@ assistive technology.
 | `apps/ui/budget/groups.test.ts` | Holds the chunk groups to the CSS skip: no group may capture a stylesheet id, and priority, not array order, decides placement |
 | `apps/ui/budget/wiring.test.ts` | Loads the real config and asserts the gate, the groups and their CSS skip are the ones actually wired |
 | `apps/ui/vite.config.ts` | Dev/preview proxying, vitest config, and the wiring of the groups and the gate |
+
+Where a new declaration belongs, why the nav and the router read one array, and the two
+traps the layout sets are in the
+[operator UI source tree runbook](../runbooks/v03-operator-ui.md).
 
 For end-to-end system behavior, continue with the [developer showcase](showcase.md).
 For release status, see the [v0.2 release audit](../releases/v0.2/audit.md) and

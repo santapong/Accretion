@@ -29,6 +29,14 @@ the three milestone PRs that merged before this file was updated.
   vendor chunks so no chunk exceeds 500,000 B, with the stylesheet cascade
   provably unchanged. Discharges the v0.2 chunk-size advisory carried in
   `docs/releases/v0.3/backlog.md` (#113).
+- Added `apps/ui/src/routes.tsx` as the single source of both the navigation
+  bar and the router, and moved the eleven pages still defined inside
+  `App.tsx` into `apps/ui/src/pages/`, leaving `App.tsx` thirteen lines. Every
+  moved body is byte-identical, the built stylesheet's sha256 is unchanged, and
+  `OperatorShell.test.tsx` now guards the three things the move could have
+  broken silently: the nav/route pairing, `end` on `/` alone, and the
+  stylesheet import order React Flow's cascade depends on. Recorded as
+  ADR3-M9-001 in `docs/runbooks/v03-operator-ui.md` (#TBD).
 
 ## [0.3.0] - 2026-09-01
 

@@ -25,6 +25,7 @@ folder root stays uncluttered.
 | Operate the token broker | [Token broker runbook](runbooks/v03-token-broker.md) | [SDD v0.3](sdd/Accretion_SDD_v0.3.md), [v0.3 backlog](releases/v0.3/backlog.md) |
 | Install and govern plugins | [Plugins runbook](runbooks/v03-plugins.md) | [SDD v0.3](sdd/Accretion_SDD_v0.3.md) |
 | Administer connections, MCP and identity | [Frontend and administration runbook](runbooks/v03-frontend-admin.md) | [Capability inspector](releases/v0.3/acceptance-baseline.md) |
+| Add or move an operator UI screen | [Operator UI source tree runbook](runbooks/v03-operator-ui.md) | [Frontend guide](guides/frontend.md) |
 | Use the research capability set | [Research runbook](runbooks/v03-research.md) | [Experiments and results](research/README.md) |
 | Enable enterprise-managed authorization | [Enterprise authorization runbook](runbooks/v03-enterprise-auth.md) | [SDD v0.3 §24.9](sdd/Accretion_SDD_v0.3.md) |
 | Check acceptance criteria | [Acceptance baseline](releases/v0.3/acceptance-baseline.md) | [verification policy](acceptance/criteria.toml) |
