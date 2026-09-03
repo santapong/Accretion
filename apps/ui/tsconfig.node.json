@@ -11,5 +11,10 @@
     "module": "ESNext",
     "moduleResolution": "Bundler"
   },
-  "include": ["vite.config.ts", "eslint.config.js"]
+  // `budget/` is Node-side gate code that lives outside `src/` on purpose: a file under
+  // `src/` is typechecked against the browser lib by `tsconfig.app.json`, which has no
+  // `@types/node`, so `import { gzipSync } from "node:zlib"` would not resolve. Outside
+  // `src/` and outside this list it would be typechecked by NOTHING - ESLint would still
+  // lint it, and `tsc -b` would never look at it.
+  "include": ["vite.config.ts", "eslint.config.js", "budget"]
 }

@@ -134,11 +134,43 @@ ruleset**, one `h1` per route, no horizontal overflow at 390 px and no element o
 without a scrollable ancestor, and WCAG AA on every text node. Waivers live in
 `apps/ui/e2e/allowlist.ts` and expire.
 
+Bundle size is gated by the build itself. `npm run build` prints a budget table -
+every chunk's raw and gzip size, the initial-load totals, and a PASS/FAIL line per
+rule - and exits non-zero if any rule fails, so the `frontend`, `clean-checkout`
+and `browser` CI jobs all enforce it without a step of their own. Four of the
+table's rows, with the numbers and the content hash elided - run the build for the
+real ones:
+
+```
+  initial JS  <raw> B raw / <gzip> B gzip   initial CSS  <raw> B raw / <gzip> B gzip
+
+  PASS  per-chunk-raw:assets/vendor-react-<hash>.js       <measured> B <= <cap> B cap (raw)
+  PASS  initial-js-raw                                    <measured> B <= <cap> B cap (raw)
+  PASS  chunk-of:node_modules[\\/]react-dom[\\/]          all 1 matching module(s) in chunk "vendor-react"
+  PASS  lazy-only                                         no matching modules (vacuous until PR7)
+```
+
+The elisions are deliberate. A byte count pasted into a guide is a number nothing
+re-measures: the content hash moves on the next dependency bump and every total
+moves with it, and no test, gate or CI job can see the page go stale. Measured
+numbers live in one place only - every constant in `apps/ui/budget/budget.ts`
+carries a comment naming the PR that set it and quoting the measurement behind it,
+and `budget/evaluate.test.ts` re-states them so a re-measurement cannot land
+without the comment being rewritten in the same edit.
+
+Five rules: no chunk over 500,000 B raw; initial JS and initial CSS under their
+raw and gzip caps; `react-dom` and `@xyflow/react` in their named vendor chunks;
+and modules matching `LAZY_ONLY_MODULES` reachable only through a dynamic import.
+The four initial caps are `ceil(measured x 1.05)` against the M9 PR3 build.
+
+**If the build fails on the budget, raise the cap in the same commit as the change
+that needs it and quote the new measured number.** A cap raised in a separate
+"fix CI" commit is a number with no justification attached, which is the thing the
+file exists to prevent.
+
 The v0.3 release gate records 97 component tests plus successful ESLint,
 TypeScript, generated-contract, and production-build checks, and the
-accessibility evidence above. The build currently
-reports a non-blocking bundle-size advisory; it is visible technical debt, not a
-failed correctness gate.
+accessibility evidence above.
 
 When changing an API response, regenerate the OpenAPI client and commit the
 schema diff with the backend change. When changing a surface, add a component
@@ -157,6 +189,13 @@ assistive technology.
 | `apps/ui/src/graphLayout.ts` | Deterministic layout for read-only execution projections |
 | `apps/ui/src/styles.css` | Responsive visual system and state styling |
 | `apps/ui/src/*.test.tsx` | Component, event recovery, lineage, benchmark, and layout evidence |
+| `apps/ui/budget/budget.ts` | The committed size caps, the lazy-only pattern, and the grouping expectations |
+| `apps/ui/budget/evaluate.ts` | Pure budget rules over a bundle graph; no I/O, unit-tested on synthetic bundles |
+| `apps/ui/budget/plugin.ts` | The Vite plugin: measures the real bundle, prints the table, fails the build |
+| `apps/ui/budget/groups.ts` | The vendor chunk groups and the CSS skip that keeps the stylesheet cascade in one order |
+| `apps/ui/budget/groups.test.ts` | Holds the chunk groups to the CSS skip: no group may capture a stylesheet id, and priority, not array order, decides placement |
+| `apps/ui/budget/wiring.test.ts` | Loads the real config and asserts the gate, the groups and their CSS skip are the ones actually wired |
+| `apps/ui/vite.config.ts` | Dev/preview proxying, vitest config, and the wiring of the groups and the gate |
 
 For end-to-end system behavior, continue with the [developer showcase](showcase.md).
 For release status, see the [v0.2 release audit](../releases/v0.2/audit.md) and
