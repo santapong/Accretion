@@ -1,8 +1,9 @@
 /**
  * Every route the accessibility gate sweeps, with the `h1` each must render.
  *
- * The authority is the `<Routes>` block in `src/App.tsx`. Sixteen declared paths plus the
- * `*` fallback is the "seventeen routes" the release evidence and the README both claim.
+ * The authority is `ROUTES` in `src/routes.tsx`, which the shell turns into both the
+ * navigation bar and the router. Sixteen declared paths plus the `*` fallback is the
+ * "seventeen routes" the release evidence and the README both claim.
  *
  * This is a SUPERSET of `src/accessibility.test.tsx`'s ROUTES, which covers ten. The seven
  * it cannot reach - the five `/admin/*` pages, `/runs/:runId`, and `h1` *uniqueness* on the
