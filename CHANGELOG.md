@@ -36,7 +36,7 @@ the three milestone PRs that merged before this file was updated.
   `OperatorShell.test.tsx` now guards the three things the move could have
   broken silently: the nav/route pairing, `end` on `/` alone, and the
   stylesheet import order React Flow's cascade depends on. Recorded as
-  ADR3-M9-001 in `docs/runbooks/v03-operator-ui.md` (#TBD).
+  ADR3-M9-001 in `docs/runbooks/v03-operator-ui.md` (#114).
 
 ## [0.3.0] - 2026-09-01
 
