@@ -2,6 +2,13 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { readFileSync } from "node:fs";
+// The `.js` extension on a `.ts` file is not a mistake and must not be "fixed": Vite 8's
+// native config loader (`configLoader: "native"`, planned to become the default) warns on
+// every extensionless local import from a config file, and would print that warning on
+// every build in every CI job. `moduleResolution: "Bundler"` maps the `.js` specifier back
+// to the `.ts` source, so TypeScript, Vitest and Vite all resolve it identically.
+import { CODE_SPLITTING_GROUPS } from "./budget/groups.js";
+import { bundleBudget } from "./budget/plugin.js";
 
 // The header version is read from package.json at build time rather than typed into the
 // UI. It was typed in once, said "v0.2" through the whole v0.3 release, and nothing
@@ -15,8 +22,30 @@ const { version } = JSON.parse(readFileSync(new URL("./package.json", import.met
 const PROXY = { "/api": "http://localhost:8000", "/healthz": "http://localhost:8000" };
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  // `bundleBudget()` is last, and declares `enforce: "post"` on top of that, because it
+  // reads `viteMetadata.importedCss` - which Vite's own CSS plugin populates. Ahead of it,
+  // every stylesheet total would read zero and both CSS rules would pass while measuring
+  // nothing.
+  plugins: [react(), tailwindcss(), bundleBudget()],
   define: { __APP_VERSION__: JSON.stringify(version) },
+  build: {
+    rolldownOptions: {
+      output: {
+        // `codeSplitting.groups` is the Rolldown API. `manualChunks` and `advancedChunks`
+        // are deprecated aliases and are SILENTLY IGNORED once `codeSplitting` is set, so
+        // a future edit written against a Rollup-era tutorial would not error - it would
+        // simply do nothing, and the only visible symptom would be one chunk again.
+        //
+        // The groups themselves live in `budget/groups.ts` so that `budget/groups.test.ts`
+        // can assert them - in particular that no group ever captures a CSS module id,
+        // which is the only thing keeping the stylesheet cascade in its original order and
+        // is invisible to the gate, to the build and to the axe run. The explicit
+        // `priority` on each group lives there too: Rolldown breaks ties by array index,
+        // so without them a dependency's placement would depend on typing order.
+        codeSplitting: { groups: CODE_SPLITTING_GROUPS },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy: PROXY,
@@ -37,6 +66,6 @@ export default defineConfig({
     // Playwright specs under e2e/ and fail on their `@playwright/test` import. The pure
     // logic in e2e/ (the waiver rules) is still unit-tested here rather than through a
     // browser, which is both faster and a better fit.
-    include: ["src/**/*.test.{ts,tsx}", "e2e/**/*.test.ts"],
+    include: ["src/**/*.test.{ts,tsx}", "e2e/**/*.test.ts", "budget/**/*.test.ts"],
   },
 });
