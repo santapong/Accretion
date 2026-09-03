@@ -101,8 +101,10 @@ imports `@xyflow/react/dist/style.css` as its first line, and `App.tsx` reaches 
 transitively through `./OperatorShell`. The built cascade is therefore xyflow → theme →
 styles **only because the two CSS imports in `App.tsx` sit after the shell import**.
 Moving them to the top of the file, which looks tidier, inverts it with every gate green.
-`OperatorShell.test.tsx` guards the order structurally; the one-off proof is that the
-built stylesheet's sha256 is unchanged (`d0f90429…` across M9 PR4).
+`OperatorShell.test.tsx` guards the order structurally; the one-off proof was that the
+built stylesheet's sha256 measured identical on both sides of M9 PR4 (`d0f90429…`,
+3 Sep 2026). No gate re-checks that hash, and it will move on the first PR5 stylesheet
+edit — the structural test is the standing guard, the hash was the evidence for one PR.
 
 **Prose in a `.tsx` file can change the built CSS.** `src/theme.css` declares
 `@source "./**/*.tsx"`, and Tailwind's scanner extracts candidates from the whole file,

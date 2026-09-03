@@ -98,7 +98,7 @@ test("the shell contains no hardcoded route path — every path comes from the r
   expect(importIndex(shellSource, "./routes")).toBeGreaterThanOrEqual(0);
 });
 
-test("the dashboard nav link is marked current only on \"/\", because end applies only to the root entry", async () => {
+test("each nav link's target comes from its own row, and end is derived from that row's path rather than stored", async () => {
   // The rendered half pins the pairing: each nav link's `to` comes from the same row as
   // its label. It cannot pin `end`, which is inert under react-router 7 — that version's
   // prefix match already requires a separator after `to`, so `end={false}` renders exactly
@@ -120,6 +120,9 @@ test("the dashboard nav link is marked current only on \"/\", because end applie
   // `RouteEntry` field, no row setting one. This is the assertion `end={false}` fails.
   expect(shellSource).toMatch(/<NavLink end=\{route\.path === "\/"\}/);
   expect(routesSource).not.toMatch(/\bend\s*[?:]/);
+  // The source-text guard above is quoting-dependent (`"end": true` slips past it); the
+  // parsed table is not. A row carrying `end` in any spelling fails here.
+  for (const route of ROUTES) expect(route).not.toHaveProperty("end");
 });
 
 test("the stylesheets are imported after the shell, so React Flow's own sheet stays ahead of them in the cascade", () => {

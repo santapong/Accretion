@@ -22,7 +22,7 @@ does not carry.
 
 ## What ships
 
-Five routes under `/admin`, registered in `apps/ui/src/App.tsx` and reachable from
+Five routes under `/admin`, registered as rows in `apps/ui/src/routes.tsx` and reachable from
 the operator navigation.
 
 | Route | Page | The question it answers |
