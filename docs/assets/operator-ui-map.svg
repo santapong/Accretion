@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title description">
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1080" viewBox="0 0 1600 1080" role="img" aria-labelledby="title description">
   <title id="title">Accretion operator frontend route and data-flow map</title>
-  <desc id="description">The React operator frontend has eleven implemented routes. Dashboard and New task start work. Live run is the central surface for graph state, controls, approvals, verifiers, candidate search, experience replay, and normalized events. Runtimes, History, Approvals, and Capabilities provide operational governance. ACR-ARCH, P5 Dynamic, P6 Search, and P7 Experience reproduce research evidence. All screens read authoritative FastAPI snapshots through React Query, while live runs add resumable server-sent events.</desc>
+  <desc id="description">The React operator frontend has sixteen addressable routes plus a not-found catch-all; fifteen appear in the navigation and the live run page is reached by link. Dashboard and New task start work. Live run is the central surface for graph state, controls, approvals, verifiers, candidate search, experience replay, and normalized events. Runtimes, History, Approvals, and Capabilities provide operational governance. Connections, Plugins, MCP servers, Capability inspector, and Identity administer the v0.3 capability and identity model. ACR-ARCH, P5 Dynamic, P6 Search, and P7 Experience reproduce research evidence. All screens read authoritative FastAPI snapshots through React Query, while live runs add resumable server-sent events.</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07100b"/><stop offset=".6" stop-color="#0b1710"/><stop offset="1" stop-color="#17130d"/></linearGradient>
     <filter id="shadow"><feDropShadow dx="0" dy="8" stdDeviation="11" flood-color="#000" flood-opacity=".34"/></filter>
@@ -9,9 +9,9 @@
       text{font-family:Arial,Helvetica,sans-serif}.eyebrow{fill:#75db91;font-size:17px;font-weight:700;letter-spacing:3px}.heading{fill:#f4f8f5;font-size:38px;font-weight:700}.subtitle{fill:#a9b9ae;font-size:19px}.group{fill:#75db91;font-size:14px;font-weight:800;letter-spacing:1.5px}.route{fill:#f5f8f6;font-size:18px;font-weight:700}.path{fill:#8fa097;font-family:monospace;font-size:13px}.copy{fill:#bcc9c1;font-size:14px}.center-title{fill:#f7faf8;font-size:24px;font-weight:700;text-anchor:middle}.center-copy{fill:#c2cec6;font-size:15px;text-anchor:middle}.data-title{fill:#f7faf8;font-size:18px;font-weight:700}.data-copy{fill:#aebcb3;font-size:14px}.badge{fill:#07100b;font-size:13px;font-weight:800;text-anchor:middle;dominant-baseline:central}
     </style>
   </defs>
-  <rect width="1600" height="900" rx="32" fill="url(#bg)"/>
+  <rect width="1600" height="1080" rx="32" fill="url(#bg)"/>
   <text x="62" y="64" class="eyebrow">OPERATOR FRONTEND</text>
-  <text x="62" y="114" class="heading">Eleven routes, one authoritative operational view</text>
+  <text x="62" y="114" class="heading">Sixteen routes, one authoritative operational view</text>
   <text x="62" y="149" class="subtitle">React renders durable backend evidence; it does not invent execution state or acceptance.</text>
 
   <g filter="url(#shadow)">
@@ -25,10 +25,10 @@
     <rect x="86" y="548" width="158" height="72" rx="14" fill="#14271b"/><text x="104" y="576" class="route">Approvals</text><text x="104" y="600" class="path">/approvals</text>
     <rect x="260" y="548" width="158" height="72" rx="14" fill="#14271b"/><text x="278" y="576" class="route">Capabilities</text><text x="278" y="600" class="path">/capabilities</text>
     <text x="88" y="656" class="group">REPRODUCE RESEARCH</text>
-    <rect x="86" y="676" width="76" height="104" rx="14" fill="#261c10" stroke="#735328"/><text x="96" y="708" class="route">ACR</text><text x="96" y="731" class="route">ARCH</text><text x="92" y="758" class="path" style="font-size:10px">/benchmarks/</text><text x="96" y="776" class="path">acr-arch</text>
-    <rect x="171" y="676" width="76" height="104" rx="14" fill="#261c10" stroke="#735328"/><text x="181" y="708" class="route">P5</text><text x="181" y="731" class="route">Dynamic</text><text x="177" y="758" class="path" style="font-size:10px">/benchmarks/</text><text x="181" y="776" class="path">dynamic</text>
-    <rect x="256" y="676" width="76" height="104" rx="14" fill="#261c10" stroke="#735328"/><text x="266" y="708" class="route">P6</text><text x="266" y="731" class="route">Search</text><text x="262" y="758" class="path" style="font-size:10px">/benchmarks/</text><text x="266" y="776" class="path">search</text>
-    <rect x="341" y="676" width="77" height="104" rx="14" fill="#261c10" stroke="#735328"/><text x="351" y="708" class="route">P7</text><text x="351" y="731" class="route">Experience</text><text x="347" y="758" class="path" style="font-size:10px">/benchmarks/</text><text x="351" y="776" class="path">experience</text>
+    <rect x="86" y="676" width="161" height="50" rx="14" fill="#261c10" stroke="#735328"/><text x="100" y="698" class="route" style="font-size:17px">ACR-ARCH</text><text x="100" y="717" class="path" style="font-size:11px">/benchmarks/acr-arch</text>
+    <rect x="257" y="676" width="161" height="50" rx="14" fill="#261c10" stroke="#735328"/><text x="271" y="698" class="route" style="font-size:17px">P5 Dynamic</text><text x="271" y="717" class="path" style="font-size:11px">/benchmarks/dynamic</text>
+    <rect x="86" y="730" width="161" height="50" rx="14" fill="#261c10" stroke="#735328"/><text x="100" y="752" class="route" style="font-size:17px">P6 Search</text><text x="100" y="771" class="path" style="font-size:11px">/benchmarks/search</text>
+    <rect x="257" y="730" width="161" height="50" rx="14" fill="#261c10" stroke="#735328"/><text x="271" y="752" class="route" style="font-size:17px">P7 Experience</text><text x="271" y="771" class="path" style="font-size:11px">/benchmarks/experience</text>
   </g>
 
   <path d="M442 500H519" stroke="#75db91" stroke-width="4" marker-end="url(#arrow)"/>
@@ -56,5 +56,15 @@
     <rect x="1242" y="540" width="272" height="118" rx="16" fill="#14271b" stroke="#315d40"/><text x="1264" y="572" class="data-title">Resumable SSE</text><text x="1264" y="601" class="data-copy">Monotonic event sequence</text><text x="1264" y="625" class="data-copy">Snapshot recovery after gaps</text>
     <rect x="1242" y="680" width="272" height="100" rx="16" fill="#261c10" stroke="#735328"/><text x="1264" y="712" class="data-title">Safety invariant</text><text x="1264" y="741" class="data-copy">UI requests actions;</text><text x="1264" y="765" class="data-copy">backend owns authority.</text>
   </g>
-  <text x="800" y="858" class="subtitle" text-anchor="middle">v0.3.0 release · 97 component tests · ESLint + TypeScript + build pass · axe-core: 0 violations</text>
+  <g filter="url(#shadow)">
+    <rect x="62" y="840" width="1476" height="170" rx="22" fill="#0e1d14" stroke="#315d40" stroke-width="2"/>
+    <text x="88" y="878" class="group">ADMINISTER — THE v0.3 GOVERNANCE SURFACE</text>
+    <rect x="86" y="898" width="268" height="72" rx="14" fill="#14271b"/><text x="108" y="926" class="route">Connections</text><text x="108" y="950" class="path">/admin/connections</text>
+    <rect x="376" y="898" width="268" height="72" rx="14" fill="#14271b"/><text x="398" y="926" class="route">Plugins</text><text x="398" y="950" class="path">/admin/plugins</text>
+    <rect x="666" y="898" width="268" height="72" rx="14" fill="#14271b"/><text x="688" y="926" class="route">MCP servers</text><text x="688" y="950" class="path">/admin/mcp</text>
+    <rect x="956" y="898" width="268" height="72" rx="14" fill="#14271b"/><text x="978" y="926" class="route">Capability inspector</text><text x="978" y="950" class="path">/admin/capabilities/inspect</text>
+    <rect x="1246" y="898" width="268" height="72" rx="14" fill="#14271b"/><text x="1268" y="926" class="route">Identity</text><text x="1268" y="950" class="path">/admin/identity</text>
+    <text x="88" y="994" class="copy">These five screens govern what a run may reach; they never touch what it does.</text>
+  </g>
+  <text x="800" y="1046" class="subtitle" text-anchor="middle">v0.3.0 released · 189 component tests · ESLint + TypeScript + build pass · axe-core: 0 violations across seventeen routes</text>
 </svg>
