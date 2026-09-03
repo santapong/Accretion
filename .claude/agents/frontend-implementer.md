@@ -26,7 +26,7 @@ Flat `apps/ui/src/` — no component folders. `App.tsx` (~1060 lines) holds **ev
 ## Two rules that break the build if ignored
 
 1. **Any new backend route requires `npm run api:generate` and a committed `apps/ui/src/api/schema.d.ts`** in the same change, or CI fails on `git diff --exit-code`.
-2. **The app is a single Vite chunk** already tripping a ~527 kB advisory. Adding routes makes it worse. Do not silently make it a build failure; if asked to split or lazy-load, do it deliberately as its own change.
+2. **`npm run build` enforces a bundle budget and will fail on it.** The app is split into an app chunk plus four static vendor chunks (`vendor-react`, `vendor-flow`, `vendor-data`, `vendor`) by the groups in `apps/ui/budget/groups.ts`, wired into `build.rolldownOptions.output.codeSplitting.groups` in `apps/ui/vite.config.ts`, and `apps/ui/budget/` prints a table on every build and fails it on five rules: no chunk over 500,000 B raw, initial JS and CSS under their raw and gzip caps, `react-dom` and `@xyflow/react` in their named chunks, and `LAZY_ONLY_MODULES` reachable only through a dynamic import. Adding a route or a dependency moves the initial totals, and the caps sit ~5% above measured. **If it fails, raise the cap in `apps/ui/budget/budget.ts` in the same commit, with a comment naming your PR and quoting the new measured number** — never in a separate commit to make CI green, and never by widening a rule. Group `test` functions deliberately skip CSS ids so the stylesheet cascade cannot be reordered by chunking; do not "fix" that, and note that `budget/groups.test.ts` is the only thing in the repo that can see it go missing.
 
 ## Accessibility debt you must not multiply
 

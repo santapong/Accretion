@@ -4,7 +4,31 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
-Nothing yet.
+Theme: **M9 operator-UI redesign**, shipping as v0.3.1. Entries are backfilled for
+the three milestone PRs that merged before this file was updated.
+
+### Added
+
+- Added repairable vitest anchors: `make anchors` re-addresses the test pointers
+  in `docs/acceptance/criteria.toml` after a frontend test file moves, so a
+  comment added above a test no longer invalidates the acceptance record (#109).
+- Added Tailwind v4 and the v0.3.1 design tokens with **zero rendered diff**:
+  the import is written out explicitly minus preflight, `@theme static` forces
+  the fourteen tokens into the stylesheet, and content detection is scoped to
+  `apps/ui`. Every pre-existing rule survives byte-identically (#110).
+- Added a real-browser accessibility gate: `apps/ui/e2e/a11y.spec.ts` and the
+  `browser` CI job sweep all seventeen routes on the production build with
+  axe-core's full default ruleset, one `h1` per route, no horizontal overflow at
+  390 px, and WCAG AA on every text node. It found and fixed five real
+  `scrollable-region-focusable` violations on its first run (#111).
+- Added a bundle-size budget enforced by `vite build`: `apps/ui/budget/`
+  measures every emitted chunk, prints a table on every build, and fails the
+  build on any of five rules — per-chunk raw size, initial JS raw and gzip,
+  initial CSS raw and gzip, vendor grouping identity, and lazy-only modules.
+  `apps/ui/vite.config.ts` splits the app into an app chunk plus four static
+  vendor chunks so no chunk exceeds 500,000 B, with the stylesheet cascade
+  provably unchanged. Discharges the v0.2 chunk-size advisory carried in
+  `docs/releases/v0.3/backlog.md` (#TBD).
 
 ## [0.3.0] - 2026-09-01
 
