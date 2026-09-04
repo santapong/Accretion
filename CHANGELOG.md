@@ -25,7 +25,7 @@ The M9 ladder is parked after its stylesheet port; the entries below it are v0.4
   typed references that did not exist yet — `RuntimeRef`, `CapabilityRef`, `ToolRef`,
   `SkillRef`, `EnvironmentRef`, `VerifierRef`, `EvidenceRef`, `PolicyRef` and
   `ApprovalArtifactRef` — while `PrincipalRef`, `PluginRef`, `ConnectionRef` and
-  `ArtifactRef` are reused unchanged (#TBD).
+  `ArtifactRef` are reused unchanged (#121).
 
 ### Added
 
