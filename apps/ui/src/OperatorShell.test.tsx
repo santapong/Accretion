@@ -125,10 +125,19 @@ test("each nav link's target comes from its own row, and end is derived from tha
   for (const route of ROUTES) expect(route).not.toHaveProperty("end");
 });
 
-test("the stylesheets are imported after the shell, so React Flow's own sheet stays ahead of them in the cascade", () => {
+test("the stylesheet is imported after the shell, so React Flow's own sheet stays ahead of it in the cascade", () => {
+  // Rewritten by M9 PR5c, which deleted `styles.css`. `importIndex` throws when the import
+  // it is given does not exist, so the old third line took this case down with the file
+  // rather than reporting anything - and the pair it asserted ("theme before styles") was
+  // documentation either way, since `styles.css` was unlayered and won regardless of order.
+  //
+  // What survives is the half that was never documentation. `./OperatorShell` reaches
+  // `RunExecution.tsx`, which imports `@xyflow/react/dist/style.css` and then
+  // `./react-flow.css`; both are unlayered, and `react-flow.css` beats xyflow on
+  // same-specificity ties only by coming after it. Hoisting `./theme.css` above the shell
+  // import puts those two sheets last in the built cascade instead of first, which changes
+  // nothing about layered rules and inverts every unlayered tie on the run page's canvas.
   const shell = importIndex(appSource, "./OperatorShell");
   const theme = importIndex(appSource, "./theme.css");
-  const styles = importIndex(appSource, "./styles.css");
   expect(shell).toBeLessThan(theme);
-  expect(theme).toBeLessThan(styles);
 });

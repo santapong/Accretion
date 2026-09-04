@@ -13,6 +13,7 @@ import {
   type Node,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import "./react-flow.css";
 import { api } from "./api";
 import { layoutProjection } from "./graphLayout";
 import { badgeParts, nodeBadges, type NodeBadge, type NodeBadgeIndex } from "./runBadges";

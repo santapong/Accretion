@@ -95,16 +95,43 @@ permanent.
 
 ## Two traps this layout sets
 
-**The stylesheet cascade is import order.** `styles.css` is unlayered, so it wins over
-Tailwind's layers regardless of order — but React Flow's sheet is not. `RunExecution.tsx`
-imports `@xyflow/react/dist/style.css` as its first line, and `App.tsx` reaches that file
-transitively through `./OperatorShell`. The built cascade is therefore xyflow → theme →
-styles **only because the two CSS imports in `App.tsx` sit after the shell import**.
-Moving them to the top of the file, which looks tidier, inverts it with every gate green.
-`OperatorShell.test.tsx` guards the order structurally; the one-off proof was that the
-built stylesheet's sha256 measured identical on both sides of M9 PR4 (`d0f90429…`,
-3 Sep 2026). No gate re-checks that hash, and it will move on the first PR5 stylesheet
-edit — the structural test is the standing guard, the hash was the evidence for one PR.
+**The stylesheet cascade is import order.** Retold for `react-flow.css`, which M9 PR5c
+created when it deleted `styles.css`. Until PR5c the trap was that `styles.css` was
+unlayered and beat Tailwind's layers regardless of order, while React Flow's sheet had to
+stay ahead of it. The file is gone; the trap is not, because the reason it existed was
+never `styles.css`.
+
+`@xyflow/react/dist/style.css` is unlayered, declares no `@layer` and no `!important`, and
+styles `.react-flow`, `.react-flow.dark` and `.react-flow__*`. Our rules for elements
+inside the canvas therefore cannot be layered — a layered rule loses to an unlayered one at
+any specificity — and several of them (`.projection-node-kind-gate` and
+`.projection-node-kind-terminal`, both `(0,1,0)` against xyflow's `.react-flow__node-default`)
+beat it only by coming **later** at equal specificity. So they live unlayered in
+`apps/ui/src/react-flow.css`, imported from `RunExecution.tsx` on the statement immediately
+after the xyflow one, and `App.tsx`'s single `./theme.css` import still has to sit after
+`./OperatorShell` — that import is what reaches `RunExecution.tsx` and pulls both unlayered
+sheets into the cascade ahead of the layers. The built cascade is xyflow →
+`react-flow.css` → layers. Hoisting the `theme.css` import to the top of `App.tsx`, which
+looks tidier, puts xyflow's rules after ours; splitting the two adjacent imports in
+`RunExecution.tsx` puts ours before xyflow's. Either inverts every same-specificity tie on
+the canvas with the page still rendering.
+
+Four gates hold it, at three different levels. `OperatorShell.test.tsx` asserts the shell
+import precedes `./theme.css`. `cssPort.test.ts` asserts the import adjacency in
+`RunExecution.tsx`'s source text, that `react-flow.css` contains no `@layer`, and that the
+canvas rules are in it and nowhere else. `style-diff.spec.ts` fetches the BUILT stylesheet
+from the preview server and asserts xyflow's `.react-flow__node-default` precedes
+`.projection-node.react-flow__node-default` and that neither that rule nor `button:disabled`
+is inside an `@layer` block. The computed-style diff against the merge-base is the fourth
+and reports the pixels. The one-off sha256 proof recorded for M9 PR4 (`d0f90429…`,
+3 Sep 2026) is spent: the port changed the stylesheet text by design, and these are what
+replaced it.
+
+`button:disabled` is in `react-flow.css` and looks out of place there. It is not: xyflow
+sets `.react-flow__controls-button { cursor: pointer }`, and `button:disabled` at `(0,1,1)`
+beats it only while both are unlayered. PR5a moved it into the layer and the style diff
+reported `/runs/:runId @ 390: #148 button cursor not-allowed -> pointer` — the disabled
+zoom control had stopped saying it was disabled.
 
 **Prose in a `.tsx` file can change the built CSS.** `src/theme.css` declares
 `@source "./**/*.tsx"`, and Tailwind's scanner extracts candidates from the whole file,

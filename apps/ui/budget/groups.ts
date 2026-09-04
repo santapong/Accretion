@@ -25,6 +25,15 @@ import { LAZY_ONLY_MODULES } from "./budget.js";
  * along with the JavaScript, move it out of the app chunk, and CHANGE THE ORDER the
  * stylesheets are linked in. The JavaScript is split; the CSS stays exactly where it was,
  * one file in one order.
+ *
+ * M9 PR5c made that order load-bearing in a second way. `src/react-flow.css` is unlayered
+ * and must be emitted AFTER `@xyflow/react/dist/style.css`, because several of its rules
+ * beat xyflow's only by coming later at equal specificity; `RunExecution.tsx` imports the
+ * two adjacently to say so. The skip below is what keeps chunking from having an opinion
+ * about it. `style-diff.spec.ts` asserts the resulting order in the built stylesheet, which
+ * is the check that would notice if this guard were removed and the group list re-sorted
+ * the sheets - `groups.test.ts` is still the only thing that notices the guard itself going
+ * missing.
  */
 
 /** A module id that is a stylesheet rather than JavaScript. Mirrors `STYLESHEET_ID` in `evaluate.ts`. */

@@ -105,30 +105,41 @@ const BRANCH_DIST = resolve(dirname(fileURLToPath(import.meta.url)), "../dist");
  * is the failure mode this guards against, so the floors are the measurement itself for
  * routes whose content does not depend on how many times the seeder has run.
  *
- * ## The four routes that are not pinned to their measurement
+ * ## The three routes that are not pinned to their measurement
  *
  * `examples/showcase.py` is ADDITIVE (`global-setup.ts` says so): every invocation creates
- * another project, task, run and runtime session. Four routes list those rows and therefore
+ * another project, task, run and runtime session. Routes that list those rows therefore
  * measure larger on a developer's database than on CI's throwaway one - `/` and `/history`
- * list runs, `/tasks/new` lists projects in its select, `/runtimes` lists runtime sessions.
- * Measured both ways while pinning these: on a database seeded ONCE, as CI's is, `/` is 117,
- * `/tasks/new` 87, `/runtimes` 66 and `/history` 60; on a local database seeded seven times
- * the same four are 153, 93, 84 and 90. Pinning them to either number is wrong, so their
- * floors are set under the single-seeding count.
+ * list runs, `/tasks/new` lists projects in its select. Measured both ways while pinning
+ * these: on a database seeded ONCE, as CI's is, `/` is 117, `/tasks/new` 87 and `/history`
+ * 60; on a local database seeded seven times the same three are 153, 93 and 90. Pinning them
+ * to either number is wrong, so their floors are set under the single-seeding count.
  *
- * Two of them get a further margin because they render LIVE runtime health, and CI has no
- * `codex`, `claude` or `opencode` binary to probe: every runtime is `UNAVAILABLE` there and
- * `READY` here, and a status card need not carry the same number of elements in both states.
- * `/tasks/new` and `/history` have no such dependency - the task form is static apart from
- * one `<option>` per project, and a history row reads the run's stored audit, not a probe -
- * so those two are floored at "the chrome plus the first row", which is the tightest
- * statement that stays true on a one-run database.
+ * `/runtimes` was the fourth, because it lists runtime sessions. It is not any more: the
+ * sessions it lists now come from `RUNTIME_SESSIONS_FIXTURE` on both builds, which is what
+ * makes its floor an equality-strength measurement rather than a margin under one.
+ *
+ * Two of them USED to get a further margin because they render live runtime health, which
+ * differs between a developer's machine and CI. `stubRuntimeHealth` below now answers both
+ * runtime endpoints from a fixture on every route, so `/` and `/runtimes` no longer depend
+ * on which vendor CLIs are installed - or on whether a probe answered in time. `/runtimes`
+ * loses its seeder dependency entirely with it, because the sessions it lists are the
+ * fixture's; `/` keeps one, because it also lists runs.
+ *
+ * `/tasks/new` and `/history` have no health dependency and never did - the task form is
+ * static apart from one `<option>` per project, and a history row reads the run's stored
+ * audit, not a probe - so those two are floored at "the chrome plus the first row", which is
+ * the tightest statement that stays true on a one-run database.
  */
 const ROUTE_ELEMENT_FLOOR: Record<string, number> = {
-  // Additive AND runtime-health dependent: conservative, well under the 117 and 66 above,
-  // still well over the 52 and 33 the collapsed-backend run produced.
+  // Additive (the run list) but no longer health-dependent: conservative, well under the 117
+  // above, still well over the 52 the collapsed-backend run produced.
   "/": 90,
-  "/runtimes": 45,
+  // Seed-independent since `stubRuntimeHealth`: four fixture runtimes, each with a fixed
+  // session list, so this is the measurement itself rather than a margin under it. Measured
+  // 70 at all five widths on the sweep that took this PR green, against 66 for the live
+  // probe before it.
+  "/runtimes": 70,
   // Additive only, and exact on a single-seeding database: the task form is 86 static
   // elements plus one `<option>` per project, and the history panel is 55 static elements
   // plus 5 per run row. Nothing can legitimately make either SMALLER, so there is no
@@ -224,6 +235,7 @@ test.beforeEach(async ({ page }) => {
     test.skip(true, RECIPE);
   }
   await stubWebFonts(page);
+  await stubRuntimeHealth(page);
 });
 
 /* ------------------------------------------------------------------------------------- */
@@ -329,6 +341,188 @@ async function stubWebFonts(page: Page): Promise<void> {
       route.fulfill({ status: 200, contentType: "text/css", body: "" }),
     );
   }
+}
+
+/* ------------------------------------------------------------------------------------- */
+/* Runtime health, which is the one thing on these pages the backend cannot answer twice.  */
+/* ------------------------------------------------------------------------------------- */
+
+/**
+ * The four runtimes `/` and `/runtimes` render, one per pill colour the sheet declares.
+ *
+ * `RuntimeStatus` has six members and `styles.css` groups them into four rules: READY is
+ * green (`:68`), UNAVAILABLE and AUTH_REQUIRED red, BUSY amber-yellow, DEGRADED orange.
+ * RATE_LIMITED has no rule of its own and falls back to the base `.pill`. The four below
+ * therefore put every `.pill-*` group that a runtime can produce in front of the probe at
+ * every width - which the live probe never did, because it reported whatever the machine's
+ * CLIs happened to say.
+ */
+const RUNTIME_HEALTH_FIXTURE = [
+  {
+    runtime_id: "runtime_fake",
+    provider: "FAKE",
+    status: "READY",
+    auth_mode: "LOCAL",
+    runtime_version: "fake-1.0.0",
+    capabilities: ["structured-events", "repeatable-calls", "interrupt"],
+    active_sessions: 2,
+    active_runs: 1,
+    observed_usage_pressure: "LOW",
+    last_error: null,
+  },
+  {
+    runtime_id: "runtime_codex",
+    provider: "CODEX",
+    status: "BUSY",
+    auth_mode: "SUBSCRIPTION",
+    runtime_version: "codex-cli 0.148.0",
+    capabilities: ["app-server", "session-resume"],
+    active_sessions: 1,
+    active_runs: 3,
+    observed_usage_pressure: "MEDIUM",
+    last_error: null,
+  },
+  {
+    runtime_id: "runtime_claude",
+    provider: "CLAUDE",
+    status: "DEGRADED",
+    auth_mode: "SUBSCRIPTION",
+    runtime_version: "2.1.260 (Claude Code)",
+    capabilities: ["stream-json", "session-resume"],
+    active_sessions: 0,
+    active_runs: 0,
+    observed_usage_pressure: "HIGH",
+    last_error: {
+      code: "CLAUDE_DEGRADED",
+      message: "version outside the supported window",
+      retryable: false,
+    },
+  },
+  {
+    runtime_id: "runtime_opencode",
+    provider: "OPENCODE",
+    status: "UNAVAILABLE",
+    auth_mode: "API",
+    runtime_version: "unknown",
+    capabilities: [],
+    active_sessions: 0,
+    active_runs: 0,
+    observed_usage_pressure: "UNKNOWN",
+    last_error: { code: "OPENCODE_UNAVAILABLE", message: "command not found", retryable: false },
+  },
+] as const;
+
+/**
+ * The sessions each fixture runtime lists, covering both branches of the list markup.
+ *
+ * `RuntimeMonitorPage` renders one `<li>` per session and a single "No persisted sessions."
+ * `<li>` when there are none, and a session with no `native_session_id` renders "pending
+ * native session" instead of a short id. All three shapes are here, so the sweep measures
+ * markup the seeded database does not reliably produce.
+ */
+const RUNTIME_SESSIONS_FIXTURE: Record<string, readonly unknown[]> = {
+  runtime_fake: [
+    {
+      session_id: "session_20260101T000000_aaaaaaaa",
+      run_id: "run_20260101T000000_bbbbbbbb",
+      provider: "FAKE",
+      native_session_id: "fake-run_20260101T000000_bbbbbbbb",
+      workspace: "/tmp/accretion/style-diff/fake",
+    },
+    {
+      session_id: "session_20260101T000001_cccccccc",
+      run_id: "run_20260101T000001_dddddddd",
+      provider: "FAKE",
+      native_session_id: null,
+      workspace: "/tmp/accretion/style-diff/fake",
+    },
+  ],
+  runtime_codex: [
+    {
+      session_id: "session_20260101T000002_eeeeeeee",
+      run_id: "run_20260101T000002_ffffffff",
+      provider: "CODEX",
+      native_session_id: "codex-0f0f0f0f",
+      workspace: "/tmp/accretion/style-diff/codex",
+    },
+  ],
+  runtime_claude: [],
+  runtime_opencode: [],
+};
+
+/**
+ * Answer both runtime endpoints from the fixtures above, on every route, on both origins.
+ *
+ * The reason is a finding, not a convenience. `/` and `/runtimes` render `<StatePill>` from
+ * a LIVE probe: the backend shells out to `codex`, `claude` and `opencode` on every request
+ * to `/api/v1/runtimes`, and `runtime_sessions` used to re-probe every runtime just to
+ * resolve an id. On this machine `opencode --version` takes 1.9-2.6 s, so under the load of
+ * the sweep itself those probes hit their own five-second deadline and reported UNAVAILABLE
+ * or DEGRADED for a CLI that was merely slow. The diff measured the branch build and the
+ * base build seconds apart and correctly reported the difference:
+ *
+ *   /runtimes @ 1440: #56 span color rgb(143,225,166) -> rgb(232,186,119), width 75.7 -> 63.2
+ *   /          @ 660: #93 span color rgb(242,168,160) -> rgb(232,186,119)
+ *
+ * That is a real rendering difference and a completely false finding about the stylesheet,
+ * which is the worst thing a gate can produce. `src/accretion/runtimes/common.py` now caches
+ * a probe for thirty seconds and no longer crashes when it loses the kill race, and that
+ * fixes the latency; it cannot make the answer identical across two measurements, because a
+ * cache boundary can still fall between them. Only a fixture can.
+ *
+ * What it costs is stated plainly: the sweep no longer measures whatever status the local
+ * machine's CLIs report. It measures four fixed ones covering every pill colour a runtime
+ * can produce, which is strictly more of the stylesheet than the live probe ever reached -
+ * and `/runtimes` becomes seed-independent, so its element floor is now the measurement
+ * rather than a margin under it.
+ *
+ * Registered in `beforeEach`, so `mockApi`'s `**\/api\/**` handler - added later, inside the
+ * fixture-mocked tests - still takes precedence there and those pages stay entirely under
+ * their own fixtures.
+ */
+async function stubRuntimeHealth(page: Page): Promise<void> {
+  // Checked here rather than in a test of its own, so it fails on the first route of the
+  // sweep instead of after it. A runtime with no session list renders "No persisted
+  // sessions." on both builds and diffs clean over content that was never fetched, and a
+  // fixture that dropped a status would quietly stop measuring one of the four pill rules.
+  expect(
+    RUNTIME_HEALTH_FIXTURE.map((runtime) => runtime.runtime_id).filter(
+      (id) => !(id in RUNTIME_SESSIONS_FIXTURE),
+    ),
+    "every runtime in RUNTIME_HEALTH_FIXTURE needs an entry in RUNTIME_SESSIONS_FIXTURE",
+  ).toEqual([]);
+  expect(
+    new Set(RUNTIME_HEALTH_FIXTURE.map((runtime) => runtime.status)).size,
+    "the runtime fixture must carry one status per `.pill-*` group the sheet declares - " +
+      "READY (green), BUSY (yellow), DEGRADED (orange) and UNAVAILABLE (red) - or the " +
+      "sweep stops measuring one of them",
+  ).toBe(RUNTIME_HEALTH_FIXTURE.length);
+
+  await page.route("**/api/v1/runtimes", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(RUNTIME_HEALTH_FIXTURE),
+    }),
+  );
+  await page.route("**/api/v1/runtimes/*/sessions", (route) => {
+    const runtimeId = new URL(route.request().url()).pathname.split("/").at(-2) ?? "";
+    const sessions = RUNTIME_SESSIONS_FIXTURE[runtimeId];
+    if (sessions === undefined) {
+      // A runtime id the fixture does not know means the health fixture and this one have
+      // drifted apart, and the page would render an empty list that still diffs clean.
+      return route.fulfill({
+        status: 404,
+        contentType: "application/json",
+        body: JSON.stringify({ message: `no session fixture for ${runtimeId}` }),
+      });
+    }
+    return route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(sessions),
+    });
+  });
 }
 
 /** Set the viewport, open the route on one origin, and capture every element's styles. */
@@ -590,6 +784,92 @@ test.describe("computed-style diff against the pre-migration build", () => {
           `faces=[${report.loaded.join(", ")}]`,
       );
     }
+  });
+
+  /**
+   * The cascade `react-flow.css` depends on, read out of the BUILT stylesheet.
+   *
+   * M9 PR5c moved the React Flow overrides out of `styles.css` into `src/react-flow.css`,
+   * unlayered, imported from `RunExecution.tsx` on the line after `@xyflow/react/dist/style.css`.
+   * Two properties have to hold in the bundle for that to mean anything, and neither is
+   * visible to `cssPort.test.ts`, which reads source files and knows nothing about how
+   * Vite orders CSS it collects from a module graph:
+   *
+   *  1. Our overrides come AFTER xyflow's sheet. Unlayered beats layered whatever the
+   *     order, but two unlayered rules of EQUAL specificity are settled by order alone, and
+   *     `.projection-node-kind-gate` is (0,1,0) against xyflow's `.react-flow__node-default`,
+   *     also (0,1,0), for the border of every gate node.
+   *  2. Our overrides are outside every `@layer`. Inside one they would lose to xyflow
+   *     outright, at any specificity - which is the failure PR5a measured on
+   *     `button:disabled` and the reason that rule is in `react-flow.css` too.
+   *
+   * The computed-style diff cannot substitute for this. It compares the branch against the
+   * merge-base, and if a future change put the overrides in a layer on BOTH sides it would
+   * report nothing while the canvas rendered as xyflow's default. So this reads the
+   * stylesheet the branch build actually serves and asserts the two orderings directly.
+   *
+   * Only the branch is measured. The base build is whatever the merge-base was, and pinning
+   * ITS cascade is neither this PR's business nor achievable across the PR that introduces
+   * the file.
+   */
+  test("the built stylesheet puts the React Flow overrides after xyflow's sheet and outside every layer", async () => {
+    const index = await (await fetch(new URL("/", BRANCH_ORIGIN))).text();
+    const href = builtStylesheet(index, `the page served by ${BRANCH_ORIGIN}`);
+    const css = await (await fetch(new URL(href, BRANCH_ORIGIN))).text();
+    expect(css.length, `${href} was served empty`).toBeGreaterThan(10_000);
+
+    // `.react-flow__node-default` occurs in xyflow's own rule and inside ours
+    // (`.projection-node.react-flow__node-default`). The lookbehind takes the first
+    // occurrence that is NOT preceded by another compound selector, which is xyflow's.
+    const xyflow = css.search(/(?<![\w-])\.react-flow__node-default/);
+    const override = css.indexOf(".projection-node.react-flow__node-default");
+    const disabled = css.indexOf("button:disabled{");
+
+    expect(xyflow, "xyflow's .react-flow__node-default rule is not in the built stylesheet")
+      .toBeGreaterThan(-1);
+    expect(override, "our .projection-node.react-flow__node-default rule is not in the built stylesheet")
+      .toBeGreaterThan(-1);
+    expect(disabled, "button:disabled is not in the built stylesheet").toBeGreaterThan(-1);
+
+    expect(
+      override,
+      "react-flow.css was emitted BEFORE @xyflow/react/dist/style.css. Every " +
+        "same-specificity tie on the canvas now goes to xyflow: gate nodes lose their amber " +
+        "border, terminal nodes their second pixel of border width. Check the import order " +
+        "in the component that imports both.",
+    ).toBeGreaterThan(xyflow);
+
+    // Layer extents, matched with a brace counter rather than a regex: `@layer components`
+    // is 30 kB of nested rules and `@media` blocks.
+    const layers: [number, number][] = [];
+    for (const match of css.matchAll(/@layer[^{;]*\{/g)) {
+      let depth = 0;
+      let at = match.index + match[0].length - 1;
+      for (; at < css.length; at += 1) {
+        if (css[at] === "{") depth += 1;
+        else if (css[at] === "}" && (depth -= 1) === 0) break;
+      }
+      layers.push([match.index, at]);
+    }
+    expect(layers.length, "the built stylesheet declares no layer at all").toBeGreaterThan(0);
+
+    const layered = (at: number) => layers.some(([from, to]) => at >= from && at <= to);
+    for (const [name, at] of [
+      [".projection-node.react-flow__node-default", override],
+      ["button:disabled", disabled],
+    ] as const) {
+      expect(
+        layered(at),
+        `${name} was emitted inside an @layer block. A layered rule loses to xyflow's ` +
+          "unlayered stylesheet regardless of specificity; this is the exact failure M9 " +
+          "PR5a measured as `#148 button cursor not-allowed -> pointer`.",
+      ).toBe(false);
+    }
+
+    console.log(
+      `built cascade: xyflow @${xyflow} < react-flow.css @${override} ` +
+        `(button:disabled @${disabled}), ${layers.length} layer block(s) starting @${layers[0][0]}`,
+    );
   });
 });
 

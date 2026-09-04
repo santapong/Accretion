@@ -65,19 +65,27 @@ The UI is intentionally a projection, not an execution authority:
 - FastAPI responses are the typed snapshot source of truth.
 - `openapi-typescript` generates `apps/ui/src/api/schema.d.ts`; handwritten UI
   types alias that generated contract.
-- Styling is mid-migration, and two of the three port slices have landed.
+- The stylesheet port is complete. `apps/ui/src/styles.css` no longer exists:
+  M9 PR5c moved the last of it and deleted the file, so every one of the 441
+  pre-migration rules now lives in one of two places, byte-verbatim.
   `apps/ui/src/theme.css` holds the design tokens, the Tailwind v4 layers, the
-  Google Fonts `@import`, and — inside `@layer components` — 224 of the 441
-  pre-migration rules, byte-verbatim: the shell, primitives, runtime, registry and
-  trace rules from M9 PR5a, plus the planning review, task studio, benchmark
-  screens and P6/P7 planner rules from PR5b. `apps/ui/src/styles.css` still holds
-  the remaining 217 — the run page: pills, gate and loop inspectors, every
-  `.projection-*`, `.execution-*` and `.verification-*` rule, the React Flow
-  overrides, the `.candidate-*` and `.experience-lineage/-capture` families, the M6
-  badge and revision rules, and `button:disabled`. It is still unlayered, so
-  anything left in it takes precedence over anything layered, whatever the
-  specificity. PR5c moves that remainder, lifts the React Flow overrides into an
-  unlayered `react-flow.css` beside the xyflow import, and deletes the file.
+  Google Fonts `@import` and — inside `@layer components` — 405 of those rules, in
+  the pre-migration sheet's own order. `apps/ui/src/react-flow.css` holds the other
+  36, **unlayered**, and is imported from `RunExecution.tsx` on the line
+  immediately after `@xyflow/react/dist/style.css`.
+- **The cascade invariant, in one sentence:** xyflow's unlayered stylesheet, then
+  our unlayered overrides beside it, then everything else in `@layer components`.
+  React Flow's own sheet is unlayered and declares no `@layer` and no `!important`,
+  so a rule of ours that styles an element inside the canvas would lose to it from
+  inside a layer whatever its specificity — and several of those rules only beat it
+  by coming later at equal specificity, which is why the two imports are adjacent.
+  A rule that competes with nothing in xyflow's sheet belongs in the layer even when
+  it renders inside a node: `.iteration-badge`, `.gate-waiting-hint`, `.pill` and the
+  `.pill-*` states all do, and all are layered. `apps/ui/e2e/cssPort.test.ts` asserts
+  the partition in both directions and the import adjacency in the source text;
+  `apps/ui/e2e/style-diff.spec.ts` asserts the resulting order in the built
+  stylesheet in a real browser. **New rules go in `theme.css`; only a rule that
+  competes with xyflow goes in `react-flow.css`.**
   Tailwind's Preflight reset is not imported yet.
 - Two rules follow from that split, and both are enforced. A rule is **deleted and
   re-added in one edit**, never duplicated: a selector defined in both files
@@ -269,8 +277,8 @@ assistive technology.
 | `apps/ui/src/api/schema.d.ts` | Generated OpenAPI TypeScript contract; do not hand-edit |
 | `apps/ui/src/types.ts` | Small aliases over generated schemas |
 | `apps/ui/src/graphLayout.ts` | Deterministic layout for read-only execution projections |
-| `apps/ui/src/styles.css` | The unlayered remainder of the visual system, shrinking one PR at a time until PR5c deletes it |
-| `apps/ui/src/theme.css` | Tailwind layers, the fonts `@import`, the cosmic and current-palette tokens, and `@layer components` — where ported rules land |
+| `apps/ui/src/react-flow.css` | The React Flow overrides, unlayered on purpose, imported from `RunExecution.tsx` on the line after xyflow's own sheet |
+| `apps/ui/src/theme.css` | Tailwind layers, the fonts `@import`, the cosmic and current-palette tokens, and `@layer components` — where every other rule lives |
 | `apps/ui/e2e/cssPort.test.ts` | Union-equality against the pinned pre-migration stylesheet: every rule survives once, in order, in exactly one file |
 | `apps/ui/e2e/styleDiff.ts` | Fingerprint, alignment, diff and retry decisions for the computed-style gate; no I/O, unit-tested on a mutation table |
 | `apps/ui/e2e/style-diff.spec.ts` | The gate itself: 17 routes x 5 widths x 2 builds, plus focus/hover and the fixture-mocked run, planning and four benchmark pages |

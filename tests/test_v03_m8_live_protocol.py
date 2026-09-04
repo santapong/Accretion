@@ -17,9 +17,12 @@ each runtime's `command` argument.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import stat
 from pathlib import Path
+
+import pytest
 
 from accretion.contracts import (
     AuthMode,
@@ -29,6 +32,11 @@ from accretion.contracts import (
 )
 from accretion.runtimes.claude import ClaudeRuntime
 from accretion.runtimes.codex import CodexRuntime
+from accretion.runtimes.common import (
+    clear_probe_cache,
+    command_result,
+    probe_result,
+)
 
 
 def fake_binary(path: Path, script: str) -> str:
@@ -180,3 +188,69 @@ exit 0
         "health probes no longer inherit the parent environment - that is the "
         "desired fix; update this test and close the backlog item"
     )
+
+
+async def test_a_probe_that_loses_the_kill_race_is_a_timeout_not_a_crash(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Losing the race to the child watcher must not 500 `/api/v1/runtimes`.
+
+    `asyncio.wait_for` cancels `communicate()` the moment the deadline passes, and
+    the child is free to exit in that same instant. `Popen.send_signal` polls
+    first, but the pid can be reaped between its poll and its `os.kill`, and the
+    kill then raises `ProcessLookupError` straight out of `health()`. Six of those
+    were captured in one local Playwright sweep - the sweep itself being the load
+    that pushed these probes past their deadline - and each was a 500 on the
+    endpoint the runtime monitor polls every five seconds.
+
+    The race is simulated rather than waited for, because a test that has to lose
+    a microsecond-wide race to be meaningful is a test that passes for the wrong
+    reason most of the time. What is asserted is the contract: a probe whose child
+    is already gone reports the timeout it observed.
+    """
+
+    def kill_an_already_reaped_child(self: object) -> None:
+        raise ProcessLookupError(3, "No such process")
+
+    monkeypatch.setattr(asyncio.subprocess.Process, "kill", kill_an_already_reaped_child)
+    slow = fake_binary(tmp_path / "slow-probe", "#!/bin/sh\nsleep 5\n")
+
+    assert await command_result([slow], 0.2) == (124, "command timed out")
+
+
+async def test_concurrent_probes_of_one_command_spawn_one_child_and_share_its_answer(
+    tmp_path: Path,
+) -> None:
+    """The storm behind the 7.3-minute `/runtimes` page, pinned.
+
+    `RuntimeMonitorPage` polls `/api/v1/runtimes` and one session list per runtime
+    every five seconds, and `runtime_sessions` resolves its id by calling
+    `health()` on each runtime in turn - so one tick asked for the same
+    `opencode --version` many times over, each spawning its own child of a CLI
+    that takes two seconds to answer. `probe_result` is what collapses that: the
+    first caller probes, the rest await its answer, and the answer is reused until
+    it ages out.
+    """
+    clear_probe_cache()
+    tally = tmp_path / "spawns.txt"
+    counting = fake_binary(
+        tmp_path / "counting-probe",
+        f'#!/bin/sh\necho spawn >> {tally}\nsleep 0.2\necho "1.4.3"\n',
+    )
+
+    first = await asyncio.gather(*(probe_result([counting, "--version"]) for _ in range(5)))
+    assert first == [(0, "1.4.3")] * 5
+    assert tally.read_text().count("spawn") == 1, (
+        "five concurrent probes of one command spawned more than one child; the "
+        "single-flight lock is gone and a cold cache is a subprocess storm again"
+    )
+
+    # Still one after the burst: a later poll inside the window reuses the answer
+    # rather than paying for it again.
+    assert await probe_result([counting, "--version"]) == (0, "1.4.3")
+    assert tally.read_text().count("spawn") == 1
+
+    # And the cache is forgettable, so it can never pin a stale answer forever.
+    clear_probe_cache()
+    assert await probe_result([counting, "--version"]) == (0, "1.4.3")
+    assert tally.read_text().count("spawn") == 2
