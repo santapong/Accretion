@@ -32,8 +32,8 @@ from accretion.runtimes.common import (
     RUNTIME_STREAM_LIMIT,
     RuntimeSubmission,
     classify_runtime_health,
-    command_result,
     make_event,
+    probe_result,
     provider_environment,
     submission_call_id,
     submission_metadata,
@@ -84,8 +84,8 @@ class CodexRuntime:
         self.session_configs: dict[str, SessionConfig] = {}
 
     async def health(self) -> RuntimeHealth:
-        version_code, version_output = await command_result([self.command, "--version"])
-        auth_code, auth_output = await command_result([self.command, "login", "status"])
+        version_code, version_output = await probe_result([self.command, "--version"])
+        auth_code, auth_output = await probe_result([self.command, "login", "status"])
         status, pressure, error = classify_runtime_health(
             version_code=version_code,
             version_output=version_output,
