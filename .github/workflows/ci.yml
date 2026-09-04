@@ -173,6 +173,11 @@ jobs:
       # lockfile differs, the base is built with this branch's dependencies - stated in the
       # PR body, and irrelevant to the text-level proof in `cssPort.test.ts`.
       - name: Build the merge-base for the computed-style diff
+        # A release bridge (base `main`, or `main` itself) has no meaningful merge-base with
+        # develop - it is the repository's initial commit - and is content promotion with
+        # nothing new to prove; the a11y gate still runs there, the style diff is skipped by
+        # STYLE_DIFF_SKIP below and never silently.
+        if: github.base_ref != 'main' && github.ref_name != 'main'
         run: |
           set -euo pipefail
           # `fetch-depth: 0` fetches all history for the CHECKED-OUT ref only; it does not
@@ -195,7 +200,8 @@ jobs:
         env:
           # Absent, `style-diff.spec.ts` fails rather than skipping: a required check that
           # silently measures nothing is worse than no check.
-          STYLE_DIFF_BASE_DIST: ${{ github.workspace }}/dist-base
+          STYLE_DIFF_BASE_DIST: ${{ (github.base_ref != 'main' && github.ref_name != 'main') && format('{0}/dist-base', github.workspace) || '' }}
+          STYLE_DIFF_SKIP: ${{ (github.base_ref == 'main' || github.ref_name == 'main') && 'release-bridge' || '' }}
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

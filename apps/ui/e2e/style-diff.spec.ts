@@ -61,6 +61,18 @@ const BASE_ORIGIN = "http://localhost:4174";
 const WIDTHS = [1440, 1000, 800, 660, 390] as const;
 const VIEWPORT_HEIGHT = 1000;
 
+/**
+ * The fewest elements the focus half of the interaction pass may capture on a route.
+ *
+ * Every route renders the operator nav: the brand link plus one link per labelled route,
+ * sixteen `a[href]` today, all matched by `FOCUSABLE_SELECTOR`. A capture below that means
+ * the selector matched nothing - measured once while this gate was audited: with
+ * `FOCUSABLE_SELECTOR` set to a selector no element carries, the pass still reported
+ * "0 differences" over zero captures on all seventeen routes. PR9b adds a nav entry and
+ * bumps this to seventeen.
+ */
+const NAV_FOCUS_FLOOR = 16;
+
 const BASE_DIST = process.env.STYLE_DIFF_BASE_DIST;
 /** Where `npm run preview` serves :4173 from - Vite's default `outDir` for this workspace. */
 const BRANCH_DIST = resolve(dirname(fileURLToPath(import.meta.url)), "../dist");
@@ -192,6 +204,13 @@ const RECIPE = [
  * forced to build two copies of the app first.
  */
 test.beforeEach(async ({ page }) => {
+  // A release bridge (a PR whose base is `main`, or `main` itself) has no meaningful
+  // merge-base with develop - `git merge-base main develop` is the repository's initial
+  // commit - and nothing new to prove: it is content promotion. CI sets STYLE_DIFF_SKIP
+  // there and only there; the a11y gate still runs.
+  if (process.env.STYLE_DIFF_SKIP) {
+    test.skip(true, `computed-style diff skipped: ${process.env.STYLE_DIFF_SKIP}`);
+  }
   if (!BASE_DIST) {
     if (process.env.CI) {
       throw new Error(
@@ -275,6 +294,7 @@ async function assertOriginServes(origin: string, dist: string, label: string): 
  * anything until both origins are known to be the builds they claim to be.
  */
 test.beforeAll(async () => {
+  if (!BASE_DIST || process.env.STYLE_DIFF_SKIP) return;
   if (!BASE_DIST) return;
   await assertOriginServes(BRANCH_ORIGIN, BRANCH_DIST, "the branch build (apps/ui/dist)");
   await assertOriginServes(BASE_ORIGIN, BASE_DIST, "STYLE_DIFF_BASE_DIST");
@@ -442,6 +462,8 @@ test.describe("computed-style diff against the pre-migration build", () => {
   test("focus and hover states render identically", async ({ page }) => {
     const differences: string[] = [];
     const reached = new Set<string>();
+    let focusedTotal = 0;
+    let hoveredTotal = 0;
 
     for (const route of ROUTES) {
       const captures: Record<string, ElementCapture[]> = {};
@@ -452,6 +474,13 @@ test.describe("computed-style diff against the pre-migration build", () => {
         await settle(page, route, 1440, origin);
 
         const focused = (await page.evaluate(focusStateProbe())) as ElementCapture[];
+        expect(
+          focused.length,
+          `${route.path} (${origin}): the focus pass captured ${focused.length} elements, ` +
+            `below the ${NAV_FOCUS_FLOOR} the nav alone provides - FOCUSABLE_SELECTOR ` +
+            "matched nothing and the pass would be green over zero measurements",
+        ).toBeGreaterThanOrEqual(NAV_FOCUS_FLOOR);
+        focusedTotal += focused.length;
         const hovered: ElementCapture[] = [];
         for (const selector of HOVER_SELECTORS) {
           const target = page.locator(selector).first();
@@ -464,6 +493,7 @@ test.describe("computed-style diff against the pre-migration build", () => {
           )) as ElementCapture | null;
           if (capture) hovered.push(capture);
         }
+        hoveredTotal += hovered.length;
         captures[origin] = [...focused, ...hovered];
       }
 
@@ -485,7 +515,8 @@ test.describe("computed-style diff against the pre-migration build", () => {
 
     const unreached = HOVER_SELECTORS.filter((selector) => !reached.has(selector));
     console.log(
-      `style-diff interaction pass — hovered ${reached.size}/${HOVER_SELECTORS.length} ` +
+      `style-diff interaction pass — focused ${focusedTotal} elements and hovered ` +
+        `${hoveredTotal} across both builds; hovered ${reached.size}/${HOVER_SELECTORS.length} ` +
         `targets across ${ROUTES.length} routes` +
         (unreached.length ? `; rendered nowhere: ${unreached.join(", ")}` : ""),
     );

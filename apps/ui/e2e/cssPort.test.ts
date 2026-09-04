@@ -3,7 +3,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
 
-import { HOVER_SELECTORS } from "./audit";
+import { COMPUTED_STYLE_PROPERTIES, FOCUSABLE_SELECTOR, HOVER_SELECTORS } from "./audit";
 
 /**
  * The three stylesheets, read as bytes from disk.
@@ -661,3 +661,223 @@ describe("the interaction pass covers every hover rule", () => {
     expect(splitSelectorList(":is(.a,.b):hover,.c")).toEqual([":is(.a,.b):hover", ".c"]);
   });
 });
+
+/* ------------------------------------------------------------------------------------- */
+/* The property list, which is the operational definition of "pixel-preserving".          */
+/* ------------------------------------------------------------------------------------- */
+
+const camel = (property: string) => property.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+
+const SIDES = ["Top", "Right", "Bottom", "Left"] as const;
+const CORNERS = ["TopLeft", "TopRight", "BottomRight", "BottomLeft"] as const;
+const sides = (prefix: string, suffix = "") => SIDES.map((side) => `${prefix}${side}${suffix}`);
+
+/**
+ * What the probe must read for a declared shorthand to be measured. A shorthand not listed
+ * here is expected under its own camelCase name; a longhand that IS its own name needs no
+ * entry.
+ */
+const LONGHANDS: Readonly<Record<string, readonly string[]>> = {
+  border: [...sides("border", "Width"), ...sides("border", "Style"), ...sides("border", "Color")],
+  "border-width": sides("border", "Width"),
+  "border-style": sides("border", "Style"),
+  "border-color": sides("border", "Color"),
+  "border-top": ["borderTopWidth", "borderTopStyle", "borderTopColor"],
+  "border-right": ["borderRightWidth", "borderRightStyle", "borderRightColor"],
+  "border-bottom": ["borderBottomWidth", "borderBottomStyle", "borderBottomColor"],
+  "border-left": ["borderLeftWidth", "borderLeftStyle", "borderLeftColor"],
+  "border-block": ["borderTopWidth", "borderTopStyle", "borderTopColor", "borderBottomWidth", "borderBottomStyle", "borderBottomColor"],
+  "border-inline": ["borderLeftWidth", "borderLeftStyle", "borderLeftColor", "borderRightWidth", "borderRightStyle", "borderRightColor"],
+  "border-radius": CORNERS.map((corner) => `border${corner}Radius`),
+  margin: sides("margin"),
+  "margin-block": ["marginTop", "marginBottom"],
+  "margin-inline": ["marginLeft", "marginRight"],
+  padding: sides("padding"),
+  "padding-block": ["paddingTop", "paddingBottom"],
+  "padding-inline": ["paddingLeft", "paddingRight"],
+  inset: ["top", "right", "bottom", "left"],
+  gap: ["rowGap", "columnGap"],
+  "place-items": ["alignItems", "justifyItems"],
+  "place-content": ["alignContent", "justifyContent"],
+  background: ["backgroundColor", "backgroundImage", "backgroundPosition", "backgroundSize", "backgroundRepeat", "backgroundOrigin", "backgroundClip", "backgroundAttachment"],
+  font: ["fontFamily", "fontSize", "fontStyle", "fontWeight", "fontStretch", "lineHeight"],
+  flex: ["flexGrow", "flexShrink", "flexBasis"],
+  "flex-flow": ["flexDirection", "flexWrap"],
+  outline: ["outlineWidth", "outlineStyle", "outlineColor"],
+  overflow: ["overflowX", "overflowY"],
+  "grid-column": ["gridColumnStart", "gridColumnEnd"],
+  "grid-row": ["gridRowStart", "gridRowEnd"],
+  "grid-template": ["gridTemplateColumns", "gridTemplateRows"],
+  "list-style": ["listStyleType", "listStylePosition", "listStyleImage"],
+  "text-decoration": ["textDecorationLine", "textDecorationColor", "textDecorationStyle"],
+};
+
+/** Every property name the pinned sheet declares, custom properties excluded. */
+const PINNED_PROPERTIES = [
+  ...new Set(
+    pinned.flatMap((rule) =>
+      rule.declarations
+        .map((declaration) => declaration.split(":")[0].trim().toLowerCase())
+        .filter((property) => property && !property.startsWith("--")),
+    ),
+  ),
+].sort();
+
+describe("the computed-style probe reads every property the pinned sheet declares", () => {
+  test("COMPUTED_STYLE_PROPERTIES covers each declared property or all of its longhands", () => {
+    // `COMPUTED_STYLE_PROPERTIES` is what "pixel-preserving" means in practice: a property
+    // the probe does not read is a property the diff cannot see. The list was complete when
+    // it was written and nothing held it there - deleting `backgroundImage`, `boxShadow`,
+    // `backdropFilter`, `transform` and `content` left every test green while the gate
+    // stopped seeing every gradient, shadow, blur, rotation and generated box in the app.
+    // So the list is derived from the stylesheet here, the way `HOVER_SELECTORS` is.
+    expect(
+      PINNED_PROPERTIES.length,
+      "no declaration was found in the pinned sheet, so this check proves nothing",
+    ).toBeGreaterThan(40);
+
+    const listed = new Set(COMPUTED_STYLE_PROPERTIES);
+    const missing = PINNED_PROPERTIES.flatMap((property) => {
+      const required = LONGHANDS[property] ?? [camel(property)];
+      const absent = required.filter((name) => !listed.has(name));
+      return absent.length ? [`${property} -> ${absent.join(", ")}`] : [];
+    });
+    expect(
+      missing,
+      "the pinned sheet declares a property the computed-style probe never reads; add it " +
+        `to COMPUTED_STYLE_PROPERTIES in e2e/audit.ts:\n${missing.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  test("the probe's property list carries no duplicate", () => {
+    expect(new Set(COMPUTED_STYLE_PROPERTIES).size).toBe(COMPUTED_STYLE_PROPERTIES.length);
+  });
+});
+
+/* ------------------------------------------------------------------------------------- */
+/* The focus half of the interaction pass.                                                 */
+/* ------------------------------------------------------------------------------------- */
+
+/** The element a `:focus`/`:focus-visible` rule needs focus on, or `null` if the part has none. */
+function focusTarget(selector: string): string | null {
+  const index = selector.search(/:focus(-visible|-within)?\b/);
+  if (index < 0) return null;
+  return normaliseSelector(selector.slice(0, index));
+}
+
+/** Every element the pinned sheet styles on focus, derived from the sheet itself. */
+const PINNED_FOCUS_TARGETS = [
+  ...new Set(
+    pinned.flatMap((rule) =>
+      splitSelectorList(rule.selector)
+        .map(focusTarget)
+        .filter((target): target is string => target !== null && target !== ""),
+    ),
+  ),
+].sort();
+
+describe("the interaction pass can reach every focus rule", () => {
+  test("FOCUSABLE_SELECTOR names each focused element type, and [tabindex] for the rest", () => {
+    // The focus half of the pass reports green over zero captures if its selector matches
+    // nothing - measured: with FOCUSABLE_SELECTOR set to `.no-such-element-anywhere`, "focus
+    // and hover states render identically" still passed on all seventeen routes. The runtime
+    // floor in `style-diff.spec.ts` (`NAV_FOCUS_FLOOR`) catches that at measurement time;
+    // this is the text-level twin, derived from the sheet like the hover case above.
+    //
+    // A focus rule on an element type (`input:focus`) needs that type in the selector. A
+    // focus rule on a class (`.registry-card:focus-visible`) styles a `div`/`ul` that is only
+    // focusable because the markup gives it `tabIndex={0}` (the F4 fix), so the selector
+    // has to reach it through `[tabindex]`; the pass logs how many such elements it found.
+    expect(
+      PINNED_FOCUS_TARGETS.length,
+      "no :focus rule was found in the pinned sheet, so this check proves nothing",
+    ).toBeGreaterThan(0);
+
+    const parts = FOCUSABLE_SELECTOR.split(",").map(normaliseSelector);
+    const elementTargets = PINNED_FOCUS_TARGETS.filter((target) => /^[a-z]/.test(target));
+    const classTargets = PINNED_FOCUS_TARGETS.filter((target) => !/^[a-z]/.test(target));
+
+    const missing = elementTargets.filter((target) => !parts.includes(target));
+    expect(
+      missing,
+      "the pinned sheet styles an element type on focus that FOCUSABLE_SELECTOR never " +
+        `focuses; add it in e2e/audit.ts:\n${missing.join("\n")}`,
+    ).toEqual([]);
+    expect(
+      parts.includes("[tabindex]"),
+      "the pinned sheet styles focusable regions by class " +
+        `(${classTargets.join(", ")}); they are only reachable through [tabindex]`,
+    ).toBe(classTargets.length === 0 || parts.includes("[tabindex]"));
+    expect(parts.includes("[tabindex]") || classTargets.length === 0).toBe(true);
+  });
+
+  test("extracts the focused element from a rule's selector list", () => {
+    expect(focusTarget("input:focus")).toBe("input");
+    expect(focusTarget(".registry-card:focus-visible")).toBe(".registry-card");
+    expect(focusTarget(".run.selected")).toBeNull();
+    expect(splitSelectorList("input:focus,textarea:focus,select:focus").map(focusTarget)).toEqual([
+      "input",
+      "textarea",
+      "select",
+    ]);
+  });
+});
+
+/* ------------------------------------------------------------------------------------- */
+/* Byte-verbatim, checked rather than claimed.                                             */
+/* ------------------------------------------------------------------------------------- */
+
+/**
+ * The rule texts inside a block, as written: each top-level `selector{...}` segment,
+ * descending into `@media` containers so their entries are checked one by one (a container
+ * in `theme.css` holds only the entries that moved, so the container itself is never a
+ * substring of the pinned sheet - its entries are).
+ */
+function sliceRuleTexts(block: string): string[] {
+  const texts: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let index = 0; index < block.length; index++) {
+    const character = block[index];
+    if (character === "{") {
+      depth += 1;
+      continue;
+    }
+    if (character !== "}") continue;
+    depth -= 1;
+    if (depth !== 0) continue;
+    const text = block.slice(start, index + 1).trim();
+    start = index + 1;
+    if (!text) continue;
+    if (text.startsWith("@media")) {
+      const open = text.indexOf("{");
+      texts.push(...sliceRuleTexts(text.slice(open + 1, -1)));
+    } else {
+      texts.push(text);
+    }
+  }
+  return texts;
+}
+
+describe("every ported rule is a byte-verbatim slice of the pinned sheet", () => {
+  test("each rule text inside @layer components occurs verbatim in styles.pre-pr5.css", () => {
+    // The union above compares NORMALISED rules, so a reformatted move would pass it. The
+    // prose in theme.css, the CHANGELOG and the frontend guide says "byte-verbatim"; this is
+    // the assertion behind the word. A reviewer can diff the moved text against the pin.
+    const source = stripComments(themeSource);
+    const open = source.indexOf(`${PORT_LAYER} {`);
+    expect(open, "theme.css has no @layer components block").toBeGreaterThanOrEqual(0);
+    const bodyStart = source.indexOf("{", open) + 1;
+    const bodyEnd = matchBrace(source, bodyStart);
+    const texts = sliceRuleTexts(source.slice(bodyStart, bodyEnd));
+    expect(texts.length, "no rule was sliced out of the components layer").toBeGreaterThan(50);
+    const pinnedText = stripComments(pinnedSource);
+    const notVerbatim = texts.filter((text) => !pinnedText.includes(text));
+    expect(
+      notVerbatim,
+      "a rule in @layer components is not a byte-verbatim slice of the pinned sheet:\n" +
+        notVerbatim.join("\n"),
+    ).toEqual([]);
+  });
+});
+
