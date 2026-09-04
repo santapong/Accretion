@@ -93,7 +93,7 @@ The M9 ladder is parked after its stylesheet port; the entries below it are v0.4
   `active_runs`/`active_sessions` counters stay live because only the subprocess results are
   cached: the operator reads a status at most thirty seconds old against the page's five-second
   poll. The tests count spawns through a tally file and prove the single flight and the expiry
-  (#TBD).
+  (#119).
 
 ## [0.3.0] - 2026-09-01
 
