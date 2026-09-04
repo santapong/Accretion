@@ -138,7 +138,7 @@ capability is bound through — `plugin_connector_id`,
 third badged node carries `conndef_plugin_m6-badges` with a binding and no connection.
 
 **Deferred to M8: `PluginManifest.ui.node_badges`.** `PluginUiContribution.node_badges`
-(`src/accretion/contracts.py:398`, SDD §9.1 `docs/sdd/Accretion_SDD_v0.3.md:549`) is
+(`src/accretion/contracts/__init__.py:398`, SDD §9.1 `docs/sdd/Accretion_SDD_v0.3.md:549`) is
 typed `list[dict[str, Any]]`. It is reachable from the API only through
 `GET /api/v1/plugins/{plugin_id}` -> `PluginDetail.version_record.manifest.ui.node_badges`
 — a per-plugin request the run page does not make — and, more decisively, no field of a

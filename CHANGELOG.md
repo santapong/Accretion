@@ -15,6 +15,17 @@ The M9 ladder is parked after its stylesheet port; the entries below it are v0.4
   forward package to `docs/sdd/Accretion_SDD_v0.4.md`, its fifty acceptance criteria became
   `AC4-M<owner>-0NN` rows the harness reads, ADR-051..059 record the freeze decisions, and
   every criterion starts `not_yet_due` under its owning milestone (#118).
+- Turned `accretion.contracts` into a package — `contracts.py` became
+  `contracts/__init__.py` byte-identically, so every existing dotted import still
+  resolves — and added the two cross-release foundations the later v0.4 contracts build
+  on: `contracts/canonical.py` implements ADR-056 canonical JSON and `content_hash`
+  (sorted keys, no whitespace, UTF-8, integers as integers, decimals as strings, RFC 3339
+  UTC `Z`, non-finite numbers refused, `content_hash` omitted from its own input) against
+  committed golden vectors the tests read, and `contracts/refs.py` adds the registry §4
+  typed references that did not exist yet — `RuntimeRef`, `CapabilityRef`, `ToolRef`,
+  `SkillRef`, `EnvironmentRef`, `VerifierRef`, `EvidenceRef`, `PolicyRef` and
+  `ApprovalArtifactRef` — while `PrincipalRef`, `PluginRef`, `ConnectionRef` and
+  `ArtifactRef` are reused unchanged (#TBD).
 
 ### Added
 

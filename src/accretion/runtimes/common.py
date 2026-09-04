@@ -27,7 +27,7 @@ RuntimeSubmission = TaskEnvelope | RuntimeExecutionRequest
 # a modest file therefore overruns it and `readline()` raises ValueError, killing
 # the call -- a run reading 30 KB notes died exactly that way. Sized off this
 # repository's own bound on captured subprocess output: CommandVerifier caps
-# `max_output_bytes` at 10 MB (contracts.py), so a line carrying that much output,
+# `max_output_bytes` at 10 MB (contracts/__init__.py), so a line carrying that much output,
 # JSON-escaped and wrapped in a protocol envelope, still fits. Bounded rather than
 # unbounded on purpose: a runaway child must not be able to exhaust memory.
 RUNTIME_STREAM_LIMIT = 16 * 1024 * 1024
