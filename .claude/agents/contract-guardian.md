@@ -1,6 +1,6 @@
 ---
 name: contract-guardian
-description: Reviews changes to Pydantic contracts, database rows, migrations, and stored JSON for compatibility and forward-contract traps. Use whenever contracts.py, persistence/models.py, or a migration changes, when adding a field to a persisted model, when naming a new contract, or when a change might break already-stored data. Catches immutable-row drift, extra="forbid" rejections, non-reversible migrations, and collisions with the locked v0.4 registry. Reviews only; it does not implement.
+description: Reviews changes to Pydantic contracts, database rows, migrations, and stored JSON for compatibility and forward-contract traps. Use whenever a module under src/accretion/contracts/, persistence/models.py, or a migration changes, when adding a field to a persisted model, when naming a new contract, or when a change might break already-stored data. Catches immutable-row drift, extra="forbid" rejections, non-reversible migrations, and collisions with the locked v0.4 registry. Reviews only; it does not implement.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---

@@ -30,6 +30,35 @@ identity-provider interoperability as an expiring manual criterion, and the toke
 allowlist. None is a v0.4 acceptance criterion; each is scheduled when a v0.4 milestone touches
 its surface, and none is added to the M0 freeze. Also carried: the read-boundary schema upcaster (registry §20.5) scheduled for M8 (ADR-057).
 
+## Recorded during M0
+
+**Converge the seven pre-v0.4 JSON digest sites on `contracts/canonical.py` — scheduled for M8,
+alongside the read-boundary upcaster.** ADR-056 says canonical serialization is "implemented once
+in `contracts/canonical.py`", and from M0 every *new* contract obeys that. Seven older call sites
+still hand-roll their own `json.dumps(..., sort_keys=True, separators=(",", ":"))`:
+`governance.py:271` (the capability idempotency digest), `governance.py:1023` (the
+`accretion-core-governance@1.0.0` manifest checksum), `templates.py:73`, `mcp/manager.py:653`,
+`orchestration/validator.py:245`, `experience/embedding.py:46` and `live_sample.py:158`. All but
+`embedding.py` leave `ensure_ascii` at its default `True`, so for any payload containing non-ASCII
+they emit `\uXXXX` escapes and therefore different bytes — and a different digest — from
+`canonical_json`.
+
+M0 deliberately leaves all seven alone, and the reason is the whole point of recording this rather
+than letting a later milestone rediscover it by breaking CI. The digest at `governance.py:1023` is
+already persisted: it is the `checksum` on the immutable `plugins` row for
+`accretion-core-governance@1.0.0`, and `upsert_plugin` rejects any drift for an existing
+`(plugin_id, version)` (`store.py:1436` and `:3534`). Converging that site would change the digest
+for any manifest carrying non-ASCII content and make the next `seed_governance` fail with
+`ValueError: plugin accretion-core-governance@1.0.0 is immutable` on every deployment that already
+ran. The same argument holds in weaker form for the idempotency and validator digests, which are
+compared against values earlier releases wrote. Convergence is therefore not a refactor but a
+rehash-and-migrate story, and it belongs in the milestone that already owns a read-boundary
+upcaster (ADR-057): **M8**.
+
+Until then the rule is narrow and enforceable: new v0.4 contract hashing goes through
+`accretion.contracts.canonical`, the seven sites stay byte-frozen, and no code compares a digest
+produced by one against a digest produced by the other.
+
 ## Parked beside v0.4
 
 The v0.3.1 operator-UI redesign (M9 of the v0.3 ladder) is parked after its stylesheet port
