@@ -3,7 +3,7 @@
 ## Evidence-Aware Node Configuration Routing
 
 **Document type:** Implementation-ready Software Design Description  
-**Status:** Forward implementation specification; locked until v0.1-v0.3 release gates pass  
+**Status:** Normative for v0.4. Unlocked 2026-09-05: the v0.1-v0.3 release gates are evidenced on `develop` (`scripts/release_gate.py` 5/5, `in scope: 117 proven: 111 unmet MUST: 0`) and the Golden Direction was accepted by the owner. Where an illustrative schema here differs from the Cross-Release Contract Registry, the registry wins (ADR-051..059).  
 **Date:** 2026-08-20  
 **Depends on:** Accretion v0.1, v0.2, v0.3, and the Golden Direction charter  
 **Primary domain:** Software engineering and AI research  
@@ -429,6 +429,8 @@ VerificationResult:
   signed_at: timestamp
 ```
 
+**Code name.** The v0.1 `VerificationResult` (run/iteration verifier outcome, table `verifications`) is API-exposed and keeps its name; this contract is implemented as `IndependentVerificationResult` in `accretion.contracts.routing`, stored in the §13 table `verification_results`, and links a producing v0.1 result through `source_verification_id` (ADR-054). Its `status` uses the registry §5.1 `VerificationState` enum.
+
 ### 7.10 `ExperienceRecord`
 
 ```yaml
@@ -457,6 +459,8 @@ ExperienceRecord:
   eligible_for_learning: boolean
   created_at: timestamp
 ```
+
+**Relation to v0.2.** This record is a routing-scoped projection over the v0.2 P7 `Experience` (`accretion.experience.models`, table `experiences`, id prefix `exp`): it is keyed by that `experience_id`, adds the routing signature, attribution and eligibility fields, and never re-declares the P7 record (ADR-054).
 
 ### 7.11 `FailureEvent`
 
@@ -1174,6 +1178,15 @@ schemas the later milestones prove against.
 - ADR-048: Cross-domain evidence is a weak prior only.
 - ADR-049: Router promotion is an offline, versioned, reversible release.
 - ADR-050: Learned graph planning and Robotics are excluded from v0.4.
+- ADR-051: v0.4 is unlocked (2026-09-05). This SDD lives at `docs/sdd/Accretion_SDD_v0.4.md`; the governance package under `docs/sdd/future/v0.4-v1.0/` stays the forward reference for v0.5+ and records the unlock in its read-me.
+- ADR-052: Acceptance ids are `AC4-M<owner>-0NN`, all MUST, owner = the §19 milestone whose exit proves the criterion; harness stages are `v0.4-M<n>` so a v0.4 stage can never be confused with a v0.3 milestone of the same number. M0 owns no criterion: a contract freeze proves nothing about behaviour, and AC-004's "do not mutate active runs" clause is testable only once M2 pins a contract hash in a routing request.
+- ADR-053: `accretion.contracts` becomes a package (`__init__.py` is the former `contracts.py`, byte-identical) with `canonical.py`, `refs.py` and `routing.py`; v0.4 names are imported explicitly from `routing.py` and never re-exported through the package root.
+- ADR-054: Name reconciliation under registry §21, complete inventory: (a) the v0.4 verification outcome is `IndependentVerificationResult` in code, table `verification_results` (§13); registry §5.1 becomes the `VerificationState` enum while v0.1's `VerificationStatus` stays on v0.1-v0.3 paths; (b) `ExperienceRecord` is a projection keyed by the v0.2 P7 `experience_id` (§7.10 note) - one `Experience` schema line, no duplicate; `ExperienceTrust`/`ExperiencePolarity` remain the P7 vocabulary and map onto `eligible_for_learning` and the outcome fields explicitly; (c) v0.2 `CompatibilityAssessment` (is a past experience compatible with this task) and v0.4 `CompatibilityDecision` (is a configuration candidate admissible) are distinct concepts and both stay; (d) v0.1 `RiskLevel` (`LOW|MEDIUM|HIGH|CRITICAL`, the human-approval path in planning and governance) and registry §5.3 `RiskClass` both stay, joined by a total mapping `risk_level_for(RiskClass)` with a test: `LOW_DIGITAL→LOW`, `MEDIUM_DIGITAL→MEDIUM`, `HIGH_DIGITAL→HIGH`, `SIMULATION→HIGH`, `PHYSICAL_HIGH→CRITICAL`, `PROHIBITED` raises; (e) the M5 `EvidenceClass` already equals registry §5.2 and is reused; the §7.11 taxonomy stays as `FailureType` beside registry §5.4 `FailureOwner`; (f) `ArtifactRef` keeps its required `run_id` (it is persisted inside execution traces); approval receipts use a new `ApprovalArtifactRef`; `PrincipalRef`, `PluginRef`, `ConnectionRef` are reused, never redefined.
+- ADR-055: "uuid" reads as "globally unique opaque id": v0.4 records use the repository's prefixed base32 ids from `ids.py` (`obj`, `nct`, `vsp`, `rrq`, `cfg`, `ccd` for candidates - `cnd` is already the connector definition - `cmp`, `rcp`, `ivr`, `flr`, `rmv`, `rts`, `rpr`, `shd`); a test asserts every prefix is unique. Registry §18 permits layout adaptation; identity semantics are unchanged.
+- ADR-056: Canonical serialization (registry §3.1, §20.2) is implemented once in `contracts/canonical.py`: sorted keys, no whitespace, UTF-8, integers as integers, floats as shortest round-trip, decimals as strings, RFC 3339 UTC `Z` timestamps, `content_hash` omitted from its own input; golden hash vectors are committed and read by the tests, and a TypeScript twin is owed by the M9 Studio work.
+- ADR-057: Every v0.4 record carries the registry §3 header through a `CanonicalContract` base with semver `schema_version`. Registry §19's "unknown-version" case is discharged at v0.4 entry by fail-closed rejection of an unknown major, with the fixture and test that prove it. Registry §20.5 read-boundary upcasting is scheduled for M8, the first milestone with a second writer, and tracked in the v0.4 backlog; until then `extra="forbid"` stands.
+- ADR-058: M0 creates all fifteen §13 tables additively in one reversible migration (key columns + JSON payload + §13.1 constraints); the two partial unique indexes ("one ACTIVE workspace router", "one ACTIVE adapter per project and algorithm") are the repository's first and are mirrored in `MemoryStore` so the parity tests hold; registry §20 defaults 1, 2, 5, 6 and 8 are adopted. Store methods are append-only and refuse to overwrite an id or a hash.
+- ADR-059: OQ-420 is decided as "no reserved embodiment slot": v0.5 adds optional fields as a minor schema version; nothing robotics-shaped enters the v0.4 backlog (§23 item 7).
 
 ---
 

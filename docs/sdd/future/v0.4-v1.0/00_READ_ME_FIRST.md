@@ -192,3 +192,11 @@ Those actions require an explicit user request.
 The package follows the project's direction. Its most important operational instruction is:
 
 > Use v0.4-v1.0 to preserve the destination, but implement only the next unlocked evidence-gated step from the actual repository state.
+
+---
+
+## Unlock log
+
+| Date | Release | Decision |
+|---|---|---|
+| 2026-09-05 | v0.4 | Unlocked by the owner. Preconditions evidenced on `develop@00765e5`: release gate 5/5 (`in scope: 117 proven: 111 unmet MUST: 0`); Golden Direction accepted. The v0.4 SDD moved to [`docs/sdd/Accretion_SDD_v0.4.md`](../../Accretion_SDD_v0.4.md) and is normative there; this package remains the forward reference for v0.5-v1.0 and is no longer the home of the v0.4 text. |

@@ -7,6 +7,15 @@ All notable changes to Accretion are documented in this file.
 Theme: **M9 operator-UI redesign**, shipping as v0.3.1. Entries are backfilled for
 the three milestone PRs that merged before this file was updated.
 
+The M9 ladder is parked after its stylesheet port; the entries below it are v0.4 work.
+
+### v0.4 — M0 contract and feature freeze
+
+- Unlocked the v0.4 SDD (evidence-aware node configuration routing): it moved from the
+  forward package to `docs/sdd/Accretion_SDD_v0.4.md`, its fifty acceptance criteria became
+  `AC4-M<owner>-0NN` rows the harness reads, ADR-051..059 record the freeze decisions, and
+  every criterion starts `not_yet_due` under its owning milestone (#TBD).
+
 ### Added
 
 - Added repairable vitest anchors: `make anchors` re-addresses the test pointers
