@@ -21,3 +21,9 @@ openapi.json
 apps/ui/playwright-report/
 apps/ui/test-results/
 apps/ui/e2e/.seed.json
+
+# The computed-style diff's base build: a detached worktree of the merge-base with develop
+# and the bundle it produces. Both are rebuilt by `make style-diff-base` and neither is a
+# source artifact.
+.worktrees/
+.style-diff-base-dist/
