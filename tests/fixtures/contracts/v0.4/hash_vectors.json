@@ -225,5 +225,14 @@
       }
     },
     "sha256": "04452cb622fa7886d27c6a16a364a5af011aee0163bbfa2bd534b0ccd8247e9f"
+  },
+  {
+    "name": "astral_key_sort_order",
+    "description": "Keys sort by Unicode code point (U+FF7D before U+1F600), which is Python's native order; a JCS/RFC 8785 sorter orders by UTF-16 code unit and would emit the emoji first. The TypeScript twin must sort this way.",
+    "input": {
+      "ｽ": 1,
+      "😀": 2
+    },
+    "sha256": "0d71091dd283ee3440ce2e56ba237123ad38eddab89bbfda9e395a6f72e3c66b"
   }
 ]

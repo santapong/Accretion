@@ -400,3 +400,17 @@ def test_the_canonicalization_error_is_a_value_error() -> None:
     """Callers that only care that the payload was bad can catch the broader class."""
 
     assert issubclass(CanonicalizationError, ValueError)
+
+
+def test_object_keys_sort_by_code_point_not_by_utf16_code_unit() -> None:
+    """The documented RFC 8785 deviation, pinned by bytes rather than by a docstring.
+
+    ``U+FF7D`` (a high-BMP character) sorts before ``U+1F600`` (an astral character) by code
+    point, which is what this module does; a JCS sorter compares UTF-16 code units and would
+    put the surrogate pair (``0xD83D``) first. The committed ``astral_key_sort_order`` vector
+    pins the digest; this case pins the byte order so the failure names the rule.
+    """
+
+    encoded = canonical_json({"😀": 2, "ｽ": 1})
+    assert encoded.startswith("{\"ｽ\":1,\"😀\":2}".encode()), encoded
+    assert any(vector["name"] == "astral_key_sort_order" for vector in VECTORS)

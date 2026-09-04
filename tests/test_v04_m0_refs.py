@@ -30,6 +30,7 @@ from accretion.contracts import (
     RiskLevel,
     StrictModel,
     VerificationResult,
+    VerificationStatus,
 )
 from accretion.contracts import refs as refs_module
 from accretion.contracts.canonical import content_hash
@@ -58,7 +59,7 @@ VALID: dict[type[StrictModel], dict[str, Any]] = {
     },
     CapabilityRef: {
         "capability_id": "accretion.sample.echo",
-        "capability_schema_version": "0.1.0",
+        "capability_version": "0.1.0",
     },
     ToolRef: {"tool_id": "shell.command", "implementation_digest": DIGEST},
     SkillRef: {"skill_id": "skl_review", "version": "1.2.0", "package_digest": DIGEST},
@@ -176,7 +177,7 @@ def test_the_capability_reference_does_not_spell_its_version_schema_version() ->
     """Reserved for the header a persisted aggregate carries about itself (registry §3)."""
 
     assert "schema_version" not in CapabilityRef.model_fields
-    assert "capability_schema_version" in CapabilityRef.model_fields
+    assert "capability_version" in CapabilityRef.model_fields
 
 
 def test_the_evidence_reference_reuses_the_existing_evidence_class_enum() -> None:
@@ -258,6 +259,7 @@ def test_ten_well_known_names_still_import_from_the_package_root() -> None:
         "EvidenceClass": EvidenceClass,
         "RiskLevel": RiskLevel,
         "Provider": Provider,
+        "VerificationStatus": VerificationStatus,
     }.items():
         assert imported.__name__ == name
 
@@ -266,3 +268,16 @@ def test_ten_well_known_names_still_import_from_the_package_root() -> None:
     for late in (Capability, MetaPlugin, Task, TaskEnvelope, WorkflowTemplate):
         assert issubclass(late, StrictModel)
     assert issubclass(RuntimeRef, StrictModel)
+
+
+@pytest.mark.parametrize("value", ["standard", "Standard", "STANDARD-7", "7DAYS", ""])
+def test_retention_class_must_be_an_upper_case_token(value: str) -> None:
+    """Case or punctuation drift would fork a digest before the registry names the values."""
+
+    with pytest.raises(ValidationError):
+        ApprovalArtifactRef(
+            uri="s3://approvals/receipt.pdf",
+            digest="a" * 64,
+            media_type="application/pdf",
+            retention_class=value,
+        )

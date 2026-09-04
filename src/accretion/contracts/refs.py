@@ -23,6 +23,16 @@ them:
   this system can produce. That is exactly why approval receipts, which are not run-scoped,
   get the separate :class:`ApprovalArtifactRef` below instead of a loosened ``ArtifactRef``.
 
+**The v0.1-v0.3 string-list conventions are frozen.** ``MetaPlugin.capability_refs``,
+``skill_refs``, ``verifier_refs`` and ``policy_refs``, ``VerificationResult.evidence_refs`` and
+``LoopIteration.evidence_refs``/``artifact_refs`` are ``list[str]`` and stay that way. Re-typing
+any of them to the references below is a registry §3.2 Major change: every stored
+``plugins.definition`` blob would fail ``model_validate`` on its list of strings, and the
+``accretion-core-governance@1.0.0`` row that ``seed_governance`` rebuilds and compares on
+every start would no longer equal its immutable stored copy, so the second start raises
+``is immutable``. These references are for v0.4 contracts; the older aggregates keep their
+strings.
+
 Everything defined here is new. Nothing here is re-exported from the package root (ADR-053):
 callers import from :mod:`accretion.contracts.refs` explicitly, so that a v0.4 name can never
 be mistaken for one of the v0.1-v0.3 names that the root re-exports across the whole codebase.
@@ -76,16 +86,18 @@ class CapabilityRef(StrictModel):
 
     Registry §4 asks for "canonical capability ID and schema version".
 
-    The version field is spelled ``capability_schema_version`` rather than
-    ``schema_version`` on purpose. Every persisted aggregate in this repository opens with a
-    ``schema_version`` describing *its own* contract, and a reference whose ``schema_version``
-    described something else would be a trap for every reader and every hash. This field is
-    the version of the capability's declared input/output schema — the value the repository
-    already carries as ``Capability.version`` and ``CapabilityRequest.capability_version``.
+    The version field is spelled ``capability_version``, the spelling
+    ``CapabilityRequest.capability_version`` already uses, and not ``schema_version``: every
+    persisted aggregate in this repository opens with a ``schema_version`` describing *its
+    own* contract, and a reference whose ``schema_version`` described something else would
+    be a trap for every reader and every hash. The value is the version of the capability's
+    declared input/output schema — what ``Capability.version`` carries — so the repository
+    keeps two spellings of one value (``version`` on the aggregate, ``capability_version`` on
+    anything that points at it) rather than three.
     """
 
     capability_id: str = Field(min_length=1, max_length=255)
-    capability_schema_version: str = Field(min_length=1, max_length=64)
+    capability_version: str = Field(min_length=1, max_length=64)
 
 
 class ToolRef(StrictModel):
@@ -197,7 +209,10 @@ class ApprovalArtifactRef(StrictModel):
     vocabulary, and §20 schedules none. Freezing a guessed set of values here would create
     exactly the duplicate source of truth registry §21 forbids, to be reconciled against
     whatever the v0.6 approval and safety work actually needs. Until the registry names the
-    values, this field records the class the caller declares.
+    values, this field records the class the caller declares — constrained to an
+    upper-case token (``^[A-Z][A-Z0-9_]*$``) so that ``standard`` and ``STANDARD`` cannot
+    fork a digest before §5 decides the vocabulary. Narrowing it to an enum later is a
+    registry §3.2 Major change and is scheduled with that vocabulary, not before it.
     """
 
     uri: str = Field(min_length=1, max_length=2_048, pattern=r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
@@ -207,4 +222,4 @@ class ApprovalArtifactRef(StrictModel):
         max_length=255,
         pattern=r"^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*$",
     )
-    retention_class: str = Field(min_length=1, max_length=64)
+    retention_class: str = Field(min_length=1, max_length=64, pattern=r"^[A-Z][A-Z0-9_]*$")
