@@ -7,6 +7,15 @@ All notable changes to Accretion are documented in this file.
 Theme: **M9 operator-UI redesign**, shipping as v0.3.1. Entries are backfilled for
 the three milestone PRs that merged before this file was updated.
 
+The M9 ladder is parked after its stylesheet port; the entries below it are v0.4 work.
+
+### v0.4 — M0 contract and feature freeze
+
+- Unlocked the v0.4 SDD (evidence-aware node configuration routing): it moved from the
+  forward package to `docs/sdd/Accretion_SDD_v0.4.md`, its fifty acceptance criteria became
+  `AC4-M<owner>-0NN` rows the harness reads, ADR-051..059 record the freeze decisions, and
+  every criterion starts `not_yet_due` under its owning milestone (#118).
+
 ### Added
 
 - Added repairable vitest anchors: `make anchors` re-addresses the test pointers
@@ -114,6 +123,22 @@ the three milestone PRs that merged before this file was updated.
   broken silently: the nav/route pairing, `end` on `/` alone, and the
   stylesheet import order React Flow's cascade depends on. Recorded as
   ADR3-M9-001 in `docs/runbooks/v03-operator-ui.md` (#114).
+
+### Fixed
+
+- Fixed the runtime health probe storm and the kill race it exposed. `GET /api/v1/runtimes`
+  shelled out to `codex`, `claude` and `opencode` on every request, and `runtime_sessions`
+  re-probed every runtime just to resolve a `runtime_id`, so one five-second tick of the
+  runtime monitor asked for up to N + N·N live probes — roughly sixty subprocess spawns and a
+  minute of wall time. Probes that overlapped hit their own five-second deadline and reported
+  UNAVAILABLE or DEGRADED for a CLI that was merely slow, and `command_result` killed children
+  that had already exited, raising `ProcessLookupError` out of `health()` as a 500. Probes are
+  now memoized for thirty seconds behind a single-flight lock (`probe_result`,
+  `PROBE_CACHE_SECONDS`), the kill race is suppressed, and the runtime's own
+  `active_runs`/`active_sessions` counters stay live because only the subprocess results are
+  cached: the operator reads a status at most thirty seconds old against the page's five-second
+  poll. The tests count spawns through a tally file and prove the single flight and the expiry
+  (#119).
 
 ## [0.3.0] - 2026-09-01
 
