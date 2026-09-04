@@ -1060,85 +1060,108 @@ No milestone may enable online exploration before M0-M6 release gates pass.
 
 ## 20. Release acceptance criteria
 
+Every criterion is MUST (the specification states no lower priority). The `Owner` column names the
+milestone of §19 whose exit proves the criterion; the acceptance harness reads these rows and
+gates each milestone by `--stage v0.4-M<n>` (ADR-052). Ids keep the original numbering:
+`AC-0NN` became `AC4-M<owner>-0NN`. M0 (the contract freeze) owns no criterion: it lays the
+schemas the later milestones prove against.
+
 ### Contracts and authority
 
-- AC-001: Every routed execution references an immutable NodeContract hash.
-- AC-002: VerificationSpec is frozen before candidate generation.
-- AC-003: Producer and verifier cannot be the same acceptance authority.
-- AC-004: Contract revisions create new versions and do not mutate active runs.
-- AC-005: Policy/risk/permission gates remain outside the learned router.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M2-001 | MUST | Every routed execution references an immutable NodeContract hash. | M2 |
+| AC4-M2-002 | MUST | VerificationSpec is frozen before candidate generation. | M2 |
+| AC4-M3-003 | MUST | Producer and verifier cannot be the same acceptance authority. | M3 |
+| AC4-M2-004 | MUST | Contract revisions create new versions and do not mutate active runs. | M2 |
+| AC4-M1-005 | MUST | Policy/risk/permission gates remain outside the learned router. | M1 |
 
 ### Candidate construction
 
-- AC-006: All complete tuples pass joint compatibility validation.
-- AC-007: Unknown required compatibility is treated as ineligible.
-- AC-008: Candidate rejection exposes stable reason codes.
-- AC-009: Equivalent configurations are deduplicated.
-- AC-010: An audited fallback is retained when one exists.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M1-006 | MUST | All complete tuples pass joint compatibility validation. | M1 |
+| AC4-M1-007 | MUST | Unknown required compatibility is treated as ineligible. | M1 |
+| AC4-M1-008 | MUST | Candidate rejection exposes stable reason codes. | M1 |
+| AC4-M2-009 | MUST | Equivalent configurations are deduplicated. | M2 |
+| AC4-M2-010 | MUST | An audited fallback is retained when one exists. | M2 |
 
 ### Routing and replay
 
-- AC-011: Identical immutable requests replay the same receipt.
-- AC-012: Every receipt pins router, adapter, contract, registry, and policy versions.
-- AC-013: Decision receipts exclude secrets and private reasoning.
-- AC-014: Dispatch cannot occur without a persisted receipt.
-- AC-015: Human override is restricted to eligible candidates and records a reason.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M2-011 | MUST | Identical immutable requests replay the same receipt. | M2 |
+| AC4-M2-012 | MUST | Every receipt pins router, adapter, contract, registry, and policy versions. | M2 |
+| AC4-M2-013 | MUST | Decision receipts exclude secrets and private reasoning. | M2 |
+| AC4-M2-014 | MUST | Dispatch cannot occur without a persisted receipt. | M2 |
+| AC4-M2-015 | MUST | Human override is restricted to eligible candidates and records a reason. | M2 |
 
 ### Learning and exploration
 
-- AC-016: Offline ranking precedes any shadow or live learned policy.
-- AC-017: Shadow decisions never alter execution.
-- AC-018: Guarded exploration operates only on eligible low-risk digital nodes.
-- AC-019: Every explored decision records propensity.
-- AC-020: Circuit breakers disable exploration on safety/calibration alerts.
-- AC-021: Cross-domain evidence cannot directly enable live routing.
-- AC-022: Insufficient evidence selects fallback or human review.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M4-016 | MUST | Offline ranking precedes any shadow or live learned policy. | M4 |
+| AC4-M6-017 | MUST | Shadow decisions never alter execution. | M6 |
+| AC4-M7-018 | MUST | Guarded exploration operates only on eligible low-risk digital nodes. | M7 |
+| AC4-M7-019 | MUST | Every explored decision records propensity. | M7 |
+| AC4-M7-020 | MUST | Circuit breakers disable exploration on safety/calibration alerts. | M7 |
+| AC4-M5-021 | MUST | Cross-domain evidence cannot directly enable live routing. | M5 |
+| AC4-M2-022 | MUST | Insufficient evidence selects fallback or human review. | M2 |
 
 ### Verification and feedback
 
-- AC-023: Claim-level evidence coverage is persisted.
-- AC-024: Inconclusive outcomes are not positive/negative labels.
-- AC-025: Local and final-run results remain separately queryable.
-- AC-026: Attribution is versioned and cannot overwrite raw outcomes.
-- AC-027: Material verifier conflict blocks acceptance until resolved.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M3-023 | MUST | Claim-level evidence coverage is persisted. | M3 |
+| AC4-M3-024 | MUST | Inconclusive outcomes are not positive/negative labels. | M3 |
+| AC4-M3-025 | MUST | Local and final-run results remain separately queryable. | M3 |
+| AC4-M3-026 | MUST | Attribution is versioned and cannot overwrite raw outcomes. | M3 |
+| AC4-M3-027 | MUST | Material verifier conflict blocks acceptance until resolved. | M3 |
 
 ### Recovery
 
-- AC-028: Failure taxonomy deterministically assigns the recovery owner when rules are conclusive.
-- AC-029: Configuration failures cannot grant planner authority to change policy.
-- AC-030: Structural failures cannot be disguised as repeated configuration attempts.
-- AC-031: Hard caps and EVI thresholds stop recovery loops.
-- AC-032: Equivalent failed configurations do not repeat without new evidence.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M3-028 | MUST | Failure taxonomy deterministically assigns the recovery owner when rules are conclusive. | M3 |
+| AC4-M3-029 | MUST | Configuration failures cannot grant planner authority to change policy. | M3 |
+| AC4-M3-030 | MUST | Structural failures cannot be disguised as repeated configuration attempts. | M3 |
+| AC4-M3-031 | MUST | Hard caps and EVI thresholds stop recovery loops. | M3 |
+| AC4-M3-032 | MUST | Equivalent failed configurations do not repeat without new evidence. | M3 |
 
 ### Experience and promotion
 
-- AC-033: Experience visibility and permission provenance are enforced.
-- AC-034: Contradictory evidence remains retrievable.
-- AC-035: Training snapshots are immutable and reproducible.
-- AC-036: Promotion uses project-disjoint holdout evaluation.
-- AC-037: Critical correctness/safety regression blocks promotion.
-- AC-038: Every active router has a tested rollback target.
-- AC-039: Rollback affects new decisions without rewriting old receipts.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M3-033 | MUST | Experience visibility and permission provenance are enforced. | M3 |
+| AC4-M3-034 | MUST | Contradictory evidence remains retrievable. | M3 |
+| AC4-M8-035 | MUST | Training snapshots are immutable and reproducible. | M8 |
+| AC4-M8-036 | MUST | Promotion uses project-disjoint holdout evaluation. | M8 |
+| AC4-M8-037 | MUST | Critical correctness/safety regression blocks promotion. | M8 |
+| AC4-M8-038 | MUST | Every active router has a tested rollback target. | M8 |
+| AC4-M8-039 | MUST | Rollback affects new decisions without rewriting old receipts. | M8 |
 
 ### Frontend and observability
 
-- AC-040: Node panel shows selected configuration, uncertainty, alternatives, and rejection reasons.
-- AC-041: Shadow view compares recommendations with executed outcomes.
-- AC-042: Router lineage and promotion report are inspectable.
-- AC-043: React Flow remains a projection only.
-- AC-044: All routing/recovery/promotion events are correlated end to end.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M9-040 | MUST | Node panel shows selected configuration, uncertainty, alternatives, and rejection reasons. | M9 |
+| AC4-M6-041 | MUST | Shadow view compares recommendations with executed outcomes. | M6 |
+| AC4-M8-042 | MUST | Router lineage and promotion report are inspectable. | M8 |
+| AC4-M9-043 | MUST | React Flow remains a projection only. | M9 |
+| AC4-M9-044 | MUST | All routing/recovery/promotion events are correlated end to end. | M9 |
 
 ### Scientific integration
 
-- AC-045: Project-disjoint benchmark split is enforced mechanically.
-- AC-046: Strongest fixed, deterministic, per-run, model-only, planner-LLM, and oracle baselines run.
-- AC-047: Constrained configuration regret is reproducible from stored artifacts.
-- AC-048: Verified-success and false-acceptance gates are reported separately from utility.
-- AC-049: Required ablations are executable from configuration.
-- AC-050: Pre-registered effect-size, confidence, and non-regression gates pass before a superiority claim.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M10-045 | MUST | Project-disjoint benchmark split is enforced mechanically. | M10 |
+| AC4-M10-046 | MUST | Strongest fixed, deterministic, per-run, model-only, planner-LLM, and oracle baselines run. | M10 |
+| AC4-M10-047 | MUST | Constrained configuration regret is reproducible from stored artifacts. | M10 |
+| AC4-M10-048 | MUST | Verified-success and false-acceptance gates are reported separately from utility. | M10 |
+| AC4-M10-049 | MUST | Required ablations are executable from configuration. | M10 |
+| AC4-M10-050 | MUST | Pre-registered effect-size, confidence, and non-regression gates pass before a superiority claim. | M10 |
 
 ---
-
 ## 21. Architecture decisions
 
 - ADR-041: One graph-node execution instance is one routable action.
