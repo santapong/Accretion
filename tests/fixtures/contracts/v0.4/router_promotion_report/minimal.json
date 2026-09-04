@@ -1,0 +1,59 @@
+{
+  "baseline_version": "rmv_73BPF68NW342QGTDNRRFYDCH6B",
+  "calibration_result": {
+    "baseline_value": 0.7,
+    "candidate_value": 0.68,
+    "delta": -0.02,
+    "delta_lower_bound": -0.03,
+    "delta_upper_bound": -0.01,
+    "metric_id": "expected-calibration-error",
+    "passed": true
+  },
+  "candidate_version": "rmv_2KPQMJ4VCETFFK2Z973NZSM3NV",
+  "content_hash": "b3a4110502c39b1ff9676010d85baaebae9b2d0198b45a7aab91a61ec882e968",
+  "contract_id": "rpr_FH65AHWEMS790Q0PV56YCXP4DQ",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "decision": "REJECT",
+  "false_acceptance_non_regression": {
+    "baseline_value": 0.7,
+    "candidate_value": 0.69,
+    "delta": -0.01,
+    "delta_lower_bound": -0.02,
+    "delta_upper_bound": 0.0,
+    "metric_id": "false-acceptance",
+    "passed": true
+  },
+  "holdout_definition_id": "rts_X3K3EJ2ZS40W7BHS4CK2X173ZQ",
+  "primary_metric_result": {
+    "baseline_value": 0.7,
+    "candidate_value": 0.66,
+    "delta": -0.04,
+    "delta_lower_bound": -0.05,
+    "delta_upper_bound": -0.03,
+    "metric_id": "constrained-regret",
+    "passed": true
+  },
+  "rollback_target": "rmv_73BPF68NW342QGTDNRRFYDCH6B",
+  "shadow_result": {
+    "agreement_rate": 0.87,
+    "decision_count": 1842,
+    "projected_utility_delta": 0.031,
+    "sample_size": 1842
+  },
+  "training_snapshot_id": "rts_EDB22B93VQVFFB77KJCXN83MCB",
+  "verified_success_non_regression": {
+    "baseline_value": 0.7,
+    "candidate_value": 0.72,
+    "delta": 0.02,
+    "delta_lower_bound": 0.01,
+    "delta_upper_bound": 0.03,
+    "metric_id": "verified-success",
+    "passed": true
+  },
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

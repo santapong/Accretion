@@ -1,0 +1,13 @@
+{
+  "content_hash": "d86becf693eb4fd64d4872eea46ca33ed1bbb8daf51ccf14bef4efe84baf2910",
+  "contract_id": "structured-explanation-minimal",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "summary": "Only one tuple cleared the verified-success gate inside budget.",
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

@@ -1,0 +1,694 @@
+{
+  "$defs": {
+    "CapabilityRef": {
+      "additionalProperties": false,
+      "description": "A capability at one schema version.\n\nRegistry \u00a74 asks for \"canonical capability ID and schema version\".\n\nThe version field is spelled ``capability_version``, the spelling\n``CapabilityRequest.capability_version`` already uses, and not ``schema_version``: every\npersisted aggregate in this repository opens with a ``schema_version`` describing *its\nown* contract, and a reference whose ``schema_version`` described something else would\nbe a trap for every reader and every hash. The value is the version of the capability's\ndeclared input/output schema \u2014 what ``Capability.version`` carries \u2014 so the repository\nkeeps two spellings of one value (``version`` on the aggregate, ``capability_version`` on\nanything that points at it) rather than three.",
+      "properties": {
+        "capability_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Capability Id",
+          "type": "string"
+        },
+        "capability_version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Capability Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "capability_id",
+        "capability_version"
+      ],
+      "title": "CapabilityRef",
+      "type": "object"
+    },
+    "EnvironmentBinding": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.5 ``environment``, reconciled with registry \u00a74's ``EnvironmentRef``.\n\nThe reference already carries the environment id, the image digest and the policy\nprofile; ``workspace_isolation`` is the one thing it does not, and it belongs to the\n*configuration* rather than to the environment because the same environment can be\nentered with different isolation.",
+      "properties": {
+        "environment": {
+          "$ref": "#/$defs/EnvironmentRef"
+        },
+        "workspace_isolation": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Isolation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "environment",
+        "workspace_isolation"
+      ],
+      "title": "EnvironmentBinding",
+      "type": "object"
+    },
+    "EnvironmentRef": {
+      "additionalProperties": false,
+      "description": "An execution environment: id, image digest, policy profile (registry \u00a74).\n\nThe policy profile travels *with* the environment rather than beside it because an\nenvironment is only half an answer \u2014 the same image under a permissive profile and under\na restricted one are different places to run, and a safety argument about one says\nnothing about the other.",
+      "properties": {
+        "environment_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Environment Id",
+          "type": "string"
+        },
+        "image_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Image Digest",
+          "type": "string"
+        },
+        "policy_profile": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Policy Profile",
+          "type": "string"
+        }
+      },
+      "required": [
+        "environment_id",
+        "image_digest",
+        "policy_profile"
+      ],
+      "title": "EnvironmentRef",
+      "type": "object"
+    },
+    "ModelBinding": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.5 ``model``: which model, from which provider, configured how.\n\n``provider`` reuses the repository's :class:`~accretion.contracts.Provider` enum instead\nof the SDD's free ``provider_id`` string, so a configuration cannot name a provider the\nruntime layer has never heard of. ``inference_profile`` is a ``str``-keyed dict of\nscalars: free enough to carry a temperature or a thinking budget, constrained enough to\ncanonicalise (a non-string key is unhashable by construction).",
+      "properties": {
+        "inference_profile": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": "Inference Profile",
+          "type": "object"
+        },
+        "model_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Model Id",
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/Provider"
+        }
+      },
+      "required": [
+        "model_id",
+        "provider"
+      ],
+      "title": "ModelBinding",
+      "type": "object"
+    },
+    "ObjectiveContractRef": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.1. The exact objective revision a node was authorised against.\n\nThis is the type of the registry \u00a73 optional header field ``objective_contract_ref``,\nwhich is why it is defined before every other contract in this module and why\n:class:`~accretion.contracts.canonical.CanonicalContract` is rebuilt immediately below\nit.\n\n**Field coverage (SDD \u00a77.1 \u2192 here).** ``project_id`` \u2192 the header's ``project_id``.\n``objective_contract_id`` \u2192 ``objective_contract_id``. ``version`` \u2192 ``revision``, the\nregistry \u00a77.1 spelling, which is also what the ``ObjectiveContract`` aggregate calls its\nown counter. ``content_hash`` \u2192 ``objective_contract_hash``. ``verified_success_floor``,\n``utility_profile_id``, ``approved_at`` \u2192 unchanged. ``risk_policy_id`` \u2192 ``risk_policy``,\na typed :class:`~accretion.contracts.refs.PolicyRef` (registry \u00a73.1 requires policies to\nuse immutable typed references, and an authority decision audited against \"policy v3\" is\naudited against a label). ``approved_by`` \u2192 a typed\n:class:`~accretion.contracts.PrincipalRef` for the same reason.\n\n**Why the target's identity is qualified.** Registry \u00a73 describes the header field as\n``{contract_id, revision, content_hash}``, but inside a :class:`CanonicalContract` those\ntwo unqualified names already mean *this reference's own* id and digest. The target's\nare therefore spelled ``objective_contract_id`` and ``objective_contract_hash``. Nothing\nis lost and the ambiguity that would otherwise sit in every receipt is.\n\n``ID_KIND`` is ``None``: ADR-055 mints no prefix for a reference, because a reference is\ncreated and owned by the contract that embeds it and has no id space to collide in.\n``verified_success_floor`` is copied onto the reference rather than dereferenced because\n\u00a78.3 requires routing to run against an exact snapshot \u2014 a router that re-read the floor\nfrom the live objective would be routing against a number the receipt cannot prove.",
+      "properties": {
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.objective-contract-ref",
+          "default": "accretion.objective-contract-ref",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "objective_contract_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Objective Contract Hash",
+          "type": "string"
+        },
+        "objective_contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Objective Contract Id",
+          "type": "string"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "risk_policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "utility_profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Utility Profile Id",
+          "type": "string"
+        },
+        "verified_success_floor": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Verified Success Floor",
+          "type": "number"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "objective_contract_id",
+        "revision",
+        "objective_contract_hash",
+        "verified_success_floor",
+        "utility_profile_id",
+        "risk_policy",
+        "approved_by",
+        "approved_at"
+      ],
+      "title": "ObjectiveContractRef",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "description": "A policy by id, version and content digest (registry \u00a74).\n\nAuthority decisions are audited against the exact policy text that produced them, so the\ncontent digest is required: \"policy v3\" is a label, and labels are editable.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "policy_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version",
+        "content_digest"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "PrincipalRef": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "principal_id": {
+          "title": "Principal Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PrincipalStatus"
+        }
+      },
+      "required": [
+        "principal_id",
+        "status"
+      ],
+      "title": "PrincipalRef",
+      "type": "object"
+    },
+    "PrincipalStatus": {
+      "enum": [
+        "ACTIVE",
+        "DISABLED"
+      ],
+      "title": "PrincipalStatus",
+      "type": "string"
+    },
+    "Provider": {
+      "enum": [
+        "CLAUDE",
+        "CODEX",
+        "OPENCODE",
+        "FAKE",
+        "DETERMINISTIC",
+        "HUMAN"
+      ],
+      "title": "Provider",
+      "type": "string"
+    },
+    "RuntimeRef": {
+      "additionalProperties": false,
+      "description": "A specific agent runtime, pinned well enough to explain a past decision.\n\nRegistry \u00a74 requires \"runtime ID, adapter version, provider/model capability profile\".\nThe adapter version matters because the same provider behind a newer adapter is a\ndifferent execution surface, and a router that learned on one must not silently claim\nits evidence transfers to the other.\n\n``model`` is optional and defaults to ``None``: a subscription-mode CLI runtime does not\nalways pin a model, and forcing a placeholder there would put a lie in the receipt. It is\n``None`` or a real name and never the empty string, so that \"unpinned\" has one spelling.\n``capability_profile_digest`` is the digest over the runtime's declared capability\nprofile, and it is what makes this reference immutable \u2014 provider and model are names,\nthe profile digest is the thing that actually changed when behaviour changed.",
+      "properties": {
+        "adapter_version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Adapter Version",
+          "type": "string"
+        },
+        "capability_profile_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Capability Profile Digest",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "provider": {
+          "$ref": "#/$defs/Provider"
+        },
+        "runtime_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Runtime Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "runtime_id",
+        "adapter_version",
+        "provider",
+        "capability_profile_digest"
+      ],
+      "title": "RuntimeRef",
+      "type": "object"
+    },
+    "SkillRef": {
+      "additionalProperties": false,
+      "description": "A skill by id, version and package digest.\n\nVersion and digest are both required and are not redundant: the version is what a human\nasked for and what a plan cites, the digest is what actually shipped. A republished\npackage under an unchanged version is precisely the case this pair exists to catch.",
+      "properties": {
+        "package_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Package Digest",
+          "type": "string"
+        },
+        "skill_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Skill Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "skill_id",
+        "version",
+        "package_digest"
+      ],
+      "title": "SkillRef",
+      "type": "object"
+    },
+    "ToolBinding": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.5 ``tools``, reconciled with registry \u00a74's ``ToolRef``.\n\nThree identities, none of them redundant. ``capability`` is what the node *asked* for,\n``tool`` is the normalized implementation that answered it with its digest, and the\nbinding pair is the workspace-local record that connected the two. Dropping the\ncapability would lose the requirement; dropping the tool would lose what actually ran.",
+      "properties": {
+        "binding_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Binding Id",
+          "type": "string"
+        },
+        "binding_version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Binding Version",
+          "type": "string"
+        },
+        "capability": {
+          "$ref": "#/$defs/CapabilityRef"
+        },
+        "tool": {
+          "$ref": "#/$defs/ToolRef"
+        }
+      },
+      "required": [
+        "capability",
+        "tool",
+        "binding_id",
+        "binding_version"
+      ],
+      "title": "ToolBinding",
+      "type": "object"
+    },
+    "ToolRef": {
+      "additionalProperties": false,
+      "description": "A tool by normalized id plus the digest of the implementation that ran.\n\n\"Normalized\" is the load-bearing word: the same underlying tool reached through two\nconnectors, or spelled differently by two providers, must arrive here as one id, or\nexperience gathered under one spelling will never be found under the other.",
+      "properties": {
+        "implementation_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Implementation Digest",
+          "type": "string"
+        },
+        "tool_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Tool Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "tool_id",
+        "implementation_digest"
+      ],
+      "title": "ToolRef",
+      "type": "object"
+    },
+    "VerifierBinding": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.5 ``verifier``: the independent verifier implementation and the spec it enforces.\n\n``verification_spec_hash`` inside the configuration is what makes ADR-044 checkable at\nthe configuration layer: a configuration is only a valid answer to a node whose spec\nhashes to this value, so swapping the spec after the fact invalidates the configuration\nrather than silently re-purposing it.",
+      "properties": {
+        "verification_spec_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Verification Spec Hash",
+          "type": "string"
+        },
+        "verifier": {
+          "$ref": "#/$defs/VerifierRef"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "verifier",
+        "version",
+        "verification_spec_hash"
+      ],
+      "title": "VerifierBinding",
+      "type": "object"
+    },
+    "VerifierRef": {
+      "additionalProperties": false,
+      "description": "A verifier's contract plus the digest of the implementation that produced a result.\n\n``verifier_contract_id`` names the verifier *contract* \u2014 what is checked and what\ncounts as passing \u2014 and not a single v0.1 verification run. Registry \u00a719 requires that\nverification stay reproducible, which needs both halves: the contract explains what the\nverdict claimed, the implementation digest explains what code made the claim.",
+      "properties": {
+        "implementation_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Implementation Digest",
+          "type": "string"
+        },
+        "verifier_contract_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Verifier Contract Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "verifier_contract_id",
+        "implementation_digest"
+      ],
+      "title": "VerifierRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "SDD \u00a77.5. The complete tuple a router selects: environment through verifier.\n\nADR-042 makes the router select a *complete* configuration rather than a runtime and\nsome defaults, and registry \u00a77.3 fixes the hierarchy \u2014 environment \u2192 runtime \u2192 model \u2192\ntools/capabilities \u2192 skills/plugin implementations \u2192 independent verifier. Every layer\nis required here; there is no partial configuration, because \u00a79.2 says final selection\nalways operates on complete tuples.\n\n**Field coverage (SDD \u00a77.5 \u2192 here).** ``configuration_id`` \u2192 the header's\n``contract_id`` (``cfg``). ``runtime`` \u2192 a :class:`~accretion.contracts.refs.RuntimeRef`,\nwhich carries the SDD's ``runtime_id`` and ``adapter_version`` plus the capability\nprofile digest registry \u00a74 requires. ``model`` \u2192 :class:`ModelBinding`. ``tools`` \u2192\n``[ToolBinding]``, carrying the SDD's ``capability_id``/``binding_id``/\n``binding_version`` and the registry's typed ``ToolRef``. ``skills`` \u2192 ``[SkillRef]``\ndirectly: registry \u00a74 asks for skill id, version *and* package digest, and the reference\nalready is exactly that. ``verifier`` \u2192 :class:`VerifierBinding`. ``environment`` \u2192\n:class:`EnvironmentBinding`. ``configuration_hash`` \u2192 unchanged, but see below.\n\n**What ``configuration_hash`` covers, and why it is not the header digest.** \u00a79.2\nrequires behaviourally equivalent candidates to be canonicalised by configuration\nsignature, and \u00a77.10 keys reusable experience by ``configuration_hash``. Both need the\nsame configuration built twice, in two projects, on two days, to produce the *same*\nvalue \u2014 which the header digest cannot do, because it covers ``contract_id`` and\n``created_at``. So ``configuration_hash`` is computed over exactly the six semantic\nfields named in :data:`_CONFIGURATION_SIGNATURE_FIELDS` and nothing else, and the header\n``content_hash`` then commits to it. Two configurations with the same signature are the\nsame execution surface; two with the same ``content_hash`` are the same *document*.",
+  "properties": {
+    "configuration_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Configuration Hash",
+      "type": "string"
+    },
+    "content_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "contract_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "accretion.execution-configuration",
+      "default": "accretion.execution-configuration",
+      "title": "Contract Type",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/PrincipalRef"
+    },
+    "environment": {
+      "$ref": "#/$defs/EnvironmentBinding"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "model": {
+      "$ref": "#/$defs/ModelBinding"
+    },
+    "objective_contract_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectiveContractRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "retention_class": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention Class"
+    },
+    "runtime": {
+      "$ref": "#/$defs/RuntimeRef"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "skills": {
+      "items": {
+        "$ref": "#/$defs/SkillRef"
+      },
+      "maxItems": 64,
+      "title": "Skills",
+      "type": "array"
+    },
+    "supersedes_contract_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Contract Id"
+    },
+    "tools": {
+      "items": {
+        "$ref": "#/$defs/ToolBinding"
+      },
+      "maxItems": 64,
+      "title": "Tools",
+      "type": "array"
+    },
+    "verifier": {
+      "$ref": "#/$defs/VerifierBinding"
+    },
+    "workspace_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_id",
+    "created_by",
+    "workspace_id",
+    "environment",
+    "runtime",
+    "model",
+    "verifier"
+  ],
+  "title": "ExecutionConfiguration",
+  "type": "object"
+}

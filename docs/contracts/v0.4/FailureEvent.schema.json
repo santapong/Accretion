@@ -1,0 +1,500 @@
+{
+  "$defs": {
+    "EvidenceClass": {
+      "description": "How the world was observed. Names are pinned by the v0.4 cross-release registry.",
+      "enum": [
+        "DIGITAL",
+        "SIMULATION",
+        "PHYSICAL",
+        "HUMAN_ATTESTATION",
+        "EXTERNAL_SOURCE"
+      ],
+      "title": "EvidenceClass",
+      "type": "string"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "description": "A piece of evidence by id, class and content digest (registry \u00a74).\n\n``evidence_class`` reuses the existing :class:`~accretion.contracts.EvidenceClass` enum\n(ADR-054 e): the v0.3 M5 taxonomy already equals registry \u00a75.2, so there is exactly one\ndefinition of what ``SIMULATION`` means. The class is carried *in the reference* rather\nthan looked up behind it because registry \u00a719 requires simulation and physical evidence to\nstay type-distinct at every boundary \u2014 a consumer holding this reference can refuse to\ntreat simulated evidence as physical without dereferencing anything.\n\nThe class is required and has no default. The stored ``EvidenceRecord`` defaults to\n``EXTERNAL_SOURCE`` for candidates arriving from a connector; a reference is written by\nsomething that already knows, and defaulting here would let an unstated class quietly\nbecome the weakest one.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "evidence_class": {
+          "$ref": "#/$defs/EvidenceClass"
+        },
+        "evidence_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Evidence Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "evidence_class",
+        "content_digest"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "FailureOwner": {
+      "description": "Registry \u00a75.4. Which layer owns a failure, and therefore who may recover from it.\n\nSDD \u00a77.11 spells ``assigned_owner`` with component names \u2014 ``RECOVERY_CONTROLLER``,\n``ROUTER``, ``CAPABILITY_RESOLVER``, ``EVIDENCE_RESOLVER``, ``PLANNER``, ``HUMAN`` \u2014\nand registry \u00a75.4 spells it with ownership *classes*. The registry wins (registry \u00a72),\nand the SDD's component names are recovered by the fixed rules \u00a75.4 states: the router\nowns ``CONFIGURATION`` when the graph and contract remain valid, the planner owns\n``STRUCTURAL``, the capability manager owns ``CAPABILITY``, evidence resolution owns\n``VERIFICATION``. The advantage of the registry's spelling is that it survives a\nreorganisation of the components, which a stored value must.\n\n``SAFETY``, ``AUTHORITY`` and an unresolved ``UNKNOWN`` stop automatic recovery\noutright, which :class:`FailureEvent` enforces rather than merely documents.",
+      "enum": [
+        "CONFIGURATION",
+        "STRUCTURAL",
+        "CAPABILITY",
+        "VERIFICATION",
+        "ENVIRONMENT",
+        "SAFETY",
+        "AUTHORITY",
+        "RESOURCE",
+        "UNKNOWN"
+      ],
+      "title": "FailureOwner",
+      "type": "string"
+    },
+    "FailureType": {
+      "description": "SDD \u00a77.11's failure taxonomy, beside registry \u00a75.4's ownership (ADR-054 e).\n\nType and owner are two questions, not one spelled twice: ``CONFIGURATION`` as a *type*\nsays the configuration was wrong, and ``CONFIGURATION`` as an *owner* says the router\nmay fix it. They usually agree and are allowed to disagree \u2014 a capability failure whose\nreal cause is a policy denial is typed ``CAPABILITY`` and owned by ``AUTHORITY`` \u2014 and\ncollapsing them into one enum would make that case unsayable.\n\nChecked against v0.1's ``LoopStopReason`` (``BUDGET_EXHAUSTED``, ``PROVIDER_FAILURE``,\n``OPERATOR_CANCELLED``, ...), which classifies why a *loop stopped* rather than what\nkind of thing went wrong; the two vocabularies do not overlap.",
+      "enum": [
+        "TRANSIENT",
+        "CONFIGURATION",
+        "CAPABILITY",
+        "EVIDENCE",
+        "VERIFICATION_CONFLICT",
+        "STRUCTURAL",
+        "POLICY_RISK",
+        "OBJECTIVE"
+      ],
+      "title": "FailureType",
+      "type": "string"
+    },
+    "ObjectiveContractRef": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.1. The exact objective revision a node was authorised against.\n\nThis is the type of the registry \u00a73 optional header field ``objective_contract_ref``,\nwhich is why it is defined before every other contract in this module and why\n:class:`~accretion.contracts.canonical.CanonicalContract` is rebuilt immediately below\nit.\n\n**Field coverage (SDD \u00a77.1 \u2192 here).** ``project_id`` \u2192 the header's ``project_id``.\n``objective_contract_id`` \u2192 ``objective_contract_id``. ``version`` \u2192 ``revision``, the\nregistry \u00a77.1 spelling, which is also what the ``ObjectiveContract`` aggregate calls its\nown counter. ``content_hash`` \u2192 ``objective_contract_hash``. ``verified_success_floor``,\n``utility_profile_id``, ``approved_at`` \u2192 unchanged. ``risk_policy_id`` \u2192 ``risk_policy``,\na typed :class:`~accretion.contracts.refs.PolicyRef` (registry \u00a73.1 requires policies to\nuse immutable typed references, and an authority decision audited against \"policy v3\" is\naudited against a label). ``approved_by`` \u2192 a typed\n:class:`~accretion.contracts.PrincipalRef` for the same reason.\n\n**Why the target's identity is qualified.** Registry \u00a73 describes the header field as\n``{contract_id, revision, content_hash}``, but inside a :class:`CanonicalContract` those\ntwo unqualified names already mean *this reference's own* id and digest. The target's\nare therefore spelled ``objective_contract_id`` and ``objective_contract_hash``. Nothing\nis lost and the ambiguity that would otherwise sit in every receipt is.\n\n``ID_KIND`` is ``None``: ADR-055 mints no prefix for a reference, because a reference is\ncreated and owned by the contract that embeds it and has no id space to collide in.\n``verified_success_floor`` is copied onto the reference rather than dereferenced because\n\u00a78.3 requires routing to run against an exact snapshot \u2014 a router that re-read the floor\nfrom the live objective would be routing against a number the receipt cannot prove.",
+      "properties": {
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.objective-contract-ref",
+          "default": "accretion.objective-contract-ref",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "objective_contract_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Objective Contract Hash",
+          "type": "string"
+        },
+        "objective_contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Objective Contract Id",
+          "type": "string"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "risk_policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "utility_profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Utility Profile Id",
+          "type": "string"
+        },
+        "verified_success_floor": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Verified Success Floor",
+          "type": "number"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "objective_contract_id",
+        "revision",
+        "objective_contract_hash",
+        "verified_success_floor",
+        "utility_profile_id",
+        "risk_policy",
+        "approved_by",
+        "approved_at"
+      ],
+      "title": "ObjectiveContractRef",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "description": "A policy by id, version and content digest (registry \u00a74).\n\nAuthority decisions are audited against the exact policy text that produced them, so the\ncontent digest is required: \"policy v3\" is a label, and labels are editable.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "policy_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version",
+        "content_digest"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "PrincipalRef": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "principal_id": {
+          "title": "Principal Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PrincipalStatus"
+        }
+      },
+      "required": [
+        "principal_id",
+        "status"
+      ],
+      "title": "PrincipalRef",
+      "type": "object"
+    },
+    "PrincipalStatus": {
+      "enum": [
+        "ACTIVE",
+        "DISABLED"
+      ],
+      "title": "PrincipalStatus",
+      "type": "string"
+    },
+    "RecommendedAction": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.11 ``recommended_action``, typed instead of left as ``object``.\n\n``owner`` is repeated from the event's ``assigned_owner`` because a recommendation may\nhand the failure on: the event says who owns the failure now, the action says who the\nrecommended next step belongs to, and \u00a79.7's routing rules are exactly about that hand-off.",
+      "properties": {
+        "action_code": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "title": "Action Code",
+          "type": "string"
+        },
+        "owner": {
+          "$ref": "#/$defs/FailureOwner"
+        },
+        "rationale": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "retry_allowed": {
+          "title": "Retry Allowed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "action_code",
+        "owner",
+        "rationale",
+        "retry_allowed"
+      ],
+      "title": "RecommendedAction",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "SDD \u00a77.11. A typed failure and the layer that owns recovering from it.\n\n\u00a79.7 routes recovery by this record: configuration failures go back to the router,\nstructural failures to the planner, verification conflicts to evidence resolution, and\npolicy or risk failures to human authority. That routing is only as good as the\nclassification, which is why ``classification_confidence`` is stored beside the type\nrather than discarded.\n\n**Field coverage (SDD \u00a77.11 \u2192 here).** ``failure_event_id`` \u2192 the header's\n``contract_id`` (``flr``). ``execution_instance_id``, ``failure_type``,\n``affected_layer``, ``retryable``, ``classification_confidence``,\n``attempted_configuration_hashes`` \u2192 unchanged. ``evidence_refs`` \u2192 ``[EvidenceRef]``,\ntyped. ``assigned_owner`` \u2192 registry \u00a75.4's :class:`FailureOwner` rather than the SDD's\ncomponent names, per registry \u00a72 precedence and for the reason that enum's docstring\ngives. ``recommended_action`` \u2192 :class:`RecommendedAction`, typed instead of ``object``.\n\n``attempted_configuration_hashes`` is what makes \u00a79.7's last rule enforceable \u2014\n\"equivalent failed configurations MUST NOT repeat without new evidence\" \u2014 because the\nhashes are ``ExecutionConfiguration.configuration_hash`` signatures, which are equal\nexactly when two configurations are the same execution surface.\n\nThe validator refuses ``retryable`` for the three owners registry \u00a75.4 says stop\nautomatic recovery. A safety, authority or unknown failure marked retryable is not a\nslightly optimistic record; it is a record that would drive an automatic retry past the\nstop that exists to prevent one.",
+  "properties": {
+    "affected_layer": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Affected Layer",
+      "type": "string"
+    },
+    "assigned_owner": {
+      "$ref": "#/$defs/FailureOwner"
+    },
+    "attempted_configuration_hashes": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "title": "Attempted Configuration Hashes",
+      "type": "array"
+    },
+    "classification_confidence": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Classification Confidence",
+      "type": "number"
+    },
+    "content_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "contract_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "accretion.failure-event",
+      "default": "accretion.failure-event",
+      "title": "Contract Type",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/PrincipalRef"
+    },
+    "evidence_refs": {
+      "items": {
+        "$ref": "#/$defs/EvidenceRef"
+      },
+      "maxItems": 64,
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "execution_instance_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Execution Instance Id",
+      "type": "string"
+    },
+    "failure_type": {
+      "$ref": "#/$defs/FailureType"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "objective_contract_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectiveContractRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "recommended_action": {
+      "$ref": "#/$defs/RecommendedAction"
+    },
+    "retention_class": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention Class"
+    },
+    "retryable": {
+      "title": "Retryable",
+      "type": "boolean"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "supersedes_contract_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Contract Id"
+    },
+    "workspace_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_id",
+    "created_by",
+    "workspace_id",
+    "execution_instance_id",
+    "failure_type",
+    "affected_layer",
+    "retryable",
+    "classification_confidence",
+    "assigned_owner",
+    "recommended_action"
+  ],
+  "title": "FailureEvent",
+  "type": "object"
+}

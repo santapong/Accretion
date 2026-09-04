@@ -1,0 +1,19 @@
+{
+  "agreement": false,
+  "comparison_notes": "Shadow selected a cheaper runtime the executed decision rejected.",
+  "content_hash": "64e788449344eef504a6e0cb81f42d61d22ae88999db971887ff8c4f05106aed",
+  "contract_id": "shd_J48FGJ9RHFA4YJPWGBRMT2VZ00",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "evaluated_at": "2026-03-01T09:20:00Z",
+  "executed_receipt_id": "rcp_YPW2A7XZVADFSDVJS4DGZHEK47",
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "projected_utility_delta": 0.018,
+  "shadow_receipt_id": "rcp_FQ639X9EJVHQ0BQDB279RN8DXX",
+  "shadow_router_version_id": "rmv_2KPQMJ4VCETFFK2Z973NZSM3NV",
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

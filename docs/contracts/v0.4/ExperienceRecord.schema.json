@@ -1,0 +1,679 @@
+{
+  "$defs": {
+    "AttributionSummary": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.10 ``attribution``: how much of the run's outcome this node is credited with.\n\n``score`` is nullable because \u00a79.6 makes attribution a *derived, versioned view*: before\nany attributor has run, the honest value is absent rather than zero. ``method_version``\nis mandatory even when the score is null, so that a later re-attribution can tell which\nrecords it has already replaced.",
+      "properties": {
+        "confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Confidence",
+          "type": "number"
+        },
+        "method_version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Method Version",
+          "type": "string"
+        },
+        "score": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": -1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Score"
+        }
+      },
+      "required": [
+        "confidence",
+        "method_version"
+      ],
+      "title": "AttributionSummary",
+      "type": "object"
+    },
+    "ContractSignature": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.10 ``contract_signature``, typed instead of left as ``object``.\n\nThe signature is what makes an experience *retrievable* for a future node: it is the\nsmall set of properties two nodes must share before one's outcome is evidence about the\nother. Digests rather than bodies, because the question is only ever \"the same or not\".",
+      "properties": {
+        "capability_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Capability Digest",
+          "type": "string"
+        },
+        "node_kind": {
+          "$ref": "#/$defs/GraphNodeKind"
+        },
+        "objective_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Objective Digest",
+          "type": "string"
+        },
+        "risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "verification_spec_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Verification Spec Hash",
+          "type": "string"
+        }
+      },
+      "required": [
+        "node_kind",
+        "objective_digest",
+        "capability_digest",
+        "verification_spec_hash",
+        "risk_class"
+      ],
+      "title": "ContractSignature",
+      "type": "object"
+    },
+    "ContradictionStatus": {
+      "description": "SDD \u00a77.10. Whether an experience contradicts other evidence, and whether that is settled.\n\n``NONE`` is not the same as ``RESOLVED``: the first says no contradiction was ever\nfound, the second says one was found and adjudicated. A training snapshot that\ndeduplicated them would silently change what its evidence means (\u00a710.1).",
+      "enum": [
+        "NONE",
+        "OPEN",
+        "RESOLVED"
+      ],
+      "title": "ContradictionStatus",
+      "type": "string"
+    },
+    "EvidenceClass": {
+      "description": "How the world was observed. Names are pinned by the v0.4 cross-release registry.",
+      "enum": [
+        "DIGITAL",
+        "SIMULATION",
+        "PHYSICAL",
+        "HUMAN_ATTESTATION",
+        "EXTERNAL_SOURCE"
+      ],
+      "title": "EvidenceClass",
+      "type": "string"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "description": "A piece of evidence by id, class and content digest (registry \u00a74).\n\n``evidence_class`` reuses the existing :class:`~accretion.contracts.EvidenceClass` enum\n(ADR-054 e): the v0.3 M5 taxonomy already equals registry \u00a75.2, so there is exactly one\ndefinition of what ``SIMULATION`` means. The class is carried *in the reference* rather\nthan looked up behind it because registry \u00a719 requires simulation and physical evidence to\nstay type-distinct at every boundary \u2014 a consumer holding this reference can refuse to\ntreat simulated evidence as physical without dereferencing anything.\n\nThe class is required and has no default. The stored ``EvidenceRecord`` defaults to\n``EXTERNAL_SOURCE`` for candidates arriving from a connector; a reference is written by\nsomething that already knows, and defaulting here would let an unstated class quietly\nbecome the weakest one.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "evidence_class": {
+          "$ref": "#/$defs/EvidenceClass"
+        },
+        "evidence_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Evidence Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "evidence_class",
+        "content_digest"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "ExperienceOutcomes": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.10 ``outcomes``: what the node actually cost and achieved.\n\n``quality`` is nullable \u2014 not every node has a quality metric \u2014 while cost and latency\nare not, because every executed node consumed both. ``cost`` is a decimal for the same\nreason :class:`ResourceBudget` uses one.",
+      "properties": {
+        "cost": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "title": "Cost"
+        },
+        "latency_ms": {
+          "minimum": 0,
+          "title": "Latency Ms",
+          "type": "integer"
+        },
+        "quality": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quality"
+        }
+      },
+      "required": [
+        "cost",
+        "latency_ms"
+      ],
+      "title": "ExperienceOutcomes",
+      "type": "object"
+    },
+    "FailureType": {
+      "description": "SDD \u00a77.11's failure taxonomy, beside registry \u00a75.4's ownership (ADR-054 e).\n\nType and owner are two questions, not one spelled twice: ``CONFIGURATION`` as a *type*\nsays the configuration was wrong, and ``CONFIGURATION`` as an *owner* says the router\nmay fix it. They usually agree and are allowed to disagree \u2014 a capability failure whose\nreal cause is a policy denial is typed ``CAPABILITY`` and owned by ``AUTHORITY`` \u2014 and\ncollapsing them into one enum would make that case unsayable.\n\nChecked against v0.1's ``LoopStopReason`` (``BUDGET_EXHAUSTED``, ``PROVIDER_FAILURE``,\n``OPERATOR_CANCELLED``, ...), which classifies why a *loop stopped* rather than what\nkind of thing went wrong; the two vocabularies do not overlap.",
+      "enum": [
+        "TRANSIENT",
+        "CONFIGURATION",
+        "CAPABILITY",
+        "EVIDENCE",
+        "VERIFICATION_CONFLICT",
+        "STRUCTURAL",
+        "POLICY_RISK",
+        "OBJECTIVE"
+      ],
+      "title": "FailureType",
+      "type": "string"
+    },
+    "GraphNodeKind": {
+      "enum": [
+        "TASK",
+        "AGENT",
+        "TOOL",
+        "VERIFIER",
+        "GATE",
+        "LOOP",
+        "JOIN",
+        "HUMAN",
+        "TERMINAL"
+      ],
+      "title": "GraphNodeKind",
+      "type": "string"
+    },
+    "ObjectiveContractRef": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.1. The exact objective revision a node was authorised against.\n\nThis is the type of the registry \u00a73 optional header field ``objective_contract_ref``,\nwhich is why it is defined before every other contract in this module and why\n:class:`~accretion.contracts.canonical.CanonicalContract` is rebuilt immediately below\nit.\n\n**Field coverage (SDD \u00a77.1 \u2192 here).** ``project_id`` \u2192 the header's ``project_id``.\n``objective_contract_id`` \u2192 ``objective_contract_id``. ``version`` \u2192 ``revision``, the\nregistry \u00a77.1 spelling, which is also what the ``ObjectiveContract`` aggregate calls its\nown counter. ``content_hash`` \u2192 ``objective_contract_hash``. ``verified_success_floor``,\n``utility_profile_id``, ``approved_at`` \u2192 unchanged. ``risk_policy_id`` \u2192 ``risk_policy``,\na typed :class:`~accretion.contracts.refs.PolicyRef` (registry \u00a73.1 requires policies to\nuse immutable typed references, and an authority decision audited against \"policy v3\" is\naudited against a label). ``approved_by`` \u2192 a typed\n:class:`~accretion.contracts.PrincipalRef` for the same reason.\n\n**Why the target's identity is qualified.** Registry \u00a73 describes the header field as\n``{contract_id, revision, content_hash}``, but inside a :class:`CanonicalContract` those\ntwo unqualified names already mean *this reference's own* id and digest. The target's\nare therefore spelled ``objective_contract_id`` and ``objective_contract_hash``. Nothing\nis lost and the ambiguity that would otherwise sit in every receipt is.\n\n``ID_KIND`` is ``None``: ADR-055 mints no prefix for a reference, because a reference is\ncreated and owned by the contract that embeds it and has no id space to collide in.\n``verified_success_floor`` is copied onto the reference rather than dereferenced because\n\u00a78.3 requires routing to run against an exact snapshot \u2014 a router that re-read the floor\nfrom the live objective would be routing against a number the receipt cannot prove.",
+      "properties": {
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.objective-contract-ref",
+          "default": "accretion.objective-contract-ref",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "objective_contract_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Objective Contract Hash",
+          "type": "string"
+        },
+        "objective_contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Objective Contract Id",
+          "type": "string"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "risk_policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "utility_profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Utility Profile Id",
+          "type": "string"
+        },
+        "verified_success_floor": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Verified Success Floor",
+          "type": "number"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "objective_contract_id",
+        "revision",
+        "objective_contract_hash",
+        "verified_success_floor",
+        "utility_profile_id",
+        "risk_policy",
+        "approved_by",
+        "approved_at"
+      ],
+      "title": "ObjectiveContractRef",
+      "type": "object"
+    },
+    "PermissionProvenance": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.10 ``permission_provenance``, typed instead of left as ``object``.\n\n\u00a710.1 requires a training snapshot to carry \"permission and visibility proof\", which is\nonly a proof if it names the policy under which the record was shared, the principal who\nshared it and the scope granted. A boolean \"allowed\" would be an assertion.",
+      "properties": {
+        "granted_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "justification": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Justification",
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "scope": {
+          "$ref": "#/$defs/Visibility"
+        }
+      },
+      "required": [
+        "scope",
+        "policy",
+        "granted_by",
+        "justification"
+      ],
+      "title": "PermissionProvenance",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "description": "A policy by id, version and content digest (registry \u00a74).\n\nAuthority decisions are audited against the exact policy text that produced them, so the\ncontent digest is required: \"policy v3\" is a label, and labels are editable.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "policy_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version",
+        "content_digest"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "PrincipalRef": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "principal_id": {
+          "title": "Principal Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PrincipalStatus"
+        }
+      },
+      "required": [
+        "principal_id",
+        "status"
+      ],
+      "title": "PrincipalRef",
+      "type": "object"
+    },
+    "PrincipalStatus": {
+      "enum": [
+        "ACTIVE",
+        "DISABLED"
+      ],
+      "title": "PrincipalStatus",
+      "type": "string"
+    },
+    "RiskClass": {
+      "description": "Registry \u00a75.3. The routing risk vocabulary, beside v0.1's ``RiskLevel``.\n\n``RiskLevel`` (``LOW | MEDIUM | HIGH | CRITICAL``) is the human-approval ladder used by\nplanning and governance and it stays exactly as it is (ADR-054 d). ``RiskClass`` answers\na different question \u2014 not \"how much authority does this need\" but \"what kind of world\ndoes this act on\" \u2014 which is why ``SIMULATION`` and ``PHYSICAL_HIGH`` are values here\nand could never be values there. The two are joined by the total mapping\n:func:`risk_level_for`.\n\nProject policy may make a class stricter. It may not reduce ``PHYSICAL_HIGH`` through a\nplugin, a learned policy or a runtime request; ``PROHIBITED`` is not a level at all but\na refusal, and it maps to no approval ladder because nothing approves it.",
+      "enum": [
+        "LOW_DIGITAL",
+        "MEDIUM_DIGITAL",
+        "HIGH_DIGITAL",
+        "SIMULATION",
+        "PHYSICAL_HIGH",
+        "PROHIBITED"
+      ],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "VerificationState": {
+      "description": "Registry \u00a75.1. The v0.4 verification vocabulary, beside v0.1's ``VerificationStatus``.\n\n``VerificationStatus`` (``PASS | FAIL | INCONCLUSIVE``) is API-exposed on the v0.1-v0.3\nrun and iteration paths and keeps its name and its three values (ADR-054 a). This enum\nis not a rename of it: it adds the three states an *independent* verifier needs and the\nolder one cannot express.\n\n* ``PENDING`` \u2014 the verifier has been dispatched and has not answered. v0.1 had nowhere\n  to put this because its verification rows were written only at the end.\n* ``ERROR`` \u2014 the verifier itself failed. Registry \u00a75.1 is explicit that ``ERROR`` is\n  not ``INCONCLUSIVE`` and neither is ``PASS``: an inconclusive verdict is a *judgement*\n  about the evidence, an error is the absence of a judgement, and collapsing them would\n  let a broken verifier read as a cautious one.\n* ``QUARANTINED`` \u2014 append-only governance state applied after a material concern. It is\n  set by a human or a policy, never by a verifier, and it never converts back to a\n  verdict; registry \u00a73.2 forbids any migration that turns ``FAIL`` or ``INCONCLUSIVE``\n  into ``PASS``, and quarantine is the state that survives that rule.\n\nA required verifier answering ``FAIL``, ``ERROR``, or an unresolved ``INCONCLUSIVE``\nblocks acceptance.",
+      "enum": [
+        "PENDING",
+        "PASS",
+        "FAIL",
+        "INCONCLUSIVE",
+        "ERROR",
+        "QUARANTINED"
+      ],
+      "title": "VerificationState",
+      "type": "string"
+    },
+    "Visibility": {
+      "description": "SDD \u00a77.10. How widely an experience record may be read.\n\nTwo values only. There is no ``PUBLIC``: nothing in v0.4 crosses a workspace boundary,\nand a value that no code can produce is a value someone eventually produces by hand.",
+      "enum": [
+        "PROJECT",
+        "TEAM_WORKSPACE"
+      ],
+      "title": "Visibility",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "SDD \u00a77.10. A routing-scoped **projection** over the v0.2 P7 ``Experience`` (ADR-054 b).\n\nThis record declares **none** of ``Experience``'s fields. It is keyed by the same\n``experience_id`` \u2014 carried as the header's ``contract_id``, which is why ``ID_KIND`` is\nthe existing ``experience`` prefix (``exp``) and ADR-055 mints no new one \u2014 and\neverything the P7 record already knows is *read from it* rather than copied here.\nCopying would have produced the duplicate source of truth registry \u00a721 forbids, and the\ntwo copies would have diverged the first time an experience was retracted.\n\n**Read from** :class:`~accretion.experience.models.Experience` **(never re-declared):**\n``project_id`` (the header's ``project_id`` is the same project and is the only place it\nappears \u2014 SDD \u00a77.10's ``source_project_id`` is that field), ``source_run_id`` and\n``source_candidate_id`` (SDD \u00a77.10's ``source_run_id``), ``source_kind``,\n``repository_identity``, ``source_commit``, ``architecture_version``, ``task_id``,\n``task_type``, ``task_family``, the seven digests (``manifest_digest``,\n``policy_digest``, ``verifier_digest``, ``prompt_digest``, ``context_digest``,\n``tool_profile_digest``, ``content_digest``), ``manifest_paths``, ``requested_skills``,\n``allowed_capabilities``, ``denied_capabilities``, ``verifier_ids``,\n``protected_side_effects``, ``provider``, ``runtime_model``, ``runtime_version``,\n``trust``, ``polarity``, ``outcome``, ``failure_taxonomy``, ``revision``, ``retracted``\nand P7's own ``created_at``.\n\n**Added here, because the P7 record has nowhere to put them:**\n``visibility`` \u2014 P7 experience is project-local and v0.4 is the first release that\nshares it; ``source_node_execution_id`` \u2014 P7 is run-scoped and ADR-041 makes routing\nnode-scoped; ``contract_signature`` \u2014 the retrieval key a node matches on;\n``configuration_hash`` \u2014 the ``ExecutionConfiguration`` signature this outcome is\nevidence about; ``local_verification_status`` and ``final_run_status`` \u2014 P7 carries a\nfree-text ``outcome`` and a ``polarity``, not a :class:`VerificationState`;\n``attribution`` \u2014 \u00a79.6's derived, versioned credit; ``outcomes`` \u2014 the measured quality,\ncost and latency P7 never recorded; ``failure_type`` \u2014 the typed \u00a77.11 taxonomy beside\nP7's free-string ``failure_taxonomy``; ``contradiction_status``; ``evidence_refs`` \u2014\ntyped \u00a74 references; ``permission_provenance`` \u2014 the \u00a710.1 sharing proof;\n``eligible_for_learning``.\n\n**How P7's vocabulary maps onto this record** (ADR-054 b). ``ExperienceTrust`` and\n``ExperiencePolarity`` remain the P7 vocabulary and are not restated: a record is\neligible for learning only when its own verification passed and no contradiction is\nopen, and the P7 rules \u2014 ``POSITIVE`` requires ``HIGH`` trust, ``NEGATIVE`` cannot have\nit \u2014 continue to govern the ``Experience`` row this projection is keyed by. A retracted\n``Experience`` makes this projection ineligible by the same dereference.",
+  "properties": {
+    "attribution": {
+      "$ref": "#/$defs/AttributionSummary"
+    },
+    "configuration_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Configuration Hash",
+      "type": "string"
+    },
+    "content_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "contract_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "contract_signature": {
+      "$ref": "#/$defs/ContractSignature"
+    },
+    "contract_type": {
+      "const": "accretion.experience-record",
+      "default": "accretion.experience-record",
+      "title": "Contract Type",
+      "type": "string"
+    },
+    "contradiction_status": {
+      "$ref": "#/$defs/ContradictionStatus",
+      "default": "NONE"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/PrincipalRef"
+    },
+    "eligible_for_learning": {
+      "default": false,
+      "title": "Eligible For Learning",
+      "type": "boolean"
+    },
+    "evidence_refs": {
+      "items": {
+        "$ref": "#/$defs/EvidenceRef"
+      },
+      "maxItems": 64,
+      "title": "Evidence Refs",
+      "type": "array"
+    },
+    "failure_type": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/FailureType"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "final_run_status": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/VerificationState"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "local_verification_status": {
+      "$ref": "#/$defs/VerificationState"
+    },
+    "objective_contract_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectiveContractRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "outcomes": {
+      "$ref": "#/$defs/ExperienceOutcomes"
+    },
+    "permission_provenance": {
+      "$ref": "#/$defs/PermissionProvenance"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "retention_class": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention Class"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_node_execution_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Source Node Execution Id",
+      "type": "string"
+    },
+    "supersedes_contract_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Contract Id"
+    },
+    "visibility": {
+      "$ref": "#/$defs/Visibility"
+    },
+    "workspace_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_id",
+    "created_by",
+    "workspace_id",
+    "visibility",
+    "source_node_execution_id",
+    "contract_signature",
+    "configuration_hash",
+    "local_verification_status",
+    "attribution",
+    "outcomes",
+    "permission_provenance"
+  ],
+  "title": "ExperienceRecord",
+  "type": "object"
+}
