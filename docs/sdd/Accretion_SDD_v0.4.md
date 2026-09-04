@@ -3,7 +3,7 @@
 ## Evidence-Aware Node Configuration Routing
 
 **Document type:** Implementation-ready Software Design Description  
-**Status:** Forward implementation specification; locked until v0.1-v0.3 release gates pass  
+**Status:** Normative for v0.4. Unlocked 2026-09-05: the v0.1-v0.3 release gates are evidenced on `develop` (`scripts/release_gate.py` 5/5, `in scope: 117 proven: 111 unmet MUST: 0`) and the Golden Direction was accepted by the owner. Where an illustrative schema here differs from the Cross-Release Contract Registry, the registry wins (ADR-051..059).  
 **Date:** 2026-08-20  
 **Depends on:** Accretion v0.1, v0.2, v0.3, and the Golden Direction charter  
 **Primary domain:** Software engineering and AI research  
@@ -429,6 +429,8 @@ VerificationResult:
   signed_at: timestamp
 ```
 
+**Code name.** The v0.1 `VerificationResult` (run/iteration verifier outcome, table `verifications`) is API-exposed and keeps its name; this contract is implemented as `IndependentVerificationResult` in `accretion.contracts.routing`, stored in the §13 table `verification_results`, and links a producing v0.1 result through `source_verification_id` (ADR-054). Its `status` uses the registry §5.1 `VerificationState` enum.
+
 ### 7.10 `ExperienceRecord`
 
 ```yaml
@@ -457,6 +459,8 @@ ExperienceRecord:
   eligible_for_learning: boolean
   created_at: timestamp
 ```
+
+**Relation to v0.2.** This record is a routing-scoped projection over the v0.2 P7 `Experience` (`accretion.experience.models`, table `experiences`, id prefix `exp`): it is keyed by that `experience_id`, adds the routing signature, attribution and eligibility fields, and never re-declares the P7 record (ADR-054).
 
 ### 7.11 `FailureEvent`
 
@@ -1060,85 +1064,108 @@ No milestone may enable online exploration before M0-M6 release gates pass.
 
 ## 20. Release acceptance criteria
 
+Every criterion is MUST (the specification states no lower priority). The `Owner` column names the
+milestone of §19 whose exit proves the criterion; the acceptance harness reads these rows and
+gates each milestone by `--stage v0.4-M<n>` (ADR-052). Ids keep the original numbering:
+`AC-0NN` became `AC4-M<owner>-0NN`. M0 (the contract freeze) owns no criterion: it lays the
+schemas the later milestones prove against.
+
 ### Contracts and authority
 
-- AC-001: Every routed execution references an immutable NodeContract hash.
-- AC-002: VerificationSpec is frozen before candidate generation.
-- AC-003: Producer and verifier cannot be the same acceptance authority.
-- AC-004: Contract revisions create new versions and do not mutate active runs.
-- AC-005: Policy/risk/permission gates remain outside the learned router.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M2-001 | MUST | Every routed execution references an immutable NodeContract hash. | M2 |
+| AC4-M2-002 | MUST | VerificationSpec is frozen before candidate generation. | M2 |
+| AC4-M3-003 | MUST | Producer and verifier cannot be the same acceptance authority. | M3 |
+| AC4-M2-004 | MUST | Contract revisions create new versions and do not mutate active runs. | M2 |
+| AC4-M1-005 | MUST | Policy/risk/permission gates remain outside the learned router. | M1 |
 
 ### Candidate construction
 
-- AC-006: All complete tuples pass joint compatibility validation.
-- AC-007: Unknown required compatibility is treated as ineligible.
-- AC-008: Candidate rejection exposes stable reason codes.
-- AC-009: Equivalent configurations are deduplicated.
-- AC-010: An audited fallback is retained when one exists.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M1-006 | MUST | All complete tuples pass joint compatibility validation. | M1 |
+| AC4-M1-007 | MUST | Unknown required compatibility is treated as ineligible. | M1 |
+| AC4-M1-008 | MUST | Candidate rejection exposes stable reason codes. | M1 |
+| AC4-M2-009 | MUST | Equivalent configurations are deduplicated. | M2 |
+| AC4-M2-010 | MUST | An audited fallback is retained when one exists. | M2 |
 
 ### Routing and replay
 
-- AC-011: Identical immutable requests replay the same receipt.
-- AC-012: Every receipt pins router, adapter, contract, registry, and policy versions.
-- AC-013: Decision receipts exclude secrets and private reasoning.
-- AC-014: Dispatch cannot occur without a persisted receipt.
-- AC-015: Human override is restricted to eligible candidates and records a reason.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M2-011 | MUST | Identical immutable requests replay the same receipt. | M2 |
+| AC4-M2-012 | MUST | Every receipt pins router, adapter, contract, registry, and policy versions. | M2 |
+| AC4-M2-013 | MUST | Decision receipts exclude secrets and private reasoning. | M2 |
+| AC4-M2-014 | MUST | Dispatch cannot occur without a persisted receipt. | M2 |
+| AC4-M2-015 | MUST | Human override is restricted to eligible candidates and records a reason. | M2 |
 
 ### Learning and exploration
 
-- AC-016: Offline ranking precedes any shadow or live learned policy.
-- AC-017: Shadow decisions never alter execution.
-- AC-018: Guarded exploration operates only on eligible low-risk digital nodes.
-- AC-019: Every explored decision records propensity.
-- AC-020: Circuit breakers disable exploration on safety/calibration alerts.
-- AC-021: Cross-domain evidence cannot directly enable live routing.
-- AC-022: Insufficient evidence selects fallback or human review.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M4-016 | MUST | Offline ranking precedes any shadow or live learned policy. | M4 |
+| AC4-M6-017 | MUST | Shadow decisions never alter execution. | M6 |
+| AC4-M7-018 | MUST | Guarded exploration operates only on eligible low-risk digital nodes. | M7 |
+| AC4-M7-019 | MUST | Every explored decision records propensity. | M7 |
+| AC4-M7-020 | MUST | Circuit breakers disable exploration on safety/calibration alerts. | M7 |
+| AC4-M5-021 | MUST | Cross-domain evidence cannot directly enable live routing. | M5 |
+| AC4-M2-022 | MUST | Insufficient evidence selects fallback or human review. | M2 |
 
 ### Verification and feedback
 
-- AC-023: Claim-level evidence coverage is persisted.
-- AC-024: Inconclusive outcomes are not positive/negative labels.
-- AC-025: Local and final-run results remain separately queryable.
-- AC-026: Attribution is versioned and cannot overwrite raw outcomes.
-- AC-027: Material verifier conflict blocks acceptance until resolved.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M3-023 | MUST | Claim-level evidence coverage is persisted. | M3 |
+| AC4-M3-024 | MUST | Inconclusive outcomes are not positive/negative labels. | M3 |
+| AC4-M3-025 | MUST | Local and final-run results remain separately queryable. | M3 |
+| AC4-M3-026 | MUST | Attribution is versioned and cannot overwrite raw outcomes. | M3 |
+| AC4-M3-027 | MUST | Material verifier conflict blocks acceptance until resolved. | M3 |
 
 ### Recovery
 
-- AC-028: Failure taxonomy deterministically assigns the recovery owner when rules are conclusive.
-- AC-029: Configuration failures cannot grant planner authority to change policy.
-- AC-030: Structural failures cannot be disguised as repeated configuration attempts.
-- AC-031: Hard caps and EVI thresholds stop recovery loops.
-- AC-032: Equivalent failed configurations do not repeat without new evidence.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M3-028 | MUST | Failure taxonomy deterministically assigns the recovery owner when rules are conclusive. | M3 |
+| AC4-M3-029 | MUST | Configuration failures cannot grant planner authority to change policy. | M3 |
+| AC4-M3-030 | MUST | Structural failures cannot be disguised as repeated configuration attempts. | M3 |
+| AC4-M3-031 | MUST | Hard caps and EVI thresholds stop recovery loops. | M3 |
+| AC4-M3-032 | MUST | Equivalent failed configurations do not repeat without new evidence. | M3 |
 
 ### Experience and promotion
 
-- AC-033: Experience visibility and permission provenance are enforced.
-- AC-034: Contradictory evidence remains retrievable.
-- AC-035: Training snapshots are immutable and reproducible.
-- AC-036: Promotion uses project-disjoint holdout evaluation.
-- AC-037: Critical correctness/safety regression blocks promotion.
-- AC-038: Every active router has a tested rollback target.
-- AC-039: Rollback affects new decisions without rewriting old receipts.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M3-033 | MUST | Experience visibility and permission provenance are enforced. | M3 |
+| AC4-M3-034 | MUST | Contradictory evidence remains retrievable. | M3 |
+| AC4-M8-035 | MUST | Training snapshots are immutable and reproducible. | M8 |
+| AC4-M8-036 | MUST | Promotion uses project-disjoint holdout evaluation. | M8 |
+| AC4-M8-037 | MUST | Critical correctness/safety regression blocks promotion. | M8 |
+| AC4-M8-038 | MUST | Every active router has a tested rollback target. | M8 |
+| AC4-M8-039 | MUST | Rollback affects new decisions without rewriting old receipts. | M8 |
 
 ### Frontend and observability
 
-- AC-040: Node panel shows selected configuration, uncertainty, alternatives, and rejection reasons.
-- AC-041: Shadow view compares recommendations with executed outcomes.
-- AC-042: Router lineage and promotion report are inspectable.
-- AC-043: React Flow remains a projection only.
-- AC-044: All routing/recovery/promotion events are correlated end to end.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M9-040 | MUST | Node panel shows selected configuration, uncertainty, alternatives, and rejection reasons. | M9 |
+| AC4-M6-041 | MUST | Shadow view compares recommendations with executed outcomes. | M6 |
+| AC4-M8-042 | MUST | Router lineage and promotion report are inspectable. | M8 |
+| AC4-M9-043 | MUST | React Flow remains a projection only. | M9 |
+| AC4-M9-044 | MUST | All routing/recovery/promotion events are correlated end to end. | M9 |
 
 ### Scientific integration
 
-- AC-045: Project-disjoint benchmark split is enforced mechanically.
-- AC-046: Strongest fixed, deterministic, per-run, model-only, planner-LLM, and oracle baselines run.
-- AC-047: Constrained configuration regret is reproducible from stored artifacts.
-- AC-048: Verified-success and false-acceptance gates are reported separately from utility.
-- AC-049: Required ablations are executable from configuration.
-- AC-050: Pre-registered effect-size, confidence, and non-regression gates pass before a superiority claim.
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M10-045 | MUST | Project-disjoint benchmark split is enforced mechanically. | M10 |
+| AC4-M10-046 | MUST | Strongest fixed, deterministic, per-run, model-only, planner-LLM, and oracle baselines run. | M10 |
+| AC4-M10-047 | MUST | Constrained configuration regret is reproducible from stored artifacts. | M10 |
+| AC4-M10-048 | MUST | Verified-success and false-acceptance gates are reported separately from utility. | M10 |
+| AC4-M10-049 | MUST | Required ablations are executable from configuration. | M10 |
+| AC4-M10-050 | MUST | Pre-registered effect-size, confidence, and non-regression gates pass before a superiority claim. | M10 |
 
 ---
-
 ## 21. Architecture decisions
 
 - ADR-041: One graph-node execution instance is one routable action.
@@ -1151,6 +1178,15 @@ No milestone may enable online exploration before M0-M6 release gates pass.
 - ADR-048: Cross-domain evidence is a weak prior only.
 - ADR-049: Router promotion is an offline, versioned, reversible release.
 - ADR-050: Learned graph planning and Robotics are excluded from v0.4.
+- ADR-051: v0.4 is unlocked (2026-09-05). This SDD lives at `docs/sdd/Accretion_SDD_v0.4.md`; the governance package under `docs/sdd/future/v0.4-v1.0/` stays the forward reference for v0.5+ and records the unlock in its read-me.
+- ADR-052: Acceptance ids are `AC4-M<owner>-0NN`, all MUST, owner = the §19 milestone whose exit proves the criterion; harness stages are `v0.4-M<n>` so a v0.4 stage can never be confused with a v0.3 milestone of the same number. M0 owns no criterion: a contract freeze proves nothing about behaviour, and AC-004's "do not mutate active runs" clause is testable only once M2 pins a contract hash in a routing request.
+- ADR-053: `accretion.contracts` becomes a package (`__init__.py` is the former `contracts.py`, byte-identical) with `canonical.py`, `refs.py` and `routing.py`; v0.4 names are imported explicitly from `routing.py` and never re-exported through the package root.
+- ADR-054: Name reconciliation under registry §21, complete inventory: (a) the v0.4 verification outcome is `IndependentVerificationResult` in code, table `verification_results` (§13); registry §5.1 becomes the `VerificationState` enum while v0.1's `VerificationStatus` stays on v0.1-v0.3 paths; (b) `ExperienceRecord` is a projection keyed by the v0.2 P7 `experience_id` (§7.10 note) - one `Experience` schema line, no duplicate; `ExperienceTrust`/`ExperiencePolarity` remain the P7 vocabulary and map onto `eligible_for_learning` and the outcome fields explicitly; (c) v0.2 `CompatibilityAssessment` (is a past experience compatible with this task) and v0.4 `CompatibilityDecision` (is a configuration candidate admissible) are distinct concepts and both stay; (d) v0.1 `RiskLevel` (`LOW|MEDIUM|HIGH|CRITICAL`, the human-approval path in planning and governance) and registry §5.3 `RiskClass` both stay, joined by a total mapping `risk_level_for(RiskClass)` with a test: `LOW_DIGITAL→LOW`, `MEDIUM_DIGITAL→MEDIUM`, `HIGH_DIGITAL→HIGH`, `SIMULATION→HIGH`, `PHYSICAL_HIGH→CRITICAL`, `PROHIBITED` raises; (e) the M5 `EvidenceClass` already equals registry §5.2 and is reused; the §7.11 taxonomy stays as `FailureType` beside registry §5.4 `FailureOwner`; (f) `ArtifactRef` keeps its required `run_id` (it is persisted inside execution traces); approval receipts use a new `ApprovalArtifactRef`; `PrincipalRef`, `PluginRef`, `ConnectionRef` are reused, never redefined.
+- ADR-055: "uuid" reads as "globally unique opaque id": v0.4 records use the repository's prefixed base32 ids from `ids.py` (`obj`, `nct`, `vsp`, `rrq`, `cfg`, `ccd` for candidates - `cnd` is already the connector definition - `cmp`, `rcp`, `ivr`, `flr`, `rmv`, `rts`, `rpr`, `shd`); a test asserts every prefix is unique. Registry §18 permits layout adaptation; identity semantics are unchanged.
+- ADR-056: Canonical serialization (registry §3.1, §20.2) is implemented once in `contracts/canonical.py`: sorted keys, no whitespace, UTF-8, integers as integers, floats as shortest round-trip, decimals as strings, RFC 3339 UTC `Z` timestamps, `content_hash` omitted from its own input; golden hash vectors are committed and read by the tests, and a TypeScript twin is owed by the M9 Studio work.
+- ADR-057: Every v0.4 record carries the registry §3 header through a `CanonicalContract` base with semver `schema_version`. Registry §19's "unknown-version" case is discharged at v0.4 entry by fail-closed rejection of an unknown major, with the fixture and test that prove it. Registry §20.5 read-boundary upcasting is scheduled for M8, the first milestone with a second writer, and tracked in the v0.4 backlog; until then `extra="forbid"` stands.
+- ADR-058: M0 creates all fifteen §13 tables additively in one reversible migration (key columns + JSON payload + §13.1 constraints); the two partial unique indexes ("one ACTIVE workspace router", "one ACTIVE adapter per project and algorithm") are the repository's first and are mirrored in `MemoryStore` so the parity tests hold; registry §20 defaults 1, 2, 5, 6 and 8 are adopted. Store methods are append-only and refuse to overwrite an id or a hash.
+- ADR-059: OQ-420 is decided as "no reserved embodiment slot": v0.5 adds optional fields as a minor schema version; nothing robotics-shaped enters the v0.4 backlog (§23 item 7).
 
 ---
 

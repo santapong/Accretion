@@ -35,6 +35,7 @@ folder root stays uncluttered.
 | Reproduce the release gate | [Release-hardening runbook](runbooks/v03-release-hardening.md) | [SDD v0.3 §24.8](sdd/Accretion_SDD_v0.3.md), [`scripts/release_gate.py`](../scripts/release_gate.py) |
 | Review the previous release | [Frozen v0.2 baseline](releases/v0.2/baseline.md) | [release audit](releases/v0.2/audit.md), [release notes](releases/v0.2/notes.md), [delivery plan](releases/v0.2/plan.md) |
 | Plan post-v0.3 work | [v0.3 backlog](releases/v0.3/backlog.md) | [v0.3 SDD](sdd/Accretion_SDD_v0.3.md) |
+| Build v0.4 (evidence-aware node configuration routing) | [v0.4 M0 plan](releases/v0.4/m0-plan.md) | [SDD v0.4](sdd/Accretion_SDD_v0.4.md), [v0.4 backlog](releases/v0.4/backlog.md), [forward package](sdd/future/v0.4-v1.0/00_READ_ME_FIRST.md) |
 
 ## Folder map
 
@@ -45,7 +46,7 @@ folder root stays uncluttered.
 | [`research/`](research/) | Experiment design, frozen results, acceptance evidence, and decisions |
 | [`releases/`](releases/) | Versioned plans, audits, notes, and released baselines |
 | [`governance/`](governance/) | Branch workflow and documentation maintenance rules |
-| [`sdd/`](sdd/) | Normative versioned system designs and the locked forward-design package |
+| [`sdd/`](sdd/) | Normative versioned system designs (v0.1-v0.4) and the forward-design package for v0.5-v1.0 |
 | [`assets/`](assets/) | Accessible repository-native diagrams and illustrative images |
 
 See [documentation maintenance](governance/documentation.md) for ownership,

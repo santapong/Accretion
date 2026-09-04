@@ -131,3 +131,59 @@ AC3-UI-03 = { verification = "test", frontend_evidence = "apps/ui/src/pages/McpS
 
 # AC3-MCP-01 is local stdio MCP, delivered pre-v0.3 by the capability gateway, so it
 # is due now even though section 27 files the rest of MCP under M3.
+
+# --- v0.4 (Evidence-Aware Node Configuration Routing) ------------------------
+# SDD v0.4 §20 (unlocked 2026-09-05, ADR-051/052). Every row starts `not_yet_due`
+# under the milestone that owns it; a milestone flips its rows to `test` when its
+# claiming tests land, the way v0.3 milestones did. M0 (contract freeze) owns no
+# criterion; the first flips arrive with M1.
+AC4-M2-001 = { verification = "not_yet_due", reason = "v0.4 M2" }
+AC4-M2-002 = { verification = "not_yet_due", reason = "v0.4 M2" }
+AC4-M3-003 = { verification = "not_yet_due", reason = "v0.4 M3" }
+AC4-M2-004 = { verification = "not_yet_due", reason = "v0.4 M2" }
+AC4-M1-005 = { verification = "not_yet_due", reason = "v0.4 M1" }
+AC4-M1-006 = { verification = "not_yet_due", reason = "v0.4 M1" }
+AC4-M1-007 = { verification = "not_yet_due", reason = "v0.4 M1" }
+AC4-M1-008 = { verification = "not_yet_due", reason = "v0.4 M1" }
+AC4-M2-009 = { verification = "not_yet_due", reason = "v0.4 M2" }
+AC4-M2-010 = { verification = "not_yet_due", reason = "v0.4 M2" }
+AC4-M2-011 = { verification = "not_yet_due", reason = "v0.4 M2" }
+AC4-M2-012 = { verification = "not_yet_due", reason = "v0.4 M2" }
+AC4-M2-013 = { verification = "not_yet_due", reason = "v0.4 M2" }
+AC4-M2-014 = { verification = "not_yet_due", reason = "v0.4 M2" }
+AC4-M2-015 = { verification = "not_yet_due", reason = "v0.4 M2" }
+AC4-M4-016 = { verification = "not_yet_due", reason = "v0.4 M4" }
+AC4-M6-017 = { verification = "not_yet_due", reason = "v0.4 M6" }
+AC4-M7-018 = { verification = "not_yet_due", reason = "v0.4 M7" }
+AC4-M7-019 = { verification = "not_yet_due", reason = "v0.4 M7" }
+AC4-M7-020 = { verification = "not_yet_due", reason = "v0.4 M7" }
+AC4-M5-021 = { verification = "not_yet_due", reason = "v0.4 M5" }
+AC4-M2-022 = { verification = "not_yet_due", reason = "v0.4 M2" }
+AC4-M3-023 = { verification = "not_yet_due", reason = "v0.4 M3" }
+AC4-M3-024 = { verification = "not_yet_due", reason = "v0.4 M3" }
+AC4-M3-025 = { verification = "not_yet_due", reason = "v0.4 M3" }
+AC4-M3-026 = { verification = "not_yet_due", reason = "v0.4 M3" }
+AC4-M3-027 = { verification = "not_yet_due", reason = "v0.4 M3" }
+AC4-M3-028 = { verification = "not_yet_due", reason = "v0.4 M3" }
+AC4-M3-029 = { verification = "not_yet_due", reason = "v0.4 M3" }
+AC4-M3-030 = { verification = "not_yet_due", reason = "v0.4 M3" }
+AC4-M3-031 = { verification = "not_yet_due", reason = "v0.4 M3" }
+AC4-M3-032 = { verification = "not_yet_due", reason = "v0.4 M3" }
+AC4-M3-033 = { verification = "not_yet_due", reason = "v0.4 M3" }
+AC4-M3-034 = { verification = "not_yet_due", reason = "v0.4 M3" }
+AC4-M8-035 = { verification = "not_yet_due", reason = "v0.4 M8" }
+AC4-M8-036 = { verification = "not_yet_due", reason = "v0.4 M8" }
+AC4-M8-037 = { verification = "not_yet_due", reason = "v0.4 M8" }
+AC4-M8-038 = { verification = "not_yet_due", reason = "v0.4 M8" }
+AC4-M8-039 = { verification = "not_yet_due", reason = "v0.4 M8" }
+AC4-M9-040 = { verification = "not_yet_due", reason = "v0.4 M9" }
+AC4-M6-041 = { verification = "not_yet_due", reason = "v0.4 M6" }
+AC4-M8-042 = { verification = "not_yet_due", reason = "v0.4 M8" }
+AC4-M9-043 = { verification = "not_yet_due", reason = "v0.4 M9" }
+AC4-M9-044 = { verification = "not_yet_due", reason = "v0.4 M9" }
+AC4-M10-045 = { verification = "not_yet_due", reason = "v0.4 M10" }
+AC4-M10-046 = { verification = "not_yet_due", reason = "v0.4 M10" }
+AC4-M10-047 = { verification = "not_yet_due", reason = "v0.4 M10" }
+AC4-M10-048 = { verification = "not_yet_due", reason = "v0.4 M10" }
+AC4-M10-049 = { verification = "not_yet_due", reason = "v0.4 M10" }
+AC4-M10-050 = { verification = "not_yet_due", reason = "v0.4 M10" }

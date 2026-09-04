@@ -263,6 +263,8 @@ def test_not_yet_due_is_out_of_scope_rather_than_failing() -> None:
         ("AC3-CON-06", "M2"),
         ("AC3-UI-01", "M6"),
         ("AC3-EMA-01", "M7"),
+        ("AC4-M2-004", "v0.4-M2"),
+        ("AC4-M10-045", "v0.4-M10"),
     ],
 )
 def test_every_id_shape_maps_to_a_stage(identifier: str, expected: str) -> None:
@@ -315,8 +317,8 @@ def test_the_sdds_still_parse_and_the_policy_is_well_formed() -> None:
     """Guards against an SDD edit that silently drops criteria from the gate."""
 
     criteria = harness.load_criteria()
-    assert len(criteria) == 117, "expected 117 criteria across the three SDDs"
-    assert sum(1 for c in criteria.values() if c.priority == "MUST") == 115
+    assert len(criteria) == 167, "expected 167 criteria across the four SDDs"
+    assert sum(1 for c in criteria.values() if c.priority == "MUST") == 165
     assert harness.apply_policy(criteria) == []
 
 
@@ -527,6 +529,43 @@ def test_an_unknown_verification_mode_is_rejected(
 
 
 # --- The M7 governance surface ----------------------------------------------
+
+
+def test_the_fifty_v04_rows_load_from_the_sdd_under_their_owner_stages() -> None:
+    """SDD v0.4 §20 must reach the harness: fifty ids, all MUST, each under the v0.4
+    milestone that owns it (ADR-052), each ``not_yet_due`` under that owner.
+
+    Counting alone would let a row that fell into the ``unassigned`` fallback (a
+    ``stage_of`` regex that stops at one digit drops every M10 row) still add up to
+    fifty; asserting the exact owner partition and the stage set does not.
+    """
+
+    criteria = harness.load_criteria()
+    assert harness.apply_policy(criteria) == []
+    v04 = {name: c for name, c in criteria.items() if name.startswith("AC4-")}
+
+    owners = {
+        "M1": (5, 6, 7, 8),
+        "M2": (1, 2, 4, 9, 10, 11, 12, 13, 14, 15, 22),
+        "M3": (3, *range(23, 35)),
+        "M4": (16,),
+        "M5": (21,),
+        "M6": (17, 41),
+        "M7": (18, 19, 20),
+        "M8": (35, 36, 37, 38, 39, 42),
+        "M9": (40, 43, 44),
+        "M10": tuple(range(45, 51)),
+    }
+    expected = sorted(f"AC4-{owner}-{n:03d}" for owner, ns in owners.items() for n in ns)
+    assert len(expected) == 50
+    assert sorted(v04) == expected
+    assert {c.stage for c in v04.values()} == {f"v0.4-{owner}" for owner in owners}
+    for name, criterion in v04.items():
+        assert criterion.stage == "v0.4-" + name.split("-")[1], name
+        assert criterion.reason == "v0.4 " + name.split("-")[1], name
+    assert {c.priority for c in v04.values()} == {"MUST"}
+    assert {c.verification for c in v04.values()} == {"not_yet_due"}
+    assert not any(c.in_scope for c in v04.values())
 
 
 def test_the_seven_ema_rows_load_from_the_sdd_as_m7_musts() -> None:
