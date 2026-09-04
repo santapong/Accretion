@@ -38,7 +38,7 @@ The M9 ladder is parked after its stylesheet port; the entries below it are v0.4
   the fourteen ADR-055 id prefixes; seventy-six golden fixtures (minimal, complete, invalid,
   unknown-version) carrying real content hashes; and nineteen committed JSON Schema 2020-12
   documents under `docs/contracts/v0.4/` with an export-and-`--check` script. No table,
-  migration, store method, route or UI file changes (#TBD).
+  migration, store method, route or UI file changes (#122).
 
 ### Added
 
