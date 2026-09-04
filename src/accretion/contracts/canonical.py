@@ -346,6 +346,20 @@ class CanonicalContract(StrictModel):
     The model is not frozen. Immutability of a v0.4 record is enforced where it can be
     enforced — by the digest, and by the append-only store methods M0's PR3 adds — not by
     a Python attribute guard that any ``model_copy`` would step around.
+
+    **Sealing happens on construction; requiring the seal is the reader's job.** A document
+    built without a ``content_hash`` (or with an empty one) is sealed here with the digest of
+    the body it arrived with, which is the right thing for a record being created and the
+    wrong thing for a record being read back: a persisted payload that lost its digest to a
+    partial write, a hand edit or a dropped column would otherwise come back as a validly
+    sealed copy of whatever the body now says. So every store that reads these records must
+    refuse a payload whose ``content_hash`` is absent or empty *before* it reaches
+    ``model_validate`` (M0 PR3 does this in its ``get_``/``list_`` paths, with a test), and
+    a document that does carry a digest is verified against the body and refused on mismatch.
+    Subclass modules also need the header's forward reference resolved: import
+    ``accretion.contracts.routing`` (which calls ``model_rebuild``) before defining a subclass
+    outside it, or the first validation fails with a class-build error rather than anything
+    that names the cause; a test pins that coupling.
     """
 
     CONTRACT_TYPE: ClassVar[str] = ""

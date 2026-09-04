@@ -17,6 +17,7 @@ check:
 	uv run ruff check .
 	uv run mypy src
 	uv run --no-sync python scripts/check_docs.py
+	uv run --no-sync python scripts/export_contract_schemas.py --check
 	npm run check
 
 docs-check:

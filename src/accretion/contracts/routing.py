@@ -1923,6 +1923,10 @@ class ExperienceRecord(CanonicalContract):
     ``trust``, ``polarity``, ``outcome``, ``failure_taxonomy``, ``revision``, ``retracted``
     and P7's own ``created_at``.
 
+    SDD §7.10 spells ``final_run_status`` as ``PASS | FAIL | INCONCLUSIVE | NOT_AVAILABLE``; the
+    fourth value is spelled ``null`` here, because registry §5.1 fixes ``VerificationState`` at
+    six values and a seventh may not be minted for a projection's convenience.
+
     **Added here, because the P7 record has nowhere to put them:**
     ``visibility`` — P7 experience is project-local and v0.4 is the first release that
     shares it; ``source_node_execution_id`` — P7 is run-scoped and ADR-041 makes routing

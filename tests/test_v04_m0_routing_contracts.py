@@ -1022,3 +1022,56 @@ def test_the_reference_and_the_datetime_conventions_survive_a_json_round_trip() 
     assert content_hash(as_json) == parsed.content_hash
     assert parsed.approved_at.tzinfo is not None
     assert parsed.approved_at.astimezone(UTC) == parsed.approved_at
+
+
+def test_the_header_base_is_complete_only_once_the_routing_module_is_imported() -> None:
+    """Pins a coupling rather than hiding it.
+
+    ``CanonicalContract.objective_contract_ref`` is a forward reference resolved by the
+    ``model_rebuild`` call at the bottom of ``accretion.contracts.routing``. A contract family
+    that imported only ``canonical.py`` would fail its first validation with a class-build
+    error, so the fact is asserted here where the next family's author will find it.
+    """
+
+    import subprocess
+    import sys
+
+    probe = (
+        "import accretion.contracts.canonical as c; "
+        "print(c.CanonicalContract.__pydantic_complete__); "
+        "import accretion.contracts.routing; "
+        "print(c.CanonicalContract.__pydantic_complete__)"
+    )
+    output = subprocess.run(
+        [sys.executable, "-c", probe], check=True, capture_output=True, text=True
+    ).stdout.split()
+    assert output == ["False", "True"], output
+
+
+def test_a_document_that_lost_its_seal_is_resealed_which_is_why_stores_must_require_it() -> None:
+    """The behaviour PR3's store guards against, stated as a fact rather than assumed away.
+
+    Construction seals an unsealed body; it cannot know whether the body was ever sealed
+    before. A tampered copy with its ``content_hash`` removed therefore validates and comes
+    back with a fresh digest. The read path is responsible for refusing a persisted payload
+    without a digest; this case pins the behaviour that makes that responsibility real.
+    """
+
+    import copy
+    import json
+    from pathlib import Path
+
+    from accretion.contracts.routing import ObjectiveContract
+
+    fixtures = Path(__file__).parent / "fixtures" / "contracts" / "v0.4"
+    fixture = json.loads((fixtures / "objective_contract" / "complete.json").read_text("utf-8"))
+    sealed = ObjectiveContract.model_validate(fixture)
+    tampered = copy.deepcopy(fixture)
+    tampered["goal"] = tampered["goal"] + " TAMPERED"
+    tampered.pop("content_hash")
+    resealed = ObjectiveContract.model_validate(tampered)
+    assert resealed.content_hash != sealed.content_hash
+    with_stale_seal = copy.deepcopy(tampered)
+    with_stale_seal["content_hash"] = sealed.content_hash
+    with pytest.raises(ValidationError):
+        ObjectiveContract.model_validate(with_stale_seal)
