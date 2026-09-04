@@ -60,7 +60,7 @@ the three milestone PRs that merged before this file was updated.
   and four new fixture-mocked passes put the benchmark rules in front of the
   computed-style probe with a task detail open and a replay status rendered —
   regions no unattended sweep can reach. Zero computed-style differences across
-  every route, width, interaction and mocked page (#TBD).
+  every route, width, interaction and mocked page (#117).
 - Added `apps/ui/src/routes.tsx` as the single source of both the navigation
   bar and the router, and moved the eleven pages still defined inside
   `App.tsx` into `apps/ui/src/pages/`, leaving `App.tsx` thirteen lines. Every
