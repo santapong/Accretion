@@ -10,6 +10,7 @@ import {
   HOVER_SELECTORS,
   layoutSettledProbe,
 } from "./audit";
+import { ACR_ARCH_TASK_ID, benchmarkFixtureFor } from "./fixtures/benchmarks";
 import { planningFixtureFor } from "./fixtures/planning";
 import { RUN_ID as FIXTURE_RUN_ID, runFixtureFor } from "./fixtures/run";
 import { SEED_FILE, type Seed } from "./global-setup";
@@ -655,6 +656,98 @@ const MOCKED_RUN_ROUTE: RouteUnderTest = {
 
 const MOCKED_TASK_ROUTE: RouteUnderTest = { path: "/tasks/new", heading: "New task" };
 
+/* ------------------------------------------------------------------------------------- */
+/* The four mocked benchmark routes.                                                       */
+/* ------------------------------------------------------------------------------------- */
+
+/**
+ * One mocked benchmark route: which page, how it is driven, and how much it must render.
+ *
+ * `seeded` is the element count the sweep above measures on the same route against the
+ * seeded backend. It is not a floor - it is the number the mocked pass has to BEAT, and the
+ * reason is a correction to the M9 PR5b plan that is worth stating where it is acted on.
+ *
+ * The plan assumed `/benchmarks/*` render an empty state under `examples/showcase.py`, so
+ * that these fixtures would be the only way the benchmark rules ever reach a pixel. They do
+ * not: the four benchmark endpoints serve frozen research corpora that ship with the
+ * backend and ignore the seeder entirely, so the sweep already paints the tables, the gate
+ * grids, the quality curve and the provider cards. What it cannot paint is anything behind
+ * an interaction - `.benchmark-detail` needs a task id clicked, `.benchmark-status` needs a
+ * replay pressed - and it cannot control how many rows carry `.null-result`.
+ *
+ * So each `prepare` below scripts exactly those interactions, identically against both
+ * origins, and the pass asserts `elements > seeded`. That inequality is the guard that keeps
+ * these passes from silently becoming WEAKER than the sweep they sit beside: a fixture that
+ * lost half the corpus would still diff clean against a base fixed the same way, and would
+ * look like evidence.
+ */
+interface MockedBenchmark {
+  readonly route: RouteUnderTest;
+  /**
+   * The measured mocked count, as a floor. Same contract as `ROUTE_ELEMENT_FLOOR`: `>=`
+   * because these pages may grow, pinned to the measurement because nothing may make them
+   * smaller. Measured identical at all five widths, which is expected - none of these
+   * screens adds or drops markup at a breakpoint, they only reflow.
+   */
+  readonly floor: number;
+  /** The scripted interaction that puts the seed-unreachable regions on the page. */
+  readonly prepare: (page: Page) => Promise<void>;
+}
+
+/**
+ * Press a page's replay button and wait for the report to land again.
+ *
+ * Two barriers, because the button does two things. `.benchmark-status` is written
+ * synchronously with a "Replaying…" placeholder and rewritten when the POST resolves, so
+ * waiting on the final sentence is what stops the probe reading the placeholder on one
+ * origin and the result on the other. And the handler then invalidates the summary query,
+ * which refetches and re-renders the table; waiting for the row count settles that too.
+ */
+async function replayBenchmark(
+  page: Page,
+  button: string,
+  status: RegExp,
+  rows: number,
+): Promise<void> {
+  await page.getByRole("button", { name: button }).click();
+  await expect(page.getByRole("status")).toHaveText(status);
+  await expect(page.locator(".benchmark-table tbody tr")).toHaveCount(rows);
+}
+
+const MOCKED_BENCHMARKS: readonly MockedBenchmark[] = [
+  {
+    route: { path: "/benchmarks/acr-arch", heading: "ACR-ARCH" },
+    floor: 1057,
+    prepare: async (page) => {
+      // 68 scenarios over 30 tasks means `acr-001` labels three buttons; the first is the
+      // one an operator's eye lands on, and `.first()` is what keeps strict mode happy.
+      await page.getByRole("button", { name: ACR_ARCH_TASK_ID }).first().click();
+      await expect(
+        page.getByRole("heading", { name: "Review a deterministic serializer contract" }),
+      ).toBeVisible();
+      await replayBenchmark(page, "Reproduce replay", /Reproduced 68 scenarios/, 68);
+    },
+  },
+  {
+    route: { path: "/benchmarks/dynamic", heading: "Dynamic workflow gate" },
+    floor: 119,
+    prepare: (page) =>
+      replayBenchmark(page, "Reproduce static vs dynamic", /Reproduced 24 traces; gate passed/, 2),
+  },
+  {
+    route: { path: "/benchmarks/search", heading: "Quality vs compute" },
+    floor: 205,
+    prepare: (page) =>
+      replayBenchmark(page, "Reproduce N=1/2/4", /Reproduced 12 held-out tasks/, 12),
+  },
+  {
+    route: { path: "/benchmarks/experience", heading: "Experience transfer gate" },
+    floor: 137,
+    prepare: (page) =>
+      replayBenchmark(page, "Reproduce P7 gate", /Reproduced 80 traces; gate passed/, 4),
+  },
+];
+
 test.describe("computed-style diff over fixture-mocked pages", () => {
   test.describe.configure({ timeout: 600_000 });
 
@@ -748,6 +841,88 @@ test.describe("computed-style diff over fixture-mocked pages", () => {
     expect(unmatched, `endpoints with no fixture:\n${unmatched.join("\n")}`).toEqual([]);
     expect(differences, differences.join("\n")).toEqual([]);
   });
+
+  /**
+   * The four benchmark screens, driven from `fixtures/benchmarks.ts`.
+   *
+   * M9 PR5b moves `styles.css:96` (`.benchmark-summary`, `.benchmark-filters`,
+   * `.benchmark-status`, `.benchmark-table*`, `.benchmark-detail*`) and `:245-274`
+   * (`.search-research-grid`, `.search-curve*`, `.curve-*`, `.experience-gate-grid*`,
+   * `.experience-benchmark-evidence*`, `.provider-*`, `.benchmark-table tr.null-result`)
+   * into the components layer, plus the 900 px block at `:275` that reshapes three of them.
+   * These four passes are what puts that text in front of the probe under fixtures the UI
+   * owns, at every width, with the two interaction-only regions rendered.
+   *
+   * One test per route rather than one loop inside a single test: a failure names the
+   * screen, and a route whose fixture is wrong cannot hide behind three that are right.
+   */
+  for (const { route, floor, prepare } of MOCKED_BENCHMARKS) {
+    // The seeded count this pass must exceed is the sweep's own floor for the route, derived
+    // rather than restated: two literals a few lines apart would drift the moment the frozen
+    // corpus grows, and the assertion below would then compare against a stale, too-low
+    // number - the exact decay it exists to prevent. The margins are small and deliberately
+    // so, because the fixtures match the corpus rather than pad it: `/benchmarks/acr-arch`
+    // measures 1,057 against 1,046 (the detail card an operator opens, plus the replay
+    // status line), and the other three measure exactly one more than the seed - that one
+    // element is `.benchmark-status`, which no unattended sweep can ever render.
+    const seeded = elementFloor(route.path);
+    test(`${route.path} renders identically with its frozen report and detail open`, async ({
+      page,
+    }) => {
+      const unmatched = await mockApi(page, benchmarkFixtureFor);
+      const differences: string[] = [];
+      const counts: string[] = [];
+      const shortfalls: (() => void)[] = [];
+
+      for (const width of WIDTHS) {
+        const captures: Record<string, ElementCapture[]> = {};
+        for (const origin of [BRANCH_ORIGIN, BASE_ORIGIN]) {
+          await page.setViewportSize({ width, height: VIEWPORT_HEIGHT });
+          await openRoute(page, route, seed, origin);
+          await prepare(page);
+          await page.evaluate(() => document.fonts.ready);
+          await settle(page, route, width, origin);
+          captures[origin] = (await page.evaluate(computedStyleProbe())) as ElementCapture[];
+        }
+
+        const base = captures[BASE_ORIGIN];
+        const branch = captures[BRANCH_ORIGIN];
+        // Recorded before the fingerprint check, so a structural mismatch still reports how
+        // much of the report each build managed to render.
+        counts.push(`${width}px: ${branch.length}`);
+        shortfalls.push(() => {
+          assertAboveFloor(`mocked ${route.path}`, width, branch.length, floor);
+          expect(
+            branch.length,
+            `mocked ${route.path} @ ${width} rendered ${branch.length} elements, no more ` +
+              `than the ${seeded} the seeded sweep already measures on the same route. The ` +
+              "fixture is smaller than the frozen corpus the backend serves, so this pass " +
+              "is a WEAKER measurement than the sweep beside it and would still diff clean.",
+          ).toBeGreaterThan(seeded);
+        });
+        if (!fingerprintsEqual(base, branch)) {
+          differences.push(
+            `${route.path} @ ${width}: base rendered ${base.length} elements, branch ` +
+              `${branch.length}`,
+          );
+          continue;
+        }
+        differences.push(
+          ...diffStyles(base, branch).map((difference) =>
+            formatDifference(`${route.path} (mocked)`, width, difference),
+          ),
+        );
+      }
+
+      console.log(
+        `style-diff mocked ${route.path} — ${counts.join(", ")} elements ` +
+          `(floor ${floor}, seeded ${seeded})`,
+      );
+      for (const assertShortfall of shortfalls) assertShortfall();
+      expect(unmatched, `endpoints with no fixture:\n${unmatched.join("\n")}`).toEqual([]);
+      expect(differences, differences.join("\n")).toEqual([]);
+    });
+  }
 });
 
 /**

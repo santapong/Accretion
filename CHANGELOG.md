@@ -47,6 +47,20 @@ the three milestone PRs that merged before this file was updated.
   with the palette, font and breakpoint tokens for the current design declared
   inert beside the cosmic ones. Zero computed-style differences across every route,
   width, interaction and mocked page (#116).
+- Added the second Tailwind port slice: the planning review, the task studio, the
+  four benchmark screens and the P6/P7 planner rules — `styles.css:35`, `:45-50`
+  (including the bare `details`/`summary` rules), `:96`, `:183-188`, `:221-236`,
+  `:245-274`, the 900 px block at `:275`, and their entries in the 1100/900/620 px
+  blocks — moved byte-verbatim from `apps/ui/src/styles.css` into `@layer
+  components` in `apps/ui/src/theme.css`. 224 of the 441 rules now live there and
+  the run page is all that remains. The eight comma-joined lists that name a
+  planner selector and a run-page `.experience-lineage*` selector moved whole
+  rather than being split, which brings the `!important` at `:236` and the more
+  specific rule it beats at `:231` across together. `apps/ui/e2e/fixtures/benchmarks.ts`
+  and four new fixture-mocked passes put the benchmark rules in front of the
+  computed-style probe with a task detail open and a replay status rendered —
+  regions no unattended sweep can reach. Zero computed-style differences across
+  every route, width, interaction and mocked page (#117).
 - Added `apps/ui/src/routes.tsx` as the single source of both the navigation
   bar and the router, and moved the eleven pages still defined inside
   `App.tsx` into `apps/ui/src/pages/`, leaving `App.tsx` thirteen lines. Every
