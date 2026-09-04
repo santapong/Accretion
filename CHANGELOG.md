@@ -86,13 +86,13 @@ the three milestone PRs that merged before this file was updated.
   xyflow's `.react-flow__node-default` precedes ours and that neither ours nor
   `button:disabled` is inside a layer. `App.tsx` drops its second stylesheet import.
   Zero computed-style differences across every route, width, interaction and mocked
-  page (#TBD).
+  page (#120).
 - `apps/ui/e2e/style-diff.spec.ts` now answers both runtime endpoints from a fixture on
   every route, so `/` and `/runtimes` render four fixed runtimes covering all four `.pill-*`
   colour groups rather than whatever the local machine's CLIs report at that second;
   `/runtimes` is seed-independent and its element floor an equality rather than a margin.
   The probe storm and status churn that motivated it are fixed on the backend in their
-  own change (#TBD).
+  own change (#120).
 - Added a cascade-inversion case to `apps/ui/e2e/cssPort.test.ts`, derived from the
   pinned sheet rather than from a hand-kept list. For every pair of rules — one now
   unlayered, one now in `@layer components` — that can match the same element and
