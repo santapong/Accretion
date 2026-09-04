@@ -690,16 +690,6 @@ interface MockedBenchmark {
    * screens adds or drops markup at a breakpoint, they only reflow.
    */
   readonly floor: number;
-  /**
-   * The measured SEEDED count for this route, which the mocked page must exceed.
-   *
-   * The margins are small and deliberately so, because the fixtures deliberately match the
-   * frozen corpus rather than pad it: `/benchmarks/acr-arch` measures 1,057 against 1,046
-   * (the detail card an operator opens, plus the replay status line), and the other three
-   * measure exactly one more than the seed - that one element is `.benchmark-status`, which
-   * no unattended sweep can ever render.
-   */
-  readonly seeded: number;
   /** The scripted interaction that puts the seed-unreachable regions on the page. */
   readonly prepare: (page: Page) => Promise<void>;
 }
@@ -728,7 +718,6 @@ const MOCKED_BENCHMARKS: readonly MockedBenchmark[] = [
   {
     route: { path: "/benchmarks/acr-arch", heading: "ACR-ARCH" },
     floor: 1057,
-    seeded: 1046,
     prepare: async (page) => {
       // 68 scenarios over 30 tasks means `acr-001` labels three buttons; the first is the
       // one an operator's eye lands on, and `.first()` is what keeps strict mode happy.
@@ -742,21 +731,18 @@ const MOCKED_BENCHMARKS: readonly MockedBenchmark[] = [
   {
     route: { path: "/benchmarks/dynamic", heading: "Dynamic workflow gate" },
     floor: 119,
-    seeded: 118,
     prepare: (page) =>
       replayBenchmark(page, "Reproduce static vs dynamic", /Reproduced 24 traces; gate passed/, 2),
   },
   {
     route: { path: "/benchmarks/search", heading: "Quality vs compute" },
     floor: 205,
-    seeded: 204,
     prepare: (page) =>
       replayBenchmark(page, "Reproduce N=1/2/4", /Reproduced 12 held-out tasks/, 12),
   },
   {
     route: { path: "/benchmarks/experience", heading: "Experience transfer gate" },
     floor: 137,
-    seeded: 136,
     prepare: (page) =>
       replayBenchmark(page, "Reproduce P7 gate", /Reproduced 80 traces; gate passed/, 4),
   },
@@ -870,7 +856,16 @@ test.describe("computed-style diff over fixture-mocked pages", () => {
    * One test per route rather than one loop inside a single test: a failure names the
    * screen, and a route whose fixture is wrong cannot hide behind three that are right.
    */
-  for (const { route, floor, seeded, prepare } of MOCKED_BENCHMARKS) {
+  for (const { route, floor, prepare } of MOCKED_BENCHMARKS) {
+    // The seeded count this pass must exceed is the sweep's own floor for the route, derived
+    // rather than restated: two literals a few lines apart would drift the moment the frozen
+    // corpus grows, and the assertion below would then compare against a stale, too-low
+    // number - the exact decay it exists to prevent. The margins are small and deliberately
+    // so, because the fixtures match the corpus rather than pad it: `/benchmarks/acr-arch`
+    // measures 1,057 against 1,046 (the detail card an operator opens, plus the replay
+    // status line), and the other three measure exactly one more than the seed - that one
+    // element is `.benchmark-status`, which no unattended sweep can ever render.
+    const seeded = elementFloor(route.path);
     test(`${route.path} renders identically with its frozen report and detail open`, async ({
       page,
     }) => {
