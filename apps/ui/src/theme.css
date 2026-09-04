@@ -1,18 +1,26 @@
 /* Accretion design tokens and the Tailwind entry point.
  *
- * This file exists alongside `styles.css` rather than inside it. `styles.css` is 305
- * lines of hand-minified CSS carrying the whole v0.3 surface; keeping the Tailwind
- * introduction in its own file makes this change reviewable and leaves that sheet
- * byte-identical.
+ * This file exists alongside `styles.css` rather than inside it. `styles.css` was 309 lines
+ * of hand-minified CSS carrying the whole v0.3 surface, and keeping the Tailwind
+ * introduction separate made PR1 reviewable and left that sheet byte-identical.
+ *
+ * As of M9 PR5a it is also the destination. The port moves rules out of `styles.css` and
+ * into `@layer components` at the foot of this file, byte-verbatim, a slice per PR, until
+ * PR5c empties and deletes it. 113 of its 441 rules live here now; `button:disabled` is
+ * the one rule from this slice that had to stay behind, and the comment above it in
+ * `styles.css` says why.
  *
  * ---------------------------------------------------------------------------
  * PREFLIGHT IS DELIBERATELY OMITTED.
  *
  * `@import "tailwindcss"` expands to four lines, one of which is
  * `@import "tailwindcss/preflight.css" layer(base)` - an opinionated reset of headings,
- * lists, borders and form controls. Importing it here would restyle every page at once,
- * and it would do so *before* the Playwright + axe gate exists to measure the damage,
- * invalidating the accessibility evidence that discharges issue #52.
+ * lists, borders and form controls. Importing it here would restyle every page at once. In
+ * PR1 that would have happened before the Playwright + axe gate existed to measure the
+ * damage, invalidating the accessibility evidence that discharges issue #52. Both gates now
+ * exist, and preflight is still omitted for a second reason: it would restyle every page in
+ * the same change as a rule move, and the computed-style diff could no longer tell which
+ * of the two caused a difference. PR5d turns it on with nothing else in the commit.
  *
  * So the import is written out explicitly, minus preflight. The `base` layer is still
  * DECLARED, so that turning preflight on later slots it into the right place in the
@@ -20,22 +28,39 @@
  * when `styles.css` is deleted and the app has no reset of its own.
  *
  * ---------------------------------------------------------------------------
- * WHY THIS CHANGES NOTHING ON SCREEN.
+ * HOW THIS FILE AND `styles.css` SHARE THE CASCADE. (Corrected by M9 PR5a.)
  *
- * `styles.css` contains no `@layer` at all, and unlayered normal declarations beat every
- * layered one regardless of specificity. Everything below therefore sits *underneath*
- * the existing stylesheet in the cascade, and no utility defined here can currently win
- * against it.
+ * Until PR5a this header said that "no utility defined here can currently win against"
+ * `styles.css`. That was true when nothing had moved and it is no longer unconditionally
+ * true, so it is restated here rather than left to mislead.
  *
- * That is the point: this step is zero-diff by construction, not by testing - which
- * matters because the test suite cannot see CSS at all (`vite.config.ts` sets no `css`,
- * so Vitest stubs stylesheets to empty modules).
+ * What holds is narrower and still load-bearing: `styles.css` contains no `@layer`, and an
+ * unlayered normal declaration beats every layered one regardless of specificity. So a rule
+ * that is STILL IN `styles.css` beats anything this file says about the same property, and
+ * a rule that has MOVED into `@layer components` below now competes only with the rest of
+ * this file - which is exactly why a rule is deleted and re-added in one edit rather than
+ * duplicated. A half-migrated element shows the old style; it can never show a hybrid.
  *
- * The consequence lands on the migration: adding a utility class beside a surviving
- * `styles.css` rule does nothing. Each step has to delete the old rule and add the
- * utility in the same edit. A half-migrated element shows the old style; it can never
- * show a broken hybrid.
+ * The consequence for the port is that a selector must never exist in both files at once.
+ * `apps/ui/e2e/cssPort.test.ts` asserts that directly, along with union-equality against
+ * the pinned pre-migration copy of `styles.css`, because the vitest suite cannot see CSS at
+ * all (`vite.config.ts` sets no `css`, so Vitest stubs stylesheets to empty modules) and
+ * the browser gate can only measure what the seed renders.
  */
+
+/* The web fonts every rule in this project references, moved here from `styles.css:1` by
+ * M9 PR5a so that the sheet it came from can eventually be deleted without taking the
+ * typography with it.
+ *
+ * IT MUST STAY FIRST. `@import` is dropped by the CSS parser unless it precedes every rule
+ * other than `@charset` and `@layer` STATEMENTS - the `@layer` line below is a statement and
+ * is therefore allowed to follow it, but a single rule above this line would silently make
+ * the whole app render in the fallback stack with nothing failing. Two gates hold it there:
+ * `cssPort.test.ts` checks the source text, and `style-diff.spec.ts` checks that the BUILT
+ * stylesheet still exposes a `CSSImportRule` at index 0 in a real browser. The computed-
+ * style diff cannot: `font-family` reads back the declared stack whether or not a face ever
+ * loaded. */
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap");
 
 @layer theme, base, components, utilities;
 @import "tailwindcss/theme.css" layer(theme);
@@ -100,4 +125,153 @@
   --color-ink-dim: #828e86;
   --color-ink-muted: #8d998f;
   --color-ink-amber: #c2a468;
+
+  /* ---------------------------------------------------------------------------
+   * M9 PR5a: the palette, fonts and breakpoints the app ACTUALLY renders today.
+   *
+   * Every value below is copied verbatim from a `styles.css` rule and NOTHING CONSUMES
+   * ANY OF THEM YET. They are declared now for the same reason `LAZY_ONLY_MODULES` in
+   * `budget/budget.ts` is documented as vacuous until PR7: a token negotiated after the
+   * rules that would use it have already been rewritten is a token negotiated against
+   * whatever those rewrites happened to produce.
+   *
+   * Substituting them is a later PR, one rule at a time, proven by the same computed-style
+   * diff - which is also why nothing is substituted in PR5a to PR5c: `var(--color-line)`
+   * and `#29322c` are the same pixels but not the same bytes, and "byte-verbatim" is what
+   * makes the port reviewable as a diff.
+   *
+   * These are NOT the cosmic palette above. The cosmic values land on screen in PR7/PR9;
+   * these are what the operator sees today. */
+
+  /* The two families `styles.css` names, as `font: 9px "DM Mono"` and
+   * `font-family: Manrope, sans-serif`. Consumed by PR5d, which turns the shorthand `font:`
+   * declarations into longhands when Preflight lands. */
+  --font-manrope: Manrope, sans-serif;
+  --font-dm-mono: "DM Mono", monospace;
+
+  /* The four breakpoints, named for what each one does rather than for its width.
+   *
+   * Consumed by the token-substitution PR that follows PR5c, and by nothing before it.
+   * Two facts a future reader needs before reaching for them:
+   *
+   * 1. Tailwind cannot expand a `--breakpoint-*` token inside a hand-written
+   *    `@media (max-width: ...)` prelude. These generate the `dense:`/`max-dense:` VARIANTS
+   *    and are useful only once a rule is expressed as utilities.
+   * 2. `max-dense:` compiles to `(width < 1100px)`, while `@media (max-width: 1100px)` is
+   *    `<= 1100px`. Converting a rule to the variant moves its boundary by one pixel, so
+   *    each conversion is a change the style diff must be re-run over. */
+  --breakpoint-dense: 1100px;   /* Multi-column grids halve: task form, scores, loop metrics. */
+  --breakpoint-stacked: 900px;  /* The nav wraps and the two-pane workspace becomes one column. */
+  --breakpoint-narrow: 720px;   /* The replan control stops being side-by-side. */
+  --breakpoint-handset: 620px;  /* Single column everywhere; the F1 overflow width. */
+
+  /* The six values `styles.css` repeats most, named by the role they play rather than by
+   * their hue. Consumed by the token-substitution PR; declared here so that PR's diff is
+   * a substitution and not also a naming argument. */
+  --color-line: #29322c;          /* Panel and section borders. The most repeated hex in the sheet. */
+  --color-line-alt: #2d3931;      /* The lighter inner border: cards, details, score cells. */
+  --color-surface: #101612;       /* Inset surfaces: inputs, registry cards, benchmark detail. */
+  --color-field-border: #354039;  /* Form control borders and the projection dashed outline. */
+  --color-accent: #75db91;        /* The primary green: focus rings, buttons, active edges. */
+  --color-accent-bright: #9be4ae; /* Its hover/emphasis pair. */
+}
+
+/* ---------------------------------------------------------------------------
+ * The port. Rules moved out of `styles.css`, byte-verbatim.
+ *
+ * Every block below is the SAME TEXT that used to sit unlayered in `styles.css`: the same
+ * selector list, the same declarations, in the same order, with the same line breaks. It is
+ * not re-indented and not reformatted, so `git diff` shows each line leaving one file and
+ * arriving in the other unchanged, and a reviewer can check the move by reading rather than
+ * by trusting.
+ *
+ * Nothing is rewritten as a utility and no value is replaced by one of the tokens declared
+ * above. Both of those are later PRs. This one changes WHERE a rule lives in the cascade and
+ * nothing else, which is the only claim `apps/ui/e2e/style-diff.spec.ts` can prove.
+ *
+ * ## Why `components` and not `base` or `utilities`
+ *
+ * These are component rules by content - `.runtime-card`, `.pill`, `.nav-links a` - and the
+ * layer order declared above puts them after `base` and before `utilities`, so a utility
+ * added later wins against them without `!important`. The handful of bare element rules
+ * that move with them (`body`, `button`, `a`, `label`, `h1`) belong in `base` by content and
+ * are NOT put there: `base` sits before `components`, and moving them across a layer
+ * boundary would change which rule wins where they collide with a class rule that used to
+ * follow them in source order. They go to `base` in PR5d, when Preflight arrives and the
+ * whole reset is reasoned about at once.
+ *
+ * ## The one thing to check when adding to this block
+ *
+ * A selector must not exist in both files. While a rule is here and a rule for the same
+ * selector is still in `styles.css`, the unlayered one wins whatever its specificity, which
+ * is a silent inversion. `apps/ui/e2e/cssPort.test.ts` fails on it. */
+@layer components {
+:root {
+  font-family: Manrope, sans-serif;
+  color: #e8ece7;
+  background: #0c100d;
+  font-synthesis: none;
+  /* Metadata ink. Both clear WCAG AA 4.5:1 on every surface the app paints
+     (#0c100d body through the #181e1a panel gradient); the two tiers keep the
+     hierarchy the older, failing values expressed. See
+     docs/releases/v0.3/browser-a11y-evidence.md for the measured ratios. */
+  --ink-dim: #828e86;
+  --ink-muted: #8d998f;
+  --ink-amber: #c2a468;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: radial-gradient(circle at 72% 0%, #1b2a20 0, transparent 30rem), #0c100d; }
+button { font: inherit; }
+a { color: inherit; text-decoration: none; }
+input,textarea,select { font: inherit; color:inherit; background:#101612; border:1px solid #354039; border-radius:0; padding:10px 11px; width:100%; }
+input:focus,textarea:focus,select:focus { outline:1px solid #75db91; border-color:#75db91; }
+textarea { resize:vertical; }
+label { color:#9aa59d; font-size:11px; display:grid; gap:7px; }
+label small { color:var(--ink-dim); font:9px "DM Mono"; }
+nav { height: 72px; padding: 0 4vw; border-bottom: 1px solid #2b332d; display: flex; align-items: center; gap: 12px; background: rgba(12,16,13,.82); backdrop-filter: blur(18px); position: sticky; top: 0; z-index: 3; }
+.brand-mark { width: 34px; height: 34px; border: 1px solid #8ee5a8; display: grid; place-items: center; color: #8ee5a8; font-family: "DM Mono"; transform: rotate(45deg); }
+.brand-mark::first-letter { transform: rotate(-45deg); }
+nav strong { display:block; font-size: 14px; letter-spacing:.04em; } nav span { color:#89938b; font-size:11px; }
+.brand-link { display:flex;align-items:center;gap:12px;min-width:max-content; }.brand-link small{display:block;color:#89938b;font-size:11px;margin-top:2px}
+.nav-links { display:flex;align-items:center;gap:3px;margin-left:24px;overflow:auto; }.nav-links a{padding:9px 10px;color:#7e8981;font:9px "DM Mono";text-transform:uppercase;white-space:nowrap;border:1px solid transparent}.nav-links a:hover,.nav-links a.active{color:#a5e4b6;border-color:#34443a;background:#162019}
+.nav-status { margin-left:auto; font: 11px "DM Mono"; text-transform:uppercase; color:#aab3ac; display:flex; align-items:center; gap:8px; }
+.nav-status i,.connection i { width:7px;height:7px;border-radius:50%;background:#72dd91;box-shadow:0 0 12px #72dd91; }
+.shell { width:min(1440px,92vw); margin:0 auto; padding:64px 0 80px; }
+.project-form { display:grid;grid-template-columns:1fr 2fr auto;gap:12px;padding:18px 24px;border-bottom:1px solid #29322c;align-items:end; }
+.task-form { display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:24px; }
+.task-form .field-wide { grid-column:span 2; }.form-actions{display:flex;align-items:center;gap:16px}
+.primary-button,.secondary-button { border:1px solid #75db91;padding:10px 15px;cursor:pointer;white-space:nowrap; }
+.primary-button { color:#0d1510;background:#7cdf98;font-weight:700; }.primary-button:hover:not(:disabled){background:#9be4ae}
+.secondary-button { color:#9be4ae;background:#17241b; }.secondary-button:hover{background:#203126}
+.form-status { color:#94a198;font:10px "DM Mono";margin:0;line-height:1.5; }
+.hero { display:flex; justify-content:space-between; align-items:end; margin-bottom:48px; }
+.dashboard-stats{display:flex;gap:28px}
+.eyebrow { color:#7f8b82; text-transform:uppercase; letter-spacing:.18em; font:500 10px "DM Mono"; margin:0 0 12px; }
+h1 { font-size:clamp(36px,5vw,70px); letter-spacing:-.055em; line-height:.96; margin:0; font-weight:500; }
+h1 em { color:#89d9a0; font-style:normal; }
+.stat { border-left:1px solid #39443c; padding-left:28px; min-width:145px; }.stat span { font:48px "DM Mono"; }.stat p { color:#879189; margin:3px 0; font-size:12px; }
+.runtime-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px; }
+.runtime-card,.runs-panel,.event-panel,.execution-panel { border:1px solid #29322c;background:linear-gradient(145deg,rgba(25,31,27,.96),rgba(15,20,16,.96)); }
+.page-panel{border:1px solid #29322c;background:linear-gradient(145deg,rgba(25,31,27,.96),rgba(15,20,16,.96));margin-bottom:20px}
+.page-panel>.runs-panel{border:0}.page-panel .secondary-button,.page-panel .primary-button{display:inline-block;font-size:10px}
+.runtime-card { padding:22px; min-height:180px; position:relative; overflow:hidden; }
+.runtime-card header h2{font-size:1.17em;font-weight:700;margin:1em 0}
+.runtime-card::after { content:"";position:absolute;width:100px;height:100px;border:1px solid #29392e;right:-50px;top:-50px;transform:rotate(45deg); }
+.runtime-title{display:flex;align-items:center;gap:10px}.runtime-title>span,.provider-dot{display:grid;place-items:center;width:28px;height:28px;border:1px solid #405447;color:#87d89e;font:12px "DM Mono"}.runtime-title h1,.runtime-title h2,.panel-header h1,.panel-header h2{font-size:16px;margin:0;}
+.runtime-card>.pill { position:absolute;right:18px;top:20px; }
+.runtime-card dl { display:grid;grid-template-columns:1.5fr 1fr .5fr;gap:8px;margin:36px 0 0; }.runtime-card dl div{min-width:0}.runtime-card dt{font:9px "DM Mono";color:var(--ink-dim);text-transform:uppercase;margin-bottom:6px}.runtime-card dd{margin:0;font:11px "DM Mono";white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#c2c9c3}
+.pill { display:inline-block;width:max-content;border:1px solid #3b493f;padding:4px 7px;font:500 8px "DM Mono";letter-spacing:.05em;color:#9eaaa1;text-transform:uppercase;white-space:nowrap; }
+.workspace-grid{display:grid;grid-template-columns:minmax(380px,.82fr) minmax(480px,1.18fr);gap:12px;min-height:480px}.panel-header{min-height:76px;padding:18px 20px;border-bottom:1px solid #29322c;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px 12px}.panel-header .eyebrow{margin-bottom:7px}.panel-header>span:not(.pill){font:11px "DM Mono";color:var(--ink-muted)}
+.registry-card{overflow-x:auto}
+/* These scroll horizontally when their content is wider than the viewport, so they are
+   keyboard-reachable (axe: scrollable-region-focusable). A tab stop nobody can see is
+   worse than no tab stop, hence the ring - matching .event-list and .revision-timeline. */
+.registry-card:focus-visible,.benchmark-table-wrap:focus-visible{outline:2px solid #75db91;outline-offset:-2px}
+.registry-card>.benchmark-table{min-width:max-content}
+.run-list,.event-list{max-height:560px;overflow:auto}
+.event-list:focus-visible{outline:2px solid #75db91;outline-offset:2px}.run{border:0;border-bottom:1px solid #252d28;background:transparent;color:inherit;width:100%;padding:15px 18px;display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:12px;text-align:left;cursor:pointer}.run:hover,.run.selected{background:#1b241d}.run.selected{box-shadow:inset 2px 0 #75db91}.run strong{display:block;font:11px "DM Mono"}.run small{display:block;color:var(--ink-dim);font-size:10px;margin-top:5px}.event{display:grid;grid-template-columns:42px 1fr auto;gap:14px;padding:15px 20px;border-bottom:1px solid #252d28;align-items:start}.sequence{font:10px "DM Mono";color:var(--ink-dim);padding-top:2px}.event strong{font-size:11px;font-weight:600}.event p{font:9px "DM Mono";color:var(--ink-muted);margin:6px 0 0}.event time{font:9px "DM Mono";color:var(--ink-dim)}.connection{display:flex;align-items:center;gap:7px;font:9px "DM Mono";text-transform:uppercase;color:#7e8981}.connection-reconnecting i{background:#e1b968;box-shadow:0 0 12px #e1b968}.connection-complete i,.connection-idle i{background:#6d776f;box-shadow:none}.empty,.error{padding:36px;color:var(--ink-dim);font-size:12px;text-align:center}.error{color:#dc8e86}
+.registry-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;padding:18px}.registry-card{border:1px solid #2d3931;background:#101612;padding:18px}.registry-card>header{display:flex;align-items:center;justify-content:space-between}.registry-card h2,.registry-card h3{margin:0 0 14px;font-size:14px}.registry-card>p{color:var(--ink-muted);font:9px "DM Mono"}.registry-list{list-style:none;padding:0;margin:0;display:grid}.registry-list li{display:grid;gap:5px;padding:11px 0;border-bottom:1px solid #29322c}.registry-list li:last-child{border-bottom:0}.registry-list strong{font:9px "DM Mono";overflow-wrap:anywhere}.registry-list span{color:var(--ink-dim);font-size:9px;overflow-wrap:anywhere}.history-grid{display:grid;grid-template-columns:minmax(280px,.75fr) minmax(360px,1.25fr);gap:18px;padding:18px}.audit-chain{border:1px solid #2d3931;padding:20px;background:#101612}.audit-chain h2,.audit-chain h3{margin-top:0}.audit-chain ol{display:grid;gap:10px;color:var(--ink-muted);font-size:11px}.audit-chain strong{color:#bbd8c2;font-family:"DM Mono"}.audit-chain p{color:var(--ink-dim);font:9px "DM Mono"}.page-panel>.registry-list{padding:18px}.page-panel>.registry-list .approval-request{padding:15px;border-bottom:1px solid #29322c}
+@media(max-width:1100px){.task-form{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:900px){nav{height:auto;min-height:72px;flex-wrap:wrap;padding-block:12px}.nav-links{order:3;width:100%;margin-left:0}.nav-status{display:none}.runtime-grid{grid-template-columns:1fr}.workspace-grid,.history-grid{grid-template-columns:1fr}.hero{align-items:start}.dashboard-stats{display:none}.stat{display:none}.shell{padding-top:38px}.project-form{grid-template-columns:1fr}}
+@media(max-width:620px){.task-form{grid-template-columns:1fr}.task-form .field-wide{grid-column:span 1}}
 }

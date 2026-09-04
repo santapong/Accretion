@@ -104,14 +104,30 @@ export const INITIAL_JS_RAW_BYTES = 589_195;
 export const INITIAL_JS_GZIP_BYTES = 175_348;
 
 /**
- * M9 PR3. Gate-measured 51,148 B on the same build: one stylesheet, byte-identical to the
- * pre-split build (same content hash, `index-yyjTOnqb.css`), because the chunk groups
- * deliberately skip CSS ids. Cap = ceil(51,148 x 1.05).
+ * M9 PR5a. Gate-measured 51,581 B (`index-DANXZSdv.css`). Cap = ceil(51,581 x 1.05).
+ *
+ * Restated, not raised under pressure: the PR3 cap of 53,706 B was NOT breached - the build
+ * passed at 51,581 against it. What changed is the measurement the cap is derived from, and
+ * leaving the old one quoted here would have made this comment describe a build that no
+ * longer exists.
+ *
+ * The stylesheet grew 433 B (51,148 -> 51,581) for two reasons, both structural and both
+ * one-off. `@theme static` in `theme.css` gained thirteen tokens for the CURRENT palette,
+ * fonts and breakpoints, which Tailwind emits into `:root` whether or not anything uses
+ * them (that is what `static` means, and it is why they are declared before the rules that
+ * will consume them). And the ported rules now sit inside `@layer components { … }`, so the
+ * three `@media` blocks they carry entries in exist in both stylesheets until PR5c merges
+ * them back. Neither is a rendering cost: `apps/ui/e2e/style-diff.spec.ts` reports zero
+ * computed-style differences against the pre-migration build across 17 routes x 5 widths.
+ *
+ * PR5b and PR5c will move the remaining `@media` duplication back out, so this number is
+ * expected to fall rather than keep climbing. If it climbs instead, that is the signal.
  */
-export const INITIAL_CSS_RAW_BYTES = 53_706;
+export const INITIAL_CSS_RAW_BYTES = 54_161;
 
-/** M9 PR3. Gate-measured 10,232 B gzip on the same build. Cap = ceil(10,232 x 1.05). */
-export const INITIAL_CSS_GZIP_BYTES = 10_744;
+/** M9 PR5a. Gate-measured 10,372 B gzip on the same build (was 10,232 B at PR3, for the
+ * reasons above). Cap = ceil(10,372 x 1.05). */
+export const INITIAL_CSS_GZIP_BYTES = 10_891;
 
 export const BUDGET: Budget = {
   perChunkRawBytes: PER_CHUNK_RAW_BYTES,

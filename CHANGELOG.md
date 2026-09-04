@@ -29,6 +29,24 @@ the three milestone PRs that merged before this file was updated.
   vendor chunks so no chunk exceeds 500,000 B, with the stylesheet cascade
   provably unchanged. Discharges the v0.2 chunk-size advisory carried in
   `docs/releases/v0.3/backlog.md` (#113).
+- Added a computed-style diff gate and began the Tailwind port. The gate builds
+  the merge-base with `develop` alongside the branch and compares every element's
+  computed styles between the two on 17 routes x 5 widths, plus a scripted
+  focus/hover pass and two fixture-mocked pages that render the gate, loop,
+  candidate-search, experience-transfer and revision rules the seed never reaches
+  — `apps/ui/e2e/style-diff.spec.ts`, `styleDiff.ts` and its mutation table,
+  `computedStyleProbe()` in `audit.ts`, `make style-diff-base`, and a required
+  step in the `browser` CI job that fails rather than skips when the base is
+  missing. `apps/ui/e2e/cssPort.test.ts` proves the same thing textually, against
+  a pinned byte-identical copy of the pre-migration stylesheet, for the rules no
+  browser pass renders. On that evidence the fonts `@import` and 113 of the 441 rules — the
+  `:root` tokens, the bare element rules, the shell and nav, forms and buttons,
+  page chrome, the runtime cards, `.pill`, the registry, history and audit chain,
+  the run and event lists, and their `@media` entries — moved byte-verbatim from
+  `apps/ui/src/styles.css` into `@layer components` in `apps/ui/src/theme.css`,
+  with the palette, font and breakpoint tokens for the current design declared
+  inert beside the cosmic ones. Zero computed-style differences across every route,
+  width, interaction and mocked page (#116).
 - Added `apps/ui/src/routes.tsx` as the single source of both the navigation
   bar and the router, and moved the eleven pages still defined inside
   `App.tsx` into `apps/ui/src/pages/`, leaving `App.tsx` thirteen lines. Every

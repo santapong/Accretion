@@ -65,12 +65,21 @@ The UI is intentionally a projection, not an execution authority:
 - FastAPI responses are the typed snapshot source of truth.
 - `openapi-typescript` generates `apps/ui/src/api/schema.d.ts`; handwritten UI
   types alias that generated contract.
-- Styling is mid-migration. `apps/ui/src/theme.css` holds the design tokens and
-  the Tailwind v4 layers; `apps/ui/src/styles.css` still holds every rule the app
-  actually renders and is deliberately unlayered, so it takes precedence over any
-  utility. Tailwind's Preflight reset is not imported yet. Moving a rule therefore
-  means deleting it and adding the utility in the same edit — a utility placed
-  beside a surviving rule has no effect.
+- Styling is mid-migration, and as of M9 PR5a the migration has started moving
+  rules rather than only preparing to. `apps/ui/src/theme.css` holds the design
+  tokens, the Tailwind v4 layers, the Google Fonts `@import`, and — inside
+  `@layer components` — the shell, primitives, runtime, registry and trace rules
+  that have already moved, byte-verbatim. `apps/ui/src/styles.css` still holds the
+  rest (planning review, task studio, benchmarks, the run page, the P5–P7
+  inspectors) and is still unlayered, so anything left in it takes precedence over
+  anything layered, whatever the specificity. Tailwind's Preflight reset is not
+  imported yet.
+- Two rules follow from that split, and both are enforced. A rule is **deleted and
+  re-added in one edit**, never duplicated: a selector defined in both files
+  resolves to the unlayered copy regardless of source order, which is a silent
+  cascade inversion. And a selector's base rule moves **no later** than its own
+  `@media` entries, for the same reason in reverse.
+  `apps/ui/e2e/cssPort.test.ts` fails on either.
 - React Query keys cache entries by durable resource identity and polls active
   projections where needed.
 - Live runs load an authoritative audit snapshot first, then subscribe to
@@ -134,6 +143,67 @@ ruleset**, one `h1` per route, no horizontal overflow at 390 px and no element o
 without a scrollable ancestor, and WCAG AA on every text node. Waivers live in
 `apps/ui/e2e/allowlist.ts` and expire.
 
+### Run the style diff
+
+The Tailwind port is proved by comparing COMPUTED STYLES between this branch and the
+merge-base with `develop`, because a port changes the stylesheet's text by design and the
+sha256 comparison that guarded PR3 and PR4 cannot survive that. The gate needs two builds,
+so it is skipped locally unless you build the second one:
+
+```bash
+make style-diff-base                       # worktree of the merge-base, built to .style-diff-base-dist
+export STYLE_DIFF_BASE_DIST=/absolute/path/printed/by/the/target
+cd apps/ui && npx playwright test e2e/style-diff.spec.ts
+```
+
+The branch build is served on :4173 and the base on :4174 from one backend and one seed, so
+the only variable between the two pages is the CSS. Every route is measured at 1440, 1000,
+800, 660 and 390 px — one width inside each interval the four breakpoints carve — then again
+with every focusable element focused and a pointer held over one instance of every selector
+the pre-migration sheet gives a `:hover` rule, then again on
+`/runs/:runId` and `/tasks/new` with `apps/ui/e2e/fixtures/` served in place of the backend,
+which is the only way the gate, loop, candidate-search and experience-transfer rules render
+at all. A difference prints as `route @ width: #index tag property base → branch` and fails
+the run; a structural mismatch retries, a style difference never does.
+
+That hover list (`HOVER_SELECTORS` in `apps/ui/e2e/audit.ts`) is not hand-kept:
+`e2e/cssPort.test.ts` re-derives the set of hover targets from
+`e2e/fixtures/styles.pre-pr5.css` and fails if the two differ in either direction, so a
+`:hover` rule cannot be left silently untriggered while the pass reports zero differences
+over it. Targets no route happens to render are skipped and named in the pass's log line.
+
+In CI the `browser` job builds the base itself and the spec **fails** if
+`STYLE_DIFF_BASE_DIST` is missing, because a required check that silently measures nothing
+is worse than no check.
+
+Two guards keep "zero differences" from being a statement about nothing, and both fail
+before any style is compared:
+
+- **Each origin is bound to the build it is named after.** The spec reads the hashed
+  `assets/index-*.css` filename out of `dist/index.html` and out of
+  `$STYLE_DIFF_BASE_DIST/index.html`, fetches `/` from both ports, and requires each served
+  page to reference its own build's stylesheet. Without it a stale or foreign
+  `vite preview` holding :4174 — which `reuseExistingServer` accepts, and which a second
+  concurrent run produces by itself — makes the gate compare the branch with itself and
+  report zero. The preview servers are started with `--strictPort` for the same reason:
+  Vite otherwise auto-increments off a taken port and moves the branch build onto :4174.
+- **Each route must render at least a floor of elements.** `ROUTE_ELEMENT_FLOOR` in the
+  spec carries a measured per-route count, because two equally empty pages diff clean: when
+  Postgres died mid-suite during PR5a, sixteen of the seventeen routes reported green over
+  error placeholders. `openRoute` asserts the route's own `h1` text for the other half of
+  the same problem — a shell renders a level-1 heading whatever the backend did. Four
+  routes (`/`, `/runtimes`, `/tasks/new`, `/history`) list rows the additive seeder grows,
+  so their floors are set under the single-seeding count CI measures; the other thirteen
+  are pinned to their measurement. A new route in `e2e/routes.ts` with no floor fails
+  rather than being exempt.
+
+Two things this gate cannot see, stated so nobody assumes otherwise. A dropped fonts
+`@import` is invisible to computed styles — `font-family` reads back the declared stack
+whether or not a face loaded — so the spec asserts a `CSSImportRule` at index 0 of the built
+sheet instead, and `cssPort.test.ts` asserts the declaration in source. And rules the seed
+and the fixtures never render are covered by `cssPort.test.ts` alone, which is why that test
+is the primary evidence and this one is the stronger.
+
 Bundle size is gated by the build itself. `npm run build` prints a budget table -
 every chunk's raw and gzip size, the initial-load totals, and a PASS/FAIL line per
 rule - and exits non-zero if any rule fails, so the `frontend`, `clean-checkout`
@@ -194,7 +264,12 @@ assistive technology.
 | `apps/ui/src/api/schema.d.ts` | Generated OpenAPI TypeScript contract; do not hand-edit |
 | `apps/ui/src/types.ts` | Small aliases over generated schemas |
 | `apps/ui/src/graphLayout.ts` | Deterministic layout for read-only execution projections |
-| `apps/ui/src/styles.css` | Responsive visual system and state styling |
+| `apps/ui/src/styles.css` | The unlayered remainder of the visual system, shrinking one PR at a time until PR5c deletes it |
+| `apps/ui/src/theme.css` | Tailwind layers, the fonts `@import`, the cosmic and current-palette tokens, and `@layer components` — where ported rules land |
+| `apps/ui/e2e/cssPort.test.ts` | Union-equality against the pinned pre-migration stylesheet: every rule survives once, in order, in exactly one file |
+| `apps/ui/e2e/styleDiff.ts` | Fingerprint, alignment, diff and retry decisions for the computed-style gate; no I/O, unit-tested on a mutation table |
+| `apps/ui/e2e/style-diff.spec.ts` | The gate itself: 17 routes x 5 widths x 2 builds, plus focus/hover and the fixture-mocked run and planning pages |
+| `apps/ui/e2e/fixtures/` | The pinned pre-migration stylesheet, and the run/planning fixtures that render the two thirds of the sheet the seed never reaches |
 | `apps/ui/src/*.test.tsx` | Component, event recovery, lineage, benchmark, and layout evidence |
 | `apps/ui/budget/budget.ts` | The committed size caps, the lazy-only pattern, and the grouping expectations |
 | `apps/ui/budget/evaluate.ts` | Pure budget rules over a bundle graph; no I/O, unit-tested on synthetic bundles |

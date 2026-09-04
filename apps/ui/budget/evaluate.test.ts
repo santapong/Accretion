@@ -403,15 +403,20 @@ test("one failing rule fails the report", () => {
  */
 
 /**
- * What the gate measured on the first green build after the vendor split — the numbers
- * quoted in the comments in `budget.ts`, restated here as literals so that raising a cap
- * means restating the measurement in the same edit.
+ * The measurements behind the four committed caps, restated here as literals so that
+ * raising a cap means restating its measurement in the same edit.
+ *
+ * The two JS numbers are M9 PR3's, from the first green build after the vendor split. The
+ * two CSS numbers are M9 PR5a's, because that PR moved 113 rules into `@layer components`
+ * and added thirteen `@theme static` tokens, and leaving PR3's 51,148 quoted here would
+ * have described a stylesheet that no longer exists. The reasoning for each is in
+ * `budget.ts` beside the cap it derives.
  */
 const MEASURED = {
   initialJsRaw: 561_138,
   initialJsGzip: 166_998,
-  initialCssRaw: 51_148,
-  initialCssGzip: 10_232,
+  initialCssRaw: 51_581,
+  initialCssGzip: 10_372,
 } as const;
 
 /** The three named vendor chunks of that same build, raw and gzip as the gate printed them. */

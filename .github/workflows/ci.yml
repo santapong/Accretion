@@ -148,6 +148,10 @@ jobs:
       ACCRETION_ENVIRONMENT: development
     steps:
       - uses: actions/checkout@v7
+        with:
+          # The computed-style diff builds the merge-base with develop, and a shallow
+          # checkout has no merge-base to find.
+          fetch-depth: 0
       - uses: actions/setup-node@v7
         with:
           node-version: 24
@@ -160,10 +164,44 @@ jobs:
       - run: uv run --no-sync alembic upgrade head
       # The gate drives `vite preview` over dist/, so the build has to exist first.
       - run: npm run build
+      # M9 PR5a. The Tailwind port changes the built stylesheet's text by design, so the
+      # sha256 comparison PR3 and PR4 used retires here. Its replacement compares COMPUTED
+      # STYLES between this branch and the merge-base, which means CI has to build both.
+      #
+      # node_modules is symlinked rather than installed: `npm ci` in the worktree would
+      # double this job's install time and fight for the same cache. If the base commit's
+      # lockfile differs, the base is built with this branch's dependencies - stated in the
+      # PR body, and irrelevant to the text-level proof in `cssPort.test.ts`.
+      - name: Build the merge-base for the computed-style diff
+        # A release bridge (base `main`, or `main` itself) has no meaningful merge-base with
+        # develop - it is the repository's initial commit - and is content promotion with
+        # nothing new to prove; the a11y gate still runs there, the style diff is skipped by
+        # STYLE_DIFF_SKIP below and never silently.
+        if: github.base_ref != 'main' && github.ref_name != 'main'
+        run: |
+          set -euo pipefail
+          # `fetch-depth: 0` fetches all history for the CHECKED-OUT ref only; it does not
+          # create refs/remotes/origin/develop. Without this line `git merge-base` fails
+          # with "not a valid object name" on every branch, which is a broken step rather
+          # than a failing gate.
+          git fetch --no-tags origin +refs/heads/develop:refs/remotes/origin/develop
+          base=$(git merge-base HEAD origin/develop)
+          echo "merge-base with develop: $base"
+          git worktree add --detach ../base "$base"
+          ln -s "$PWD/node_modules" ../base/node_modules
+          ln -s "$PWD/apps/ui/node_modules" ../base/apps/ui/node_modules
+          cd ../base
+          npm run build --workspace @accretion/ui -- \
+            --outDir "$GITHUB_WORKSPACE/dist-base" --emptyOutDir
       - run: npx playwright install --with-deps chromium
         working-directory: apps/ui
       - run: npx playwright test
         working-directory: apps/ui
+        env:
+          # Absent, `style-diff.spec.ts` fails rather than skipping: a required check that
+          # silently measures nothing is worse than no check.
+          STYLE_DIFF_BASE_DIST: ${{ (github.base_ref != 'main' && github.ref_name != 'main') && format('{0}/dist-base', github.workspace) || '' }}
+          STYLE_DIFF_SKIP: ${{ (github.base_ref == 'main' || github.ref_name == 'main') && 'release-bridge' || '' }}
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

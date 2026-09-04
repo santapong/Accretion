@@ -4,7 +4,8 @@ import { readFileSync } from "node:fs";
 
 import { judge } from "./allowlist";
 import { contrastProbe, overflowProbe, type ContrastReport, type OverflowReport } from "./audit";
-import { ROUTES, RUN_ID_PLACEHOLDER, type RouteUnderTest } from "./routes";
+import { openRoute } from "./navigate";
+import { ROUTES, type RouteUnderTest } from "./routes";
 import { SEED_FILE, type Seed } from "./global-setup";
 
 /**
@@ -22,30 +23,19 @@ import { SEED_FILE, type Seed } from "./global-setup";
 
 const seed = JSON.parse(readFileSync(SEED_FILE, "utf8")) as Seed;
 
-const resolvePath = (route: RouteUnderTest) => route.path.replace(RUN_ID_PLACEHOLDER, seed.run_id);
-
 /**
  * Navigate and wait for the route to stop moving.
  *
- * The app polls (2.5s for runs and approvals, 5s for runtimes) and the run page holds an
- * open SSE stream, so "loaded" is not the same as "settled". Auditing mid-render produces
- * failures that vanish on re-run, which is how an accessibility gate earns a reputation
- * for flakiness and stops being read.
+ * The body of this function now lives in `navigate.ts`, unchanged, because
+ * `style-diff.spec.ts` sweeps the same seventeen routes and needs the same barrier against
+ * the app's 2.5 s and 5 s polls and its open SSE stream. Two copies of a settle rule drift,
+ * and the copy nobody maintains is the one that makes a gate look flaky.
+ *
+ * The wrapper stays so every call site in this file reads as it did before, and so the
+ * `origin` parameter the style diff needs - it drives two servers - is not offered to a
+ * spec that drives one.
  */
-async function open(page: Page, route: RouteUnderTest): Promise<void> {
-  await page.goto(resolvePath(route), { waitUntil: "domcontentloaded" });
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  if (route.settle === "run-events") {
-    // The trace starts as a "Waiting for events" placeholder and fills from the audit
-    // snapshot. The evidence measured this region with 1,349px of content in it.
-    await expect(page.getByRole("log", { name: "Normalized event trace" })).toBeVisible();
-    await expect(page.locator(".event-list .empty")).toHaveCount(0);
-  }
-  await page.waitForLoadState("networkidle").catch(() => {
-    // The run page's EventSource never closes while the stream is open, so networkidle
-    // can legitimately never arrive. The explicit waits above are the real barrier.
-  });
-}
+const open = (page: Page, route: RouteUnderTest): Promise<void> => openRoute(page, route, seed);
 
 test.describe("accessibility", () => {
   test("axe reports no violation outside the allowlist, across every route", async ({ page }) => {
