@@ -46,7 +46,7 @@ the three milestone PRs that merged before this file was updated.
   `apps/ui/src/styles.css` into `@layer components` in `apps/ui/src/theme.css`,
   with the palette, font and breakpoint tokens for the current design declared
   inert beside the cosmic ones. Zero computed-style differences across every route,
-  width, interaction and mocked page (#TBD).
+  width, interaction and mocked page (#116).
 - Added `apps/ui/src/routes.tsx` as the single source of both the navigation
   bar and the router, and moved the eleven pages still defined inside
   `App.tsx` into `apps/ui/src/pages/`, leaving `App.tsx` thirteen lines. Every
