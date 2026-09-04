@@ -65,15 +65,20 @@ The UI is intentionally a projection, not an execution authority:
 - FastAPI responses are the typed snapshot source of truth.
 - `openapi-typescript` generates `apps/ui/src/api/schema.d.ts`; handwritten UI
   types alias that generated contract.
-- Styling is mid-migration, and as of M9 PR5a the migration has started moving
-  rules rather than only preparing to. `apps/ui/src/theme.css` holds the design
-  tokens, the Tailwind v4 layers, the Google Fonts `@import`, and — inside
-  `@layer components` — the shell, primitives, runtime, registry and trace rules
-  that have already moved, byte-verbatim. `apps/ui/src/styles.css` still holds the
-  rest (planning review, task studio, benchmarks, the run page, the P5–P7
-  inspectors) and is still unlayered, so anything left in it takes precedence over
-  anything layered, whatever the specificity. Tailwind's Preflight reset is not
-  imported yet.
+- Styling is mid-migration, and two of the three port slices have landed.
+  `apps/ui/src/theme.css` holds the design tokens, the Tailwind v4 layers, the
+  Google Fonts `@import`, and — inside `@layer components` — 224 of the 441
+  pre-migration rules, byte-verbatim: the shell, primitives, runtime, registry and
+  trace rules from M9 PR5a, plus the planning review, task studio, benchmark
+  screens and P6/P7 planner rules from PR5b. `apps/ui/src/styles.css` still holds
+  the remaining 217 — the run page: pills, gate and loop inspectors, every
+  `.projection-*`, `.execution-*` and `.verification-*` rule, the React Flow
+  overrides, the `.candidate-*` and `.experience-lineage/-capture` families, the M6
+  badge and revision rules, and `button:disabled`. It is still unlayered, so
+  anything left in it takes precedence over anything layered, whatever the
+  specificity. PR5c moves that remainder, lifts the React Flow overrides into an
+  unlayered `react-flow.css` beside the xyflow import, and deletes the file.
+  Tailwind's Preflight reset is not imported yet.
 - Two rules follow from that split, and both are enforced. A rule is **deleted and
   re-added in one edit**, never duplicated: a selector defined in both files
   resolves to the unlayered copy regardless of source order, which is a silent
@@ -268,8 +273,8 @@ assistive technology.
 | `apps/ui/src/theme.css` | Tailwind layers, the fonts `@import`, the cosmic and current-palette tokens, and `@layer components` — where ported rules land |
 | `apps/ui/e2e/cssPort.test.ts` | Union-equality against the pinned pre-migration stylesheet: every rule survives once, in order, in exactly one file |
 | `apps/ui/e2e/styleDiff.ts` | Fingerprint, alignment, diff and retry decisions for the computed-style gate; no I/O, unit-tested on a mutation table |
-| `apps/ui/e2e/style-diff.spec.ts` | The gate itself: 17 routes x 5 widths x 2 builds, plus focus/hover and the fixture-mocked run and planning pages |
-| `apps/ui/e2e/fixtures/` | The pinned pre-migration stylesheet, and the run/planning fixtures that render the two thirds of the sheet the seed never reaches |
+| `apps/ui/e2e/style-diff.spec.ts` | The gate itself: 17 routes x 5 widths x 2 builds, plus focus/hover and the fixture-mocked run, planning and four benchmark pages |
+| `apps/ui/e2e/fixtures/` | The pinned pre-migration stylesheet, and the run/planning/benchmark fixtures that render what the seed cannot: gate and loop state, the planning review, and the two benchmark regions behind an interaction |
 | `apps/ui/src/*.test.tsx` | Component, event recovery, lineage, benchmark, and layout evidence |
 | `apps/ui/budget/budget.ts` | The committed size caps, the lazy-only pattern, and the grouping expectations |
 | `apps/ui/budget/evaluate.ts` | Pure budget rules over a bundle graph; no I/O, unit-tested on synthetic bundles |

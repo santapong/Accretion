@@ -407,16 +407,17 @@ test("one failing rule fails the report", () => {
  * raising a cap means restating its measurement in the same edit.
  *
  * The two JS numbers are M9 PR3's, from the first green build after the vendor split. The
- * two CSS numbers are M9 PR5a's, because that PR moved 113 rules into `@layer components`
- * and added thirteen `@theme static` tokens, and leaving PR3's 51,148 quoted here would
- * have described a stylesheet that no longer exists. The reasoning for each is in
- * `budget.ts` beside the cap it derives.
+ * two CSS numbers are M9 PR5b's, from the first green build after the second port slice:
+ * 51,555 B raw and 10,390 B gzip, 26 B below PR5a's raw measurement because a `@media`
+ * wrapper stopped existing in either sheet. Leaving PR5a's 51,581 quoted here would
+ * describe a stylesheet that no longer exists, which is the same reason PR5a stopped
+ * quoting PR3's 51,148. The reasoning for each is in `budget.ts` beside the cap it derives.
  */
 const MEASURED = {
   initialJsRaw: 561_138,
   initialJsGzip: 166_998,
-  initialCssRaw: 51_581,
-  initialCssGzip: 10_372,
+  initialCssRaw: 51_555,
+  initialCssGzip: 10_390,
 } as const;
 
 /** The three named vendor chunks of that same build, raw and gzip as the gate printed them. */

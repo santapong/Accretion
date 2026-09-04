@@ -104,30 +104,37 @@ export const INITIAL_JS_RAW_BYTES = 589_195;
 export const INITIAL_JS_GZIP_BYTES = 175_348;
 
 /**
- * M9 PR5a. Gate-measured 51,581 B (`index-DANXZSdv.css`). Cap = ceil(51,581 x 1.05).
+ * M9 PR5b. Gate-measured 51,555 B (`index-BhzsXDyn.css`). Cap = ceil(51,555 x 1.05).
  *
- * Restated, not raised under pressure: the PR3 cap of 53,706 B was NOT breached - the build
- * passed at 51,581 against it. What changed is the measurement the cap is derived from, and
- * leaving the old one quoted here would have made this comment describe a build that no
- * longer exists.
+ * Restated, not raised under pressure: the PR5a cap of 54,161 B was NOT breached - the
+ * build passed at 51,555 against it, 26 B BELOW the 51,581 PR5a measured. The cap is
+ * restated anyway because it is derived from a measurement, and leaving PR5a's quoted here
+ * would make this comment describe a build that no longer exists.
  *
- * The stylesheet grew 433 B (51,148 -> 51,581) for two reasons, both structural and both
- * one-off. `@theme static` in `theme.css` gained thirteen tokens for the CURRENT palette,
- * fonts and breakpoints, which Tailwind emits into `:root` whether or not anything uses
- * them (that is what `static` means, and it is why they are declared before the rules that
- * will consume them). And the ported rules now sit inside `@layer components { … }`, so the
- * three `@media` blocks they carry entries in exist in both stylesheets until PR5c merges
- * them back. Neither is a rendering cost: `apps/ui/e2e/style-diff.spec.ts` reports zero
- * computed-style differences against the pre-migration build across 17 routes x 5 widths.
+ * PR5a predicted this number would start falling once the `@media` duplication the port
+ * creates began to unwind, and this is the first PR where it does - by a hair, and for two
+ * offsetting reasons worth naming so the next slice is read correctly:
  *
- * PR5b and PR5c will move the remaining `@media` duplication back out, so this number is
- * expected to fall rather than keep climbing. If it climbs instead, that is the signal.
+ *  - The 900 px block of `styles.css:98` moved entirely into the components layer, where it
+ *    merged into the block PR5a already opened there, so one `@media` wrapper stopped
+ *    existing in either sheet.
+ *  - `styles.css:276` is the one block in this slice that had to be SPLIT: its two
+ *    `.search-plan-form` entries moved and its `.candidate-tree` entry stayed for PR5c, so
+ *    that breakpoint now costs a wrapper in each file until PR5c reunites it.
+ *
+ * Net -26 B. PR5c removes the second half of that split along with the file, so the number
+ * should keep falling. If it climbs instead, that is the signal - the port itself adds no
+ * declarations, and `apps/ui/e2e/style-diff.spec.ts` reports zero computed-style
+ * differences against the merge-base across 17 routes x 5 widths, the interaction pass and
+ * six fixture-mocked pages.
  */
-export const INITIAL_CSS_RAW_BYTES = 54_161;
+export const INITIAL_CSS_RAW_BYTES = 54_133;
 
-/** M9 PR5a. Gate-measured 10,372 B gzip on the same build (was 10,232 B at PR3, for the
- * reasons above). Cap = ceil(10,372 x 1.05). */
-export const INITIAL_CSS_GZIP_BYTES = 10_891;
+/** M9 PR5b. Gate-measured 10,390 B gzip on the same build (10,372 B at PR5a; gzip finds
+ * marginally less to fold once the rules are spread over two files in a different order,
+ * which is the same effect PR3 recorded when one chunk became five). Cap =
+ * ceil(10,390 x 1.05). */
+export const INITIAL_CSS_GZIP_BYTES = 10_910;
 
 export const BUDGET: Budget = {
   perChunkRawBytes: PER_CHUNK_RAW_BYTES,
