@@ -61,6 +61,51 @@ the three milestone PRs that merged before this file was updated.
   computed-style probe with a task detail open and a replay status rendered —
   regions no unattended sweep can reach. Zero computed-style differences across
   every route, width, interaction and mocked page (#117).
+- Completed the Tailwind port and deleted `apps/ui/src/styles.css`. The run page's
+  217 remaining rules — the section heading, the page and inspector stacks, the 25
+  `.pill-*` states, the execution, loop and verification chrome, the P3 approval
+  gate, the M5 dynamic-workflow inspectors and replan control, the `.search-inspector`
+  and `.candidate-*` families, `.experience-lineage/-capture`, the M6 diff, router
+  and revision rules, and the 720 px block — moved byte-verbatim into `@layer
+  components` in `apps/ui/src/theme.css`, and the two `@media` blocks that PR5b had
+  to split are whole again. The 36 rules that style elements inside the React Flow
+  canvas moved instead into a new **unlayered** `apps/ui/src/react-flow.css`,
+  imported from `RunExecution.tsx` on the statement immediately after
+  `@xyflow/react/dist/style.css`: xyflow's stylesheet is unlayered, so those rules
+  would lose to it from inside a layer at any specificity, and several beat it only
+  by coming later at equal specificity. `button:disabled` is there for the same
+  reason — it is the rule whose move into a layer the gate caught in PR5a as
+  `/runs/:runId @ 390: #148 button cursor not-allowed -> pointer`. The partition is by
+  competition, not by location: `.iteration-badge`, `.gate-waiting-hint` and the
+  `.pill-*` states render inside a node and are layered, because xyflow says nothing
+  about them. `apps/ui/e2e/cssPort.test.ts` now spans both surviving sheets and, with
+  the pre-migration file gone, its union check is the completeness proof for the whole
+  migration: all 441 rules exist exactly once, in order, none edited. It also asserts
+  the canvas partition in both directions, that `react-flow.css` contains no `@layer`,
+  and the import adjacency; `style-diff.spec.ts` gained a built-output assertion that
+  xyflow's `.react-flow__node-default` precedes ours and that neither ours nor
+  `button:disabled` is inside a layer. `App.tsx` drops its second stylesheet import.
+  Zero computed-style differences across every route, width, interaction and mocked
+  page (#TBD).
+- `apps/ui/e2e/style-diff.spec.ts` now answers both runtime endpoints from a fixture on
+  every route, so `/` and `/runtimes` render four fixed runtimes covering all four `.pill-*`
+  colour groups rather than whatever the local machine's CLIs report at that second;
+  `/runtimes` is seed-independent and its element floor an equality rather than a margin.
+  The probe storm and status churn that motivated it are fixed on the backend in their
+  own change (#TBD).
+- Added a cascade-inversion case to `apps/ui/e2e/cssPort.test.ts`, derived from the
+  pinned sheet rather than from a hand-kept list. For every pair of rules — one now
+  unlayered, one now in `@layer components` — that can match the same element and
+  declares a common property with a different value, it fails when the layered rule
+  used to win on specificity or source order, because an unlayered rule now beats it
+  regardless. Thirty-four pairs are examined and one is exempted, with its reason
+  recorded beside it: `button:disabled` (unlayered, so it can beat xyflow's
+  `.react-flow__controls-button {cursor:pointer}`) now wins over
+  `.benchmark-table td button` (layered), so a disabled button in a benchmark-table
+  cell shows `not-allowed` where it used to show `pointer`. Both halves of that pair
+  already sat on their current sides of the layer boundary on `develop`, so the port
+  neither introduces it nor can fix it without changing a declaration; the repair
+  belongs to the token-substitution follow-up.
 - Added `apps/ui/src/routes.tsx` as the single source of both the navigation
   bar and the router, and moved the eleven pages still defined inside
   `App.tsx` into `apps/ui/src/pages/`, leaving `App.tsx` thirteen lines. Every

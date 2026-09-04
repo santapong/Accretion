@@ -1,12 +1,12 @@
 import { BrowserRouter } from "react-router-dom";
 import { OperatorShell } from "./OperatorShell";
-// Tokens and the Tailwind layers first, then the legacy sheet. Order is documentation
-// rather than cascade: styles.css is unlayered, so it wins either way. What is NOT
-// documentation is that both sit AFTER `./OperatorShell`: that import reaches
-// `RunExecution.tsx`, whose first import is React Flow's own stylesheet, and moving the
-// two lines above it would put xyflow's rules last in the built cascade.
+// The only stylesheet import, and it must stay AFTER `./OperatorShell`. M9 PR5c deleted
+// `styles.css`; the invariant is now xyflow's unlayered sheet, then our unlayered canvas
+// overrides beside it (`react-flow.css`, imported by `RunExecution.tsx` on the line after
+// the xyflow one), then everything else in `@layer components` here. `./OperatorShell` is
+// what reaches `RunExecution.tsx` and pulls the first two in; hoisting this line above it
+// puts xyflow last and hands every same-specificity node rule back to it.
 import "./theme.css";
-import "./styles.css";
 
 export default function App() {
   return <BrowserRouter><OperatorShell /></BrowserRouter>;

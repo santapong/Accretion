@@ -1,0 +1,164 @@
+/* The React Flow overrides, kept OUTSIDE every layer on purpose.
+ *
+ * M9 PR5c ended the port of `styles.css` by moving every rule it still held into
+ * `@layer components` in `theme.css` - except these. They are here, unlayered, and the
+ * reason is a property of the cascade rather than a preference.
+ *
+ * ## Why unlayered
+ *
+ * `@xyflow/react/dist/style.css` is unlayered. Verified against the installed package: it
+ * declares no `@layer` and no `!important` anywhere, and every selector in it is
+ * `.react-flow`, `.react-flow.dark` or `.react-flow__*`. An unlayered normal declaration
+ * beats a layered one REGARDLESS OF SPECIFICITY, so the moment one of the rules below
+ * entered `@layer components` it would lose to xyflow's own rule for the same property on
+ * the same element - a (0,2,0) selector of ours losing to a (0,1,0) selector of theirs.
+ * There is no `!important` escape that would not also be a rendering change.
+ *
+ * This is not theoretical. PR5a moved `button:disabled` into the layer with the rest of
+ * `styles.css:3-25` and the computed-style diff reported it on the next run:
+ *
+ *   /runs/:runId @ 390: #148 button cursor not-allowed -> pointer
+ *
+ * xyflow sets `.react-flow__controls-button { cursor: pointer }`. `button:disabled` is
+ * (0,1,1) against that (0,1,0) and wins while both are unlayered; from inside a layer it
+ * loses outright, and the disabled zoom control on the run page stopped saying it was
+ * disabled. PR5a took it back out of the layer and left it in `styles.css` with a note
+ * naming this file as its destination. That is why an element rule with no `.projection-*`
+ * class in sight is the first rule below: it is here for the same reason as the rest, and
+ * `apps/ui/e2e/cssPort.test.ts` names it explicitly so it cannot be "tidied" away.
+ *
+ * ## Why it is imported immediately after the xyflow sheet
+ *
+ * Unlayered beats layered whatever the order, but two unlayered rules of EQUAL specificity
+ * are settled by source order alone, and several here are exactly that:
+ * `.projection-node-kind-gate` is (0,1,0) and so is xyflow's `.react-flow__node-default`,
+ * which sets the border it overrides. This sheet therefore has to come after xyflow's, and
+ * the only robust way to say that in a bundler is to import it on the line after it -
+ * `RunExecution.tsx` does, adjacently, in one hunk. `cssPort.test.ts` asserts the adjacency
+ * in the source text and `style-diff.spec.ts` asserts the resulting order in the BUILT
+ * stylesheet in a real browser, because the bundler is what actually decides it.
+ *
+ * Before PR5c the same guarantee came from `styles.css`, which was unlayered in its
+ * entirety and imported from `App.tsx` after `./OperatorShell` - the import that reaches
+ * `RunExecution.tsx` and therefore xyflow. The mechanism has changed; the order has not.
+ *
+ * ## Why the order inside this file is preserved
+ *
+ * These rules are byte-verbatim slices of the pre-migration sheet
+ * (`apps/ui/e2e/fixtures/styles.pre-pr5.css`) and they appear below in that sheet's own
+ * relative order: `:25`, `:78`, `:85`, `:86`, `:87`, `:88`, `:102-118`, `:279-282`. Two of
+ * them style `.projection-flow` and two style `.projection-node-content`, and in both cases
+ * the later one refines the earlier; reordering them is invisible to a per-rule comparison
+ * and visible on screen. `cssPort.test.ts` compares the index of every rule here against
+ * the pinned sheet and fails on a swap.
+ *
+ * ## What belongs here, and what does not
+ *
+ * A rule belongs here when it competes with an unlayered xyflow rule - which in practice
+ * means it styles an element INSIDE the canvas and sets a property xyflow also sets on it.
+ * "Inside the canvas" alone is not enough: `.iteration-badge`, `.gate-waiting-hint`, `.pill`
+ * and the `.pill-*` states all render inside a node and all live in `@layer components`,
+ * because xyflow says nothing about them and layering them changes nothing.
+ *
+ * The two lists BESIDE the canvas - `.projection-node-summary` and `.projection-routes`,
+ * siblings of `.projection-flow` inside `.projection-card` - are in the layer for the same
+ * reason, despite sharing a prefix with the node classes. The test that enforces this
+ * partition works on class tokens rather than substrings precisely so that prefix cannot
+ * decide it.
+ *
+ * Nothing in this file may be wrapped in `@layer`, and nothing may be added to it that does
+ * not compete with xyflow. Both are asserted.
+ */
+
+/* `styles.css:25`. The rule that proved the whole argument; see the header. */
+button:disabled { cursor:not-allowed; opacity:.42; }
+
+/* `styles.css:78` and `:85`: the wrapper xyflow mounts into, and the chrome it draws inside
+   it. The first rule bounds the canvas so the graph cannot widen the run page (F1); the
+   second paints the backdrop and restyles the attribution, the control cluster and its
+   buttons. Every override in the second rule is a `.projection-flow .react-flow__*`
+   descendant selector: (0,2,0) against xyflow's own (0,1,0), which wins on specificity while
+   both are unlayered and loses to it from inside a layer. */
+.projection-flow{max-width:100%;overflow:hidden}
+.projection-flow{height:340px;background:radial-gradient(circle at 50% 45%,rgba(53,93,64,.18),transparent 55%),#0d120f}.projection-flow .react-flow__attribution{background:rgba(12,16,13,.82);color:var(--ink-dim)}.projection-flow .react-flow__attribution a{color:#8aa18f}.projection-flow .react-flow__controls{box-shadow:none;border:1px solid #354039}.projection-flow .react-flow__controls-button{color:#b8c2ba;background:#151d17;border-color:#354039}.projection-flow .react-flow__controls-button:hover{background:#203126}.projection-flow .react-flow__controls-button svg{fill:currentColor}
+
+/* `styles.css:86-88`: the node box, its status variants, its handles, its content, and the
+   loop edge with its label.
+
+   `.projection-node.react-flow__node-default` is (0,2,0) and replaces xyflow's node box
+   wholesale - width, padding, border, radius, background, colour, shadow. The status
+   variants below it are (0,2,0) too and refine the border; `.projection-node-kind-gate` in
+   the P3 block further down is only (0,1,0) and is the rule that depends on source order
+   rather than specificity. `.projection-node .react-flow__handle` resizes the connection
+   handles xyflow sizes itself.
+
+   `.projection-node-content` and everything under it style the node's own markup, which is
+   rendered inside the node xyflow positions; `.projection-node-content .pill` is the one
+   selector here that reaches a class the layer also styles, and it only adds a margin. The
+   edge rules at `:88` style the SVG path xyflow draws and the label element
+   `EdgeLabelRenderer` portals into the viewport. */
+.projection-node.react-flow__node-default{width:168px;padding:0;border:1px solid #435047;border-radius:0;background:#151d17;color:#e8ece7;text-align:left;box-shadow:0 8px 30px rgba(0,0,0,.22)}.projection-node.react-flow__node-default.selectable:hover{box-shadow:0 8px 30px rgba(0,0,0,.22)}.projection-node-running.react-flow__node-default{border-color:#75db91;box-shadow:0 0 0 1px rgba(117,219,145,.24),0 8px 32px rgba(35,99,52,.24)}.projection-node-failed.react-flow__node-default{border-color:#a5574f}.projection-node-succeeded.react-flow__node-default{border-color:#41694b}.projection-node-waiting.react-flow__node-default{border-color:#7a6538}.projection-node .react-flow__handle{width:7px;height:7px;background:#829287;border-color:#151d17}
+.projection-node-content{display:grid;gap:7px;padding:12px}.projection-node-content>strong{font-size:11px;line-height:1.35}.projection-node-kind{font:8px "DM Mono";letter-spacing:.12em;color:var(--ink-dim)}.projection-node-status{display:flex;align-items:center;gap:6px;color:#8f9b92;font:8px "DM Mono"}.projection-node-status i{width:6px;height:6px;border-radius:50%;background:#75db91}.projection-node-failed .projection-node-status i{background:#df776d}.projection-node-waiting .projection-node-status i,.projection-node-pending .projection-node-status i{background:#d5aa60}.projection-provider{position:absolute;right:9px;top:9px;color:#8fcca0;font:7px "DM Mono"}.projection-node-content .pill{margin-top:1px}
+.projection-loop-edge{stroke-dasharray:7 4}.projection-edge-label{position:absolute;padding:3px 6px;border:1px solid #5f4e2d;background:#231d12;color:#e1bd73;font:8px "DM Mono";pointer-events:all}
+
+/* The `.projection-flow` entry of `styles.css:99`, which is the one `@media` entry in the
+   whole port that had to cross into this file.
+
+   Its base rule is `:85` above - unlayered, because it competes with xyflow. An `@media`
+   entry does not raise specificity, so the entry only ever beat the base rule by coming
+   later in the same unlayered cascade. Put it in `@layer components` with the rest of the
+   620 px block and the unlayered base wins instead: the canvas would stay 340px tall on a
+   390px viewport rather than shrinking to 300px, at exactly the width F1 is about.
+
+   The plan's PR5c partition lists the remainder of `:99` as layer-bound without carving
+   this entry out; the rule it also states - an `@media` entry moves into the same file as
+   its base rule - is what decides it, and this is the only place the two sentences meet.
+   `cssPort.test.ts` catches the mistake from two directions: the entry is a canvas rule and
+   must be in the canvas sheet, and a selector whose base is unlayered while its `@media`
+   entry is layered is reported as a cascade inversion.
+
+   The other twenty-two entries of `:99` are all outside the canvas and moved into the
+   layer. */
+@media(max-width:620px){.projection-flow{height:300px}}
+
+/* `styles.css:102-118` (P3: graph node kinds, subflow groups, and approval gates).
+
+   The four rules of that block that style the node box itself. `.gate-waiting-hint` at
+   `:121` renders inside the node too and is NOT here: it is a span of our own that xyflow
+   knows nothing about, so it moved into `@layer components` with the rest of the gate
+   inspector. These four all set border or background on `.react-flow__node-default`, and
+   the first two do it at (0,1,0) - a tie with xyflow that only import order settles. */
+.projection-node-kind-gate {
+  border-color: #d8a648;
+}
+
+.projection-node-kind-terminal {
+  border-width: 2px;
+}
+
+.projection-node-group {
+  background: rgba(58, 73, 63, 0.24);
+  border: 1px dashed #4d5f53;
+  border-radius: 12px;
+}
+
+.projection-node-group .projection-node-content {
+  align-items: flex-start;
+  text-align: left;
+}
+
+/* `styles.css:279-282` (M6: read-only capability badges).
+
+   The badge strip inside a node and the badges themselves. `NodeBadges` renders the same
+   `.node-badge` markup twice - once inside the canvas node and once in the
+   `.projection-node-summary` list beside it, so assistive technology sees what the canvas
+   shows - and both copies were styled by one unlayered rule before the port. Keeping these
+   here keeps that true: the summary list's own rules are layered, these are not, and the
+   badges render identically in both places exactly as they did.
+
+   `.projection-node-summary li { flex-wrap: wrap }` at `:283` belongs to the list rather
+   than to the badge and stayed in the layer with the rest of `.projection-node-summary`. */
+.projection-node-badges { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; max-width: 100%; }
+.node-badge { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; padding: 3px 5px; border: 1px solid #3d4a41; background: rgba(2, 10, 6, .5); font: 7px "DM Mono"; color: #b6c3ba; }
+.node-badge-capability { color: #9be4ae; overflow-wrap: anywhere; }
+.node-badge-part { color: #9aa69d; border-left: 1px solid #3d4a41; padding-left: 4px; }

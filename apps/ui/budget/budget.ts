@@ -104,37 +104,47 @@ export const INITIAL_JS_RAW_BYTES = 589_195;
 export const INITIAL_JS_GZIP_BYTES = 175_348;
 
 /**
- * M9 PR5b. Gate-measured 51,555 B (`index-BhzsXDyn.css`). Cap = ceil(51,555 x 1.05).
+ * M9 PR5c. Gate-measured 51,491 B (`index-CCp98dUw.css`). Cap = ceil(51,491 x 1.05).
  *
- * Restated, not raised under pressure: the PR5a cap of 54,161 B was NOT breached - the
- * build passed at 51,555 against it, 26 B BELOW the 51,581 PR5a measured. The cap is
- * restated anyway because it is derived from a measurement, and leaving PR5a's quoted here
- * would make this comment describe a build that no longer exists.
+ * The cap FALLS, from PR5b's 54,133, because the measurement does: 64 B below the
+ * merge-base's 51,555 B (`index-BhzsXDyn.css`, built by `make style-diff-base` from
+ * `00765e5` with this branch's `node_modules`). PR5b predicted the number would keep
+ * falling once the last `@media` split closed, and it does. Two `@media` wrappers stopped
+ * existing in this slice - `styles.css:276`, which PR5b split across the two sheets, and the
+ * 620 px block of `:99`, which PR5c split for the length of one commit - and nothing was
+ * added, because a port moves rule text and writes none.
  *
- * PR5a predicted this number would start falling once the `@media` duplication the port
- * creates began to unwind, and this is the first PR where it does - by a hair, and for two
- * offsetting reasons worth naming so the next slice is read correctly:
+ * ## The 159 bytes that were nearly recorded here as a cascade effect
  *
- *  - The 900 px block of `styles.css:98` moved entirely into the components layer, where it
- *    merged into the block PR5a already opened there, so one `@media` wrapper stopped
- *    existing in either sheet.
- *  - `styles.css:276` is the one block in this slice that had to be SPLIT: its two
- *    `.search-plan-form` entries moved and its `.candidate-tree` entry stayed for PR5c, so
- *    that breakpoint now costs a wrapper in each file until PR5c reunites it.
+ * The first green build of this PR measured 51,650 B, and a draft of this comment explained
+ * the +95 B as Lightning CSS folding less inside `@layer components` than it did across the
+ * flat unlayered tail. That explanation was wrong and the bytes were not CSS at all. The
+ * rewritten comment above `import "./theme.css"` in `App.tsx` contained the sentence "hand
+ * every node border back to xyflow", and `theme.css` scopes Tailwind's class detection to
+ * the app's own `.tsx` files with `@source`. That scanner extracts candidates from the whole
+ * file, comments included, so the
+ * English word `border` generated the `.border` utility and its `@property --tw-border-style`
+ * declaration - 159 B of dead CSS that nothing on any page carries. This is the trap
+ * `docs/runbooks/v03-operator-ui.md` records from M9 PR4, hit again by the PR that documents
+ * the cascade. The word was removed; the utilities layer is now `.static` and `.transform`,
+ * 141 B, byte-identical to the merge-base's.
  *
- * Net -26 B. PR5c removes the second half of that split along with the file, so the number
- * should keep falling. If it climbs instead, that is the signal - the port itself adds no
- * declarations, and `apps/ui/e2e/style-diff.spec.ts` reports zero computed-style
- * differences against the merge-base across 17 routes x 5 widths, the interaction pass and
- * six fixture-mocked pages.
+ * Worth stating because it very nearly became a committed explanation of a real-sounding
+ * effect that does not exist. The number to watch after a port slice is the layer, and prose
+ * in a `.tsx` file is the thing that moves it without moving a rule.
+ *
+ * This should now be stable: nothing is left to move. PR5d turns Preflight on, which ADDS a
+ * reset and will move it materially; it restates the cap from its own measurement.
+ *
+ * `apps/ui/e2e/style-diff.spec.ts` reports zero computed-style differences against the
+ * merge-base across 17 routes x 5 widths, the interaction pass and six fixture-mocked pages,
+ * so these 64 bytes cost no pixels either.
  */
-export const INITIAL_CSS_RAW_BYTES = 54_133;
+export const INITIAL_CSS_RAW_BYTES = 54_066;
 
-/** M9 PR5b. Gate-measured 10,390 B gzip on the same build (10,372 B at PR5a; gzip finds
- * marginally less to fold once the rules are spread over two files in a different order,
- * which is the same effect PR3 recorded when one chunk became five). Cap =
- * ceil(10,390 x 1.05). */
-export const INITIAL_CSS_GZIP_BYTES = 10_910;
+/** M9 PR5c. Gate-measured 10,352 B gzip on the same build, 38 B below PR5b's 10,390 - the
+ * same two `@media` wrappers, compressed. Cap = ceil(10,352 x 1.05). */
+export const INITIAL_CSS_GZIP_BYTES = 10_870;
 
 export const BUDGET: Budget = {
   perChunkRawBytes: PER_CHUNK_RAW_BYTES,

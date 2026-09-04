@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
@@ -6,7 +6,7 @@ import { describe, expect, test } from "vitest";
 import { COMPUTED_STYLE_PROPERTIES, FOCUSABLE_SELECTOR, HOVER_SELECTORS } from "./audit";
 
 /**
- * The three stylesheets, read as bytes from disk.
+ * The stylesheets of the port, read as bytes from disk.
  *
  * NOT `import "…css?raw"`, which is the obvious way to write this and is silently useless
  * here: `vite.config.ts` sets no `test.css`, so Vitest replaces every CSS module with an
@@ -18,13 +18,49 @@ import { COMPUTED_STYLE_PROPERTIES, FOCUSABLE_SELECTOR, HOVER_SELECTORS } from "
  *
  * The non-emptiness assertion in "the stylesheet reader" is what keeps that mistake from
  * coming back in another form.
+ *
+ * ## Why two of the four are optional
+ *
+ * The port is a stack of PRs and the set of files that exists CHANGES INSIDE IT. Before
+ * M9 PR5c there is no `src/react-flow.css`; after PR5c there is no `src/styles.css`. A
+ * `readFileSync` on either would throw at module scope in one of those two states, taking
+ * the whole gate down rather than reporting anything - which is the shape R10 in the plan
+ * names for `OperatorShell.test.tsx`, and there is no reason to reproduce it here.
+ *
+ * So each is read if present, and the invariants below are written over whichever exist.
+ * That is not a weakening: "the canvas overrides live in exactly one unlayered sheet"
+ * (below) is asserted in every state, and it is `styles.css` before PR5c and
+ * `react-flow.css` after it. `theme.css` and the pin are NEVER optional - the union has no
+ * meaning without them, so a typo in either path is a hard failure and not a skip.
  */
 const HERE = dirname(fileURLToPath(import.meta.url));
 const read = (path: string) => readFileSync(resolve(HERE, path), "utf8");
+const readIfPresent = (path: string): string | null =>
+  existsSync(resolve(HERE, path)) ? read(path) : null;
 
 const pinnedSource = read("./fixtures/styles.pre-pr5.css");
-const stylesSource = read("../src/styles.css");
 const themeSource = read("../src/theme.css");
+
+/**
+ * The pre-migration sheet, until M9 PR5c deletes it. `null` from PR5c onward.
+ *
+ * Everything that reads it treats absence as "the port is finished", which is exactly what
+ * it means: union equality then has to be satisfied by `theme.css` and `react-flow.css`
+ * alone, and it is the completeness proof for the whole migration.
+ */
+const stylesSource = readIfPresent("../src/styles.css");
+
+/**
+ * The unlayered React Flow overrides, from M9 PR5c onward. `null` before it.
+ *
+ * This sheet exists for one reason: `@xyflow/react/dist/style.css` is unlayered (verified:
+ * it declares no `@layer` and no `!important` at all), so a rule of ours that styles an
+ * element INSIDE the canvas has to stay unlayered too or it loses to xyflow regardless of
+ * specificity. It is imported from the component that imports the xyflow sheet, on the very
+ * next line, and "the React Flow overrides sit beside the sheet they override" below is the
+ * structural assertion behind that sentence.
+ */
+const reactFlowSource = readIfPresent("../src/react-flow.css");
 
 /**
  * Union-equality: the text-level proof that the Tailwind port moves rules and changes none.
@@ -335,12 +371,34 @@ function portedRules(nodes: readonly CssNode[]): CssRule[] {
 }
 
 const pinnedTree = parse(pinnedSource);
-const stylesTree = parse(stylesSource);
+const stylesTree = stylesSource === null ? [] : parse(stylesSource);
+const reactFlowTree = reactFlowSource === null ? [] : parse(reactFlowSource);
 const themeTree = parse(themeSource);
 
 const pinned = rules(pinnedTree);
 const live = rules(stylesTree);
+const canvas = rules(reactFlowTree);
 const ported = portedRules(themeTree);
+
+/**
+ * The live sheets, named, so every check below can iterate them instead of naming files.
+ *
+ * `unlayered` is the pair that beats `@layer components` outright. During the port that is
+ * `styles.css` (everything not yet moved) and, from PR5c, `react-flow.css` (the canvas
+ * overrides, which can never move). Keeping them in one list is what makes the ordering and
+ * "no selector in two files" checks below hold across the whole stack rather than only in
+ * the two-file state PR5a wrote them for.
+ */
+const UNLAYERED_SHEETS = [
+  ["styles.css", live, stylesSource],
+  ["react-flow.css", canvas, reactFlowSource],
+] as const;
+
+/** Every live sheet the union draws from, layered and unlayered alike. */
+const LIVE_SHEETS = [...UNLAYERED_SHEETS, ["theme.css", ported, themeSource]] as const;
+
+/** The rules the port currently spreads across those sheets. */
+const liveRules = LIVE_SHEETS.flatMap(([, subset]) => [...subset]);
 
 const FONTS_IMPORT = /^@import\s+url\(["']?https:\/\/fonts\.googleapis\.com\//;
 
@@ -389,11 +447,12 @@ describe("the stylesheet reader", () => {
     // parse would make the union comparison trivially satisfiable. Uniqueness is what lets
     // the order check below address a rule by a single index.
     for (const [name, source] of [
-      ["styles.pre-pr5.css", pinnedSource],
-      ["styles.css", stylesSource],
+      ["styles.pre-pr5.css", pinnedSource as string | null],
       ["theme.css", themeSource],
+      ...LIVE_SHEETS.map(([name, , source]) => [name, source] as const),
     ] as const) {
-      expect(source.length, `${name} was read as an empty string`).toBeGreaterThan(1_000);
+      if (source === null) continue;
+      expect(source.length, `${name} was read as an empty string`).toBeGreaterThan(200);
     }
     expect(pinned.length).toBeGreaterThan(300);
     const keys = pinned.map(key);
@@ -406,9 +465,18 @@ describe("the stylesheet reader", () => {
 /* ------------------------------------------------------------------------------------- */
 
 describe("union equality against the pre-migration stylesheet", () => {
-  test("every pinned rule survives exactly once across the two live stylesheets", () => {
+  test("every pinned rule survives exactly once across the live stylesheets", () => {
+    // The set of live sheets is whatever exists right now: `styles.css` + `theme.css`
+    // during PR5a and PR5b, all three briefly inside PR5c, and `theme.css` +
+    // `react-flow.css` once PR5c deletes the original. The invariant does not change with
+    // the count - it is the same multiset comparison against the same pin - which is why
+    // this reads `liveRules` rather than naming files.
+    //
+    // In the final state this case IS the completeness proof of the entire migration: with
+    // `styles.css` gone, "every pinned rule exists exactly once" says that all 441 rules of
+    // the pre-migration sheet are still declared, none twice, none edited on the way.
     const pinnedKeys = pinned.map(key);
-    const liveKeys = [...live, ...ported].map(key);
+    const liveKeys = liveRules.map(key);
 
     const counts = new Map<string, number>();
     for (const item of liveKeys) counts.set(item, (counts.get(item) ?? 0) + 1);
@@ -421,6 +489,17 @@ describe("union equality against the pre-migration stylesheet", () => {
     expect(duplicated, `copied rather than moved:\n${duplicated.join("\n")}`).toEqual([]);
     expect(invented, `not present before the port:\n${invented.join("\n")}`).toEqual([]);
     expect(liveKeys.length).toBe(pinnedKeys.length);
+
+    // Printed rather than asserted: the split between the sheets is a fact about which PR
+    // this tree is on, not an invariant. Asserting it would mean editing this file every
+    // time a rule moves, which is the opposite of what the union is for. It is logged so a
+    // reviewer reading the CI output can see the port's shape without counting braces.
+    console.log(
+      `port: ${pinnedKeys.length} pinned rules across ` +
+        LIVE_SHEETS.filter(([, subset]) => subset.length)
+          .map(([name, subset]) => `${name} ${subset.length}`)
+          .join(", "),
+    );
   });
 
   test("no selector list is styled from both files under the same conditions", () => {
@@ -433,11 +512,25 @@ describe("union equality against the pre-migration stylesheet", () => {
     // The at-rule context is part of the identity, because a base rule and its `@media`
     // entry legitimately live in different files DURING a slice: the base moves first and
     // the entry follows in the same PR. The next test is what keeps that direction honest.
-    const inStyles = new Set(live.map((rule) => `${rule.context.join(" ")} || ${rule.selector}`));
-    const shared = [
-      ...new Set(ported.map((rule) => `${rule.context.join(" ")} || ${rule.selector}`)),
-    ].filter((addressed) => inStyles.has(addressed));
-    expect(shared, `styled from both styles.css and theme.css:\n${shared.join("\n")}`).toEqual([]);
+    //
+    // Generalised over the sheet list in PR5c, because there are three of them inside that
+    // PR and the pairwise question is the same for every pair: `react-flow.css` is unlayered
+    // too, so a canvas selector left behind in `styles.css` while its twin sits in
+    // `react-flow.css` is settled by import order, and a canvas selector copied into
+    // `theme.css` loses outright.
+    const addressed = (rule: CssRule) => `${rule.context.join(" ")} || ${rule.selector}`;
+    const homes = new Map<string, Set<string>>();
+    for (const [name, subset] of LIVE_SHEETS) {
+      for (const rule of subset) {
+        const at = addressed(rule);
+        if (!homes.has(at)) homes.set(at, new Set());
+        homes.get(at)?.add(name);
+      }
+    }
+    const shared = [...homes]
+      .filter(([, sheets]) => sheets.size > 1)
+      .map(([at, sheets]) => `${at}  (in ${[...sheets].sort().join(" and ")})`);
+    expect(shared, `styled from more than one live sheet:\n${shared.join("\n")}`).toEqual([]);
   });
 
   test("a selector's base rule never lags behind its own @media entries", () => {
@@ -457,7 +550,7 @@ describe("union equality against the pre-migration stylesheet", () => {
       const layered = ported
         .filter((rule) => rule.selector === selector)
         .map((rule) => position.get(key(rule)) ?? -1);
-      const unlayered = live
+      const unlayered = UNLAYERED_SHEETS.flatMap(([, subset]) => subset)
         .filter((rule) => rule.selector === selector)
         .map((rule) => position.get(key(rule)) ?? -1);
       if (!unlayered.length) continue;
@@ -474,7 +567,7 @@ describe("union equality against the pre-migration stylesheet", () => {
     // check is genuinely vacuous then, which is the correct end state and not a defect - but
     // a reader who sees "0 split selectors" should know that is what they are looking at
     // rather than assume the invariant was exercised.
-    console.log(`cascade order: ${split.length} selector(s) live in both files`);
+    console.log(`cascade order: ${split.length} selector(s) are both layered and unlayered`);
     expect(inverted, `cascade inverted by a partial move:\n${inverted.join("\n")}`).toEqual([]);
   });
 
@@ -484,10 +577,7 @@ describe("union equality against the pre-migration stylesheet", () => {
     // before `.runtime-title h1`. Reordering during a move is invisible to a per-rule
     // comparison and visible on screen.
     const position = new Map(pinned.map((rule, index) => [key(rule), index]));
-    for (const [name, subset] of [
-      ["styles.css", live],
-      ["theme.css", ported],
-    ] as const) {
+    for (const [name, subset] of LIVE_SHEETS) {
       const indices = subset.map((rule) => position.get(key(rule)) ?? -1);
       const sorted = [...indices].sort((a, b) => a - b);
       expect(indices, `${name} reordered its rules`).toEqual(sorted);
@@ -544,10 +634,697 @@ describe("the shape of theme.css", () => {
   test("references no React Flow class", () => {
     // xyflow's own stylesheet is unlayered, so the `.projection-flow .react-flow__*`
     // overrides win today by order and specificity and would lose the moment they entered a
-    // layer. They stay in `styles.css` until PR5c moves them, unlayered, into
-    // `react-flow.css` beside the xyflow import.
+    // layer. They stayed in `styles.css` until PR5c moved them, unlayered, into
+    // `react-flow.css` beside the xyflow import. Either way they are never here.
     expect(themeSource).not.toContain("react-flow__");
-    expect(stylesSource).toContain("react-flow__");
+
+    // And they are somewhere: exactly one unlayered sheet carries them, and which one it is
+    // says which side of PR5c this working tree is on. Without this half the assertion above
+    // is satisfied by deleting the overrides.
+    const carriers = UNLAYERED_SHEETS.filter(([, , source]) => source?.includes("react-flow__"));
+    expect(
+      carriers.map(([name]) => name),
+      "the React Flow overrides must live in exactly one unlayered sheet",
+    ).toHaveLength(1);
+  });
+});
+
+/* ------------------------------------------------------------------------------------- */
+/* The canvas partition, which is the whole of PR5c's cascade argument.                     */
+/* ------------------------------------------------------------------------------------- */
+
+/**
+ * The classes that mark an element as living INSIDE the React Flow canvas.
+ *
+ * Every one of them is rendered under `<ReactFlow>` in `RunExecution.tsx` - as a node
+ * (`.projection-node*`), as node content (`.projection-node-content`, `.projection-node-kind`,
+ * `.projection-node-status`, `.projection-provider`, `.projection-node-badges`,
+ * `.node-badge*`), as an edge (`.projection-loop-edge`) or as an edge label rendered into
+ * the viewport through `EdgeLabelRenderer` (`.projection-edge-label`) - plus
+ * `.projection-flow`, the wrapper xyflow mounts into.
+ *
+ * ## What this list is NOT
+ *
+ * It is not "every class that appears on the run page", and it is deliberately not every
+ * class that appears inside the canvas either. `.iteration-badge`, `.gate-waiting-hint`,
+ * `.pill` and the `.pill-*` states also render inside a node, and they are in
+ * `@layer components` with the rest of the sheet. That is correct, because the property
+ * that forces a rule to stay unlayered is not "renders inside the canvas" - it is COMPETES
+ * WITH AN UNLAYERED xyflow RULE, and `@xyflow/react/dist/style.css` styles nothing but
+ * `.react-flow`, `.react-flow.dark` and `.react-flow__*` (verified against the installed
+ * package: those are the only selectors it declares, and it uses no `@layer` and no
+ * `!important` anywhere). A rule on `.iteration-badge` has no xyflow counterpart to lose
+ * to, so layering it changes nothing.
+ *
+ * What the classes below have in common is that each of their rules either names a
+ * `.react-flow__*` class directly or sets a property xyflow also sets on the same element
+ * (border, background, box-shadow, width, padding on `.react-flow__node-default`;
+ * width/height/background on `.react-flow__handle`; stroke-dasharray on the edge path).
+ * `.projection-node-kind-gate` is the sharpest case: at (0,1,0) it TIES xyflow's
+ * `.react-flow__node-default` on specificity and wins only by coming later in an unlayered
+ * cascade, which is precisely what `react-flow.css`'s import position preserves.
+ *
+ * `.projection-node-summary` and `.projection-routes` share the `projection-node` prefix and
+ * are NOT here: they are the two lists rendered as siblings of `.projection-flow` inside
+ * `.projection-card`, outside the canvas entirely. A prefix test rather than this explicit
+ * list would have dragged them across, which is why the check below is written over class
+ * tokens and not over substrings.
+ */
+const CANVAS_CLASSES: ReadonlySet<string> = new Set([
+  "projection-flow",
+  "projection-node",
+  "projection-node-running",
+  "projection-node-failed",
+  "projection-node-succeeded",
+  "projection-node-waiting",
+  "projection-node-pending",
+  "projection-node-content",
+  "projection-node-kind",
+  "projection-node-kind-gate",
+  "projection-node-kind-terminal",
+  "projection-node-status",
+  "projection-node-group",
+  "projection-node-badges",
+  "projection-provider",
+  "projection-loop-edge",
+  "projection-edge-label",
+  "node-badge",
+  "node-badge-capability",
+  "node-badge-part",
+]);
+
+/**
+ * `button:disabled`, the one rule in the sheet that is unlayered for a reason no class name
+ * records.
+ *
+ * M9 PR5a moved it into `@layer components` with the rest of `styles.css:3-25` and the
+ * computed-style diff reported it immediately:
+ *
+ *   /runs/:runId @ 390: #148 button cursor not-allowed -> pointer
+ *
+ * xyflow sets `.react-flow__controls-button { cursor: pointer }`, unlayered. `button:disabled`
+ * beats it on specificity ((0,1,1) against (0,1,0)) while both are unlayered and loses to it
+ * outright from inside a layer, whatever the specificity - and the disabled zoom control on
+ * the run page stopped saying it was disabled. It came back out in PR5a and lands here in
+ * PR5c, in the sheet whose entire purpose is "unlayered, because xyflow is".
+ */
+const UNLAYERED_ELEMENT_RULES = ["button:disabled"] as const;
+
+/** Every class token a selector list names, deduplicated. `.a.b>.c` gives `a`, `b`, `c`. */
+function classTokens(selector: string): string[] {
+  return [...new Set(selector.match(/\.-?[_a-zA-Z][\w-]*/g) ?? [])].map((token) => token.slice(1));
+}
+
+/** True for a rule that must stay unlayered beside xyflow's own sheet. */
+function isCanvasRule(rule: CssRule): boolean {
+  if (UNLAYERED_ELEMENT_RULES.includes(rule.selector as (typeof UNLAYERED_ELEMENT_RULES)[number])) {
+    return true;
+  }
+  if (rule.selector.includes("react-flow__")) return true;
+  return classTokens(rule.selector).some((token) => CANVAS_CLASSES.has(token));
+}
+
+/**
+ * Where the canvas rules are supposed to be right now.
+ *
+ * Before PR5c that is `styles.css`, which is unlayered in its entirety; from PR5c it is
+ * `react-flow.css`. Writing it as a lookup rather than as a constant is what lets the four
+ * cases below assert the same partition on both sides of the PR that creates the file - and
+ * it is not a loophole, because "exactly one unlayered sheet carries `react-flow__`" is
+ * asserted above and the completeness case below pins every canvas rule to whichever sheet
+ * this resolves to.
+ */
+const canvasHome = reactFlowSource === null ? "styles.css" : "react-flow.css";
+
+describe("the React Flow overrides live outside every layer", () => {
+  test("the pinned sheet's canvas rules all sit in the unlayered sheet that owns them", () => {
+    // Completeness, derived from the pin rather than from a hand-kept list of what moved.
+    // This is the case that fails when a canvas rule is "tidied" into `theme.css`: the rule
+    // is still in the union exactly once, still byte-verbatim, still in relative order, and
+    // silently loses to xyflow at runtime on every node in the graph.
+    const pinnedCanvas = pinned.filter(isCanvasRule);
+    expect(
+      pinnedCanvas.length,
+      "no canvas rule was classified, so this check proves nothing",
+    ).toBeGreaterThan(20);
+
+    const home = new Set(
+      LIVE_SHEETS.filter(([name]) => name === canvasHome).flatMap(([, subset]) =>
+        subset.map(key),
+      ),
+    );
+    const misplaced = pinnedCanvas.map(key).filter((item) => !home.has(item));
+    expect(
+      misplaced,
+      `these rules style an element inside the React Flow canvas and must be unlayered in ` +
+        `${canvasHome}:\n${misplaced.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  test("neither the layer nor the sheet beside it holds a canvas rule", () => {
+    // The converse direction. `theme.css` is checked in every state; `styles.css` is checked
+    // from the moment `react-flow.css` exists, which is the window inside PR5c where a rule
+    // could be left behind rather than moved.
+    for (const [name, subset] of LIVE_SHEETS) {
+      if (name === canvasHome) continue;
+      const strays = subset.filter(isCanvasRule).map(key);
+      expect(
+        strays,
+        `${name} styles an element inside the React Flow canvas; those rules belong in ` +
+          `${canvasHome}, unlayered:\n${strays.join("\n")}`,
+      ).toEqual([]);
+    }
+  });
+
+  test("react-flow.css declares every rule it holds, and holds nothing else", () => {
+    if (reactFlowSource === null) return;
+
+    // A layer in this file would be self-defeating: the whole sheet exists to sit outside
+    // one. `@layer` is checked as text rather than through the parser so that a layer
+    // STATEMENT (`@layer components;`, which the parser records as a statement node and the
+    // rule walker skips entirely) is caught too - but over the source with comments
+    // stripped, because the file's header comment explains at length why it contains no
+    // layer and says the word four times doing it. Measured: the first run of this case
+    // failed on its own documentation.
+    expect(
+      stripComments(reactFlowSource),
+      "react-flow.css must contain no @layer at all: an unlayered sheet is the only thing " +
+        "that can beat @xyflow/react/dist/style.css, which is itself unlayered",
+    ).not.toContain("@layer");
+
+    const strays = canvas.filter((rule) => !isCanvasRule(rule)).map(key);
+    expect(
+      strays,
+      "react-flow.css holds a rule that competes with nothing in xyflow's stylesheet; it " +
+        `belongs in @layer components in theme.css:\n${strays.join("\n")}`,
+    ).toEqual([]);
+
+    expect(canvas.length, "react-flow.css was read as an empty sheet").toBeGreaterThan(20);
+  });
+
+  test("the classification tells the canvas lists apart from the canvas itself", () => {
+    // The predicate is the whole check, and its one interesting failure mode is a prefix
+    // test: `.projection-node-summary` renders BESIDE the canvas and shares eleven
+    // characters with `.projection-node`, which does not.
+    const canvasRule = (selector: string) => isCanvasRule({ context: [], selector, declarations: [] });
+    expect(canvasRule(".projection-node.react-flow__node-default")).toBe(true);
+    expect(canvasRule(".projection-node-content .pill")).toBe(true);
+    expect(canvasRule(".projection-flow .react-flow__controls-button:hover")).toBe(true);
+    expect(canvasRule("button:disabled")).toBe(true);
+    expect(canvasRule(".projection-node-summary,.projection-routes")).toBe(false);
+    expect(canvasRule(".projection-node-summary li")).toBe(false);
+    expect(canvasRule(".projection-card")).toBe(false);
+    expect(canvasRule(".iteration-badge")).toBe(false);
+    expect(classTokens(".a.b>.c-d")).toEqual(["a", "b", "c-d"]);
+  });
+
+  test("xyflow's own stylesheet still has the three properties the partition relies on", () => {
+    // The partition argument - the react-flow.css header, the canvas cases above - rests on
+    // three facts about a third-party file: it is unlayered, it uses no !important, and every
+    // selector it declares is scoped under `.react-flow`. A lockfile bump that broke any of
+    // them would invalidate the cascade argument with every other gate green, because the
+    // computed-style diff compares two builds that would BOTH resolve against the new file.
+    // So the facts are read from the installed package (hoisted to the workspace root), not
+    // remembered in prose.
+    const xyflow = read("../../../node_modules/@xyflow/react/dist/style.css").replace(
+      /\/\*[\s\S]*?\*\//g,
+      "",
+    );
+    expect(xyflow.length, "xyflow's stylesheet was read as an empty string").toBeGreaterThan(1000);
+    expect(xyflow, "xyflow now uses @layer; the partition must be re-derived").not.toContain("@layer");
+    expect(xyflow, "xyflow now uses !important; the partition must be re-derived").not.toContain(
+      "!important",
+    );
+    const declared = rules(parse(xyflow)).filter(
+      (rule) => !rule.context.some((frame) => frame.startsWith("@keyframes")),
+    );
+    expect(declared.length, "xyflow's stylesheet parsed into too few rules").toBeGreaterThan(50);
+    const unscoped = declared
+      .map((rule) => rule.selector)
+      .filter((selector) => !selector.split(",").every((part) => part.includes(".react-flow")));
+    expect(
+      unscoped,
+      "xyflow declares a selector outside .react-flow; the canvas partition must be re-derived",
+    ).toEqual([]);
+  });
+});
+
+/* ------------------------------------------------------------------------------------- */
+/* Cascade inversions: the winner the layer silently took away.                             */
+/* ------------------------------------------------------------------------------------- */
+
+/**
+ * Specificity as (a, b, c), computed rather than eyeballed.
+ *
+ * Needed because the check below asks a question no other case in this file asks: not "is
+ * this rule in the right file" but "does moving it into a layer change which of two
+ * DIFFERENT selectors wins on an element they both match". That question is decided by
+ * specificity before the port and by layering after it, so both have to be known.
+ *
+ * The three functional pseudo-classes the pinned sheet uses are handled by the spec:
+ * `:not()` and `:is()` take the specificity of their most specific argument, `:where()`
+ * takes none, and `:nth-child()` counts as one pseudo-class with its argument contributing
+ * nothing. `*` contributes nothing and falls through the tokenizer.
+ */
+function specificity(selector: string): [number, number, number] {
+  const counts: [number, number, number] = [0, 0, 0];
+  let index = 0;
+  while (index < selector.length) {
+    const rest = selector.slice(index);
+    const id = /^#[-\w]+/.exec(rest);
+    if (id) {
+      counts[0] += 1;
+      index += id[0].length;
+      continue;
+    }
+    const className = /^\.[-\w]+/.exec(rest);
+    if (className) {
+      counts[1] += 1;
+      index += className[0].length;
+      continue;
+    }
+    if (rest.startsWith("[")) {
+      const end = selector.indexOf("]", index);
+      counts[1] += 1;
+      index = end === -1 ? selector.length : end + 1;
+      continue;
+    }
+    const pseudoElement = /^::[-\w]+/.exec(rest);
+    if (pseudoElement) {
+      counts[2] += 1;
+      index += pseudoElement[0].length;
+      continue;
+    }
+    const pseudoClass = /^:[-\w]+/.exec(rest);
+    if (pseudoClass) {
+      const name = pseudoClass[0].slice(1).toLowerCase();
+      index += pseudoClass[0].length;
+      if (selector[index] !== "(") {
+        counts[1] += 1;
+        continue;
+      }
+      const close = matchParen(selector, index);
+      const argument = selector.slice(index + 1, close);
+      index = close + 1;
+      if (name === "where") continue;
+      if (name === "not" || name === "is" || name === "has") {
+        const worst = splitSelectorList(argument)
+          .map(specificity)
+          .sort(compareSpecificity)
+          .pop() ?? [0, 0, 0];
+        counts[0] += worst[0];
+        counts[1] += worst[1];
+        counts[2] += worst[2];
+        continue;
+      }
+      counts[1] += 1;
+      continue;
+    }
+    const element = /^[a-zA-Z][-\w]*/.exec(rest);
+    if (element) {
+      counts[2] += 1;
+      index += element[0].length;
+      continue;
+    }
+    index += 1;
+  }
+  return counts;
+}
+
+/** The index of the `)` closing the parenthesis at `from`. */
+function matchParen(selector: string, from: number): number {
+  let depth = 0;
+  for (let index = from; index < selector.length; index += 1) {
+    if (selector[index] === "(") depth += 1;
+    else if (selector[index] === ")" && (depth -= 1) === 0) return index;
+  }
+  return selector.length;
+}
+
+const compareSpecificity = (
+  left: readonly number[],
+  right: readonly number[],
+): number => left[0] - right[0] || left[1] - right[1] || left[2] - right[2];
+
+/** Split one selector part into its compound selectors, dropping the combinators. */
+function compounds(part: string): string[] {
+  const out: string[] = [];
+  const state: ScanState = { quote: null, depth: 0 };
+  let current = "";
+  for (const character of part) {
+    if (!state.quote && state.depth === 0 && /[\s>+~]/.test(character)) {
+      if (current) out.push(current);
+      current = "";
+      continue;
+    }
+    current += character;
+    advance(state, character);
+  }
+  if (current) out.push(current);
+  return out;
+}
+
+/**
+ * The simple selectors a compound is built from, as comparable tokens.
+ *
+ * `button:disabled` gives `el:button` and `:disabled`; `.a.b` gives `.a` and `.b`. The
+ * element type is prefixed so it can never collide with a class of the same name.
+ */
+function simpleSelectors(compound: string): Set<string> {
+  const out = new Set<string>();
+  let index = 0;
+  const element = /^[a-zA-Z][-\w]*/.exec(compound);
+  if (element) {
+    out.add(`el:${element[0].toLowerCase()}`);
+    index = element[0].length;
+  }
+  while (index < compound.length) {
+    const rest = compound.slice(index);
+    if (rest.startsWith("[")) {
+      const end = compound.indexOf("]", index);
+      out.add(compound.slice(index, end === -1 ? undefined : end + 1));
+      index = end === -1 ? compound.length : end + 1;
+      continue;
+    }
+    const token = /^(::?[-\w]+|\.[-\w]+|#[-\w]+)/.exec(rest);
+    if (!token) {
+      index += 1;
+      continue;
+    }
+    index += token[0].length;
+    if (compound[index] === "(") {
+      const close = matchParen(compound, index);
+      out.add(compound.slice(index - token[0].length, close + 1));
+      index = close + 1;
+      continue;
+    }
+    out.add(token[0]);
+  }
+  return out;
+}
+
+const isSubset = (left: ReadonlySet<string>, right: ReadonlySet<string>) =>
+  [...left].every((item) => right.has(item));
+
+/** The simple selectors a part constrains on ancestors, i.e. everything but its key compound. */
+function ancestorSelectors(part: string): Set<string> {
+  const out = new Set<string>();
+  for (const compound of compounds(part).slice(0, -1)) {
+    for (const simple of simpleSelectors(compound)) out.add(simple);
+  }
+  return out;
+}
+
+/** One (unlayered rule, layered rule, property) triple the pre-migration sheet resolved. */
+interface Competition {
+  readonly unlayered: string;
+  readonly layered: string;
+  readonly property: string;
+}
+
+const competitionId = (pair: Competition) =>
+  `${pair.layered} || ${pair.unlayered} || ${pair.property}`;
+
+/**
+ * The inversions that have been looked at and are not defects, each with the reason.
+ *
+ * An empty allow-list would be the ideal, and this one is not empty. The entry below is a
+ * real inversion that the port does not introduce and cannot fix: on `develop` at the
+ * merge-base `button:disabled` was ALREADY unlayered in `styles.css:15` (PR5a took it back
+ * out of the layer, for the reason `react-flow.css`'s header records) while
+ * `.benchmark-table td button` was ALREADY inside `theme.css`'s components layer. PR5c moves
+ * both rules' text and changes neither's layer, so the computed-style diff against the
+ * merge-base is structurally blind to it: both builds render the same wrong cursor.
+ *
+ * It is left standing rather than repaired here because every rule this PR touches moves
+ * BYTE-VERBATIM, and the repair - `cursor: pointer` on the disabled table button, or
+ * qualifying `button:disabled` so it stops reaching outside the canvas - is a declaration
+ * change. It is recorded in the PR body and belongs to PR5d, which is the slice that is
+ * allowed to change declarations.
+ */
+const REVIEWED_INVERSIONS: ReadonlyMap<string, string> = new Map([
+  [
+    ".benchmark-table td button || button:disabled || cursor",
+    "Live, pre-existing, and not introduced by the port: `button:disabled` (0,1,1) is " +
+      "unlayered because it has to beat xyflow's `.react-flow__controls-button " +
+      "{cursor:pointer}` on the run page, and `.benchmark-table td button` (0,1,2) is " +
+      "layered like the rest of the benchmark table. Before Tailwind both were unlayered " +
+      "and the (0,1,2) rule won, so a disabled button in a benchmark-table cell showed " +
+      "`cursor:pointer`; it now shows `not-allowed`. The element is real - " +
+      "`pages/McpServersPage.tsx:152` renders `<table className=\"benchmark-table\">` and " +
+      ":174 a `<button disabled>` inside one of its cells - and arguably `not-allowed` is " +
+      "the correct rendering for a disabled control. Both halves of the pair predate this " +
+      "PR on `develop` (00765e5), so fixing it is a declaration change and belongs to PR5d.",
+  ],
+]);
+
+describe("layering never takes a fight the pre-migration sheet had already settled", () => {
+  test("no layered rule lost a competition it used to win", () => {
+    // The hole this closes. Every other case in this file asks whether a rule is in the
+    // right FILE. None of them asks what happens between two DIFFERENT selectors that match
+    // the same element: "no selector list is styled from both files" compares identical
+    // selectors, and the `@media` case compares a selector against itself. Before the port
+    // every rule was unlayered and a competition between two of them was decided by
+    // specificity, then by source order. After it, an unlayered rule beats a layered one
+    // whatever the specificity - so any pair where the LAYERED rule used to win has been
+    // silently inverted, with every rule still byte-verbatim, still in the union exactly
+    // once, and still in relative order.
+    //
+    // Derived from the pin rather than from a list of known pairs, because a hand-kept list
+    // is exactly what stops being kept.
+    //
+    // ## The filters, and why each one is sound rather than convenient
+    //
+    // A pair is only examined when all four hold:
+    //
+    //  - the two rules can apply at the same width: identical `@media` context, or at least
+    //    one of them unconditional;
+    //  - neither declaration is `!important`. Importance is resolved before layers and
+    //    REVERSES their order, so an important declaration's winner is not decided by the
+    //    rule below. There are none in the current pairing and the exclusion is counted and
+    //    printed so that stays visible;
+    //  - they declare a common property with DIFFERENT values. Same value, nothing to
+    //    invert - this is not a heuristic, it is the absence of an observable;
+    //  - their KEY compounds are compatible: the simple selectors of one are a subset of the
+    //    other's, so an element matching the narrower one necessarily matches the wider.
+    //    `button` against `button:disabled` passes; `.projection-flow` against `.run-list`
+    //    cannot describe one element and does not.
+    //
+    // What is deliberately NOT filtered out is the ancestor chain, because "these two
+    // components never nest" is a claim about the JSX that this file cannot check. Pairs
+    // whose ancestor constraints are disjoint are reported as UNREACHABLE below, with their
+    // count and their text printed rather than silently dropped.
+    const declarationsOf = (rule: CssRule) => {
+      const map = new Map<string, string>();
+      for (const declaration of rule.declarations) {
+        const colon = declaration.indexOf(":");
+        if (colon > 0) map.set(declaration.slice(0, colon).trim().toLowerCase(), declaration.slice(colon + 1).trim());
+      }
+      return map;
+    };
+    const position = new Map(pinned.map((rule, index) => [key(rule), index]));
+
+    let examined = 0;
+    let important = 0;
+    const unreachable: string[] = [];
+    const inversions: string[] = [];
+
+    for (const [, subset] of UNLAYERED_SHEETS) {
+      for (const unlayered of subset) {
+        const unlayeredAt = position.get(key(unlayered));
+        if (unlayeredAt === undefined) continue;
+        const unlayeredDeclarations = declarationsOf(unlayered);
+        for (const layered of ported) {
+          const layeredAt = position.get(key(layered));
+          if (layeredAt === undefined) continue;
+          const unlayeredContext = unlayered.context.join(" ");
+          const layeredContext = layered.context.join(" ");
+          if (unlayeredContext && layeredContext && unlayeredContext !== layeredContext) continue;
+
+          const layeredDeclarations = declarationsOf(layered);
+          for (const [property, layeredValue] of layeredDeclarations) {
+            const unlayeredValue = unlayeredDeclarations.get(property);
+            if (unlayeredValue === undefined || unlayeredValue === layeredValue) continue;
+            for (const unlayeredPart of splitSelectorList(unlayered.selector)) {
+              for (const layeredPart of splitSelectorList(layered.selector)) {
+                const unlayeredKey = simpleSelectors(compounds(unlayeredPart).at(-1) ?? "");
+                const layeredKey = simpleSelectors(compounds(layeredPart).at(-1) ?? "");
+                if (!isSubset(unlayeredKey, layeredKey) && !isSubset(layeredKey, unlayeredKey)) {
+                  continue;
+                }
+                // Counted only once the pair is otherwise a real competition, so the number
+                // printed below is the number of `!important` declarations this scan cannot
+                // reason about rather than an artefact of loop nesting.
+                if (
+                  layeredValue.includes("!important") ||
+                  unlayeredValue.includes("!important")
+                ) {
+                  important += 1;
+                  continue;
+                }
+                examined += 1;
+
+                // Who won before the port: higher specificity, then later in the sheet.
+                const order = compareSpecificity(
+                  specificity(layeredPart),
+                  specificity(unlayeredPart),
+                );
+                if (order < 0 || (order === 0 && layeredAt < unlayeredAt)) continue;
+
+                const pair: Competition = {
+                  unlayered: unlayeredPart,
+                  layered: layeredPart,
+                  property,
+                };
+                const report =
+                  `${layeredPart} (layered, pinned rule ${layeredAt}) used to beat ` +
+                  `${unlayeredPart} (unlayered, pinned rule ${unlayeredAt}) on ` +
+                  `${property}: ${layeredValue} -> ${unlayeredValue}`;
+
+                const unlayeredAncestors = ancestorSelectors(unlayeredPart);
+                const layeredAncestors = ancestorSelectors(layeredPart);
+                if (
+                  unlayeredAncestors.size &&
+                  layeredAncestors.size &&
+                  ![...unlayeredAncestors].some((simple) => layeredAncestors.has(simple))
+                ) {
+                  unreachable.push(report);
+                  continue;
+                }
+
+                const reviewed = REVIEWED_INVERSIONS.get(competitionId(pair));
+                if (reviewed) continue;
+                inversions.push(report);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // A floor, not a count: the pairing shrinks as rules move and it must never reach zero
+    // silently, which is how this case would start passing over nothing at all.
+    expect(
+      examined,
+      "the pair scan examined no competing selectors, so it proves nothing; either the " +
+        "unlayered sheet is empty or the compatibility filter matches nothing",
+    ).toBeGreaterThan(0);
+
+    console.log(
+      `cascade inversions: ${examined} competing pair(s) examined, ` +
+        `${REVIEWED_INVERSIONS.size} reviewed, ${unreachable.length} unreachable ` +
+        `(disjoint ancestor components), ${important} skipped as !important` +
+        (unreachable.length ? `\n  unreachable: ${unreachable.join("\n  unreachable: ")}` : ""),
+    );
+
+    expect(
+      inversions,
+      "layering inverted a pre-migration winner:\n" +
+        `${inversions.join("\n")}\n\nBefore the port both rules were unlayered and the one ` +
+        "named first won on specificity or source order. It is now in @layer components " +
+        "and loses to the unlayered one whatever its specificity. Either keep both rules " +
+        "on the same side of the layer boundary, or add the pair to REVIEWED_INVERSIONS " +
+        "with the reason it is not a defect.",
+    ).toEqual([]);
+  });
+
+  test("every reviewed inversion is still a competition the scan finds", () => {
+    // An allow-list that outlives the pair it exempts is an allow-list that hides the next
+    // one. Each entry is addressed by selector text, so the moment either rule is edited or
+    // moved across the layer boundary the entry stops matching anything - and this case
+    // says so instead of leaving a dead exemption in place.
+    const live = new Set<string>();
+    for (const [, subset] of UNLAYERED_SHEETS) {
+      for (const rule of subset) for (const part of splitSelectorList(rule.selector)) live.add(part);
+    }
+    const layeredParts = new Set(
+      ported.flatMap((rule) => splitSelectorList(rule.selector)),
+    );
+    const stale = [...REVIEWED_INVERSIONS.keys()].filter((id) => {
+      const [layered, unlayered] = id.split(" || ");
+      return !layeredParts.has(layered) || !live.has(unlayered);
+    });
+    expect(
+      stale,
+      "REVIEWED_INVERSIONS exempts a pair that no longer exists in the stylesheets; " +
+        `delete the entry:\n${stale.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  test("specificity and compound decomposition behave the way the scan assumes", () => {
+    // The scan is only as good as these two, and both fail silently: a specificity function
+    // that returns [0,0,0] for everything reports no inversion at all, and a compound
+    // splitter that keeps the whole selector as one token makes every pair incompatible.
+    expect(specificity("button:disabled")).toEqual([0, 1, 1]);
+    expect(specificity(".benchmark-table td button")).toEqual([0, 1, 2]);
+    expect(specificity(".projection-node.react-flow__node-default")).toEqual([0, 2, 0]);
+    expect(specificity(".primary-button:hover:not(:disabled)")).toEqual([0, 3, 0]);
+    expect(specificity(".loop-details>div:nth-child(2n)")).toEqual([0, 2, 1]);
+    expect(specificity("#id .c el")).toEqual([1, 1, 1]);
+    expect(specificity("*")).toEqual([0, 0, 0]);
+
+    expect(compounds(".a .b>c")).toEqual([".a", ".b", "c"]);
+    expect([...simpleSelectors("button:disabled")]).toEqual(["el:button", ":disabled"]);
+    expect([...ancestorSelectors(".benchmark-table td button")]).toEqual([
+      ".benchmark-table",
+      "el:td",
+    ]);
+    expect([...ancestorSelectors("button:disabled")]).toEqual([]);
+    expect(isSubset(simpleSelectors("button"), simpleSelectors("button:disabled"))).toBe(true);
+    expect(isSubset(simpleSelectors(".projection-flow"), simpleSelectors(".run-list"))).toBe(false);
+  });
+});
+
+/* ------------------------------------------------------------------------------------- */
+/* Where the unlayered sheet is imported, which is the other half of the same argument.     */
+/* ------------------------------------------------------------------------------------- */
+
+/**
+ * The `src/*.tsx` files that pull in xyflow's own stylesheet.
+ *
+ * Matched as an import STATEMENT rather than as a mention of the path. Measured: a plain
+ * `includes()` reported three importers the moment `App.tsx` and `OperatorShell.test.tsx`
+ * started explaining the cascade in prose, and the prose is exactly what this file's
+ * neighbours are supposed to carry.
+ */
+const XYFLOW_STYLESHEET = "@xyflow/react/dist/style.css";
+const XYFLOW_IMPORT = /^\s*import\s+["']@xyflow\/react\/dist\/style\.css["'];?\s*$/m;
+const xyflowImporters = readdirSync(resolve(HERE, "../src"))
+  .filter((entry) => entry.endsWith(".tsx"))
+  .filter((entry) => XYFLOW_IMPORT.test(read(`../src/${entry}`)));
+
+describe("the React Flow overrides sit beside the sheet they override", () => {
+  test("exactly one component imports xyflow's stylesheet", () => {
+    // Two importers would mean two places to keep the override next to, and the second one
+    // would silently not have it. The count is the reason the case below can address "the"
+    // importer at all.
+    expect(xyflowImporters, "src/*.tsx importing xyflow's stylesheet").toHaveLength(1);
+  });
+
+  test("react-flow.css is imported on the statement immediately after it", () => {
+    if (reactFlowSource === null) return;
+
+    // Order is the only thing settling the ties: `.projection-node-kind-gate` and xyflow's
+    // `.react-flow__node-default` are both (0,1,0) and both unlayered, so whichever sheet
+    // is imported second wins the border colour of every gate node. Adjacency is what keeps
+    // that from being decided by an unrelated import being added between them.
+    //
+    // Read as SOURCE TEXT, not as a module graph: this is the line a reviewer sees and the
+    // line an editor would move. `style-diff.spec.ts` asserts the same thing about the
+    // BUILT stylesheet, in a browser, which is where it actually has to hold.
+    const source = read(`../src/${xyflowImporters[0]}`);
+    const lines = source.split("\n");
+    const at = lines.findIndex((line) => XYFLOW_IMPORT.test(line));
+    expect(at, `${xyflowImporters[0]} does not import ${XYFLOW_STYLESHEET}`).toBeGreaterThan(-1);
+
+    // The literal next line, not the next import: a non-import statement slipped between
+    // the two would otherwise pass while the sentence below still claimed "nothing between".
+    const next = lines[at + 1];
+    expect(
+      next?.trim(),
+      `${xyflowImporters[0]} must import "./react-flow.css" on the import statement ` +
+        "immediately after xyflow's own stylesheet, with nothing between them",
+    ).toBe('import "./react-flow.css";');
   });
 });
 
@@ -556,7 +1333,7 @@ describe("the web font import", () => {
     // Computed `font-family` reads back the declared stack whether or not the font ever
     // loaded, so the rendering diff is blind to a dropped `@import`. This guard and
     // `document.fonts.check` in `style-diff.spec.ts` are the two things that are not.
-    const imports = [...stylesTree, ...themeTree].filter(
+    const imports = [...stylesTree, ...reactFlowTree, ...themeTree].filter(
       (node) => node.kind === "statement" && FONTS_IMPORT.test(node.prelude),
     );
     expect(imports.length, "the Google Fonts @import must exist exactly once").toBe(1);
@@ -568,6 +1345,7 @@ describe("the web font import", () => {
     // low it fails silently, and every heading falls back to the system sans stack.
     for (const [name, tree] of [
       ["styles.css", stylesTree],
+      ["react-flow.css", reactFlowTree],
       ["theme.css", themeTree],
     ] as const) {
       const at = tree.findIndex(
@@ -876,6 +1654,24 @@ describe("every ported rule is a byte-verbatim slice of the pinned sheet", () =>
     expect(
       notVerbatim,
       "a rule in @layer components is not a byte-verbatim slice of the pinned sheet:\n" +
+        notVerbatim.join("\n"),
+    ).toEqual([]);
+  });
+
+  test("so does each rule in react-flow.css", () => {
+    // The same claim about the other destination, added in PR5c. `react-flow.css` has no
+    // wrapping layer, so the whole file is the block: `sliceRuleTexts` takes it directly and
+    // still descends into the one `@media` container it holds, so that container's entry is
+    // compared against the pin on its own rather than as part of a wrapper the pin never
+    // wrote that way.
+    if (reactFlowSource === null) return;
+    const texts = sliceRuleTexts(stripComments(reactFlowSource));
+    expect(texts.length, "no rule was sliced out of react-flow.css").toBeGreaterThan(20);
+    const pinnedText = stripComments(pinnedSource);
+    const notVerbatim = texts.filter((text) => !pinnedText.includes(text));
+    expect(
+      notVerbatim,
+      "a rule in react-flow.css is not a byte-verbatim slice of the pinned sheet:\n" +
         notVerbatim.join("\n"),
     ).toEqual([]);
   });
