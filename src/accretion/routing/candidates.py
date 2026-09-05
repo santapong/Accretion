@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
-from itertools import product
+from itertools import islice, product
 
 from accretion.contracts import Capability, PrincipalRef, Task
 from accretion.contracts.routing import (
@@ -161,11 +161,14 @@ class CandidateBuilder:
             )
             return CandidateBuildResult((), tuple(rejected), ())
 
-        tool_products = tuple(product(*tool_choices)) if tool_choices else ((),)
-        skill_products = tuple(product(*skill_choices)) if skill_choices else ((),)
+        tool_products = tuple(islice(product(*tool_choices), cap)) if tool_choices else ((),)
+        skill_products = tuple(islice(product(*skill_choices), cap)) if skill_choices else ((),)
         configurations: list[ExecutionConfiguration] = []
-        for environment, runtime_model, tools, skills, verifier in product(
+        complete_products = product(
             environments, runtime_models, tool_products, skill_products, verifiers
+        )
+        for environment, runtime_model, tools, skills, verifier in islice(
+            complete_products, cap
         ):
             semantic_key = (
                 environment.environment.environment_id,
