@@ -1,0 +1,578 @@
+{
+  "$defs": {
+    "ApprovalArtifactRef": {
+      "additionalProperties": false,
+      "description": "A content-addressed artifact attached to an approval receipt (ADR-054 f).\n\nDistinct from ``ArtifactRef`` and deliberately not a relaxation of it. ``ArtifactRef`` is\nrun-scoped \u2014 it carries a required ``run_id`` and a filesystem path because it names\nsomething a run produced \u2014 and approvals are not run-scoped: a human approves against a\ndocument, a screenshot or a signed statement that may predate any run. Widening\n``ArtifactRef`` to fit would have made ``run_id`` optional and quietly weakened every\nexecution trace that depends on it, which registry \u00a73.2 classifies as a Major change to\nidentity semantics. Two types, each honest about its own scope, is the cheaper answer.\n\n``uri`` must carry a scheme so that the value is dereferenceable rather than a bare path\nwhose meaning depends on where it is read. ``digest`` is what makes the reference\ncontent-addressed: the receipt commits to the bytes, not to the location, and a substituted\ndocument at the same URI fails the comparison. ``media_type`` is a bare ``type/subtype``\nwith no parameters, because ``text/plain`` and ``text/plain; charset=utf-8`` would\notherwise be two spellings of one value inside a hash input.\n\n``retention_class`` is a constrained string rather than an enum, and that is a considered\ngap. Registry \u00a73 lists ``retention_class: canonical-enum`` among the optional header\nfields, but registry \u00a75 \u2014 which is where stable enums live \u2014 defines no retention\nvocabulary, and \u00a720 schedules none. Freezing a guessed set of values here would create\nexactly the duplicate source of truth registry \u00a721 forbids, to be reconciled against\nwhatever the v0.6 approval and safety work actually needs. Until the registry names the\nvalues, this field records the class the caller declares \u2014 constrained to an\nupper-case token (``^[A-Z][A-Z0-9_]*$``) so that ``standard`` and ``STANDARD`` cannot\nfork a digest before \u00a75 decides the vocabulary. Narrowing it to an enum later is a\nregistry \u00a73.2 Major change and is scheduled with that vocabulary, not before it.",
+      "properties": {
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "media_type": {
+          "maxLength": 255,
+          "minLength": 3,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*/[A-Za-z0-9][A-Za-z0-9!#$&^_.+-]*$",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "retention_class": {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "uri": {
+          "maxLength": 2048,
+          "minLength": 1,
+          "pattern": "^[a-zA-Z][a-zA-Z0-9+.-]*:",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "digest",
+        "media_type",
+        "retention_class"
+      ],
+      "title": "ApprovalArtifactRef",
+      "type": "object"
+    },
+    "HumanApprovalRequirement": {
+      "additionalProperties": false,
+      "description": "Registry \u00a77.1 ``required_human_approvals``, typed instead of left as ``[object]``.\n\n``required_role`` reuses v0.3's :class:`~accretion.contracts.WorkspaceRole` rather than\ninventing an approval-role vocabulary: the workspace roles are what the authorization\nlayer actually checks, and a second list of role names would be a second source of\ntruth about who may approve (registry \u00a721).",
+      "properties": {
+        "applies_above_risk_class": {
+          "$ref": "#/$defs/RiskClass"
+        },
+        "approval_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Approval Id",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "required_role": {
+          "$ref": "#/$defs/WorkspaceRole"
+        }
+      },
+      "required": [
+        "approval_id",
+        "description",
+        "required_role",
+        "applies_above_risk_class"
+      ],
+      "title": "HumanApprovalRequirement",
+      "type": "object"
+    },
+    "ObjectiveContractRef": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.1. The exact objective revision a node was authorised against.\n\nThis is the type of the registry \u00a73 optional header field ``objective_contract_ref``,\nwhich is why it is defined before every other contract in this module and why\n:class:`~accretion.contracts.canonical.CanonicalContract` is rebuilt immediately below\nit.\n\n**Field coverage (SDD \u00a77.1 \u2192 here).** ``project_id`` \u2192 the header's ``project_id``.\n``objective_contract_id`` \u2192 ``objective_contract_id``. ``version`` \u2192 ``revision``, the\nregistry \u00a77.1 spelling, which is also what the ``ObjectiveContract`` aggregate calls its\nown counter. ``content_hash`` \u2192 ``objective_contract_hash``. ``verified_success_floor``,\n``utility_profile_id``, ``approved_at`` \u2192 unchanged. ``risk_policy_id`` \u2192 ``risk_policy``,\na typed :class:`~accretion.contracts.refs.PolicyRef` (registry \u00a73.1 requires policies to\nuse immutable typed references, and an authority decision audited against \"policy v3\" is\naudited against a label). ``approved_by`` \u2192 a typed\n:class:`~accretion.contracts.PrincipalRef` for the same reason.\n\n**Why the target's identity is qualified.** Registry \u00a73 describes the header field as\n``{contract_id, revision, content_hash}``, but inside a :class:`CanonicalContract` those\ntwo unqualified names already mean *this reference's own* id and digest. The target's\nare therefore spelled ``objective_contract_id`` and ``objective_contract_hash``. Nothing\nis lost and the ambiguity that would otherwise sit in every receipt is.\n\n``ID_KIND`` is ``None``: ADR-055 mints no prefix for a reference, because a reference is\ncreated and owned by the contract that embeds it and has no id space to collide in.\n``verified_success_floor`` is copied onto the reference rather than dereferenced because\n\u00a78.3 requires routing to run against an exact snapshot \u2014 a router that re-read the floor\nfrom the live objective would be routing against a number the receipt cannot prove.",
+      "properties": {
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.objective-contract-ref",
+          "default": "accretion.objective-contract-ref",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "objective_contract_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Objective Contract Hash",
+          "type": "string"
+        },
+        "objective_contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Objective Contract Id",
+          "type": "string"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "risk_policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "utility_profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Utility Profile Id",
+          "type": "string"
+        },
+        "verified_success_floor": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Verified Success Floor",
+          "type": "number"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "objective_contract_id",
+        "revision",
+        "objective_contract_hash",
+        "verified_success_floor",
+        "utility_profile_id",
+        "risk_policy",
+        "approved_by",
+        "approved_at"
+      ],
+      "title": "ObjectiveContractRef",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "description": "A policy by id, version and content digest (registry \u00a74).\n\nAuthority decisions are audited against the exact policy text that produced them, so the\ncontent digest is required: \"policy v3\" is a label, and labels are editable.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "policy_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version",
+        "content_digest"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "PrincipalRef": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "principal_id": {
+          "title": "Principal Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PrincipalStatus"
+        }
+      },
+      "required": [
+        "principal_id",
+        "status"
+      ],
+      "title": "PrincipalRef",
+      "type": "object"
+    },
+    "PrincipalStatus": {
+      "enum": [
+        "ACTIVE",
+        "DISABLED"
+      ],
+      "title": "PrincipalStatus",
+      "type": "string"
+    },
+    "ResourceBudget": {
+      "additionalProperties": false,
+      "description": "Registry \u00a77.1 ``resource_budget`` and \u00a77.2 ``resource_cap``; SDD \u00a77.2 ``budget``.\n\n``maximum_cost`` is a :class:`~decimal.Decimal` and not a float. Money is the one\nquantity in this family where binary rounding is a defect rather than a nuisance, and\n:func:`~accretion.contracts.canonical.content_hash` serialises a decimal as its exact\ndigit string, so ``0.10`` stays ``0.10`` in the digest as well as in the arithmetic.",
+      "properties": {
+        "maximum_attempts": {
+          "minimum": 1,
+          "title": "Maximum Attempts",
+          "type": "integer"
+        },
+        "maximum_cost": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "title": "Maximum Cost"
+        },
+        "maximum_latency_ms": {
+          "minimum": 0,
+          "title": "Maximum Latency Ms",
+          "type": "integer"
+        },
+        "maximum_tool_calls": {
+          "minimum": 0,
+          "title": "Maximum Tool Calls",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "maximum_cost",
+        "maximum_latency_ms",
+        "maximum_attempts",
+        "maximum_tool_calls"
+      ],
+      "title": "ResourceBudget",
+      "type": "object"
+    },
+    "RiskClass": {
+      "description": "Registry \u00a75.3. The routing risk vocabulary, beside v0.1's ``RiskLevel``.\n\n``RiskLevel`` (``LOW | MEDIUM | HIGH | CRITICAL``) is the human-approval ladder used by\nplanning and governance and it stays exactly as it is (ADR-054 d). ``RiskClass`` answers\na different question \u2014 not \"how much authority does this need\" but \"what kind of world\ndoes this act on\" \u2014 which is why ``SIMULATION`` and ``PHYSICAL_HIGH`` are values here\nand could never be values there. The two are joined by the total mapping\n:func:`risk_level_for`.\n\nProject policy may make a class stricter. It may not reduce ``PHYSICAL_HIGH`` through a\nplugin, a learned policy or a runtime request; ``PROHIBITED`` is not a level at all but\na refusal, and it maps to no approval ladder because nothing approves it.",
+      "enum": [
+        "LOW_DIGITAL",
+        "MEDIUM_DIGITAL",
+        "HIGH_DIGITAL",
+        "SIMULATION",
+        "PHYSICAL_HIGH",
+        "PROHIBITED"
+      ],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "UtilityWeights": {
+      "additionalProperties": false,
+      "description": "Registry \u00a77.1 ``utility_weights``: how a project trades quality, cost and latency.\n\nWeights are non-negative and are not required to sum to one. Normalisation is the\nranker's business (\u00a79.1 stage 10) and forcing it here would mean a project could not\nexpress \"cost is irrelevant\" without also restating the other two.",
+      "properties": {
+        "cost": {
+          "minimum": 0,
+          "title": "Cost",
+          "type": "number"
+        },
+        "latency": {
+          "minimum": 0,
+          "title": "Latency",
+          "type": "number"
+        },
+        "quality": {
+          "minimum": 0,
+          "title": "Quality",
+          "type": "number"
+        }
+      },
+      "required": [
+        "quality",
+        "cost",
+        "latency"
+      ],
+      "title": "UtilityWeights",
+      "type": "object"
+    },
+    "WorkspaceRole": {
+      "enum": [
+        "OWNER",
+        "ADMIN",
+        "DEVELOPER",
+        "RESEARCHER",
+        "VIEWER",
+        "SERVICE"
+      ],
+      "title": "WorkspaceRole",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Registry \u00a77.1. The human-approved goal a project's routing is answerable to.\n\nThe registry owns this contract outright \u2014 SDD \u00a77 never gives it a schema, only a\nreference to it \u2014 so the field list is registry \u00a77.1's minimum, unabridged.\n\n**Field coverage (registry \u00a77.1 \u2192 here).** ``goal``, ``scope_in``, ``scope_out``,\n``verified_success_floor``, ``false_acceptance_ceiling``, ``utility_weights``,\n``resource_budget``, ``required_human_approvals``, ``revision`` \u2192 unchanged.\n``risk_policy_ref`` \u2192 ``risk_policy_ref``, typed as a\n:class:`~accretion.contracts.refs.PolicyRef`. ``approval_receipt_ref`` \u2192 typed as an\n:class:`~accretion.contracts.refs.ApprovalArtifactRef` and *not* as ``ArtifactRef``\n(ADR-054 f): an approval is not run-scoped, and ``ArtifactRef.run_id`` stays required\nfor the execution traces that depend on it.\n\n``false_acceptance_ceiling`` is the field that makes this contract more than a wish.\n``verified_success_floor`` alone can be satisfied by a verifier that says yes too often,\nso the objective states both the success it demands and the wrongness it will tolerate,\nand \u00a710.2's promotion evaluation checks non-regression on both.\n\nChanging an active objective creates a new ``revision`` with impact analysis and human\napproval, and affects only new runs and nodes. That is a process rule the schema\nsupports rather than enforces: ``supersedes_contract_id`` on the header records the\nlineage, and the append-only store PR3 adds is what makes a revision a second row rather\nthan an edit.",
+  "properties": {
+    "approval_receipt_ref": {
+      "$ref": "#/$defs/ApprovalArtifactRef"
+    },
+    "content_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "contract_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "accretion.objective-contract",
+      "default": "accretion.objective-contract",
+      "title": "Contract Type",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/PrincipalRef"
+    },
+    "false_acceptance_ceiling": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "False Acceptance Ceiling",
+      "type": "number"
+    },
+    "goal": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Goal",
+      "type": "string"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "objective_contract_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectiveContractRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "required_human_approvals": {
+      "items": {
+        "$ref": "#/$defs/HumanApprovalRequirement"
+      },
+      "maxItems": 32,
+      "title": "Required Human Approvals",
+      "type": "array"
+    },
+    "resource_budget": {
+      "$ref": "#/$defs/ResourceBudget"
+    },
+    "retention_class": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention Class"
+    },
+    "revision": {
+      "minimum": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "risk_policy_ref": {
+      "$ref": "#/$defs/PolicyRef"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope_in": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Scope In",
+      "type": "array"
+    },
+    "scope_out": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "title": "Scope Out",
+      "type": "array"
+    },
+    "supersedes_contract_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Contract Id"
+    },
+    "utility_weights": {
+      "$ref": "#/$defs/UtilityWeights"
+    },
+    "verified_success_floor": {
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Verified Success Floor",
+      "type": "number"
+    },
+    "workspace_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_id",
+    "created_by",
+    "workspace_id",
+    "goal",
+    "scope_in",
+    "verified_success_floor",
+    "false_acceptance_ceiling",
+    "utility_weights",
+    "risk_policy_ref",
+    "resource_budget",
+    "revision",
+    "approval_receipt_ref"
+  ],
+  "title": "ObjectiveContract",
+  "type": "object"
+}

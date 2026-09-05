@@ -76,6 +76,28 @@ _PREFIXES = {
     "citation_check": "cck",
     "identity_assertion": "ida",
     "enterprise_auth_grant": "eag",
+    # v0.4 routing contracts (ADR-055). "uuid" in the SDD reads as "globally unique
+    # opaque id", so these records carry the same prefixed base32 identity as every
+    # other aggregate here rather than introducing a second identity scheme. The
+    # prefix registry is three characters wide, which is why the candidate prefix is
+    # ``ccd`` and not ``cnd`` — ``cnd`` is already the connector definition — and why
+    # the routing receipt is ``rcp`` beside the existing ``rpl`` and ``rtc``.
+    # ``ExperienceRecord`` deliberately gains no prefix: it is a projection keyed by
+    # the v0.2 P7 ``experience_id``, so it reuses ``exp`` above (ADR-054 b).
+    "objective_contract": "obj",
+    "node_contract": "nct",
+    "verification_spec": "vsp",
+    "routing_request": "rrq",
+    "execution_configuration": "cfg",
+    "configuration_candidate": "ccd",
+    "compatibility_decision": "cmp",
+    "routing_receipt": "rcp",
+    "independent_verification_result": "ivr",
+    "failure_event": "flr",
+    "router_model_version": "rmv",
+    "router_training_snapshot": "rts",
+    "router_promotion_report": "rpr",
+    "shadow_decision": "shd",
 }
 
 

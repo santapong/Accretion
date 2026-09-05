@@ -1,0 +1,96 @@
+{
+  "approval_receipt_ref": {
+    "digest": "f0b1cd79e1ea7de0cacfc6067cbe1748a26dbaba84d68a33398e59c15b245367",
+    "media_type": "application/pdf",
+    "retention_class": "STANDARD",
+    "uri": "https://approvals.example.test/receipts/2026-02-01"
+  },
+  "content_hash": "f4fff3996530f4436ac1005e605967849d6325e4dc24351f7d60fb2f2ee4ea50",
+  "contract_id": "obj_41JKBAC457D7HT28R74EDGBHWP",
+  "contract_type": "accretion.objective-contract",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "false_acceptance_ceiling": 0.015,
+  "goal": "Route every node to a configuration whose verified success clears the floor.",
+  "labels": {
+    "owner": "routing-platform",
+    "tier": "gold"
+  },
+  "objective_contract_ref": {
+    "approved_at": "2026-02-01T08:00:00Z",
+    "approved_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "content_hash": "eeb604d2b673fc4518f6cc1028e1a3d67f72cc7ccd2110ce36b2c2f978371de9",
+    "contract_id": "objective-contract-ref-embedded",
+    "contract_type": "accretion.objective-contract-ref",
+    "created_at": "2026-03-01T09:00:00Z",
+    "created_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "labels": {},
+    "objective_contract_hash": "13f224df431229df61136c206eb2a5857df8c6a2907a3c3697192210aafc0ad4",
+    "objective_contract_id": "obj_HQ5A32JBQ5CTEZTZWCVPPPQ4JM",
+    "objective_contract_ref": null,
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": null,
+    "revision": 3,
+    "risk_policy": {
+      "content_digest": "b941fb5563b0aabec00a46d9150fff0d85e017346a26e12467ecdb80ffa458fd",
+      "policy_id": "workspace-risk-policy",
+      "version": "3.1.0"
+    },
+    "schema_version": "1.0.0",
+    "supersedes_contract_id": null,
+    "utility_profile_id": "balanced-delivery",
+    "verified_success_floor": 0.9,
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "required_human_approvals": [
+    {
+      "applies_above_risk_class": "HIGH_DIGITAL",
+      "approval_id": "physical-action",
+      "description": "A workspace owner approves anything above HIGH_DIGITAL.",
+      "required_role": "OWNER"
+    }
+  ],
+  "resource_budget": {
+    "maximum_attempts": 3,
+    "maximum_cost": "12.50",
+    "maximum_latency_ms": 900000,
+    "maximum_tool_calls": 200
+  },
+  "retention_class": "STANDARD",
+  "revision": 3,
+  "risk_policy_ref": {
+    "content_digest": "b941fb5563b0aabec00a46d9150fff0d85e017346a26e12467ecdb80ffa458fd",
+    "policy_id": "workspace-risk-policy",
+    "version": "3.1.0"
+  },
+  "schema_version": "1.0.0",
+  "scope_in": [
+    "node-routing",
+    "verification-feedback"
+  ],
+  "scope_out": [
+    "graph-planning",
+    "robotics"
+  ],
+  "supersedes_contract_id": "obj_SFJD45KBP3VJB62E7W08H5C43V",
+  "utility_weights": {
+    "cost": 0.25,
+    "latency": 0.15,
+    "quality": 0.6
+  },
+  "verified_success_floor": 0.92,
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

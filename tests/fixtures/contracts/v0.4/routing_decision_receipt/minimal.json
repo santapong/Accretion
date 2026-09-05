@@ -1,0 +1,36 @@
+{
+  "capability_registry_snapshot_id": "mcp_SMCJYH1VRSCC2HHMXFHYPXNP90",
+  "content_hash": "507a2c220374e7010d31af698700497c09ed7db93776f68ce6de0cb5fb7ab3a6",
+  "contract_id": "rcp_ZB2MQXN0FZJ9P5SHENDTTQ6M79",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "decision_type": "HUMAN_REVIEW_REQUIRED",
+  "explanation": {
+    "contract_id": "structured-explanation-nested-minimal",
+    "created_at": "2026-03-01T09:00:00Z",
+    "created_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "summary": "No candidate cleared the gate and no audited fallback was compatible.",
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  "node_contract_hash": "432d52336d47b46491433a0186a7b62e9e382134874f526483d0e592aef92c4a",
+  "objective_contract_version": 3,
+  "policy_snapshot_id": "pol_SHHZA9CFZ1EWF7Y7R6HDRH9K66",
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "routing_request_id": "rrq_XTFQABRZSGMVCXZQ2PYSDYBMV5",
+  "uncertainty": {
+    "calibration_version": "conformal-v1",
+    "epistemic_uncertainty": 0.31,
+    "lower_confidence_success": 0.44
+  },
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C",
+  "workspace_router_version": "rmv_D0Q67B7EW89E1W1KJJFEC3XVN5"
+}

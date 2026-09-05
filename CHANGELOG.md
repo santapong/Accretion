@@ -26,6 +26,19 @@ The M9 ladder is parked after its stylesheet port; the entries below it are v0.4
   `SkillRef`, `EnvironmentRef`, `VerifierRef`, `EvidenceRef`, `PolicyRef` and
   `ApprovalArtifactRef` — while `PrincipalRef`, `PluginRef`, `ConnectionRef` and
   `ArtifactRef` are reused unchanged (#121).
+- Froze the v0.4 contract family in `contracts/routing.py`: nineteen contracts
+  (`ObjectiveContract`, `ObjectiveContractRef`, `NodeContract`, `VerificationSpec`,
+  `TaskFeatures`, `ProjectFeatures`, `RoutingContext`, `ExecutionConfiguration`,
+  `ConfigurationCandidate`, `CompatibilityDecision`, `StructuredExplanation`,
+  `RoutingDecisionReceipt`, `IndependentVerificationResult`, `ExperienceRecord`,
+  `FailureEvent`, `RouterModelVersion`, `RouterTrainingSnapshot`, `RouterPromotionReport`,
+  `ShadowDecision`) exported as `CONTRACT_INVENTORY`, all inheriting the registry §3 header
+  through a new `CanonicalContract` base that seals its own ADR-056 digest and rejects an
+  unknown schema major; fifteen registry §5 enums with the total `risk_level_for` mapping;
+  the fourteen ADR-055 id prefixes; seventy-six golden fixtures (minimal, complete, invalid,
+  unknown-version) carrying real content hashes; and nineteen committed JSON Schema 2020-12
+  documents under `docs/contracts/v0.4/` with an export-and-`--check` script. No table,
+  migration, store method, route or UI file changes (#122).
 
 ### Added
 

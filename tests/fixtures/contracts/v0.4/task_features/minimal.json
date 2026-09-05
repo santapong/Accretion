@@ -1,0 +1,17 @@
+{
+  "content_hash": "e8c6667d0bbfa5ca4ee1089ce94e62a748a3f452fef3b074d75d4dbc5efe6671",
+  "contract_id": "task-features-minimal",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "expected_horizon": "MEDIUM",
+  "irreversible_actions": false,
+  "profile_confidence": 0.78,
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "risk": "MEDIUM",
+  "source_profile_id": "prf_060BKJW56KVJ0VGEPVFN37HCKZ",
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

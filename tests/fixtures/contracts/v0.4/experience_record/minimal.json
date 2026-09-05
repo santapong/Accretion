@@ -1,0 +1,45 @@
+{
+  "attribution": {
+    "confidence": 0.6,
+    "method_version": "dependency-heuristic-v1"
+  },
+  "configuration_hash": "73828f6546f6e3b4730d76d7cf0530c39e50d9b0c6b605e42c52148ff6c91a44",
+  "content_hash": "c61644db02e2da80ac58d2d26b744c53cd165692282aa9f7e3afadabe753d7a0",
+  "contract_id": "exp_98X6ZWMX9GJW8JYXQ5S3H1WN06",
+  "contract_signature": {
+    "capability_digest": "b92032792f384ca47573d00a1d9d18f45dbfc2224221f64516ab5b959aa15e78",
+    "node_kind": "TASK",
+    "objective_digest": "120edac2e46c5fa5bb20c4d72d366873e09b5c1cfc148ab6e2b2bf4e22b6df26",
+    "risk_class": "MEDIUM_DIGITAL",
+    "verification_spec_hash": "d3f922a310a02725de5f9b2a75e3766c634df4b6a6ac4e806f64a2224a4a582d"
+  },
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "local_verification_status": "PASS",
+  "outcomes": {
+    "cost": "3.75",
+    "latency_ms": 38000
+  },
+  "permission_provenance": {
+    "granted_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "justification": "Shared under the workspace evidence-sharing policy.",
+    "policy": {
+      "content_digest": "b941fb5563b0aabec00a46d9150fff0d85e017346a26e12467ecdb80ffa458fd",
+      "policy_id": "workspace-risk-policy",
+      "version": "3.1.0"
+    },
+    "scope": "PROJECT"
+  },
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "source_node_execution_id": "run_CF3H4JJ7P6JSN7B6Z7XVDF60S2",
+  "visibility": "PROJECT",
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}
