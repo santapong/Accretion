@@ -380,6 +380,17 @@ class IndependentVerificationRecorder:
         for result in results:
             by_verifier.setdefault(result.verifier_id, []).append(result)
 
+        # An unstated session is not a declared absence. A caller that omits a verifier from
+        # the mapping has not said "this verifier ran without a session"; treating the gap as
+        # independence would let a verifier that ran in the producer's session record a PASS.
+        missing = sorted(vid for vid in by_verifier if vid not in verifier_session_ids)
+        if missing:
+            raise ValueError(
+                f"verifier_session_ids declares no session for {missing!r}; an unstated "
+                "session is not a declared absence, and treating it as one lets a verifier "
+                "that ran in the producer's session record a PASS"
+            )
+
         merged: dict[str, ClaimResult] = {}
         order: list[str] = []
         for verifier_id in sorted(by_verifier):

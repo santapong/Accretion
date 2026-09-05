@@ -34,6 +34,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from accretion.contracts import (
     EvidenceClass,
@@ -192,7 +193,13 @@ async def setup_recorded(
         results=results,
         execution_instance_id=execution_instance_id,
         producer_session_id=producer_session_id,
-        verifier_session_ids=verifier_session_ids or {},
+        # An explicit declared absence for every verifier the results name, never a silent
+        # gap: the recorder refuses an undeclared session.
+        verifier_session_ids=(
+            verifier_session_ids
+            if verifier_session_ids is not None
+            else {result.verifier_id: None for result in results}
+        ),
         verification_spec_hash=spec.content_hash,
         verifier=VERIFIER,
         workspace_id=WORKSPACE_ID,
@@ -250,6 +257,21 @@ async def test_a_verifier_bound_to_the_producer_session_cannot_accept() -> None:
     )
     assert separate.status is VerificationState.PASS
     assert separate.claim_results[0].limitations == []
+    # ERROR can never be pre-accepted by a spec: a property of the contract, not of the
+    # literal this test chose.
+    with pytest.raises(ValidationError, match="ERROR"):
+        unsealed = spec.model_dump()
+        unsealed.pop("content_hash", None)
+        VerificationSpec(**{**unsealed, "accepted_outcomes": [VerificationState.ERROR]})
+
+    # And an undeclared session is refused outright rather than read as independence.
+    with pytest.raises(ValueError, match="declares no session"):
+        await setup_recorded(
+            claims=claims,
+            results=[make_result(evidence_ids=ids)],
+            evidence=evidence,
+            verifier_session_ids={},
+        )
 
 
 async def test_a_deterministic_verifier_with_no_session_is_independent_and_the_runtime_is_a_warning(
@@ -437,9 +459,13 @@ async def test_inconclusive_is_neither_pass_nor_fail_and_a_lower_coverage_never_
         assert stored is not None
 
         coverage = {claim.claim_id: claim.coverage for claim in stored.claim_results}
-        for claim_id, value in coverage.items():
-            assert value <= full_coverage[claim_id]
         produced = {evidence[evidence_id].evidence_class for evidence_id in subset}
+        # The discriminating biconditional, not `x <= 1.0`: a claim is covered exactly when
+        # every evidence class it requires was produced, so a constant or fractional
+        # coverage fails on the subset trials rather than only on the fixed spec.
+        for claim in spec.claims:
+            expected = 1.0 if set(claim.required_evidence_types) <= produced else 0.0
+            assert coverage.get(claim.claim_id, 0.0) == expected, claim.claim_id
         if required_classes <= produced:
             assert stored.status is VerificationState.PASS
             continue
@@ -481,7 +507,7 @@ async def test_recording_the_same_source_result_twice_is_idempotent() -> None:
         results=[result],
         execution_instance_id="run_9ZAQAYEBNE6NQ3P27YWG8M082Y",
         producer_session_id="ses_producer",
-        verifier_session_ids={},
+        verifier_session_ids={"git-diff": None},
         verification_spec_hash=spec.content_hash,
         verifier=VERIFIER,
         workspace_id=WORKSPACE_ID,
@@ -653,7 +679,7 @@ async def test_a_spec_hash_that_is_not_the_digest_of_the_mapped_spec_is_refused(
             results=[make_result(evidence_ids=list(evidence))],
             execution_instance_id="run_9ZAQAYEBNE6NQ3P27YWG8M082Y",
             producer_session_id="ses_producer",
-            verifier_session_ids={},
+            verifier_session_ids={"git-diff": None},
             verification_spec_hash="0" * 64,
             verifier=VERIFIER,
             workspace_id=WORKSPACE_ID,
