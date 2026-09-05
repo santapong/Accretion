@@ -533,11 +533,19 @@ def test_an_unknown_verification_mode_is_rejected(
 
 def test_the_fifty_v04_rows_load_from_the_sdd_under_their_owner_stages() -> None:
     """SDD v0.4 §20 must reach the harness: fifty ids, all MUST, each under the v0.4
-    milestone that owns it (ADR-052), each ``not_yet_due`` under that owner.
+    milestone that owns it (ADR-052), and each in exactly the state its milestone put it in.
 
     Counting alone would let a row that fell into the ``unassigned`` fallback (a
     ``stage_of`` regex that stops at one digit drops every M10 row) still add up to
     fifty; asserting the exact owner partition and the stage set does not.
+
+    The blanket "all fifty are ``not_yet_due``" this test made while M0 was the only landed
+    milestone is now a *partition* instead, and it is the stronger statement: the four rows
+    M1 flipped are named here one by one, so a row that goes into scope without a milestone
+    delivering it is red in this test rather than invisible inside a count. A milestone flips
+    its rows by deleting them from ``criteria.toml`` — ``test`` is the default for a
+    criterion with no policy row — so a flipped row is recognised by carrying no policy
+    ``reason``, which is what the loop below checks.
     """
 
     criteria = harness.load_criteria()
@@ -562,10 +570,17 @@ def test_the_fifty_v04_rows_load_from_the_sdd_under_their_owner_stages() -> None
     assert {c.stage for c in v04.values()} == {f"v0.4-{owner}" for owner in owners}
     for name, criterion in v04.items():
         assert criterion.stage == "v0.4-" + name.split("-")[1], name
-        assert criterion.reason == "v0.4 " + name.split("-")[1], name
     assert {c.priority for c in v04.values()} == {"MUST"}
-    assert {c.verification for c in v04.values()} == {"not_yet_due"}
-    assert not any(c.in_scope for c in v04.values())
+
+    delivered = {"AC4-M1-005", "AC4-M1-006", "AC4-M1-007", "AC4-M1-008"}
+    assert {name for name, c in v04.items() if c.in_scope} == delivered
+    for name, criterion in v04.items():
+        if name in delivered:
+            assert criterion.verification == "test", name
+            assert criterion.reason == "", name
+        else:
+            assert criterion.verification == "not_yet_due", name
+            assert criterion.reason == "v0.4 " + name.split("-")[1], name
 
 
 def test_the_seven_ema_rows_load_from_the_sdd_as_m7_musts() -> None:

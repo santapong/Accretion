@@ -85,6 +85,23 @@ class ReasonCode(StrEnum):
     """The subject declares a different architecture major than this reader understands."""
 
     # ---------------------------------------------------------------------------------
+    # New in M1.2, and the one code the M1.1 pre-declaration below missed. It has no P7
+    # counterpart because P7 never asked an authority anything: it graded memories, and a
+    # memory cannot be sent for approval. See the note under `_P7_CODES_NOT_LIFTED` for why
+    # adding it here did not bump `RULE_VERSION`.
+    # ---------------------------------------------------------------------------------
+    APPROVAL_REQUIRED = "APPROVAL_REQUIRED"
+    """The policy engine returned ``REQUIRE_APPROVAL``, and routing does not pre-approve.
+
+    A gate that treated ``REQUIRE_APPROVAL`` as a soft yes would hand the router the one
+    authority decision SDD §5.3 reserves for a human: the approval is *content-bound*, so it
+    can only be granted against a request that exists, and no request exists while a
+    configuration is still being chosen. INCOMPATIBLE is therefore the honest verdict, and
+    this code is what tells an operator that the refusal is an unmade decision rather than a
+    denial — the two need different actions and would otherwise share ``CAPABILITY_DENIED``.
+    """
+
+    # ---------------------------------------------------------------------------------
     # New in v0.4. Each names a refusal the P7 vocabulary had no word for, because P7
     # never looked at runtimes, connections, MCP servers or a frozen verification spec.
     # ---------------------------------------------------------------------------------
@@ -128,6 +145,15 @@ class ReasonCode(StrEnum):
 # than added later because `RULE_VERSION` covers the whole catalogue: adding a code in M1.2
 # would bump the version of rules whose meaning had not changed, and every decision M1
 # persisted would then point at a version string no longer in use.
+#
+# M1.2 nevertheless had to add one — APPROVAL_REQUIRED — because the pre-declaration above
+# enumerated the codes M1.2's gates would *refuse* with and forgot the one they *defer*
+# with. `RULE_VERSION` stays `compat-rules/1` anyway, and the reason is narrow rather than
+# convenient: the version exists so that a persisted decision remains explicable against the
+# rules that produced it, and no decision under `compat-rules/1` exists outside this
+# repository's tests. M1 is the first milestone that emits one at all and it has not shipped,
+# so there is no reader pointing at the old catalogue to mislead. The rule stands unchanged
+# for every later addition: once v0.4 ships, a new code bumps the version.
 
 ALL_REASON_CODES: tuple[str, ...] = tuple(code.value for code in ReasonCode)
 """Every code in declaration order, as plain strings, for the golden test.

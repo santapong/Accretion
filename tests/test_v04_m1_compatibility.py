@@ -55,6 +55,8 @@ from accretion.contracts import (
     McpServerState,
     MetaPlugin,
     MetaSkill,
+    PluginInstallation,
+    PluginState,
     PrincipalRef,
     PrincipalStatus,
     Project,
@@ -269,6 +271,7 @@ async def setup_registry(
     granted_scopes: list[str] | None = None,
     mcp_backed: bool = False,
     mcp_state: McpServerState = McpServerState.READY,
+    plugin_gated: bool = False,
     register_capability: bool = True,
     register_connection: bool = True,
     register_skill: bool = True,
@@ -293,9 +296,37 @@ async def setup_registry(
         )
     )
     if register_capability:
-        await store.upsert_capability(
-            capability_row("cap.search", enabled=capability_enabled, version=capability_version)
+        capability = capability_row(
+            "cap.search", enabled=capability_enabled, version=capability_version
         )
+        if plugin_gated:
+            # The projection the plugin manager writes, which is the only thing
+            # ``CapabilityResolver._plugin_gate`` keys off. Written here rather than through
+            # the plugin manager because this file has no plugin manager: the fact under test
+            # is what the *resolver* does with a capability carrying this projection.
+            capability = capability.model_copy(
+                update={
+                    "provider_projections": {
+                        "accretion": {
+                            "plugin_id": "plugin.reporting",
+                            "installation_id": "pli_m1_reporting",
+                            "workspace_id": WORKSPACE_ID,
+                        }
+                    }
+                }
+            )
+            await store.upsert_plugin_installation(
+                PluginInstallation(
+                    installation_id="pli_m1_reporting",
+                    workspace_id=WORKSPACE_ID,
+                    plugin_id="plugin.reporting",
+                    version="1.0.0",
+                    manifest_digest=digest("plugin.reporting"),
+                    state=PluginState.DISABLED,
+                    registered_capability_ids=["cap.search"],
+                )
+            )
+        await store.upsert_capability(capability)
         await store.upsert_connector_definition(
             connector_row(
                 "conndef_search",
@@ -837,6 +868,7 @@ GOLDEN_REASON_CODES: tuple[str, ...] = (
     "VERIFIER_INCOMPATIBLE",
     "VERIFIER_UNAVAILABLE",
     "ARCHITECTURE_MAJOR_INCOMPATIBLE",
+    "APPROVAL_REQUIRED",
     "CAPABILITY_DISABLED",
     "CONNECTION_REQUIRES_REAUTH",
     "MCP_SERVER_NOT_READY",
@@ -866,6 +898,14 @@ async def test_reason_codes_are_stable_screaming_snake_and_enumerated() -> None:
     """
 
     assert ALL_REASON_CODES == GOLDEN_REASON_CODES
+    # The catalogue is coupled to its version: adding or removing a code must touch the
+    # version line in the same diff (ADR4-M1-003 waived the bump once, for APPROVAL_REQUIRED,
+    # before any release shipped compat-rules/1).
+    assert RULE_VERSION == "compat-rules/1"
+    assert (
+        hashlib.sha256("\n".join(GOLDEN_REASON_CODES).encode()).hexdigest()
+        == "62d7459b810345c87e0a23928e64a3acf4868ae6482c0bad8db31bb30d6294bd"
+    )
     for code in ALL_REASON_CODES:
         assert re.fullmatch(r"[A-Z][A-Z0-9_]*", code), f"{code!r} is not SCREAMING_SNAKE"
 
@@ -1315,6 +1355,54 @@ async def test_an_mcp_backed_capability_behind_an_unready_server_is_mcp_server_n
     decision = await tool_decision(mcp_backed=True, mcp_state=McpServerState.AUTH_REQUIRED)
     assert decision.status is CompatibilityStatus.INCOMPATIBLE
     assert decision.reason_code == ReasonCode.MCP_SERVER_NOT_READY.value
+
+
+async def test_a_plugin_gated_capability_behind_an_mcp_binding_is_capability_disabled(
+) -> None:
+    """The M1.1 refinement was too coarse, and this is the world that proved it.
+
+    ``CapabilityResolver`` runs the plugin gate *before* the MCP readiness gate, so a
+    capability contributed by a disabled plugin resolves ``DISABLED`` no matter what its
+    binding is — including when that binding is MCP-backed and the server behind it is
+    perfectly healthy. M1.1 labelled every such outcome ``MCP_SERVER_NOT_READY``, which sent
+    an operator to restart a server that was never down while the plugin stayed disabled.
+
+    The distinguishing fact is the server's *observed* state, which the snapshot now carries,
+    so the refinement stays structural: the resolver's English ``reason`` is never parsed.
+    Deleting the ``mcp_server_state(...) is not READY`` clause from ``map_resolution`` flips
+    this test and nothing else; the AUTH_REQUIRED test above keeps the other direction
+    honest, so neither code can swallow the other.
+    """
+
+    decision = await tool_decision(
+        plugin_gated=True, mcp_backed=True, mcp_state=McpServerState.READY
+    )
+    assert decision.status is CompatibilityStatus.INCOMPATIBLE
+    assert decision.reason_code == ReasonCode.CAPABILITY_DISABLED.value
+
+
+async def test_the_snapshot_carries_the_observed_state_of_every_mcp_server_and_no_more(
+) -> None:
+    """The new snapshot field is ``(id, state)`` pairs, sorted, and nothing else.
+
+    Asserted on the tuple's shape rather than only on the lookup, because the reason the
+    projection is narrow is that an MCP server's endpoint and auth profile can carry
+    credentials — and a builder that widened it to the whole row would still pass a test that
+    only asked what ``mcp_server_state`` returned.
+    """
+
+    _, builder, _, _ = await setup_registry(mcp_backed=True, mcp_state=McpServerState.DEGRADED)
+    snapshot = await builder.build(
+        workspace_id=WORKSPACE_ID, project_id=PROJECT_ID, task=task_row(), clock=clock
+    )
+
+    assert snapshot.mcp_server_states == (("mcs_search", McpServerState.DEGRADED),)
+    assert snapshot.mcp_server_state("mcs_search") is McpServerState.DEGRADED
+    # Both "no server named" and "a server this snapshot never saw" are absent, and neither
+    # may read as ready: a binding pointing at nothing is exactly as unusable as one pointing
+    # at a server the workspace cannot see.
+    assert snapshot.mcp_server_state(None) is None
+    assert snapshot.mcp_server_state("mcs_absent") is None
 
 
 async def test_map_resolution_maps_a_capability_needing_no_connector_to_compatible() -> None:
