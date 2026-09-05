@@ -185,6 +185,7 @@ class SelectedCapabilityNodeInvoker(Protocol):
         *,
         run_id: str,
         node_id: str,
+        workspace_id: str,
         selected: ToolBinding,
         arguments: dict[str, object],
         executing_provider: Provider,
@@ -1392,11 +1393,36 @@ class RunManager:
             cursor.statuses[node.key] = GraphNodeStatus.WAITING
             return session, NodeOutcome.INCONCLUSIVE
 
+        configuration_preview: ExecutionConfiguration | None = None
+        if node.kind is GraphNodeKind.AGENT:
+            configuration_for = getattr(self.routing_service, "configuration_for", None)
+            if configuration_for is None:
+                raise RuntimeError(
+                    "SELECTED_AGENT_CONFIGURATION_UNAVAILABLE: routing service cannot "
+                    "resolve the selected configuration before claim"
+                )
+            configuration_preview = await configuration_for(receipt)
+            if configuration_preview.tools:
+                raise RuntimeError(
+                    "SELECTED_AGENT_TOOL_BINDING_UNAVAILABLE: agent sessions cannot pin "
+                    "selected tool bindings"
+                )
+
         # This persists the dispatch claim before session creation, capability invocation,
         # verifier execution, worktree capture, or runtime submission.  A second entry on
         # this cursor is refused above rather than resubmitted without another durable claim.
         configuration = await self.routing_service.claim_dispatch(receipt=receipt, run=run)
         cursor.configurations[node.key] = configuration
+
+        if (
+            configuration_preview is not None
+            and configuration_preview.configuration_hash
+            != configuration.configuration_hash
+        ):
+            raise RuntimeError(
+                "SELECTED_AGENT_CONFIGURATION_CHANGED: claimed configuration differs "
+                "from the pre-claim selection"
+            )
 
         if node.kind is not GraphNodeKind.AGENT:
             return session, None
@@ -1478,6 +1504,7 @@ class RunManager:
                 result = await selected_invoker.invoke_selected(
                     run_id=run.run_id,
                     node_id=node.key,
+                    workspace_id=routing_configuration.workspace_id,
                     selected=selected,
                     arguments={"query": query},
                     executing_provider=provider,
@@ -1684,9 +1711,13 @@ class RunManager:
             selected_verifier_id = self._selected_verifier_id(
                 routing_configuration, frozen
             )
-            policy = policy.model_copy(
-                update={"required_verifiers": [selected_verifier_id]}
-            )
+            if selected_verifier_id not in policy.required_verifiers:
+                raise RuntimeError(
+                    "SELECTED_VERIFIER_MISMATCH: selected verifier is not required by "
+                    "the acceptance policy"
+                )
+            # The selected verifier is the configuration's pinned primary implementation;
+            # it does not replace the other mandatory checks frozen into the policy/spec.
         await self._node_transition(
             run, session.session_id, node.key, entered=True, entered_via=entered_via
         )

@@ -119,6 +119,9 @@ def runtime_digest(version: str, capabilities: list[str]) -> str:
 
 def configuration(*, version: str = FakeRuntime.adapter_version) -> SimpleNamespace:
     return SimpleNamespace(
+        contract_id="cfg_01K4FCM2QBTV7NS83WZ7P89Y0P",
+        configuration_hash="d" * 64,
+        workspace_id="wks_m2_dispatch",
         runtime=SimpleNamespace(
             provider=Provider.FAKE,
             runtime_id="runtime_fake",
@@ -169,6 +172,10 @@ async def test_route_is_restored_or_created_then_claimed_before_session_creation
             assert kwargs["mode"] is RoutingMode.BASELINE_ONLY
             return selected_receipt
 
+        async def configuration_for(self, receipt):  # type: ignore[no-untyped-def]
+            calls.append("configuration")
+            return selected_configuration
+
         async def claim_dispatch(self, **kwargs):  # type: ignore[no-untyped-def]
             calls.append("claim")
             return selected_configuration
@@ -196,7 +203,14 @@ async def test_route_is_restored_or_created_then_claimed_before_session_creation
 
     assert outcome is None
     assert routed_session.provider is Provider.FAKE
-    assert calls == ["latest", "snapshot", "route", "claim", "create-session"]
+    assert calls == [
+        "latest",
+        "snapshot",
+        "route",
+        "configuration",
+        "claim",
+        "create-session",
+    ]
     assert cursor.receipts[node.key] is selected_receipt
     assert cursor.configurations[node.key] is selected_configuration
 
@@ -389,6 +403,10 @@ async def test_failed_dispatch_claim_prevents_runtime_and_node_side_effects() ->
             calls.append("latest")
             return selected_receipt
 
+        async def configuration_for(self, receipt):  # type: ignore[no-untyped-def]
+            calls.append("configuration")
+            return configuration()
+
         async def claim_dispatch(self, **kwargs):  # type: ignore[no-untyped-def]
             calls.append("claim")
             raise RuntimeError("DISPATCH_CLAIM_NOT_PERSISTED")
@@ -415,7 +433,56 @@ async def test_failed_dispatch_claim_prevents_runtime_and_node_side_effects() ->
             cursor=cursor,
         )
 
-    assert calls == ["latest", "claim"]
+    assert calls == ["latest", "configuration", "claim"]
+    assert cursor.configurations == {}
+
+
+async def test_agent_with_selected_tools_fails_before_claim_or_session() -> None:
+    calls: list[str] = []
+    selected_configuration = configuration()
+    selected_configuration.tools = [object()]
+
+    class RuntimeSpy:
+        async def create_session(self, config):  # type: ignore[no-untyped-def]
+            calls.append("create-session")
+            raise AssertionError("an unpinned agent tool must prevent session creation")
+
+    class RoutingSpy:
+        async def latest_receipt(self, **kwargs):  # type: ignore[no-untyped-def]
+            calls.append("latest")
+            return receipt()
+
+        async def configuration_for(self, receipt):  # type: ignore[no-untyped-def]
+            calls.append("configuration")
+            return selected_configuration
+
+        async def claim_dispatch(self, **kwargs):  # type: ignore[no-untyped-def]
+            calls.append("claim")
+            raise AssertionError("an unexecutable selection must not be claimed")
+
+    manager = manager_with(RuntimeSpy())
+    manager.routing_service = RoutingSpy()
+    node = RunNode(
+        node_id=f"{RUN_ID}:act", key="act", kind=GraphNodeKind.AGENT, label="Act"
+    )
+    frozen = SimpleNamespace(
+        node_contract=SimpleNamespace(workspace_id="wks_m2_dispatch")
+    )
+    cursor = _GraphCursor(
+        statuses={}, entered_via={}, current_key=node.key, frozen={node.key: frozen}
+    )
+
+    with pytest.raises(RuntimeError, match="SELECTED_AGENT_TOOL_BINDING_UNAVAILABLE"):
+        await manager._prepare_routed_node(
+            run=run_row(),
+            task=task_row(),
+            lease=lease_row(),
+            session=session_row(),
+            node=node,
+            cursor=cursor,
+        )
+
+    assert calls == ["latest", "configuration"]
     assert cursor.configurations == {}
 
 
@@ -451,11 +518,14 @@ async def test_routed_tool_invokes_the_exact_selected_binding() -> None:
         node,
         spec,  # type: ignore[arg-type]
         executing_provider=Provider.FAKE,
-        routing_configuration=SimpleNamespace(tools=[selected]),  # type: ignore[arg-type]
+        routing_configuration=SimpleNamespace(  # type: ignore[arg-type]
+            tools=[selected], workspace_id="wks_m2_dispatch"
+        ),
     )
 
     assert len(calls) == 1
     assert calls[0]["selected"] is selected
+    assert calls[0]["workspace_id"] == "wks_m2_dispatch"
     assert calls[0]["arguments"] == {"query": "write the selected output"}
 
 
