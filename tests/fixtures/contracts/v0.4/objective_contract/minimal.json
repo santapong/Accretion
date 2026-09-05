@@ -5,7 +5,7 @@
     "retention_class": "STANDARD",
     "uri": "https://approvals.example.test/receipts/2026-02-01"
   },
-  "content_hash": "ed2c3c296b67e1d57a0841d034c876a4dbae42f53b2a993445d99c725364265c",
+  "content_hash": "f27d701fc5d2567a673d5fb195729e8a5366a6cafe9f61f1f134b4eb5346febb",
   "contract_id": "obj_1YWV9H9QDV4D7S8EQ2J7M91K1Y",
   "created_at": "2026-03-01T09:00:00Z",
   "created_by": {

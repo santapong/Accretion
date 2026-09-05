@@ -519,6 +519,79 @@ RouterPromotionReport:
   created_at: timestamp
 ```
 
+### 7.13a `ShadowRolloutResult`
+
+Added by the freeze delta of 2026-09-05 (ADR-060). `ShadowDecision` (§11.4, §13) records the
+configuration a candidate router *would* have selected and the utility it *projected*; §10.2
+gates the shadow stage on evidence, and a projection is not evidence. A shadow choice is
+therefore scored by branching the live run: the candidate's configuration executes in one
+isolated sandbox and the executed configuration re-runs in a sibling sandbox under the same
+seed policy and resource cap, and each fork writes one of these records. The score is
+`U(SHADOW) - U(CONTROL)` over a complete pair. Two records and not one, because a pair whose
+second arm failed still contains a real measurement.
+
+```yaml
+ShadowRolloutResult:
+  rollout_result_id: uuid
+  shadow_decision_id: uuid
+  kind: SHADOW | CONTROL
+  fork_execution_id: uuid
+  configuration_hash: sha256
+  serving:
+    provider: enum
+    runtime_version: string
+    model_id: string
+    serving_labels: {string: string}   # quantization, temperature, seed (OQ-415)
+  verification_result_id: uuid | null
+  observed:
+    quality: float                     # normalized to [0, 1]
+    cost: float
+    latency_ms: float
+    verified: bool
+    false_accept: bool | null          # discovered, not measured; null when unknown
+  budget_consumed: float
+  trial_index: integer
+  seed: integer
+  completed_at: timestamp
+  created_at: timestamp
+```
+
+`configuration_hash` is the configuration executed *in this fork*, which on the `CONTROL`
+arm is not the one the candidate recommended. `observed.verified` MUST name the
+`verification_result_id` that produced it: §8.4 makes verification independent of the
+executor, so a fork that scored itself is a self-report.
+
+### 7.14 `RouterActivation`
+
+Added by the freeze delta of 2026-09-05 (ADR-061). §10.3 makes promotion atomic and
+reversible; §13.1's "one active workspace router per workspace" is expressed as an
+append-only ledger rather than as a mutable status. The active router for a
+`(workspace, scope, family)` is **the entry with the greatest `sequence`**. Promotion
+appends, rollback appends, nothing is edited, and the record of who released what and why is
+the table itself.
+
+```yaml
+RouterActivation:
+  activation_id: uuid
+  scope: TEAM_WORKSPACE | PROJECT_ADAPTER
+  workspace_id: uuid
+  project_id: uuid | null
+  family_key: string
+  sequence: integer                    # contiguous from 1; unique per (workspace, scope, family)
+  kind: PROMOTE | ROLLBACK
+  router_version_id: uuid
+  previous_version_id: uuid | null     # null if and only if sequence = 1
+  rollback_target_version_id: uuid | null
+  promotion_report_id: uuid | null     # null for a rollback: an incident authorises it
+  approved_by: principal_id
+  cause: string | null
+  created_at: timestamp
+```
+
+A `ROLLBACK` MUST carry both `cause` and `rollback_target_version_id`: reversibility that
+records a withdrawal without recording what it restored or why is not auditable.
+`approved_by` is required on every entry, rollbacks included (OQ-411).
+
 ---
 
 ## 8. Routing lifecycle
@@ -821,13 +894,28 @@ Recommended persistence remains relational for authoritative state plus object s
 | `router_training_snapshots` | included experience manifest and split definition |
 | `router_promotion_reports` | candidate/baseline metrics, cohorts, decision |
 | `shadow_decisions` | executed receipt, shadow receipt, comparison |
+| `shadow_rollout_results` | shadow decision, arm, executed configuration, serving window, observed outcome |
+| `router_activations` | scope, family, sequence, kind, activated/previous/rollback-target version, approver |
+
+The last two are added by the freeze delta of 2026-09-05 (§7.13a, §7.14, ADR-060, ADR-061)
+and are created by migration `0018_v04_freeze_delta`; the fourteen above them plus
+`objective_contracts` are created by `0017_v04_m0_routing_contracts`.
 
 ### 13.1 Database constraints
 
 - Contract hash/version tuples are unique.
 - One immutable receipt per routing request ID.
-- One active workspace router per workspace.
-- One active adapter per project/router family.
+- One active workspace router per workspace. From M8 onward this is **the head of the
+  activation ledger** (§7.14): the `router_activations` entry with the greatest `sequence`
+  for a `(workspace_id, scope, family_key)`, enforced by
+  `UNIQUE (workspace_id, scope, family_key, sequence)`. It is stated this way because the
+  partial unique index over `router_model_versions.status` cannot express it in an
+  append-only store — with no update path the first ACTIVE row can never be retired and a
+  second can never be inserted, so a workspace could be activated exactly once. The partial
+  index remains in force until M8's migration retires it, and a database between the two
+  migrations satisfies both statements of the rule.
+- One active adapter per project/router family. Same rule, same ledger, keyed by the
+  project-and-algorithm `family_key`.
 - Promotion reports are append-only.
 - Evidence/experience deletion follows existing retention policy and must not orphan provenance silently.
 
@@ -1187,33 +1275,41 @@ schemas the later milestones prove against.
 - ADR-057: Every v0.4 record carries the registry §3 header through a `CanonicalContract` base with semver `schema_version`. Registry §19's "unknown-version" case is discharged at v0.4 entry by fail-closed rejection of an unknown major, with the fixture and test that prove it. Registry §20.5 read-boundary upcasting is scheduled for M8, the first milestone with a second writer, and tracked in the v0.4 backlog; until then `extra="forbid"` stands.
 - ADR-058: M0 creates all fifteen §13 tables additively in one reversible migration (key columns + JSON payload + §13.1 constraints); the two partial unique indexes ("one ACTIVE workspace router", "one ACTIVE adapter per project and algorithm") are the repository's first and are mirrored in `MemoryStore` so the parity tests hold; registry §20 defaults 1, 2, 5, 6 and 8 are adopted. Store methods are append-only and refuse to overwrite an id or a hash.
 - ADR-059: OQ-420 is decided as "no reserved embodiment slot": v0.5 adds optional fields as a minor schema version; nothing robotics-shaped enters the v0.4 backlog (§23 item 7).
+- ADR-060: Shadow decisions are scored by **branched rollouts**, not by replay, and the evidence is a new contract `ShadowRolloutResult` (§7.13a, table `shadow_rollout_results`, id prefix `shr`). For a sampled shadow decision on a LOW_DIGITAL, isolated node the run is forked twice - the candidate's configuration in one sandbox, the executed configuration in a sibling sandbox under the same seed policy, cap and deadline - and each fork writes one record carrying its arm (`SHADOW`/`CONTROL`), the configuration it actually executed, the OQ-415 serving window (provider, runtime version, model, and the quantization/temperature/seed labels), the observed quality, cost, latency, verification verdict and false-acceptance flag, the budget it consumed and the shared seed. The paired difference `U(SHADOW) - U(CONTROL)` is the unit of evidence, and an arm claiming `observed.verified` must name the `IndependentVerificationResult` that produced it (§8.4). Replay was rejected: a counterfactual configuration cannot be evaluated against a trajectory produced by a different one, and `ShadowDecision.projected_utility_delta` is the model's opinion of itself. M0 froze no such record, so this is one of the three changes the freeze delta of 2026-09-05 makes.
+- ADR-061: "One active router" is **the head of an append-only activation ledger**, not a mutable status: new contract `RouterActivation` (§7.14, table `router_activations`, id prefix `rac`) with `UNIQUE (workspace_id, scope, family_key, sequence)`. M0's partial unique index over `router_model_versions.status` states the rule correctly and cannot implement it: this family has no `update_` method on any table (ADR-058), so the first ACTIVE row can never be retired and a second can never be inserted. Promotion appends an entry, rollback appends another, a `ROLLBACK` must record both its cause and its restore target, and `approved_by` is required on every entry including rollbacks (OQ-411). The freeze delta adds the contract and the table; M8's migration retires the two partial indexes, so a database between them satisfies both statements of §13.1 at once and each migration is independently reversible.
+- ADR-062: The M7 exploration budget is a **safety inequality with an explicit alpha source**. Exploration is admissible for candidate `a` only while `sum(cost_ucb over unresolved explorations) + cost_ucb(a) <= (1 + alpha) * sum(cost_lcb(a_0))` per `(workspace, node class)`, where `a_0` is the deterministic baseline's choice and unresolved explorations are held at their upper bound until settled; absolute per-run and per-day caps bind beside the fraction, because a proportional bound alone scales with traffic while the approver's intent does not. Alpha comes from `ObjectiveContract.exploration_policy` (`alpha`, `max_explore_count`, `max_cost`) - an additive, optional, registry §3.2 **Minor** field added by the freeze delta - falling back to `labels["exploration.*"]` where a project has not been re-approved, and absent both the posture is no exploration. This settles OQ-410. The field is on the objective and not on the router because the person who approved the goal is the one entitled to say how much of its budget may be spent on information.
+- ADR-063: A promotion is gated on **calibrated safe policy improvement**, not on a point estimate. The primary off-policy estimator is Logarithmic Smoothing with clipping at `lambda = 1/sqrt(n)`, with SNIPS, doubly-robust, effective sample size and clipped-mass reported as diagnostics; the gate is a CSPI-MT style simultaneous lower band across the threshold grid, built by project bootstrap on a project-disjoint holdout, and promotion requires the band at or above zero at confidence gamma **and** the mandatory §10.2 non-regression gates, the calibration ceiling, no critical cohort regression, a shadow pass and a successful rollback drill. Gamma, the non-inferiority margin `Delta_NI`, `delta_min`, the split, the threshold grid, the bootstrap count, the critical cohorts and the multiplicity correction are declared in `evals/router/config.v1.json` and pinned before any holdout read. This settles OQ-413's gate half and constrains OQ-405's use at promotion time.
+- ADR-064: The research artefacts are **repository artefacts with an access rule**, not prose. `evals/router/` holds the frozen configuration, the split definitions and the estimator implementations; `docs/research/v0.4/preregistration.md` holds the §21 protocol fields, frozen before any test-set read. The locked test set is readable **once**, after the pre-registration is frozen and the development pilot has closed, and every read is recorded; validation projects carry all tuning, including beam width, Pareto tolerance and the best fixed baseline. A benchmark whose test set can be read while the method is still moving measures the method's authors.
 
 ---
 
 ## 22. Open questions with proposed defaults
 
-| ID | Question | Proposed default | Decision deadline |
-|---|---|---|---|
-| OQ-401 | Initial outcome model? | Gradient-boosted ranking/calibration baseline before neural models | M4 design |
-| OQ-402 | Initial bandit? | Conservative contextual bandit over eligible candidates | M7 design |
-| OQ-403 | Beam width? | Tune on validation; hard cap by node class | M2 design |
-| OQ-404 | Pareto pruning tolerance? | Preserve near-frontier candidates within epsilon | M2 design |
-| OQ-405 | Success lower-bound method? | Calibrated conformal or bootstrap interval selected empirically | M4 design |
-| OQ-406 | Project-adapter form? | Regularized residual/calibration layer | M5 design |
-| OQ-407 | Attribution method? | Dependency heuristic plus paired retry deltas | M3 design |
-| OQ-408 | Cross-domain prior cap? | Small fixed cap, tuned only on validation | M5 design |
-| OQ-409 | Minimum shadow evidence? | Determined by protocol power/non-inferiority analysis | M6 gate |
-| OQ-410 | Exploration budget? | ObjectiveContract percentage plus absolute cap | M7 design |
-| OQ-411 | Promotion approval? | Workspace admin/research owner | M8 design |
-| OQ-412 | Promotion cadence? | Manual batch initially | M8 design |
-| OQ-413 | Critical cohorts? | Correctness, policy, secrets, high-risk, verifier conflict | M8 design |
-| OQ-414 | Experience retention? | Follow workspace policy; preserve aggregate lineage | M3 design |
-| OQ-415 | Provider/model drift window? | Require revalidation on behaviorally material version change | M4 design |
-| OQ-416 | Fallback catalog ownership? | Versioned admin-managed configuration bundles | M2 design |
-| OQ-417 | Override reason taxonomy? | Structured code plus optional explanation | M9 design |
-| OQ-418 | Model verifier independence score? | Separate context mandatory; different runtime preferred | M0 design |
-| OQ-419 | Public benchmark name? | Decide during protocol publication preparation | M10 |
-| OQ-420 | v0.5 interface hooks? | Reserve generic embodiment metadata without robotics behavior | M0 design |
+The `Decision` column is filled where the decision has been taken and records the ADR or the
+milestone plan that took it; where it is `-` the SDD default stands and the deadline applies.
+
+| ID | Question | Proposed default | Decision | Decision deadline |
+|---|---|---|---|---|
+| OQ-401 | Initial outcome model? | Gradient-boosted ranking/calibration baseline before neural models | Gradient-boosted baseline (LightGBM or scikit-learn HistGradientBoosting, chosen by the dependency-weight check in M4's first PR); no neural model in v0.4 | M4 design |
+| OQ-402 | Initial bandit? | Conservative contextual bandit over eligible candidates | Conservative contextual bandit against the deterministic router as baseline, inverse-gap weighting over the M4 regression oracle, safety loss held by conformal policy control (ADR-062) | M7 design |
+| OQ-403 | Beam width? | Tune on validation; hard cap by node class | Default cap 8 per node class, configurable in a versioned catalog; tuned on validation projects only, by the N = 1/2/4 curve method | M2 design |
+| OQ-404 | Pareto pruning tolerance? | Preserve near-frontier candidates within epsilon | epsilon = 0.02 on normalized utility axes, recorded on the receipt so a replay is byte-identical | M2 design |
+| OQ-405 | Success lower-bound method? | Calibrated conformal or bootstrap interval selected empirically | Conformal risk control on a project-grouped calibration split, with bootstrap as the sensitivity check; both reported in the M4 calibration report | M4 design |
+| OQ-406 | Project-adapter form? | Regularized residual/calibration layer | Regularized residual on the workspace prior's logit with L2 toward zero | M5 design |
+| OQ-407 | Attribution method? | Dependency heuristic plus paired retry deltas | Dependency heuristic plus paired retry deltas; attribution rows carry `attribution_version` and are never the raw outcome | M3 design |
+| OQ-408 | Cross-domain prior cap? | Small fixed cap, tuned only on validation | Cap 0.15 of prior weight, with a property test proving the cap alone cannot lift an LCB over tau | M5 design |
+| OQ-409 | Minimum shadow evidence? | Determined by protocol power/non-inferiority analysis | Open - blocked on the §21 freeze. Interim rule: at least 9 paired runs per configuration per node class | M6 gate |
+| OQ-410 | Exploration budget? | ObjectiveContract percentage plus absolute cap | `ObjectiveContract.exploration_policy` (alpha plus absolute per-run and per-day caps), `labels["exploration.*"]` as fallback, both recorded on the receipt (ADR-062) | M7 design |
+| OQ-411 | Promotion approval? | Workspace admin/research owner | Workspace admin or research owner; the approver principal is recorded on the report and on every activation entry, rollbacks included (ADR-061) | M8 design |
+| OQ-412 | Promotion cadence? | Manual batch initially | Manual batch | M8 design |
+| OQ-413 | Critical cohorts? | Correctness, policy, secrets, high-risk, verifier conflict | Correctness, policy, secrets, high-risk and verifier-conflict cohorts, declared in `evals/router/config.v1.json`; the gate is the ADR-063 safe-improvement test | M8 design |
+| OQ-414 | Experience retention? | Follow workspace policy; preserve aggregate lineage | Follow workspace policy; deletion marks `retention_class` and keeps the aggregate lineage rows (§13.1) | M3 design |
+| OQ-415 | Provider/model drift window? | Require revalidation on behaviorally material version change | Revalidate on a behaviourally material version change, and record the serving configuration - quantization, temperature, seed - in the provider version window (`ShadowRolloutResult.serving`, §7.13a) | M4 design |
+| OQ-416 | Fallback catalog ownership? | Versioned admin-managed configuration bundles | A `fallback_catalogs` document pinned by digest in the receipt's registry snapshot; edits create versions, append-only | M2 design |
+| OQ-417 | Override reason taxonomy? | Structured code plus optional explanation | - | M9 design |
+| OQ-418 | Model verifier independence score? | Separate context mandatory; different runtime preferred | - | M0 design |
+| OQ-419 | Public benchmark name? | Decide during protocol publication preparation | - | M10 |
+| OQ-420 | v0.5 interface hooks? | Reserve generic embodiment metadata without robotics behavior | - | M0 design |
 
 ---
 

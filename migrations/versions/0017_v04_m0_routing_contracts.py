@@ -66,7 +66,11 @@ from collections.abc import Sequence
 
 from alembic import op
 
-from accretion.persistence.models import V04_M0_ROUTING_TABLES, Base
+from accretion.persistence.models import (
+    V04_FREEZE_DELTA_TABLES,
+    V04_M0_ROUTING_TABLES,
+    Base,
+)
 
 revision: str = "0017_v04_m0_routing_contracts"
 down_revision: str | None = "0016_v03_m7_enterprise_auth"
@@ -77,7 +81,17 @@ depends_on: str | Sequence[str] | None = None
 # tests all read one declaration of what "the fifteen tables" means. It is in dependency
 # order — nothing references anything later in it — which is what makes ``reversed()``
 # a correct drop order below.
-M0_TABLES = V04_M0_ROUTING_TABLES
+#
+# ``V04_FREEZE_DELTA_TABLES`` is subtracted rather than the fifteen being restated here.
+# The freeze delta of 5 Sep 2026 appended two tables to ``V04_M0_ROUTING_TABLES`` — the
+# constant every store-parity proof in the suite reads — and migration **0018** creates
+# them. This revision has already been applied in the field, and a migration that quietly
+# started creating two more tables than it did the first time would make a database at
+# 0017 no longer reproducible from the revision it records. Subtracting keeps one list in
+# one place and keeps this revision's effect exactly what it always was.
+M0_TABLES = tuple(
+    name for name in V04_M0_ROUTING_TABLES if name not in V04_FREEZE_DELTA_TABLES
+)
 
 
 def upgrade() -> None:

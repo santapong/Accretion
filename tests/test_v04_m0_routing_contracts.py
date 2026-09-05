@@ -118,9 +118,11 @@ def rebuilt(model: type[CanonicalContract], **changes: Any) -> dict[str, Any]:
 # --------------------------------------------------------------------------------------
 
 
-def test_the_inventory_holds_exactly_the_nineteen_contracts_the_freeze_names() -> None:
-    assert len(CONTRACT_INVENTORY) == 19
-    assert len(set(CONTRACT_INVENTORY)) == 19
+def test_the_inventory_holds_exactly_the_twenty_one_contracts_the_freeze_names() -> None:
+    """Nineteen from M0 plus the two the freeze delta of 5 Sep 2026 appended (ADR-060/061)."""
+
+    assert len(CONTRACT_INVENTORY) == 21
+    assert len(set(CONTRACT_INVENTORY)) == 21
     assert IDS == [
         "ObjectiveContract",
         "ObjectiveContractRef",
@@ -141,6 +143,8 @@ def test_the_inventory_holds_exactly_the_nineteen_contracts_the_freeze_names() -
         "RouterTrainingSnapshot",
         "RouterPromotionReport",
         "ShadowDecision",
+        "ShadowRolloutResult",
+        "RouterActivation",
     ]
 
 
@@ -197,7 +201,9 @@ def module_enums(module: Any) -> dict[str, frozenset[str]]:
     }
 
 
-def test_the_v04_enums_are_the_fifteen_the_freeze_names() -> None:
+def test_the_v04_enums_are_the_seventeen_the_freeze_names() -> None:
+    """Fifteen from M0 plus the two the freeze delta added (ADR-060, ADR-061)."""
+
     assert sorted(module_enums(routing)) == [
         "CompatibilityStatus",
         "ConstructionStage",
@@ -208,9 +214,11 @@ def test_the_v04_enums_are_the_fifteen_the_freeze_names() -> None:
         "FailureType",
         "MetricOperator",
         "RiskClass",
+        "RouterActivationKind",
         "RouterPromotionDecision",
         "RouterScope",
         "RouterStatus",
+        "ShadowRolloutKind",
         "SubjectType",
         "VerificationState",
         "Visibility",
@@ -448,13 +456,20 @@ def test_a_project_scoped_contract_requires_its_project(
         model.model_validate(document)
 
 
-def test_the_three_workspace_scoped_contracts_are_the_router_learning_records() -> None:
-    """SDD §7.12 makes ``project_id`` nullable for a workspace router; two neighbours follow."""
+def test_the_four_workspace_scoped_contracts_are_the_router_release_records() -> None:
+    """SDD §7.12 makes ``project_id`` nullable for a workspace router; three neighbours follow.
+
+    ``RouterActivation`` joined them with the freeze delta and for the same reason
+    (ADR-061): a ``TEAM_WORKSPACE`` activation releases the workspace prior and belongs to
+    no single project, so the header field is nullable in the type and made exact by the
+    contract's own validator rather than by the project-scoping flag.
+    """
 
     workspace_scoped = sorted(
         model.__name__ for model in CONTRACT_INVENTORY if not model.PROJECT_SCOPED
     )
     assert workspace_scoped == [
+        "RouterActivation",
         "RouterModelVersion",
         "RouterPromotionReport",
         "RouterTrainingSnapshot",

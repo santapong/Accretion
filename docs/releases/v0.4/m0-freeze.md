@@ -196,3 +196,115 @@ type-check, and omitting this one would return every row of a table across every
 Records are written once. A revision is a **new row** whose `supersedes_contract_id` names
 the row it replaces (registry §17: "historical records are never rewritten in place"), and
 both rows list.
+
+## Freeze delta (5 Sep 2026, ADR-060..064)
+
+Everything above records what M0 froze on 5 Sep 2026 and is left exactly as it was written.
+This section records the one change made to that freeze surface, the same day, before any
+milestone that reads it had started: three findings from the M6-M8 design pass do not
+compose with what M0 froze, and freeze-surface changes travel together or not at all.
+
+1. **`ShadowDecision` has no observed outcome** (ADR-060). It records the configuration a
+   candidate router *would* have chosen and the utility it *projected*. §10.2 gates the
+   shadow stage on evidence, and a projection is not evidence. `ShadowRolloutResult` is
+   what a *branched* rollout measured — one row per arm of a `SHADOW`/`CONTROL` pair, both
+   forks of the same live run under the same seed policy.
+2. **"One active workspace router" could only ever fire once** (ADR-061). The partial
+   unique index `uq_router_versions_active_workspace` plus this family's deliberate absence
+   of any `update_` method means the first `ACTIVE` row can never be retired and a second
+   can never be inserted. `RouterActivation` moves the rule onto an append-only ledger
+   whose head is the active version. **The two partial indexes above are untouched by this
+   delta**; M8.1's migration 0019 retires them, so a database between 0018 and 0019
+   satisfies both rules at once and each migration is independently reversible.
+3. **`ObjectiveContract` had no exploration budget** (OQ-410, ADR-062). M7's safety
+   inequality needs an α and absolute caps that the objective's approver set, not that the
+   router chose for itself. `exploration_policy` is additive, optional and defaulted to
+   `None` — registry §3.2 **Minor**.
+
+### The Minor bump on `ObjectiveContract`, and why three digests moved
+
+Adding an optional field is a Minor change: every document written before it existed still
+parses, and `schema_version` stays `1.0.0` under registry §3.2's rule that only a
+remove/rename is Major. It is not, however, digest-neutral, and the distinction matters
+enough to write down. ADR-056's canonical form **keeps nulls** — dropping them would make
+`{"a": null}` and `{}` collide, and those say different things about a field — so
+`exploration_policy: null` is part of the body of every `ObjectiveContract` sealed from now
+on. A byte-identical objective therefore seals to a different `content_hash` than it would
+have yesterday.
+
+What follows from that, and what does not:
+
+- The four committed `tests/fixtures/contracts/v0.4/objective_contract/` documents were
+  **re-sealed** — the same bodies, the new digests — because a golden fixture that no
+  longer verifies against its own body is not golden.
+- `ObjectiveContract.schema.json` was regenerated and its row appears below with the new
+  digest. The row in "The frozen schemas" above is left at the M0 bytes on purpose: that
+  table is the record of what was frozen at M0, and rewriting history to match the present
+  is the failure mode a freeze record exists to prevent. The tests read this table as an
+  overlay on that one.
+- **A row sealed before this delta no longer parses**, and the honest way to record that
+  is to say it rather than to reason around it. The read boundary re-derives the digest
+  over the body as the field-bearing model dumps it — `exploration_policy: null` included
+  — so a pre-delta document presented with its own pre-delta `content_hash` is refused as
+  tampered: `content_hash 'ed2c…265c' does not match the digest of this payload
+  ('f27d…febb'); the record was edited after it was sealed`. That is a `ValidationError`
+  out of `get_objective_contract` on either backend, and out of
+  `list_objective_contracts` for the whole page rather than for the one row. This PR's own
+  diff is the evidence: `objective_contract/minimal.json` gained no `exploration_policy`
+  key and still needed a new digest.
+- **No such row exists in the field**, which is why the delta is allowed to be taken now
+  and not later. Migration `0017` is on `develop` and in no release — `v0.3.0` ends at
+  `0016` — and no code outside the test suite writes an `objective_contracts` row, so the
+  only databases holding one are developer databases already at `0017`, and those are
+  recreated rather than migrated. The general case belongs to M8: registry §20.5's
+  read-boundary upcaster is where a document sealed under an older shape is migrated
+  forward *before* it is validated, and this delta deliberately does not open that door
+  early. `tests/test_v04_freeze_delta.py` pins both halves — the unsealed pre-delta body
+  parses, the sealed one raises — so the upcaster inherits a checked statement of the case
+  it has to answer.
+
+### The frozen schemas, as amended
+
+| Schema | sha256 of the committed file | `schema_version` | Stored in | Migration |
+|---|---|---|---|---|
+| `ObjectiveContract.schema.json` | `66d8481faadb0429c7284d89ca03460e9e8fff8105abd47c93385de4f9bb0f16` | `1.0.0` | `objective_contracts` | `0017_v04_m0_routing_contracts` |
+| `ShadowRolloutResult.schema.json` | `6ded393425ad8cdeffa5d7e519d368f43c857d96e6b4d6c463403e8f5f5165ef` | `1.0.0` | `shadow_rollout_results` | `0018_v04_freeze_delta` |
+| `RouterActivation.schema.json` | `faee20c3c32e317731fcd1ffdfb73abf2c416797a80968544dfd1206389d9b55` | `1.0.0` | `router_activations` | `0018_v04_freeze_delta` |
+
+Twenty-one committed schemas now, sixteen of them stored in a table of their own.
+`CONTRACT_INVENTORY` grows 19 → 21 and the v0.4 table list 15 → 17. The two new prefixes
+are `shr_` and `rac_` (ADR-055's registry, three characters wide).
+
+### What the delta froze about storage
+
+Migration `0018_v04_freeze_delta` (the file is
+`migrations/versions/0018_v04_freeze_delta_shadow_rollouts_router_activations.py`; the id is shorter
+because Alembic stores it in a `VARCHAR(32)`) creates
+`shadow_rollout_results` and `router_activations` additively and reversibly, and touches
+nothing else. `V04_M0_ROUTING_TABLES` keeps its name and grows to seventeen — every parity
+proof in the suite is written against it — and `V04_FREEZE_DELTA_TABLES` names the two that
+0017 subtracts from its own creation list, so that a revision already applied in the field
+still creates exactly the fifteen it always created.
+
+| Constraint | How it is enforced |
+|---|---|
+| Contract hash/version tuples are unique | `uq_shadow_rollouts_hash_version` and `uq_router_activations_hash_version`, on the same pre-insert path as the other fifteen |
+| One activation per (workspace, scope, family, sequence) | `uq_router_activations_sequence`, an ordinary `UniqueConstraint` and not a partial index: once "active" is a position in a sequence rather than a value in a column, the rule is unconditional |
+| A `ROLLBACK` states what it restored and why | `RouterActivation`'s validator, which refuses a `ROLLBACK` missing `cause` or `rollback_target_version_id` |
+| A verified rollout names its verification | `ShadowRolloutResult`'s validator, which refuses `observed.verified` without a `verification_result_id` |
+| Append-only | unchanged: no `update_`, `delete_`, `upsert_` or `set_` method exists for either table on any of the three surfaces, and the same test asserts the absence over all seventeen |
+
+### The decisions this delta records
+
+ADR-060 (`ShadowRolloutResult` and branched rollouts), ADR-061 (the activation ledger
+replaces status mutation), ADR-062 (the bandit safety inequality and where α comes from),
+ADR-063 (the promotion gate as calibrated safe policy improvement), and ADR-064 (the
+research artefacts and the locked-test access rule) are written in
+[`docs/sdd/Accretion_SDD_v0.4.md`](../../sdd/Accretion_SDD_v0.4.md) §21, and §22 now carries
+a decision for sixteen of the twenty open questions. The sixteenth is OQ-409, and its cell
+is a decision about how to proceed rather than an answer: minimum shadow evidence stays
+**open**, blocked on the §21 protocol freeze, and the cell records the *interim rule* the
+M6 gate runs under until the power analysis lands — at least nine paired runs per
+configuration per node class. A cell that had been left empty would have said the question
+was untouched; one that read as settled would have said a number nobody has computed is
+final. It says neither.

@@ -1980,6 +1980,100 @@ class ShadowDecisionRow(V04ContractRow):
     )
 
 
+class ShadowRolloutResultRow(V04ContractRow):
+    """ADR-060 shadow rollout result. Added by the freeze delta, created by migration 0018.
+
+    SDD §13 names no table for this record because M0's §13 table predates the decision to
+    score shadow choices by *branching the live run* rather than by replaying it. The key
+    fields follow from the query M6.2's report is: "every rollout of this shadow decision,
+    oldest first", which is the paired lookup that turns two rows into one measurement.
+
+    ``shadow_decision_id`` is not a foreign key into ``shadow_decisions``, for exactly the
+    reason ``ShadowDecisionRow`` gives for its two receipt ids: a rollout is produced by a
+    fork that is forbidden from affecting execution, and a key that made this row
+    unwritable until the decision had been persisted would let the shadow pipeline's write
+    ordering block the executed path.
+
+    ``kind`` is promoted beside it because the pair is the unit of evidence and "the
+    ``SHADOW`` arm of decision X" is a two-column lookup, not a payload scan.
+    ``configuration_hash`` is promoted because the report groups paired deltas by the
+    configuration that was actually executed, and ``completed_at`` because the composite
+    index below is what makes the ordering of a pair deterministic without deserialising
+    either row.
+    """
+
+    __tablename__ = "shadow_rollout_results"
+
+    shadow_decision_id: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(32))
+    configuration_hash: Mapped[str] = mapped_column(String(64))
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_shadow_rollouts_hash_version"
+        ),
+        Index("ix_shadow_rollouts_decision", "shadow_decision_id", "completed_at"),
+        Index("ix_shadow_rollouts_workspace_created", "workspace_id", "created_at"),
+        Index("ix_shadow_rollouts_project_created", "project_id", "created_at"),
+        Index("ix_shadow_rollouts_supersedes", "supersedes_contract_id"),
+    )
+
+
+class RouterActivationRow(V04ContractRow):
+    """ADR-061 router activation ledger. Added by the freeze delta, created by 0018.
+
+    The table that replaces a mutable ``status`` column with a sequence. §13.1's "one
+    active workspace router per workspace" is expressed here as
+    ``uq_router_activations_sequence`` over ``(workspace_id, scope, family_key, sequence)``:
+    a plain :class:`~sqlalchemy.UniqueConstraint` and *not* a third partial unique index,
+    because the rule is now unconditional. Uniqueness over a contiguous sequence is what
+    makes "the active version" the single row with the greatest ``sequence`` in its
+    partition, and two writers racing to append the same next number is the one collision
+    that must be impossible rather than merely unlikely.
+
+    **The two M0 partial indexes on ``router_model_versions`` are deliberately untouched
+    here.** M8.1 owns retiring them, in migration 0019, together with the composite
+    ``activate_router_version`` that writes the version rows and the ledger row in one
+    transaction. Between 0018 and 0019 a database satisfies both rules at once, which is
+    the only ordering under which each migration is independently reversible.
+
+    Every id column is a plain ``String(64)`` and none is a foreign key into
+    ``router_model_versions`` or ``router_promotion_reports``. A rollback happens during an
+    incident, and an activation that could not be recorded because the row it points at was
+    written by a transaction that has not committed yet is an activation that fails when it
+    is needed most.
+    """
+
+    __tablename__ = "router_activations"
+
+    scope: Mapped[str] = mapped_column(String(32))
+    family_key: Mapped[str] = mapped_column(String(128))
+    sequence: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(32))
+    router_version_id: Mapped[str] = mapped_column(String(64))
+    previous_version_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    rollback_target_version_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    promotion_report_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_router_activations_hash_version"
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "scope",
+            "family_key",
+            "sequence",
+            name="uq_router_activations_sequence",
+        ),
+        Index("ix_router_activations_workspace_created", "workspace_id", "created_at"),
+        Index("ix_router_activations_project_created", "project_id", "created_at"),
+        Index("ix_router_activations_version", "router_version_id", "created_at"),
+        Index("ix_router_activations_supersedes", "supersedes_contract_id"),
+    )
+
+
 V04_M0_ROUTING_TABLES: tuple[str, ...] = (
     "objective_contracts",
     "node_contracts",
@@ -1996,11 +2090,37 @@ V04_M0_ROUTING_TABLES: tuple[str, ...] = (
     "router_training_snapshots",
     "router_promotion_reports",
     "shadow_decisions",
+    # The freeze delta of 5 Sep 2026 (ADR-060, ADR-061) appended these two. They are
+    # created by migration **0018** and not by 0017, which pins its own creation list to
+    # everything above this comment through `V04_FREEZE_DELTA_TABLES` — a migration already
+    # applied in the field cannot start creating tables it did not create the first time.
+    "shadow_rollout_results",
+    "router_activations",
 )
-"""The fifteen §13 tables, in creation order (ADR-058).
+"""The seventeen v0.4 routing tables, in creation order (ADR-058, ADR-060, ADR-061).
 
-Declared here rather than only in the migration so that one list is read by the migration,
+Declared here rather than only in the migrations so that one list is read by both of them,
 by the store and by the tests. The order is a dependency order — nothing in it references
-anything later in it — which is what makes ``reversed()`` a valid drop order and leaves the
-migration's ``downgrade`` nothing further to reason about.
+anything later in it — which is what makes ``reversed()`` a valid drop order and leaves
+each ``downgrade`` nothing further to reason about.
+
+The constant keeps its ``M0`` name on purpose. Every parity proof in the suite is written
+against it — the ``MemoryStore`` bucket set, the derived ``put_``/``get_``/``list_`` method
+names, the header-column and no-``updated_at`` checks — and renaming it would have made a
+two-table addition touch every one of those call sites, which is exactly the kind of diff
+that hides a real change. The fifteen it originally named are the fifteen 0017 creates, and
+:data:`V04_FREEZE_DELTA_TABLES` is what says which two are not among them.
+"""
+
+V04_FREEZE_DELTA_TABLES: tuple[str, ...] = (
+    "shadow_rollout_results",
+    "router_activations",
+)
+"""The two tables migration 0018 creates, subtracted from 0017's list (ADR-060, ADR-061).
+
+Read by ``0017_v04_m0_routing_contracts`` to pin its creation list to the fifteen it has
+always created, and by ``0018_v04_freeze_delta_shadow_rollouts_router_activations`` as the
+list it creates. Without it the two migrations would both read the same seventeen names,
+0017 would silently start creating tables that did not exist when it was written, and a
+database migrated to 0017 would no longer be reproducible from the revision it records.
 """
