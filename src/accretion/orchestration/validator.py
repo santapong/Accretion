@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-import json
 from collections import defaultdict, deque
 
 from accretion.contracts import (
@@ -12,6 +10,7 @@ from accretion.contracts import (
     Provider,
     TaskBudgets,
 )
+from accretion.digests import legacy_json_digest
 from accretion.ids import new_id
 from accretion.orchestration.condition_dsl import validate_condition
 from accretion.orchestration.models import (
@@ -241,9 +240,10 @@ class GraphValidator:
             "verifiers": sorted(proposal.expected_verifiers),
             "gates": sorted(proposal.expected_approval_gates),
         }
-        return hashlib.sha256(
-            json.dumps(normalized, sort_keys=True, separators=(",", ":")).encode()
-        ).hexdigest()
+        # Byte-frozen, not converged (M8). ``DynamicWorkflowNodeSpec.objective`` is four
+        # thousand characters of free planner text and this digest is persisted as
+        # ``GraphValidationResult.normalized_graph_hash``. See :mod:`accretion.digests`.
+        return legacy_json_digest(normalized)
 
     @staticmethod
     def _reachable(root: str, outgoing: dict[str, list[DynamicWorkflowEdgeSpec]]) -> set[str]:
