@@ -1,6 +1,7 @@
 """The v0.4 contract family: node objective, routing, verification feedback, learned router.
 
-This module is the whole of the M0 freeze. Nineteen contracts, listed in
+This module is the whole of the v0.4 contract freeze: the nineteen M0 froze on
+5 Sep 2026 and the two the freeze delta added the same day, twenty-one in all, listed in
 :data:`CONTRACT_INVENTORY`, every one of them a
 :class:`~accretion.contracts.canonical.CanonicalContract` — carrying the registry §3
 header, sealed with the ADR-056 digest. Nothing here routes,
@@ -33,7 +34,7 @@ strings, collections are lists, and free-form payloads are ``str``-keyed dicts o
 
 **Names checked against the existing vocabulary** (registry §21). Every ``StrEnum`` in
 :mod:`accretion.contracts` was inventoried before a name was chosen here. Four of the
-thirteen new enums sit deliberately beside an older one and each says why in its own
+fifteen new enums sit deliberately beside an older one and each says why in its own
 docstring: ``VerificationState`` beside ``VerificationStatus``, ``RiskClass`` beside
 ``RiskLevel``, ``CompatibilityStatus`` beside the v0.2 ``MatchDisposition``, and
 ``FailureType`` beside ``LoopStopReason``. Three older enums are *reused* rather than
@@ -444,6 +445,52 @@ class MetricOperator(StrEnum):
     LTE = "LTE"
     EQ = "EQ"
     CUSTOM = "CUSTOM"
+
+
+class ShadowRolloutKind(StrEnum):
+    """ADR-060. Which arm of a paired branched rollout produced an observed outcome.
+
+    Added by the freeze delta rather than by M0, because M0 froze ``ShadowDecision`` with
+    no observed-outcome fields at all and M6.2 scores a shadow choice by *running* it:
+    ``SHADOW`` is the fork that executed the candidate router's configuration, ``CONTROL``
+    is the sibling fork that re-ran the configuration the live router actually chose, with
+    the same seed policy and the same resource cap. The score M6.2 reports is
+    ``U(SHADOW) - U(CONTROL)``, so the pair is the unit of evidence and the arm has to be
+    on the record; a rollout that did not say which arm it was would make the difference
+    unattributable.
+
+    Checked against the existing vocabulary (registry §21) before the name was chosen.
+    ``RouterStatus.SHADOW`` grades a *router version* — whether that model is allowed to
+    serve — and this grades one *execution* of one node under one of two configurations.
+    They are deliberately spelled the same way in the one place they coincide, because a
+    ``SHADOW`` rollout is by definition produced by a ``SHADOW`` version, and a second
+    word for the same idea would have been the accidental synonym registry §21 forbids.
+    """
+
+    SHADOW = "SHADOW"
+    CONTROL = "CONTROL"
+
+
+class RouterActivationKind(StrEnum):
+    """ADR-061. Why a router version became the head of the activation ledger.
+
+    §10.3 makes promotion "atomic and reversible", and M0 implemented "one active router"
+    as two partial unique indexes over ``router_model_versions.status``. That composes with
+    a first activation and with nothing after it: the store has no ``update_`` for any v0.4
+    table, so a second ``ACTIVE`` row can never be inserted and the first one can never be
+    retired. The ledger replaces the index — "active" becomes the head of an append-only
+    sequence — and this enum is why each entry was appended.
+
+    ``ROLLBACK`` is not ``PROMOTE`` with a different target. A promotion is a release and a
+    rollback is a withdrawal, they are approved under different circumstances, and §10.3's
+    reversibility claim is worth nothing if the ledger cannot distinguish the two after the
+    fact. Distinct from :class:`RouterPromotionDecision`, which grades an *evaluation*
+    (``PROMOTE``/``REJECT``/``REQUIRE_REVIEW``); this records an *act*, and a rejected
+    evaluation produces no activation row at all.
+    """
+
+    PROMOTE = "PROMOTE"
+    ROLLBACK = "ROLLBACK"
 
 
 # --------------------------------------------------------------------------------------
@@ -1019,6 +1066,105 @@ class SnapshotSplit(StrictModel):
         return self
 
 
+class ExplorationPolicy(StrictModel):
+    """OQ-410, ADR-062. The exploration budget an objective is willing to spend.
+
+    M0 froze :class:`ObjectiveContract` with no exploration field, so M7's guarded bandit
+    had nowhere authoritative to read alpha from and would have had to invent one. The
+    safety inequality M7 enforces per (workspace, node class) is
+
+    ``sum(cost_ucb over explored) + cost_ucb(a) <= (1 + alpha) * sum(cost_lcb(a0))``
+
+    where ``a0`` is what the deterministic baseline would have chosen, so ``alpha`` is the
+    fraction of the baseline's cost the objective will pay for information and nothing
+    else. It is a property of the *objective* rather than of the router because the person
+    who approved the goal is the person entitled to say how much of the budget may be spent
+    learning, and a router that chose its own exploration rate would be answerable to
+    nobody.
+
+    A fraction alone is not a budget. ``max_explore_count`` and ``max_cost`` are absolute
+    per-period caps, because a proportional bound scales with traffic: a workspace whose
+    volume doubles would double its exploration spend under ``alpha`` alone while the
+    approver's intent had not changed. All three bind, and the tightest one wins.
+
+    ``alpha = 0`` is meaningful and is the default posture a project inherits by leaving
+    ``ObjectiveContract.exploration_policy`` unset: no exploration, deterministic routing
+    only. That is why the field is optional rather than defaulted to a policy object — an
+    absent policy and a zero policy say the same operational thing, and only one of them
+    claims somebody decided it.
+    """
+
+    alpha: float = Field(ge=0, le=1)
+    max_explore_count: int = Field(ge=0)
+    max_cost: float = Field(ge=0)
+
+
+class ServingWindow(StrictModel):
+    """OQ-415, ADR-060. The serving configuration an observed outcome was produced under.
+
+    R7 and OQ-415 both say the same thing from different directions: an outcome is only
+    evidence about a configuration if the configuration is stated completely, and
+    "provider, model" is not complete. Quantization, temperature and the sampling seed all
+    move quality and cost without moving any field the router selected, so a rollout scored
+    against a provider version alone is a measurement of an unknown.
+
+    ``serving_labels`` carries those knobs as a ``str``-keyed map of scalars rather than as
+    named fields, and deliberately: the set is provider-specific and grows, and freezing
+    ``temperature``/``quantization``/``seed`` as columns in a frozen contract would make
+    every new knob a registry §3.2 change. The map is inside the digest, so a rollout that
+    was served under different knobs is a different sealed document either way — which is
+    the property the drift window in OQ-415 actually needs.
+
+    ``provider`` reuses v0.1's :class:`~accretion.contracts.Provider` rather than
+    introducing a parallel vocabulary (registry §21): the runtime that served a fork is the
+    same enum the run, the session and the concurrency limiter already speak.
+    """
+
+    provider: Provider
+    runtime_version: str = Field(min_length=1, max_length=128)
+    model_id: str = Field(min_length=1, max_length=128)
+    serving_labels: dict[str, str] = Field(default_factory=dict)
+
+
+class ObservedOutcome(StrictModel):
+    """ADR-060. What one arm of a branched rollout actually produced.
+
+    The counterpart to :class:`PredictedOutcomes`, and the reason the freeze delta exists:
+    ``ShadowDecision`` records only what a candidate router *would have chosen* and its
+    *projected* utility delta, which is a claim by the model about itself. §10.2 evaluates
+    a shadow stage on evidence, and evidence is a number somebody measured.
+
+    ``quality`` is normalised to ``[0, 1]`` so the two arms of a pair are comparable
+    without knowing the node's metric; ``cost`` and ``latency_ms`` are absolute, because
+    normalising them would discard the units the safety inequality in
+    :class:`ExplorationPolicy` is stated in.
+
+    ``verified`` is the independent verifier's verdict and ``false_accept`` is whether that
+    verdict was later found to be wrong. ``false_accept`` is nullable because it is usually
+    unknown at the moment the rollout completes — a false acceptance is discovered, not
+    measured — and a boolean that had to be guessed would put a fabricated number into
+    ``ObjectiveContract.false_acceptance_ceiling``'s evidence. The validator refuses the
+    one combination that cannot mean anything: an acceptance that was never made cannot
+    have been false.
+    """
+
+    quality: float = Field(ge=0, le=1)
+    cost: float = Field(ge=0)
+    latency_ms: float = Field(ge=0)
+    verified: bool
+    false_accept: bool | None = None
+
+    @model_validator(mode="after")
+    def _a_false_acceptance_requires_an_acceptance(self) -> Self:
+        if not self.verified and self.false_accept is not None:
+            raise ValueError(
+                f"false_accept is {self.false_accept} on an outcome the verifier did not "
+                "accept; a false acceptance is an acceptance that turned out wrong, and "
+                "the verdict here was not an acceptance at all"
+            )
+        return self
+
+
 def _find_secret_shaped_values(payload: object) -> bool:
     """Return ``True`` if :mod:`accretion.redaction` would change any part of ``payload``.
 
@@ -1127,6 +1273,22 @@ class ObjectiveContract(CanonicalContract):
     supports rather than enforces: ``supersedes_contract_id`` on the header records the
     lineage, and the append-only store PR3 adds is what makes a revision a second row rather
     than an edit.
+
+    **``exploration_policy`` is the one field M0 did not freeze** (OQ-410, ADR-062, added by
+    the freeze delta of 5 Sep 2026). It is optional with a default of ``None``, which makes
+    it a registry §3.2 **Minor** change *of shape*: the field list of a document written
+    before it existed is still accepted, and a reader on an older minor ignores a field it
+    does not know. The seal is a separate promise, and this field does break that one —
+    ``None`` is a value in the canonical form (ADR-056 keeps nulls, so that ``{"a": null}``
+    and ``{}`` cannot collide), so every ``ObjectiveContract`` sealed after this field exists
+    carries a different ``content_hash`` from a byte-identical body sealed before it. The
+    committed fixtures were therefore re-sealed and the schema digest re-recorded in
+    ``docs/releases/v0.4/m0-freeze.md``, and a document presented with the digest it was
+    sealed with *before* the delta is refused by ``model_validate`` as edited-after-sealing —
+    at the store's read boundary as much as anywhere else. No such row exists outside the
+    tests: migration 0017 is unreleased and no code outside the test suite writes an
+    ``objective_contracts`` row, so a developer database already at 0017 is recreated rather
+    than migrated, and registry §20.5's read-boundary upcaster (M8) owns the general case.
     """
 
     CONTRACT_TYPE: ClassVar[str] = "accretion.objective-contract"
@@ -1146,6 +1308,7 @@ class ObjectiveContract(CanonicalContract):
     )
     revision: int = Field(ge=1)
     approval_receipt_ref: ApprovalArtifactRef
+    exploration_policy: ExplorationPolicy | None = None
 
     @model_validator(mode="after")
     def _scopes_do_not_overlap(self) -> Self:
@@ -2351,6 +2514,179 @@ class ShadowDecision(CanonicalContract):
         return self
 
 
+class ShadowRolloutResult(CanonicalContract):
+    """ADR-060. What one arm of a branched rollout of a shadow decision actually produced.
+
+    **Added by the freeze delta of 5 Sep 2026, not by M0.** M0 froze :class:`ShadowDecision`
+    with ``agreement`` and ``projected_utility_delta`` and no observed outcome, which is
+    exactly enough to say what a candidate router would have chosen and nothing at all
+    about whether choosing it would have been better. §10.2 gates the shadow stage on
+    evidence, and R7's answer to "where does the evidence come from" is to *branch the live
+    run*: fork the workspace at the node, execute the shadow configuration in one sandbox
+    and the executed configuration in a sibling sandbox under the same seed policy, and
+    report the paired difference. Each fork writes one of these.
+
+    **Why two rows and not one.** A single record holding both arms would make the pair
+    atomic, which sounds like a feature until one fork fails: the surviving arm would have
+    nowhere to be written, and a rollout that produced a real measurement would be
+    discarded because its partner did not. Two rows joined by ``shadow_decision_id`` and
+    distinguished by ``kind`` let the report count complete pairs and say how many were
+    incomplete, which is the number OQ-409's power analysis actually needs.
+
+    **Fields.** ``shadow_decision_id`` names the ``shd_`` record this scores — a plain
+    constrained string, as every cross-record reference in this family is, because a
+    foreign key here would let the shadow pipeline's write ordering block the executed
+    path, which is the one thing shadow evaluation must never do (the same reasoning
+    ``ShadowDecisionRow`` gives for its two receipt ids). ``fork_execution_id`` is the
+    execution instance the fork ran as, so the trajectory is reachable.
+    ``configuration_hash`` is the configuration that was *executed in this fork* and not
+    the one the router recommended: on the ``CONTROL`` arm those differ, and recording the
+    recommendation would misattribute the measurement. ``serving`` is the OQ-415 window the
+    fork was served under. ``verification_result_id`` names the ``ivr_`` record behind
+    ``observed.verified``. ``budget_consumed`` is what this fork spent against the per-policy
+    daily budget, ``trial_index`` its position in that policy's sequence, and ``seed`` the
+    seed policy both arms shared — without which "the same seed policy" is an unverifiable
+    claim in a paragraph rather than a field in a document. ``completed_at`` is when the
+    fork finished, which is not the header's ``created_at``: a rollout row is written when
+    the fork is scored and a pair whose two arms were sealed at the same instant can still
+    have run for very different lengths of time, which is precisely what
+    ``observed.latency_ms`` is being compared against.
+
+    The validator holds the one rule that keeps ``observed.verified`` from being a
+    self-report: a fork that claims verification names the independent verification result
+    that produced it. Everything else about the pair is checked by the M6.2 report, which
+    is a service, not a schema.
+    """
+
+    CONTRACT_TYPE: ClassVar[str] = "accretion.shadow-rollout-result"
+    ID_KIND: ClassVar[str | None] = "shadow_rollout_result"
+
+    contract_type: Literal["accretion.shadow-rollout-result"] = "accretion.shadow-rollout-result"
+    shadow_decision_id: str = Field(min_length=1, max_length=64)
+    kind: ShadowRolloutKind
+    fork_execution_id: str = Field(min_length=1, max_length=64)
+    configuration_hash: str = Field(pattern=_DIGEST)
+    serving: ServingWindow
+    verification_result_id: str | None = Field(default=None, min_length=1, max_length=64)
+    observed: ObservedOutcome
+    budget_consumed: float = Field(ge=0)
+    trial_index: int = Field(ge=0)
+    seed: int
+    completed_at: datetime
+
+    @model_validator(mode="after")
+    def _a_verified_outcome_names_the_verification_that_produced_it(self) -> Self:
+        if self.observed.verified and self.verification_result_id is None:
+            raise ValueError(
+                "observed.verified is true but no verification_result_id is named; §8.4 "
+                "makes verification independent of the executor, so a rollout that scored "
+                "itself as verified without pointing at the verification result is a "
+                "self-report and cannot be evidence for a promotion"
+            )
+        return self
+
+
+class RouterActivation(CanonicalContract):
+    """ADR-061. One append-only entry in the ledger whose head is the active router.
+
+    **Added by the freeze delta of 5 Sep 2026, not by M0.** §13.1 says "one active
+    workspace router per workspace" and M0 implemented it as the partial unique index
+    ``uq_router_versions_active_workspace`` over ``router_model_versions.status``. That
+    rule is correct and its implementation does not compose with §10.3: this family has no
+    ``update_`` method on any table, by design, so the first ``ACTIVE`` row can never be
+    retired and a second one can never be inserted. A workspace could be activated exactly
+    once, forever.
+
+    The ledger is the fix, and it is a better statement of the requirement than the index
+    was. "Active" stops being a mutable column and becomes *the head of a sequence*: the
+    activation with the highest ``sequence`` for a ``(workspace_id, scope, family_key)``
+    names the version now serving. Promotion appends; rollback appends; nothing is edited;
+    the history of who activated what, when, and why is the table itself rather than a
+    reconstruction from timestamps. M8.1 owns the migration that retires the two partial
+    indexes (0019); this freeze adds the contract and its table and touches neither index,
+    so a database between the two migrations is consistent under both rules at once.
+
+    **Fields.** ``scope`` and ``family_key`` are the ledger's partition — ``scope`` is
+    :class:`RouterScope`, the same enum :class:`RouterModelVersion` carries, and
+    ``family_key`` is the router family within it (``algorithm_id`` for a workspace prior,
+    and the project-and-algorithm pair for an adapter), so that two families promoting on
+    the same day are two sequences rather than one contested one. ``sequence`` is
+    contiguous from 1 and unique per partition — a database constraint, not a hope, and it
+    is what makes "the head" a query rather than a scan. ``router_version_id`` is the
+    ``rmv_`` version being activated, ``previous_version_id`` the one it displaces,
+    ``rollback_target_version_id`` what a withdrawal would restore, and
+    ``promotion_report_id`` the ``rpr_`` evaluation that authorised it — nullable because a
+    rollback is authorised by an incident and not by a report. ``approved_by`` is required
+    on **every** entry, rollbacks included (OQ-411): §10.3 makes activation a human act, and
+    a rollback performed by nobody is the activation nobody can be asked about afterwards.
+
+    ``PROJECT_SCOPED`` is ``False``, exactly as it is on :class:`RouterModelVersion` and for
+    the same reason: a ``TEAM_WORKSPACE`` activation belongs to the workspace and to no
+    project. The validator makes the nullability exact rather than merely permitted.
+
+    The two ledger rules the validator holds are the ones a database constraint cannot
+    state. A ``ROLLBACK`` names both what it restores and why — §10.3's reversibility is
+    worth nothing if the ledger records that something was withdrawn but not what it was
+    withdrawn to, and an unexplained withdrawal is the row an incident review most needs to
+    read. And the first entry in a sequence displaces nothing, so a ``sequence`` of 1 that
+    claims a predecessor is describing a history that does not exist.
+    """
+
+    CONTRACT_TYPE: ClassVar[str] = "accretion.router-activation"
+    ID_KIND: ClassVar[str | None] = "router_activation"
+    PROJECT_SCOPED: ClassVar[bool] = False
+
+    contract_type: Literal["accretion.router-activation"] = "accretion.router-activation"
+    scope: RouterScope
+    family_key: str = Field(min_length=1, max_length=128)
+    sequence: int = Field(ge=1)
+    kind: RouterActivationKind
+    router_version_id: str = Field(min_length=1, max_length=64)
+    previous_version_id: str | None = Field(default=None, min_length=1, max_length=64)
+    rollback_target_version_id: str | None = Field(default=None, min_length=1, max_length=64)
+    promotion_report_id: str | None = Field(default=None, min_length=1, max_length=64)
+    approved_by: PrincipalRef
+    cause: str | None = Field(default=None, min_length=1, max_length=2_000)
+
+    @model_validator(mode="after")
+    def _the_ledger_entry_is_self_explaining(self) -> Self:
+        if self.scope is RouterScope.PROJECT_ADAPTER and self.project_id is None:
+            raise ValueError(
+                "a PROJECT_ADAPTER activation must name the project whose adapter it "
+                "activates"
+            )
+        if self.scope is RouterScope.TEAM_WORKSPACE and self.project_id is not None:
+            raise ValueError(
+                "a TEAM_WORKSPACE activation releases the workspace prior and belongs to "
+                "no single project; naming one would make the release look project-specific"
+            )
+        if self.kind is RouterActivationKind.ROLLBACK:
+            missing = sorted(
+                name
+                for name in ("cause", "rollback_target_version_id")
+                if getattr(self, name) is None
+            )
+            if missing:
+                raise ValueError(
+                    f"a ROLLBACK activation leaves {missing!r} unset; §10.3 makes promotion "
+                    "reversible, and a withdrawal that records neither what it restored nor "
+                    "why it happened is not a reversal anyone can audit"
+                )
+        if self.sequence == 1 and self.previous_version_id is not None:
+            raise ValueError(
+                f"sequence 1 names previous_version_id "
+                f"{self.previous_version_id!r}; the first entry in an activation ledger "
+                "displaces nothing, so a predecessor here describes a history that never "
+                "happened"
+            )
+        if self.router_version_id == self.previous_version_id:
+            raise ValueError(
+                "the activated version and the version it displaces are the same record; "
+                "an activation that changes nothing is not an activation"
+            )
+        return self
+
+
 CONTRACT_INVENTORY: tuple[type[CanonicalContract], ...] = (
     ObjectiveContract,
     ObjectiveContractRef,
@@ -2371,8 +2707,10 @@ CONTRACT_INVENTORY: tuple[type[CanonicalContract], ...] = (
     RouterTrainingSnapshot,
     RouterPromotionReport,
     ShadowDecision,
+    ShadowRolloutResult,
+    RouterActivation,
 )
-"""The nineteen contracts the v0.4 M0 freeze covers, in the order the plan enumerates them.
+"""The twenty-one contracts of the v0.4 freeze, in the order the plan enumerates them.
 
 This tuple is the single list every proof reads. The fixture tests parametrize over it
 crossed with the four fixture kinds, the schema export writes one file per entry and its
@@ -2386,4 +2724,11 @@ Ordering is the plan's enumeration and not alphabetical, because it is also roug
 order a decision flows through them: objective, node, spec, features, context, configuration,
 candidate, compatibility, explanation, receipt, verification, experience, failure, and then
 the four router-learning records.
+
+The last two arrived with the freeze delta of 5 Sep 2026 rather than with M0, and are
+appended rather than filed beside their relatives on purpose: the tuple is also the
+migration's creation order, ``ShadowRolloutResult`` and ``RouterActivation`` are created by
+0018 and not by 0017, and re-ordering the tuple would have moved fifteen tables that are
+already in the field. They keep the flow reading, too — a shadow decision is scored by its
+rollouts, and a scored router is what an activation releases.
 """

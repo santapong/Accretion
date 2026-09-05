@@ -88,6 +88,7 @@ from accretion.contracts.routing import (
     IndependentVerificationResult,
     NodeContract,
     ObjectiveContract,
+    RouterActivation,
     RouterModelVersion,
     RouterPromotionReport,
     RouterScope,
@@ -96,6 +97,7 @@ from accretion.contracts.routing import (
     RoutingContext,
     RoutingDecisionReceipt,
     ShadowDecision,
+    ShadowRolloutResult,
     VerificationSpec,
 )
 from accretion.contracts.upcast import upcast
@@ -172,6 +174,7 @@ from accretion.persistence.models import (
     PromptContractRow,
     ReplanRequestRow,
     ResearchEvidenceRow,
+    RouterActivationRow,
     RouterModelVersionRow,
     RouterPromotionReportRow,
     RouterTrainingSnapshotRow,
@@ -190,6 +193,7 @@ from accretion.persistence.models import (
     SearchPromotionRow,
     SecretRecordRow,
     ShadowDecisionRow,
+    ShadowRolloutResultRow,
     SkillRow,
     StrategyDecisionRow,
     StrategyOverrideRow,
@@ -1125,6 +1129,30 @@ class StateStore(Protocol):
     async def list_shadow_decisions(
         self, *, workspace_id: str, project_id: str | None = None
     ) -> list[ShadowDecision]: ...
+
+    # -- the freeze delta's two tables (ADR-060, ADR-061; migration 0018). Same shape as
+    # the fifteen above, deliberately: they are the same kind of record — a sealed v0.4
+    # contract in an append-only table — and a second idiom for two of seventeen tables
+    # would be two idioms for a reader to learn and one for a later milestone to pick
+    # wrongly. ``workspace_id`` is required here for the same tenancy reason.
+    async def put_shadow_rollout_result(
+        self, record: ShadowRolloutResult
+    ) -> ShadowRolloutResult: ...
+    async def get_shadow_rollout_result(
+        self, contract_id: str
+    ) -> ShadowRolloutResult | None: ...
+    async def list_shadow_rollout_results(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ShadowRolloutResult]: ...
+    async def put_router_activation(
+        self, record: RouterActivation
+    ) -> RouterActivation: ...
+    async def get_router_activation(
+        self, contract_id: str
+    ) -> RouterActivation | None: ...
+    async def list_router_activations(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RouterActivation]: ...
 
 
 class MemoryStore:
@@ -3522,6 +3550,48 @@ class MemoryStore:
         return self._list_v04_contracts(
             "shadow_decisions",
             ShadowDecision,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_shadow_rollout_result(
+        self, record: ShadowRolloutResult
+    ) -> ShadowRolloutResult:
+        return await self._put_v04_contract(
+            "shadow_rollout_results", "shadow rollout result", record
+        )
+
+    async def get_shadow_rollout_result(
+        self, contract_id: str
+    ) -> ShadowRolloutResult | None:
+        return self._get_v04_contract(
+            "shadow_rollout_results", contract_id, ShadowRolloutResult
+        )
+
+    async def list_shadow_rollout_results(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ShadowRolloutResult]:
+        return self._list_v04_contracts(
+            "shadow_rollout_results",
+            ShadowRolloutResult,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_router_activation(self, record: RouterActivation) -> RouterActivation:
+        return await self._put_v04_contract(
+            "router_activations", "router activation", record
+        )
+
+    async def get_router_activation(self, contract_id: str) -> RouterActivation | None:
+        return self._get_v04_contract("router_activations", contract_id, RouterActivation)
+
+    async def list_router_activations(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RouterActivation]:
+        return self._list_v04_contracts(
+            "router_activations",
+            RouterActivation,
             workspace_id=workspace_id,
             project_id=project_id,
         )
@@ -7648,6 +7718,66 @@ class PostgresStore:
         return await self._list_v04_contracts(
             ShadowDecisionRow,
             ShadowDecision,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_shadow_rollout_result(
+        self, record: ShadowRolloutResult
+    ) -> ShadowRolloutResult:
+        return await self._put_v04_contract(
+            ShadowRolloutResultRow,
+            "shadow rollout result",
+            record,
+            shadow_decision_id=record.shadow_decision_id,
+            kind=record.kind.value,
+            configuration_hash=record.configuration_hash,
+            completed_at=record.completed_at,
+        )
+
+    async def get_shadow_rollout_result(
+        self, contract_id: str
+    ) -> ShadowRolloutResult | None:
+        return await self._get_v04_contract(
+            ShadowRolloutResultRow, ShadowRolloutResult, contract_id
+        )
+
+    async def list_shadow_rollout_results(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ShadowRolloutResult]:
+        return await self._list_v04_contracts(
+            ShadowRolloutResultRow,
+            ShadowRolloutResult,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_router_activation(self, record: RouterActivation) -> RouterActivation:
+        return await self._put_v04_contract(
+            RouterActivationRow,
+            "router activation",
+            record,
+            scope=record.scope.value,
+            family_key=record.family_key,
+            sequence=record.sequence,
+            kind=record.kind.value,
+            router_version_id=record.router_version_id,
+            previous_version_id=record.previous_version_id,
+            rollback_target_version_id=record.rollback_target_version_id,
+            promotion_report_id=record.promotion_report_id,
+        )
+
+    async def get_router_activation(self, contract_id: str) -> RouterActivation | None:
+        return await self._get_v04_contract(
+            RouterActivationRow, RouterActivation, contract_id
+        )
+
+    async def list_router_activations(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RouterActivation]:
+        return await self._list_v04_contracts(
+            RouterActivationRow,
+            RouterActivation,
             workspace_id=workspace_id,
             project_id=project_id,
         )

@@ -26,7 +26,7 @@ Usage::
 
 ``--check`` exits non-zero naming the **first** model whose committed file differs, together
 with whether the file is missing, extra, or merely stale. One name and one reason is more
-useful than nineteen diffs, because the fix is always the same command.
+useful than twenty-one diffs, because the fix is always the same command.
 """
 
 from __future__ import annotations
