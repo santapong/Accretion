@@ -92,6 +92,7 @@ from accretion.planning import (
     has_irreversible_capabilities,
 )
 from accretion.projections import build_graph_projection, build_loop_projection
+from accretion.routing.protocols import FeedbackPipeline, NodeRoutingService
 from accretion.runtimes.common import make_event
 from accretion.templates import (
     compute_template_checksum,
@@ -266,6 +267,16 @@ class RunManager:
         # than building one. ``None`` means capability-bearing nodes execute precisely as
         # they did before v0.3 M5.
         self.capability_invoker: CapabilityNodeInvoker | None = None
+        # The two v0.4 routing seams, on the same ``search_executor`` precedent and for the
+        # same reason: both implementations own a store, a snapshot builder and — later — a
+        # ranker and the P7 experience service, so constructing them here would drag the
+        # whole routing stack into every run. They are frozen as protocols in M1.2
+        # (``accretion.routing.protocols``) and implemented by M2 and M3 respectively.
+        # ``None`` is the default and means a node is planned, dispatched and recorded
+        # precisely as it was before v0.4: nothing here calls either attribute, and a
+        # deployment that never sets them cannot tell this release from the last.
+        self.routing_service: NodeRoutingService | None = None
+        self.feedback_pipeline: FeedbackPipeline | None = None
 
     async def create_project(self, name: str, repository_path: Path) -> Project:
         repository_path = repository_path.resolve(strict=True)

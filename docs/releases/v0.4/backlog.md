@@ -1,6 +1,6 @@
 # v0.4 prioritized backlog
 
-Status: **M0 in progress.** The normative contract is [SDD v0.4](../../sdd/Accretion_SDD_v0.4.md);
+Status: **M1 delivered; M2 next.** The normative contract is [SDD v0.4](../../sdd/Accretion_SDD_v0.4.md);
 its §19 orders the milestones and its §20 owns the criteria. This ledger records status only.
 
 ## Delivery order
@@ -8,7 +8,7 @@ its §19 orders the milestones and its §20 owns the criteria. This ledger recor
 | Priority | Milestone | Owns (SDD §20) | Status |
 |---:|---|---|---|
 | 1 | M0 contract and feature freeze | none (ADR-052) | delivered (#123) ([plan](m0-plan.md), [freeze record](m0-freeze.md)) |
-| 2 | M1 compatibility engine | 005-008 | not started |
+| 2 | M1 compatibility engine | 005-008 | delivered ([plan](m1-plan.md)) |
 | 3 | M2 hierarchical deterministic selector | 001, 002, 004, 009-015, 022 | not started |
 | 4 | M3 experience and feedback pipeline | 003, 023-034 | not started |
 | 5 | M4 offline ranker and calibration | 016 | not started |
@@ -85,6 +85,55 @@ checksums, the fragment-planner graph hash, the MCP discovery snapshot digest an
 approval binding are all pinned as literal hex in the test, and each of the four legacy sites has a
 non-ASCII probe asserting the *site itself* still returns the legacy bytes. The narrow rule above
 survives unchanged for the four that remain.
+
+## Recorded during M1
+
+Three decisions M1 had to make that the SDD does not settle. Each is recorded here rather
+than in the SDD because none of them changes the design; each records *which* of two readings
+of the design the code took, so that a later milestone reading the same paragraph does not
+take the other one.
+
+**ADR4-M1-001 — the workspace of a run is derived from its principal, not from its project.**
+Every registry §3 record is workspace-scoped and a `Run` is not: it carries a `project_id` and
+a `principal_id`, and `Project` has no workspace column at all. So a compatibility decision
+about a run has to get its `workspace_id` from somewhere, and there were only two honest
+candidates. `accretion.routing.identity.workspace_for_run` takes the first workspace of
+`list_workspaces_for_principal(run.principal_id)` — that method sorts, so a principal in
+several workspaces gets a deterministic answer rather than whichever row the database
+returned first — and falls back to `identity.LOCAL_WORKSPACE_ID` for a run with no principal
+or no membership, which is exactly what the identity service seeds for single-user local
+operation (OQ3-17).
+
+The rejected alternative was adding a workspace column to `projects`. It is the better
+long-term model and it is a migration, a backfill and a tenancy change, none of which belongs
+in the milestone that owns the compatibility engine. M2 persists receipts against this
+derivation; if the column is ever added, `workspace_for_run` is the one place that changes.
+
+**ADR4-M1-002 — the twelve v0.4 `EventType` members were pre-declared in M1.1, all at once.**
+M1.1 added every routing, feedback and router event the release will emit, including the ones
+no code emits yet. Declaring them one milestone at a time would have been the smaller diff and
+the worse trade: `EventType` is exported into `openapi.json` and into
+`apps/ui/src/api/schema.d.ts`, and CI fails on `git diff --exit-code` for both, so each
+milestone that added a member would regenerate two committed artifacts and every reviewer
+would have to decide again whether the churn was benign. Declaring them once means no later
+v0.4 PR touches either file for an event, and an unused member is visible as unused rather
+than as missing.
+
+**ADR4-M1-003 — the reason catalogue is versioned by `RULE_VERSION`, and M1.2 did not bump
+it.** `routing/reasons.py` states the rule: adding a code, removing one, or changing what an
+existing one means all bump `RULE_VERSION`, because a persisted decision is only explicable
+against the exact rules that produced it and "the rules changed" must be a visible event. M1.1
+therefore pre-declared every code it expected M1.2's gates to emit, so that M1.2 would not
+have to bump a version whose rules had not changed.
+
+It missed one. The pre-declaration enumerated the codes the gates *refuse* with and not the
+one they *defer* with, so M1.2 added `APPROVAL_REQUIRED` — the code that says the policy
+engine answered `REQUIRE_APPROVAL` and routing does not pre-approve. `RULE_VERSION` stays
+`compat-rules/1` anyway, and the reason is narrow rather than convenient: the version exists
+so that a persisted decision stays explicable, and no decision under `compat-rules/1` exists
+outside this repository's tests. M1 is the first milestone that emits one at all and it has
+not shipped, so there is no reader pointing at the old catalogue to mislead. Once v0.4 ships,
+the rule applies unmodified: the next code bumps the version.
 
 ## Parked beside v0.4
 
