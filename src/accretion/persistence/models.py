@@ -1747,18 +1747,30 @@ class ExperienceRecordRow(V04ContractRow):
     ``experience_id`` (ADR-054 b). §13: "source lineage, signatures, outcomes,
     visibility, eligibility".
 
-    The primary key *is* the foreign key, which is why ``id`` is redeclared here rather
-    than inherited. ``ExperienceRecord.contract_id`` carries the existing ``exp`` prefix
-    because it names the same experience the P7 ``experiences`` row names, so this table
-    declares one identity column that is simultaneously its own id and the reference to
-    the record it projects. That is what makes "it references ``experiences``, never
-    duplicates it" a property of the schema rather than a promise in a docstring: there
-    is nowhere here to put a copied P7 field even if someone wanted to.
+    ``experience_id`` and not ``id`` carries the key into ``experiences`` (migration
+    0020). M0 made the primary key *be* the foreign key, on the reading that a projection
+    and the experience it projects share one identity. That reading is right about the
+    *first* projection and wrong about every one after it: registry §17 and §7.10 model a
+    revision — a recomputed ``attribution`` (§9.6), a contradiction moving OPEN → RESOLVED,
+    a ``final_run_status`` that only arrived once the run finished — as a **new row** with
+    its own derived ``contract_id`` and a ``supersedes_contract_id`` pointing at the row it
+    replaces. Under the old key such a row was unstorable: its id is a fresh ``exp_`` id
+    that names no ``experiences`` row, so PostgreSQL refused exactly the records the
+    contract was designed to produce. Splitting the two columns is what lets the whole
+    revision chain of one experience coexist: every revision carries the same
+    ``experience_id`` and is told apart by its own ``id``.
+
+    ``ExperienceRecord`` declares no field for it — the sealed contract reads everything
+    P7 knows *through* the id it is keyed by — so ``experience_id`` is derived at the store
+    boundary rather than promoted out of the payload, and defaults to ``contract_id``,
+    which is what the root projection of an experience always is.
 
     ``ondelete="RESTRICT"`` and not ``CASCADE``: §13.1's last bullet says evidence
     deletion "must not orphan provenance silently", and a routing projection is exactly
     the provenance that would be orphaned. Retention removes the projection first, on
-    purpose, or it does not remove the experience.
+    purpose, or it does not remove the experience. Moving the key off the primary key
+    strengthens that rule rather than weakening it: an experience is now pinned by every
+    revision that projects it, not only by the first.
 
     The four promoted flags — ``visibility``, ``local_verification_status``,
     ``contradiction_status``, ``eligible_for_learning`` — are the entire eligibility
@@ -1768,8 +1780,13 @@ class ExperienceRecordRow(V04ContractRow):
 
     __tablename__ = "experience_records"
 
-    id: Mapped[str] = mapped_column(
-        ForeignKey("experiences.id", ondelete="RESTRICT"), primary_key=True
+    experience_id: Mapped[str] = mapped_column(
+        ForeignKey(
+            "experiences.id",
+            ondelete="RESTRICT",
+            name="fk_experience_records_experience",
+        ),
+        nullable=False,
     )
     source_node_execution_id: Mapped[str] = mapped_column(String(64))
     configuration_hash: Mapped[str] = mapped_column(String(64))
@@ -1793,6 +1810,10 @@ class ExperienceRecordRow(V04ContractRow):
         ),
         Index("ix_experience_records_configuration_hash", "configuration_hash"),
         Index("ix_experience_records_supersedes", "supersedes_contract_id"),
+        # Every read of one experience's revision chain filters on this column, and the
+        # foreign key check on ``DELETE FROM experiences`` scans it too. It was free when
+        # the key was the primary key; it is not free now.
+        Index("ix_experience_records_experience_id", "experience_id"),
     )
 
 

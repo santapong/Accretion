@@ -206,9 +206,10 @@ async def new_store() -> MemoryStore:
 async def seed_experience(store: MemoryStore, experience_id: str) -> None:
     """The v0.2 P7 experience an ``ExperienceRecord`` of that id projects (ADR-054 b).
 
-    ``experience_records.id`` *is* the foreign key into ``experiences``, so a projection of
-    an experience that was never captured is a record of nothing. ``build`` mints a fresh
-    ``exp_`` id per call, which is why this is seeded per record rather than once per store.
+    ``experience_records.experience_id`` is the foreign key into ``experiences`` (migration
+    0020), so a projection of an experience that was never captured is a record of nothing.
+    ``build`` mints a fresh ``exp_`` id per call, and a record put with no explicit parent
+    is its own root, which is why this is seeded per record rather than once per store.
     """
 
     if experience_id in store.experiences:
@@ -696,11 +697,13 @@ async def test_a_workspace_scoped_record_needs_no_project_at_all() -> None:
 
 async def test_an_experience_record_for_an_experience_that_was_never_captured_is_refused(
 ) -> None:
-    """ADR-054 b: the projection's primary key *is* its key into ``experiences``.
+    """ADR-054 b: the projection's ``experience_id`` is its key into ``experiences``.
 
     A projection of an experience that does not exist is not a record with a dangling
     field, it is a record of nothing — which is why PostgreSQL refuses it and why this
     refuses it identically rather than storing an orphan the database could never hold.
+    A record put with no explicit parent is its own root, so the refusal below is still
+    reached by a record whose ``contract_id`` names no experience.
     """
 
     store = await new_store()
@@ -1167,8 +1170,13 @@ def test_the_store_exposes_no_way_to_update_or_delete_a_v04_record() -> None:
             assert {f"put_{singular}", f"get_{singular}", f"list_{table}"} <= surface
 
 
-def test_the_v04_surface_is_exactly_put_get_list_plus_the_one_named_lookup() -> None:
-    """One documented extra: §8.2's receipt-by-request-id lookup. Nothing else."""
+def test_the_v04_surface_is_exactly_put_get_list_plus_the_two_named_lookups() -> None:
+    """Two documented extras, and nothing else.
+
+    §8.2's receipt-by-request-id lookup, and M3a's revision listing — the read that walks
+    one experience's projections after migration 0020 gave them a shared ``experience_id``
+    instead of a shared primary key. A third would have to be written down here.
+    """
 
     extra: set[str] = set()
     for implementation in (StateStore, MemoryStore, PostgresStore):
@@ -1180,7 +1188,10 @@ def test_the_v04_surface_is_exactly_put_get_list_plus_the_one_named_lookup() -> 
         }
         extra |= surface - v04_method_names()
 
-    assert extra == {"get_routing_receipt_for_request"}
+    assert extra == {
+        "get_routing_receipt_for_request",
+        "list_experience_record_revisions",
+    }
 
 
 def test_a_fresh_memory_store_has_a_bucket_for_every_v04_table() -> None:
