@@ -1,6 +1,6 @@
 # v0.4 prioritized backlog
 
-Status: **M1 delivered; M2 next.** The normative contract is [SDD v0.4](../../sdd/Accretion_SDD_v0.4.md);
+Status: **M1 and M4 delivered; M2 integration in progress.** The normative contract is [SDD v0.4](../../sdd/Accretion_SDD_v0.4.md);
 its §19 orders the milestones and its §20 owns the criteria. This ledger records status only.
 
 ## Delivery order
@@ -9,9 +9,9 @@ its §19 orders the milestones and its §20 owns the criteria. This ledger recor
 |---:|---|---|---|
 | 1 | M0 contract and feature freeze | none (ADR-052) | delivered (#123) ([plan](m0-plan.md), [freeze record](m0-freeze.md)) |
 | 2 | M1 compatibility engine | 005-008 | delivered ([plan](m1-plan.md)) |
-| 3 | M2 hierarchical deterministic selector | 001, 002, 004, 009-015, 022 | not started |
+| 3 | M2 hierarchical deterministic selector | 001, 002, 004, 009-015, 022 | integration in progress ([runbook](m2-runbook.md)) |
 | 4 | M3 experience and feedback pipeline | 003, 023-034 | not started |
-| 5 | M4 offline ranker and calibration | 016 | not started |
+| 5 | M4 offline ranker and calibration | 016 | delivered ([plan](m4-plan.md)); activation remains disabled |
 | 6 | M5 project adapter and cold start | 021 | not started |
 | 7 | M6 shadow routing | 017, 041 | not started |
 | 8 | M7 guarded bandit | 018-020 | not started |
