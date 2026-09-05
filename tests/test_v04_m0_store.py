@@ -1170,12 +1170,14 @@ def test_the_store_exposes_no_way_to_update_or_delete_a_v04_record() -> None:
             assert {f"put_{singular}", f"get_{singular}", f"list_{table}"} <= surface
 
 
-def test_the_v04_surface_is_exactly_put_get_list_plus_the_two_named_lookups() -> None:
-    """Two documented extras, and nothing else.
+def test_the_v04_surface_is_exactly_put_get_list_plus_the_three_named_lookups() -> None:
+    """Three documented extras, and nothing else.
 
     §8.2's receipt-by-request-id lookup, and M3a's revision listing — the read that walks
     one experience's projections after migration 0020 gave them a shared ``experience_id``
-    instead of a shared primary key. A third would have to be written down here.
+    instead of a shared primary key. M2 adds the workspace-scoped graph receipt
+    reader so dispatch can resolve an operator-amended head. A fourth must be
+    documented here rather than silently widening the frozen store surface.
     """
 
     extra: set[str] = set()
@@ -1191,6 +1193,7 @@ def test_the_v04_surface_is_exactly_put_get_list_plus_the_two_named_lookups() ->
     assert extra == {
         "get_routing_receipt_for_request",
         "list_experience_record_revisions",
+        "list_routing_receipts_for_run_graph",
     }
 
 

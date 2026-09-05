@@ -752,6 +752,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/projects/{project_id}/node-executions/{execution_instance_id}/route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Route Node Execution */
+        post: operations["route_node_execution_api_v1_projects__project_id__node_executions__execution_instance_id__route_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/router-models": {
         parameters: {
             query?: never;
@@ -807,6 +824,74 @@ export interface paths {
          *     reader can recompute every number here instead of trusting it.
          */
         post: operations["train_router_candidate_api_v1_router_models_train_candidate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/routing-decisions/{receipt_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Routing Decision */
+        get: operations["get_routing_decision_api_v1_routing_decisions__receipt_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/routing-decisions/{receipt_id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Cancel Routing Decision */
+        post: operations["cancel_routing_decision_api_v1_routing_decisions__receipt_id__cancel_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/routing-decisions/{receipt_id}/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Routing Candidates */
+        get: operations["get_routing_candidates_api_v1_routing_decisions__receipt_id__candidates_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/routing-decisions/{receipt_id}/override": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Override Routing Decision */
+        post: operations["override_routing_decision_api_v1_routing_decisions__receipt_id__override_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2560,6 +2645,27 @@ export interface components {
          * @enum {string}
          */
         CapabilityKind: "TOOL" | "AGENT";
+        /**
+         * CapabilityRef
+         * @description A capability at one schema version.
+         *
+         *     Registry §4 asks for "canonical capability ID and schema version".
+         *
+         *     The version field is spelled ``capability_version``, the spelling
+         *     ``CapabilityRequest.capability_version`` already uses, and not ``schema_version``: every
+         *     persisted aggregate in this repository opens with a ``schema_version`` describing *its
+         *     own* contract, and a reference whose ``schema_version`` described something else would
+         *     be a trap for every reader and every hash. The value is the version of the capability's
+         *     declared input/output schema — what ``Capability.version`` carries — so the repository
+         *     keeps two spellings of one value (``version`` on the aggregate, ``capability_version`` on
+         *     anything that points at it) rather than three.
+         */
+        CapabilityRef: {
+            /** Capability Id */
+            capability_id: string;
+            /** Capability Version */
+            capability_version: string;
+        };
         /** CapabilityRequest */
         CapabilityRequest: {
             /** Arguments */
@@ -2703,6 +2809,90 @@ export interface components {
          */
         ConditionOperator: "ALL" | "ANY" | "NOT" | "EQ" | "NE" | "LT" | "LTE" | "GT" | "GTE" | "IN";
         /**
+         * ConfigurationCandidate
+         * @description SDD §7.6. One complete configuration with its predicted outcomes and its verdicts.
+         *
+         *     **Field coverage (SDD §7.6 → here).** ``candidate_id`` → the header's ``contract_id``
+         *     (``ccd``; ADR-055 chose ``ccd`` because ``cnd`` is already the connector definition).
+         *     ``configuration``, ``construction_stage``, ``hard_eligible``,
+         *     ``compatibility_decision_refs``, ``uncertainty_score``, ``lower_confidence_success``,
+         *     ``utility_score``, ``pareto_dominated``, ``fallback_eligible`` → unchanged. ``predicted``
+         *     → :class:`PredictedOutcomes`, its five ``DistributionEstimate`` members typed.
+         *
+         *     ``utility_score`` is nullable because §9.1 ranks by utility at stage 10: a candidate
+         *     captured before that stage has no score, and zero would rank it as the worst rather than
+         *     as unranked.
+         *
+         *     The validator enforces the one rule §9.2 states in words and no type can state alone: a
+         *     hard-incompatible candidate is removed immediately, so it cannot also be the audited
+         *     fallback that §9.2 requires to be retained. A candidate that claimed both would let an
+         *     incompatible configuration reach dispatch by the fallback path.
+         */
+        ConfigurationCandidate: {
+            /** Compatibility Decision Refs */
+            compatibility_decision_refs?: string[];
+            configuration: components["schemas"]["ExecutionConfiguration"];
+            construction_stage: components["schemas"]["ConstructionStage"];
+            /**
+             * Content Hash
+             * @default
+             */
+            content_hash: string;
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Contract Type
+             * @default accretion.configuration-candidate
+             * @constant
+             */
+            contract_type: "accretion.configuration-candidate";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            created_by: components["schemas"]["PrincipalRef"];
+            /**
+             * Fallback Eligible
+             * @default false
+             */
+            fallback_eligible: boolean;
+            /** Hard Eligible */
+            hard_eligible: boolean;
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** Lower Confidence Success */
+            lower_confidence_success: number;
+            objective_contract_ref?: components["schemas"]["ObjectiveContractRef"] | null;
+            /**
+             * Pareto Dominated
+             * @default false
+             */
+            pareto_dominated: boolean;
+            predicted: components["schemas"]["PredictedOutcomes"];
+            /** Project Id */
+            project_id?: string | null;
+            /** Retention Class */
+            retention_class?: string | null;
+            /** Routing Request Id */
+            routing_request_id: string;
+            /**
+             * Schema Version
+             * @default 1.0.0
+             */
+            schema_version: string;
+            /** Supersedes Contract Id */
+            supersedes_contract_id?: string | null;
+            /** Uncertainty Score */
+            uncertainty_score: number;
+            /** Utility Score */
+            utility_score?: number | null;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
          * ConnectCreate
          * @description Start an authorization. Scopes default to the connector's declared minimum.
          */
@@ -2813,6 +3003,16 @@ export interface components {
          * @enum {string}
          */
         ConnectorKind: "MCP" | "REST" | "GRAPHQL" | "SDK" | "LOCAL";
+        /**
+         * ConstructionStage
+         * @description SDD §9.1's eleven candidate-construction stages, as a stored value.
+         *
+         *     A candidate records the stage it reached and a rejected candidate records the stage that
+         *     rejected it, which is the difference between "this configuration was not chosen" and
+         *     "this configuration was never eligible, and here is the gate that said so".
+         * @enum {string}
+         */
+        ConstructionStage: "VALIDATE_NODE_CONTRACT" | "RESOLVE_REQUIREMENTS" | "ENUMERATE_RUNTIME_MODEL" | "BIND_TOOLS_AND_SKILLS" | "BIND_VERIFIER" | "CONSTRUCT_TUPLE" | "JOINT_COMPATIBILITY" | "PREDICT_OUTCOME" | "SUCCESS_GATE" | "RANK_BY_UTILITY" | "SELECT_BEHAVIOR";
         /** ContextBundle */
         ContextBundle: {
             /** Artifact Refs */
@@ -2876,6 +3076,41 @@ export interface components {
             workspace_map?: {
                 [key: string]: unknown;
             };
+        };
+        /**
+         * DecisionType
+         * @description SDD §7.8. How a routing decision was reached, which is what makes it replayable.
+         *
+         *     The distinction between ``EXPLOIT`` and ``EXPLORE`` is not cosmetic: off-policy
+         *     evaluation needs to know which decisions were drawn from the behaviour policy, and a
+         *     receipt that recorded only the chosen configuration would make every historical decision
+         *     look deliberate. ``FALLBACK`` records that no confident candidate existed,
+         *     ``HUMAN_OVERRIDE`` that a person replaced the choice, and ``HUMAN_REVIEW_REQUIRED``
+         *     that there was no safe fallback either — the one decision type that selects nothing.
+         * @enum {string}
+         */
+        DecisionType: "EXPLOIT" | "EXPLORE" | "FALLBACK" | "HUMAN_OVERRIDE" | "HUMAN_REVIEW_REQUIRED";
+        /**
+         * DistributionEstimate
+         * @description SDD §7.6 ``predicted``; §9.3 requires calibrated distributions or intervals.
+         *
+         *     An interval and not a point. ADR-045 says the predictor emits a vector rather than one
+         *     permanent scalar reward, and §9.5's exploration gate is defined over a *lower confidence
+         *     bound*, which a point estimate cannot supply. ``method`` names how the interval was
+         *     produced, because OQ-405 is explicitly undecided and a stored interval whose method is
+         *     unknown cannot be recalibrated later.
+         */
+        DistributionEstimate: {
+            /** Confidence */
+            confidence: number;
+            /** Lower Bound */
+            lower_bound: number;
+            /** Mean */
+            mean: number;
+            /** Method */
+            method: string;
+            /** Upper Bound */
+            upper_bound: number;
         };
         /** DynamicBenchmarkGate */
         DynamicBenchmarkGate: {
@@ -3220,6 +3455,37 @@ export interface components {
             /** Token Exchange Configured */
             token_exchange_configured: boolean;
         };
+        /**
+         * EnvironmentBinding
+         * @description SDD §7.5 ``environment``, reconciled with registry §4's ``EnvironmentRef``.
+         *
+         *     The reference already carries the environment id, the image digest and the policy
+         *     profile; ``workspace_isolation`` is the one thing it does not, and it belongs to the
+         *     *configuration* rather than to the environment because the same environment can be
+         *     entered with different isolation.
+         */
+        EnvironmentBinding: {
+            environment: components["schemas"]["EnvironmentRef"];
+            /** Workspace Isolation */
+            workspace_isolation: string;
+        };
+        /**
+         * EnvironmentRef
+         * @description An execution environment: id, image digest, policy profile (registry §4).
+         *
+         *     The policy profile travels *with* the environment rather than beside it because an
+         *     environment is only half an answer — the same image under a permissive profile and under
+         *     a restricted one are different places to run, and a safety argument about one says
+         *     nothing about the other.
+         */
+        EnvironmentRef: {
+            /** Environment Id */
+            environment_id: string;
+            /** Image Digest */
+            image_digest: string;
+            /** Policy Profile */
+            policy_profile: string;
+        };
         /** ErrorSummary */
         ErrorSummary: {
             /** Code */
@@ -3360,11 +3626,116 @@ export interface components {
             verification_ids?: string[];
         };
         /**
+         * EvidenceRef
+         * @description A piece of evidence by id, class and content digest (registry §4).
+         *
+         *     ``evidence_class`` reuses the existing :class:`~accretion.contracts.EvidenceClass` enum
+         *     (ADR-054 e): the v0.3 M5 taxonomy already equals registry §5.2, so there is exactly one
+         *     definition of what ``SIMULATION`` means. The class is carried *in the reference* rather
+         *     than looked up behind it because registry §19 requires simulation and physical evidence to
+         *     stay type-distinct at every boundary — a consumer holding this reference can refuse to
+         *     treat simulated evidence as physical without dereferencing anything.
+         *
+         *     The class is required and has no default. The stored ``EvidenceRecord`` defaults to
+         *     ``EXTERNAL_SOURCE`` for candidates arriving from a connector; a reference is written by
+         *     something that already knows, and defaulting here would let an unstated class quietly
+         *     become the weakest one.
+         */
+        EvidenceRef: {
+            /** Content Digest */
+            content_digest: string;
+            evidence_class: components["schemas"]["EvidenceClass"];
+            /** Evidence Id */
+            evidence_id: string;
+        };
+        /**
          * EvidenceTrust
          * @description Ordered low to high. Assigned by the normalizer, never read from connector output.
          * @enum {string}
          */
         EvidenceTrust: "QUARANTINED" | "UNVERIFIED" | "CORROBORATED" | "VERIFIED";
+        /**
+         * ExecutionConfiguration
+         * @description SDD §7.5. The complete tuple a router selects: environment through verifier.
+         *
+         *     ADR-042 makes the router select a *complete* configuration rather than a runtime and
+         *     some defaults, and registry §7.3 fixes the hierarchy — environment → runtime → model →
+         *     tools/capabilities → skills/plugin implementations → independent verifier. Every layer
+         *     is required here; there is no partial configuration, because §9.2 says final selection
+         *     always operates on complete tuples.
+         *
+         *     **Field coverage (SDD §7.5 → here).** ``configuration_id`` → the header's
+         *     ``contract_id`` (``cfg``). ``runtime`` → a :class:`~accretion.contracts.refs.RuntimeRef`,
+         *     which carries the SDD's ``runtime_id`` and ``adapter_version`` plus the capability
+         *     profile digest registry §4 requires. ``model`` → :class:`ModelBinding`. ``tools`` →
+         *     ``[ToolBinding]``, carrying the SDD's ``capability_id``/``binding_id``/
+         *     ``binding_version`` and the registry's typed ``ToolRef``. ``skills`` → ``[SkillRef]``
+         *     directly: registry §4 asks for skill id, version *and* package digest, and the reference
+         *     already is exactly that. ``verifier`` → :class:`VerifierBinding`. ``environment`` →
+         *     :class:`EnvironmentBinding`. ``configuration_hash`` → unchanged, but see below.
+         *
+         *     **What ``configuration_hash`` covers, and why it is not the header digest.** §9.2
+         *     requires behaviourally equivalent candidates to be canonicalised by configuration
+         *     signature, and §7.10 keys reusable experience by ``configuration_hash``. Both need the
+         *     same configuration built twice, in two projects, on two days, to produce the *same*
+         *     value — which the header digest cannot do, because it covers ``contract_id`` and
+         *     ``created_at``. So ``configuration_hash`` is computed over exactly the six semantic
+         *     fields named in :data:`_CONFIGURATION_SIGNATURE_FIELDS` and nothing else, and the header
+         *     ``content_hash`` then commits to it. Two configurations with the same signature are the
+         *     same execution surface; two with the same ``content_hash`` are the same *document*.
+         */
+        ExecutionConfiguration: {
+            /**
+             * Configuration Hash
+             * @default
+             */
+            configuration_hash: string;
+            /**
+             * Content Hash
+             * @default
+             */
+            content_hash: string;
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Contract Type
+             * @default accretion.execution-configuration
+             * @constant
+             */
+            contract_type: "accretion.execution-configuration";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            created_by: components["schemas"]["PrincipalRef"];
+            environment: components["schemas"]["EnvironmentBinding"];
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            model: components["schemas"]["ModelBinding"];
+            objective_contract_ref?: components["schemas"]["ObjectiveContractRef"] | null;
+            /** Project Id */
+            project_id?: string | null;
+            /** Retention Class */
+            retention_class?: string | null;
+            runtime: components["schemas"]["RuntimeRef"];
+            /**
+             * Schema Version
+             * @default 1.0.0
+             */
+            schema_version: string;
+            /** Skills */
+            skills?: components["schemas"]["SkillRef"][];
+            /** Supersedes Contract Id */
+            supersedes_contract_id?: string | null;
+            /** Tools */
+            tools?: components["schemas"]["ToolBinding"][];
+            verifier: components["schemas"]["VerifierBinding"];
+            /** Workspace Id */
+            workspace_id: string;
+        };
         /**
          * ExecutionMode
          * @enum {string}
@@ -3788,6 +4159,24 @@ export interface components {
          * @enum {string}
          */
         ExperienceTrust: "HIGH" | "MEDIUM" | "LOW";
+        /**
+         * ExplanationFactor
+         * @description One weighted reason inside a :class:`StructuredExplanation`.
+         *
+         *     ``weight`` is signed: a factor that argued *against* the selected configuration and lost
+         *     is part of an honest explanation, and clamping it to non-negative would turn the
+         *     explanation into a summary of the winning side.
+         */
+        ExplanationFactor: {
+            /** Description */
+            description: string;
+            /** Evidence Refs */
+            evidence_refs?: components["schemas"]["EvidenceRef"][];
+            /** Factor Id */
+            factor_id: string;
+            /** Weight */
+            weight: number;
+        };
         /** FeatureEvidence */
         FeatureEvidence: {
             /**
@@ -4627,6 +5016,25 @@ export interface components {
             /** Version */
             version: string;
         };
+        /**
+         * ModelBinding
+         * @description SDD §7.5 ``model``: which model, from which provider, configured how.
+         *
+         *     ``provider`` reuses the repository's :class:`~accretion.contracts.Provider` enum instead
+         *     of the SDD's free ``provider_id`` string, so a configuration cannot name a provider the
+         *     runtime layer has never heard of. ``inference_profile`` is a ``str``-keyed dict of
+         *     scalars: free enough to carry a temperature or a thinking budget, constrained enough to
+         *     canonicalise (a non-string key is unhashable by construction).
+         */
+        ModelBinding: {
+            /** Inference Profile */
+            inference_profile?: {
+                [key: string]: string | number | boolean | null;
+            };
+            /** Model Id */
+            model_id: string;
+            provider: components["schemas"]["Provider"];
+        };
         /** NodeLoopPolicy */
         NodeLoopPolicy: {
             /** Act Key */
@@ -5103,6 +5511,22 @@ export interface components {
             /** Version */
             version: string;
         };
+        /**
+         * PredictedOutcomes
+         * @description SDD §7.6 ``predicted``: the five estimates a candidate is ranked on.
+         *
+         *     ``node_verified_success`` and ``run_verified_success`` are separate because ADR-045's
+         *     vector is the point: a configuration that reliably passes its own node while degrading
+         *     the run is exactly the reward-hacking shape §14.3 exists to catch, and one combined
+         *     number would hide it.
+         */
+        PredictedOutcomes: {
+            cost: components["schemas"]["DistributionEstimate"];
+            latency: components["schemas"]["DistributionEstimate"];
+            node_verified_success: components["schemas"]["DistributionEstimate"];
+            quality: components["schemas"]["DistributionEstimate"];
+            run_verified_success: components["schemas"]["DistributionEstimate"];
+        };
         /** Principal */
         Principal: {
             /**
@@ -5293,6 +5717,24 @@ export interface components {
             schema_version: "2.0";
             /** Task Count */
             task_count: number;
+        };
+        /**
+         * RejectedCandidate
+         * @description Why one candidate did not win, in a form a machine can group by.
+         *
+         *     ``reason_code`` is a screaming-snake token rather than prose so that "rejected for the
+         *     same reason" is a query and not a text search; ``detail`` carries the prose. ``stage``
+         *     records which of §9.1's eleven gates rejected it, which is the difference between a
+         *     candidate that was never eligible and one that was outranked.
+         */
+        RejectedCandidate: {
+            /** Candidate Id */
+            candidate_id: string;
+            /** Detail */
+            detail: string;
+            /** Reason Code */
+            reason_code: string;
+            stage: components["schemas"]["ConstructionStage"];
         };
         /** ReplanCreate */
         ReplanCreate: {
@@ -5583,6 +6025,153 @@ export interface components {
             /** Workspace Id */
             workspace_id: string;
         };
+        /**
+         * RoutingDecisionReceipt
+         * @description SDD §7.8. The immutable record of one routing decision, and the thing replay reads.
+         *
+         *     §8.2 makes this the durable answer to a ``routing_request_id``: repeated requests with
+         *     identical immutable inputs return the same receipt, and dispatch must reference a
+         *     persisted one. Everything needed to explain, replay and off-policy-evaluate the decision
+         *     is here, and nothing that could not be recomputed from it is trusted elsewhere.
+         *
+         *     **Field coverage (SDD §7.8 → here).** ``receipt_id`` → the header's ``contract_id``
+         *     (``rcp``). ``routing_request_id``, ``node_contract_hash``, ``selected_configuration_id``,
+         *     ``selected_configuration_hash``, ``decision_type``, ``selection_propensity``,
+         *     ``candidate_summary_refs``, ``experience_refs``, ``workspace_router_version``,
+         *     ``project_adapter_version``, ``objective_contract_version``,
+         *     ``capability_registry_snapshot_id``, ``policy_snapshot_id``,
+         *     ``fallback_configuration_id``, ``explanation``, ``created_at`` → unchanged.
+         *     ``predicted_outcomes`` → :class:`PredictedOutcomes` (nullable: a decision that selected
+         *     nothing predicted nothing). ``uncertainty`` → :class:`UncertaintySummary`.
+         *     ``rejected_candidate_reasons`` → ``[RejectedCandidate]``.
+         *
+         *     ``node_contract_hash`` is the node contract's ``immutable_hash`` and not its header
+         *     ``content_hash``, for the reason :class:`NodeContract` gives: the immutable hash is the
+         *     value other contracts pin and is stable under later header additions.
+         *
+         *     **Receipts refuse secret-shaped values.** §12 requires events to exclude tokens,
+         *     secrets, hidden provider payloads and private reasoning, and §14.2's controls say the
+         *     same about what is stored. A receipt is the most likely place for one to arrive by
+         *     accident: its ``labels`` are free-form and its explanation quotes whatever the router
+         *     was reasoning over. The validator runs the repository's real redactor over the whole
+         *     payload and refuses the record if redaction would change anything — key-shaped
+         *     (``authorization``, ``api_key``, ``nonce``) or value-shaped (a bearer token, a JWT, an
+         *     ``sk-`` key). Refusing is deliberate and is not the same as redacting: a receipt is
+         *     hashed and replayed, so silently rewriting one would produce a document that no longer
+         *     matches its own digest and an audit trail that had been edited.
+         */
+        RoutingDecisionReceipt: {
+            /** Candidate Summary Refs */
+            candidate_summary_refs?: string[];
+            /** Capability Registry Snapshot Id */
+            capability_registry_snapshot_id: string;
+            /**
+             * Content Hash
+             * @default
+             */
+            content_hash: string;
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Contract Type
+             * @default accretion.routing-decision-receipt
+             * @constant
+             */
+            contract_type: "accretion.routing-decision-receipt";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            created_by: components["schemas"]["PrincipalRef"];
+            decision_type: components["schemas"]["DecisionType"];
+            /** Experience Refs */
+            experience_refs?: string[];
+            explanation: components["schemas"]["StructuredExplanation"];
+            /** Fallback Configuration Id */
+            fallback_configuration_id?: string | null;
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** Node Contract Hash */
+            node_contract_hash: string;
+            objective_contract_ref?: components["schemas"]["ObjectiveContractRef"] | null;
+            /** Objective Contract Version */
+            objective_contract_version: number;
+            /** Policy Snapshot Id */
+            policy_snapshot_id: string;
+            predicted_outcomes?: components["schemas"]["PredictedOutcomes"] | null;
+            /** Project Adapter Version */
+            project_adapter_version?: string | null;
+            /** Project Id */
+            project_id?: string | null;
+            /** Rejected Candidate Reasons */
+            rejected_candidate_reasons?: components["schemas"]["RejectedCandidate"][];
+            /** Retention Class */
+            retention_class?: string | null;
+            /** Routing Request Id */
+            routing_request_id: string;
+            /**
+             * Schema Version
+             * @default 1.0.0
+             */
+            schema_version: string;
+            /** Selected Configuration Hash */
+            selected_configuration_hash?: string | null;
+            /** Selected Configuration Id */
+            selected_configuration_id?: string | null;
+            /** Selection Propensity */
+            selection_propensity?: number | null;
+            /** Supersedes Contract Id */
+            supersedes_contract_id?: string | null;
+            uncertainty: components["schemas"]["UncertaintySummary"];
+            /** Workspace Id */
+            workspace_id: string;
+            /** Workspace Router Version */
+            workspace_router_version: string;
+        };
+        /**
+         * RoutingMode
+         * @description SDD §11.1. How much of the learned router a workspace has turned on.
+         *
+         *     Three values and not a pair of booleans, because the three states are mutually exclusive
+         *     and a boolean pair has a fourth combination that means nothing. §11.1 also makes the
+         *     progression one-directional in practice — a workspace earns ``AUTO`` by passing shadow
+         *     evaluation in ``SHADOW`` — and a mode that could be spelled two ways would make the gate
+         *     that checks it ambiguous.
+         * @enum {string}
+         */
+        RoutingMode: "AUTO" | "SHADOW" | "BASELINE_ONLY";
+        /**
+         * RoutingOverrideCreate
+         * @description An attributed compare-and-set replacement of a persisted selection.
+         */
+        RoutingOverrideCreate: {
+            /** Candidate Id */
+            candidate_id: string;
+            /** Expected Receipt Version */
+            expected_receipt_version: number;
+            /** Reason */
+            reason: string;
+            /** Reason Code */
+            reason_code: string;
+        };
+        /**
+         * RoutingRequestCreate
+         * @description Immutable inputs the caller pins when asking M2 to route one node.
+         */
+        RoutingRequestCreate: {
+            /** Expected Node Contract Hash */
+            expected_node_contract_hash: string;
+            /** Expected Registry Snapshot Id */
+            expected_registry_snapshot_id: string;
+            mode: components["schemas"]["RoutingMode"];
+            /** Node Contract Id */
+            node_contract_id: string;
+            /** Routing Request Id */
+            routing_request_id: string;
+        };
         /** Run */
         Run: {
             /** Acceptance Policy Id */
@@ -5825,6 +6414,33 @@ export interface components {
             /** Runtime Version */
             runtime_version: string;
             status: components["schemas"]["RuntimeStatus"];
+        };
+        /**
+         * RuntimeRef
+         * @description A specific agent runtime, pinned well enough to explain a past decision.
+         *
+         *     Registry §4 requires "runtime ID, adapter version, provider/model capability profile".
+         *     The adapter version matters because the same provider behind a newer adapter is a
+         *     different execution surface, and a router that learned on one must not silently claim
+         *     its evidence transfers to the other.
+         *
+         *     ``model`` is optional and defaults to ``None``: a subscription-mode CLI runtime does not
+         *     always pin a model, and forcing a placeholder there would put a lie in the receipt. It is
+         *     ``None`` or a real name and never the empty string, so that "unpinned" has one spelling.
+         *     ``capability_profile_digest`` is the digest over the runtime's declared capability
+         *     profile, and it is what makes this reference immutable — provider and model are names,
+         *     the profile digest is the thing that actually changed when behaviour changed.
+         */
+        RuntimeRef: {
+            /** Adapter Version */
+            adapter_version: string;
+            /** Capability Profile Digest */
+            capability_profile_digest: string;
+            /** Model */
+            model?: string | null;
+            provider: components["schemas"]["Provider"];
+            /** Runtime Id */
+            runtime_id: string;
         };
         /**
          * RuntimeRequirement
@@ -6165,6 +6781,22 @@ export interface components {
             workspace: string;
         };
         /**
+         * SkillRef
+         * @description A skill by id, version and package digest.
+         *
+         *     Version and digest are both required and are not redundant: the version is what a human
+         *     asked for and what a plan cites, the digest is what actually shipped. A republished
+         *     package under an unchanged version is precisely the case this pair exists to catch.
+         */
+        SkillRef: {
+            /** Package Digest */
+            package_digest: string;
+            /** Skill Id */
+            skill_id: string;
+            /** Version */
+            version: string;
+        };
+        /**
          * SplitFractions
          * @description The share of lineage roots each split receives. All five are required.
          *
@@ -6279,6 +6911,75 @@ export interface components {
         StrategyOverrideResult: {
             current_decision: components["schemas"]["StrategyDecision"];
             override: components["schemas"]["StrategyOverride"];
+        };
+        /**
+         * StructuredExplanation
+         * @description Why a routing decision came out the way it did — v0.4-owned, defined by this freeze.
+         *
+         *     SDD §7.8 names ``explanation: StructuredExplanation`` and never gives it a shape, so
+         *     this contract is owned by v0.4 and this docstring is its specification. Three parts,
+         *     each answering a question an operator actually asks:
+         *
+         *     * ``summary`` — the one-sentence reason, for the panel §17.1 renders.
+         *     * ``factors`` — what argued for and against, with signed weights and the evidence each
+         *       appealed to. Signed, because an explanation that lists only the winning arguments is
+         *       a justification.
+         *     * ``rejected_candidates`` — what else was considered and the coded reason it was not
+         *       chosen, so "why not the cheaper one" has an answer that does not require re-running
+         *       the router.
+         *
+         *     It is a contract rather than a plain value object because it inherits the registry §3
+         *     header like everything else in this family, and because §17.1 shows it beside the
+         *     receipt: a rendered explanation that could not be hashed could not be shown to be the
+         *     explanation that was actually recorded.
+         *
+         *     ``ID_KIND`` is ``None``: an explanation is minted by the receipt that carries it and has
+         *     no id space of its own (ADR-055 lists no prefix for it).
+         */
+        StructuredExplanation: {
+            /**
+             * Content Hash
+             * @default
+             */
+            content_hash: string;
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Contract Type
+             * @default accretion.structured-explanation
+             * @constant
+             */
+            contract_type: "accretion.structured-explanation";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            created_by: components["schemas"]["PrincipalRef"];
+            /** Factors */
+            factors?: components["schemas"]["ExplanationFactor"][];
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            objective_contract_ref?: components["schemas"]["ObjectiveContractRef"] | null;
+            /** Project Id */
+            project_id?: string | null;
+            /** Rejected Candidates */
+            rejected_candidates?: components["schemas"]["RejectedCandidate"][];
+            /** Retention Class */
+            retention_class?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0.0
+             */
+            schema_version: string;
+            /** Summary */
+            summary: string;
+            /** Supersedes Contract Id */
+            supersedes_contract_id?: string | null;
+            /** Workspace Id */
+            workspace_id: string;
         };
         /** Task */
         Task: {
@@ -6479,6 +7180,23 @@ export interface components {
          * @enum {string}
          */
         TemplateStatus: "DRAFT" | "VALIDATED" | "RETIRED";
+        /**
+         * ToolBinding
+         * @description SDD §7.5 ``tools``, reconciled with registry §4's ``ToolRef``.
+         *
+         *     Three identities, none of them redundant. ``capability`` is what the node *asked* for,
+         *     ``tool`` is the normalized implementation that answered it with its digest, and the
+         *     binding pair is the workspace-local record that connected the two. Dropping the
+         *     capability would lose the requirement; dropping the tool would lose what actually ran.
+         */
+        ToolBinding: {
+            /** Binding Id */
+            binding_id: string;
+            /** Binding Version */
+            binding_version: string;
+            capability: components["schemas"]["CapabilityRef"];
+            tool: components["schemas"]["ToolRef"];
+        };
         /** ToolCallTraceRef */
         ToolCallTraceRef: {
             /** Capability Id */
@@ -6503,6 +7221,20 @@ export interface components {
             status: "REQUESTED" | "STARTED" | "COMPLETED" | "FAILED";
             /** Tool Call Id */
             tool_call_id: string;
+        };
+        /**
+         * ToolRef
+         * @description A tool by normalized id plus the digest of the implementation that ran.
+         *
+         *     "Normalized" is the load-bearing word: the same underlying tool reached through two
+         *     connectors, or spelled differently by two providers, must arrive here as one id, or
+         *     experience gathered under one spelling will never be found under the other.
+         */
+        ToolRef: {
+            /** Implementation Digest */
+            implementation_digest: string;
+            /** Tool Id */
+            tool_id: string;
         };
         /** TrajectorySeed */
         TrajectorySeed: {
@@ -6592,6 +7324,22 @@ export interface components {
             schema_version: "2.0";
             /** Value */
             value?: unknown;
+        };
+        /**
+         * UncertaintySummary
+         * @description SDD §7.8 ``uncertainty``, typed instead of left as ``object``.
+         *
+         *     ``lower_confidence_success`` is repeated from the candidate onto the receipt on purpose:
+         *     the receipt is the replayable record, and a bound that had to be recomputed from a
+         *     candidate row would be a bound that changes when the estimator does.
+         */
+        UncertaintySummary: {
+            /** Calibration Version */
+            calibration_version: string;
+            /** Epistemic Uncertainty */
+            epistemic_uncertainty: number;
+            /** Lower Confidence Success */
+            lower_confidence_success: number;
         };
         /**
          * UsagePressure
@@ -6699,6 +7447,37 @@ export interface components {
             verification_id: string;
             /** Verifier Id */
             verifier_id?: string | null;
+        };
+        /**
+         * VerifierBinding
+         * @description SDD §7.5 ``verifier``: the independent verifier implementation and the spec it enforces.
+         *
+         *     ``verification_spec_hash`` inside the configuration is what makes ADR-044 checkable at
+         *     the configuration layer: a configuration is only a valid answer to a node whose spec
+         *     hashes to this value, so swapping the spec after the fact invalidates the configuration
+         *     rather than silently re-purposing it.
+         */
+        VerifierBinding: {
+            /** Verification Spec Hash */
+            verification_spec_hash: string;
+            verifier: components["schemas"]["VerifierRef"];
+            /** Version */
+            version: string;
+        };
+        /**
+         * VerifierRef
+         * @description A verifier's contract plus the digest of the implementation that produced a result.
+         *
+         *     ``verifier_contract_id`` names the verifier *contract* — what is checked and what
+         *     counts as passing — and not a single v0.1 verification run. Registry §19 requires that
+         *     verification stay reproducible, which needs both halves: the contract explains what the
+         *     verdict claimed, the implementation digest explains what code made the claim.
+         */
+        VerifierRef: {
+            /** Implementation Digest */
+            implementation_digest: string;
+            /** Verifier Contract Id */
+            verifier_contract_id: string;
         };
         /** WorkflowActivationOutcome */
         WorkflowActivationOutcome: {
@@ -8223,6 +9002,42 @@ export interface operations {
             };
         };
     };
+    route_node_execution_api_v1_projects__project_id__node_executions__execution_instance_id__route_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                project_id: string;
+                execution_instance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoutingRequestCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoutingDecisionReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_router_models_api_v1_router_models_get: {
         parameters: {
             query: {
@@ -8277,6 +9092,134 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RouterCandidateTrained"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_routing_decision_api_v1_routing_decisions__receipt_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                receipt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoutingDecisionReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    cancel_routing_decision_api_v1_routing_decisions__receipt_id__cancel_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                receipt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoutingDecisionReceipt"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_routing_candidates_api_v1_routing_decisions__receipt_id__candidates_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                receipt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigurationCandidate"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    override_routing_decision_api_v1_routing_decisions__receipt_id__override_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                receipt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RoutingOverrideCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoutingDecisionReceipt"];
                 };
             };
             /** @description Validation Error */

@@ -9,6 +9,9 @@ _PREFIXES = {
     "project": "prj",
     "task": "tsk",
     "run": "run",
+    # A node execution is not a run.  It has its own identity because retries and graph
+    # revisions are independently attributable routing actions (ADR-041).
+    "execution_instance": "exe",
     "session": "ses",
     "workspace": "wsp",
     "artifact": "art",

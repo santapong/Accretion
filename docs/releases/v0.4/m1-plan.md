@@ -93,13 +93,20 @@ needs a hash: a signature that drifted between M1 and M2 would not fail here, it
 the integration PR as a type error in a file nobody touched.
 
 ```
-sha256(src/accretion/routing/protocols.py) = 4d7b8d670f370e08aa4fb4cb3a2ea45eea2f2fabc6d4e302be6e39f4f20d5a34
+sha256(src/accretion/routing/protocols.py) = dc47c8022563df646cfbeac84d6a28cf0d21c5fae6b1933e7d4a0e5cfdd35d47
 ```
 
 A later PR that changes this file must update the digest in the same diff. `RecoveryDecision`
 is the one member expected to move: M3 owns `accretion.feedback.recovery`, which does not exist
 on develop, so it is declared here as a `Protocol` that M3's real class satisfies structurally
 — which lets M3 land without editing this file at all.
+
+M2 explicitly extends `NodeRoutingService` with `latest_receipt` and `claim_dispatch`:
+the run manager must resolve an operator-amended head and durably claim it before
+any side effect. The M1 digest was
+`4d7b8d670f370e08aa4fb4cb3a2ea45eea2f2fabc6d4e302be6e39f4f20d5a34`.
+The updated digest above records this reviewed calling-interface change; canonical
+contracts and the feedback protocol are unchanged.
 
 ## Close-out
 

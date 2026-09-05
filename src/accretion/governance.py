@@ -48,7 +48,8 @@ from accretion.contracts import (
     RiskLevel,
     Task,
 )
-from accretion.contracts.canonical import canonical_json
+from accretion.contracts.canonical import canonical_json, content_hash
+from accretion.contracts.routing import ToolBinding
 from accretion.digests import legacy_json_digest
 from accretion.ids import new_id
 from accretion.persistence.side_effects import SideEffectLedger, SideEffectStatus
@@ -156,9 +157,11 @@ class CapabilityPolicyEngine:
                 AuthorizationOutcome.DENY,
                 "side-effecting capability request requires an idempotency key",
             )
-        protected = bool(capability.side_effects) or (
-            RISK_RANK[capability.risk] >= RISK_RANK[policy.require_approval_at_risk]
-        ) or RISK_RANK[task.envelope.risk_level] >= RISK_RANK[policy.require_approval_at_risk]
+        protected = (
+            bool(capability.side_effects)
+            or (RISK_RANK[capability.risk] >= RISK_RANK[policy.require_approval_at_risk])
+            or RISK_RANK[task.envelope.risk_level] >= RISK_RANK[policy.require_approval_at_risk]
+        )
         if not protected:
             return decision(AuthorizationOutcome.ALLOW, "explicitly allowed low-risk capability")
         if approval is None or approval.status is ApprovalStatus.PENDING:
@@ -184,9 +187,7 @@ class CapabilityExecutor:
         if capability.backend is CapabilityBackend.PYTHON:
             handler = self.handlers.get(capability.capability_id)
             if handler is None:
-                raise RuntimeError(
-                    f"no allowlisted Python handler for {capability.capability_id}"
-                )
+                raise RuntimeError(f"no allowlisted Python handler for {capability.capability_id}")
             return await handler(arguments, credentials)
         if capability.backend is CapabilityBackend.CLI:
             return await self._execute_cli(capability, arguments, credentials)
@@ -202,8 +203,10 @@ class CapabilityExecutor:
     ) -> dict[str, Any]:
         execution = capability.provider_projections.get("accretion", {})
         command = execution.get("command") if isinstance(execution, dict) else None
-        if not isinstance(command, list) or not command or not all(
-            isinstance(part, str) and part for part in command
+        if (
+            not isinstance(command, list)
+            or not command
+            or not all(isinstance(part, str) and part for part in command)
         ):
             raise RuntimeError("CLI capability does not declare a fixed argv command")
         credential_env = execution.get("credential_env", {})
@@ -409,9 +412,7 @@ class CapabilityGateway:
         if run.principal_id:
             owner = await self.store.get_principal(run.principal_id)
             if owner is None or owner.status is PrincipalStatus.DISABLED:
-                raise PermissionError(
-                    f"principal {run.principal_id} may not invoke capabilities"
-                )
+                raise PermissionError(f"principal {run.principal_id} may not invoke capabilities")
         capability = await self.store.get_capability(
             request.capability_id, request.capability_version
         )
@@ -496,9 +497,7 @@ class CapabilityGateway:
             # AC3-SEC-03: connector-backed capabilities take their credential from the
             # broker, never from the resolver, the request, or the agent.
             try:
-                connection_credentials = await self._connection_credentials(
-                    connection, capability
-                )
+                connection_credentials = await self._connection_credentials(connection, capability)
             except CredentialUnavailableError:
                 if (
                     capability.backend is CapabilityBackend.MCP
@@ -566,9 +565,7 @@ class CapabilityGateway:
                     correlation_id=request.request_id,
                 )
             else:
-                raw_output = await self.executor.execute(
-                    capability, arguments, credentials
-                )
+                raw_output = await self.executor.execute(capability, arguments, credentials)
             # The output transform runs *before* the scrub / redact / validate chain,
             # and that chain's order is unchanged: the transform only decides what the
             # chain is handed. Normalized output is still redacted, still scrubbed of
@@ -720,9 +717,7 @@ class CapabilityGateway:
     async def _approval_for(self, request: CapabilityRequest) -> ApprovalRecord | None:
         native_request_id = approval_binding(request)
         records = await self.store.list_approvals(request.run_id)
-        return next(
-            (item for item in records if item.native_request_id == native_request_id), None
-        )
+        return next((item for item in records if item.native_request_id == native_request_id), None)
 
     async def _ensure_approval(self, request: CapabilityRequest) -> ApprovalRecord:
         return await self.store.save_approval(
@@ -905,6 +900,73 @@ class GatewayCapabilityInvoker:
     principal_id: str | None = None
     workspace_id: str | None = None
     declared_reason: str = "workflow capability reference"
+
+    async def invoke_selected(
+        self,
+        *,
+        run_id: str,
+        node_id: str,
+        selected: ToolBinding,
+        workspace_id: str,
+        arguments: dict[str, Any],
+        executing_provider: Provider | None = None,
+    ) -> CapabilityExecutionResult:
+        """Execute only the exact receipt-pinned implementation, never substitute.
+
+        Unlike optional legacy capability enrichment, routed execution must fail
+        if resolution drifted or the gateway did not complete the invocation.
+        The checked binding is passed directly into the existing policy gateway.
+        """
+        run = await self.gateway.store.get_run(run_id)
+        if run is None or not run.principal_id:
+            raise PermissionError("ROUTED_TOOL_UNAUTHORIZED: execution owner unavailable")
+        memberships = await self.gateway.store.list_workspace_memberships(
+            workspace_id=workspace_id, principal_id=run.principal_id
+        )
+        if not memberships:
+            raise PermissionError("ROUTED_TOOL_UNAUTHORIZED: workspace access unavailable")
+        resolved = await self.resolver.resolve(
+            selected.capability.capability_id,
+            principal_id=run.principal_id,
+            workspace_id=workspace_id,
+        )
+        if (
+            resolved is None
+            or resolved.outcome
+            not in {
+                CapabilityResolutionOutcome.OK,
+                CapabilityResolutionOutcome.NO_CONNECTOR_REQUIRED,
+            }
+            or resolved.binding is None
+            or not resolved.binding.enabled
+            or resolved.capability.capability_id != selected.capability.capability_id
+            or resolved.capability.version != selected.capability.capability_version
+            or resolved.binding.binding_id != selected.binding_id
+            or resolved.binding.schema_version != selected.binding_version
+            or resolved.binding.backend.tool_name != selected.tool.tool_id
+            or content_hash(
+                {"capability": resolved.capability, "binding": resolved.binding}, exclude=()
+            )
+            != selected.tool.implementation_digest
+        ):
+            raise RuntimeError("ROUTED_TOOL_BINDING_DRIFT: selected implementation unavailable")
+        result = await self.gateway.execute(
+            CapabilityRequest(
+                request_id=new_id("capability_request"),
+                run_id=run_id,
+                node_id=node_id,
+                capability_id=selected.capability.capability_id,
+                capability_version=selected.capability.capability_version,
+                arguments=arguments,
+                declared_reason=self.declared_reason,
+            ),
+            resolved.connection,
+            resolved.binding,
+            executing_provider=executing_provider,
+        )
+        if result.status is not CapabilityExecutionStatus.SUCCEEDED:
+            raise RuntimeError("ROUTED_TOOL_FAILED: selected invocation did not succeed")
+        return result
 
     async def __call__(
         self,
