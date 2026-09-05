@@ -1320,7 +1320,14 @@ class MemoryStore:
             yield scoped
             self.v04_contracts = scoped.v04_contracts
             self.run_events = scoped.run_events
-            self.runs = scoped.runs
+            # Routing only changes a run's event sequence. Other run updates do
+            # not acquire this lock, so publishing the copied runs dictionary
+            # would overwrite concurrent state transitions or newly created runs.
+            for key, events in scoped.run_events.items():
+                if events and key in self.runs:
+                    self.runs[key] = self.runs[key].model_copy(
+                        update={"last_sequence": events[-1].sequence}
+                    )
 
     async def create_project(self, project: Project) -> Project:
         self.projects[project.project_id] = project

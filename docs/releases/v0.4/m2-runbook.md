@@ -14,6 +14,15 @@ live providers or authorize paid calls. An injected catalog must provide exact,
 versioned runtime/model/tool/environment bindings; an unavailable binding cannot
 be replaced by an invented fallback.
 
+Scheduler-driven TOOL nodes use the exact selected binding through the governed
+gateway, scoped to the stored run owner and receipt workspace. Legacy invokers
+that cannot honor those pins fail closed. Routed AGENT configurations with tools
+are also blocked: the current provider/MCP session boundary carries capability
+IDs, not exact bindings, and must gain a pin-aware interface before enabling them.
+This is a deliberate M2 limitation, not a claim of live-provider tool support.
+Protected/side-effect tools requiring new approval or an idempotency workflow are
+not enabled by this baseline; a gateway refusal never becomes a successful node.
+
 For graph AGENT, TOOL, and VERIFIER nodes, verification semantics are persisted
 before the immutable node contract. Routing persists candidates, compatibility
 decisions, the receipt, and its audit event before dispatch. An operator amendment
@@ -62,6 +71,12 @@ an **uncertain execution**, not proof that nothing ran. Do not automatically
 resubmit it: inspect the runtime/audit evidence and reconcile it first. M2 does
 not claim exactly-once external execution. Runtime identity/version/capability
 drift or an unavailable runtime fails closed.
+
+Graph depth and critical-path features are derived from the persisted structural
+DAG, excluding retry/loop-back control edges. Critical-path membership is unweighted
+root-to-leaf path length, not a prediction of wall-clock latency. Verification keeps
+every mandatory policy check; selecting a primary verifier never removes another
+required verifier.
 
 To disable routing for subsequent runs, restore the flag to `false` and restart
 the application. Preserve receipts and audit history. Do not use a flag rollback

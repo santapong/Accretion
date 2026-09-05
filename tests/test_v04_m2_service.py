@@ -9,13 +9,6 @@ from pathlib import Path
 from typing import NoReturn, cast
 
 import pytest
-from accretion.routing.catalog import (
-    WORKSPACE_ROUTER_VERSION,
-    ConfigurationCatalog,
-    ConfigurationCatalogFactory,
-    FallbackBundle,
-)
-from accretion.routing.service import DefaultNodeRoutingService
 from test_v04_m0_store import FIXTURE_PROJECT_ID, FIXTURE_WORKSPACE_ID, build
 
 from accretion.concurrency import ConcurrencyLimiter
@@ -53,9 +46,16 @@ from accretion.governance import seed_governance
 from accretion.ids import new_id
 from accretion.persistence.store import MemoryStore
 from accretion.resolver import CapabilityResolver
+from accretion.routing.catalog import (
+    WORKSPACE_ROUTER_VERSION,
+    ConfigurationCatalog,
+    ConfigurationCatalogFactory,
+    FallbackBundle,
+)
 from accretion.routing.errors import RoutingError
 from accretion.routing.identity import routing_request_id
 from accretion.routing.protocols import FrozenNode, RoutingMode
+from accretion.routing.service import DefaultNodeRoutingService
 from accretion.routing.snapshot import RegistrySnapshotBuilder, RoutingSnapshot
 from accretion.runtimes.fake import FakeRuntime
 from accretion.services.run_manager import RunManager

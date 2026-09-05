@@ -28,7 +28,6 @@ from accretion.contracts.routing import (
     ConfigurationCandidate,
     DecisionType,
     ExecutionConfiguration,
-    GraphFeatures,
     NodeContractRef,
     ProjectFeatures,
     RoutingContext,
@@ -46,6 +45,7 @@ from accretion.routing.compatibility import CompatibilityEngine
 from accretion.routing.errors import RoutingError
 from accretion.routing.freeze import NodeContractFreezer
 from accretion.routing.gates import PolicyGate
+from accretion.routing.graph_features import graph_features
 from accretion.routing.identity import principal_ref_for_run, routing_request_id, workspace_for_run
 from accretion.routing.protocols import FrozenNode, RoutingMode
 from accretion.routing.selector import DeterministicSelector
@@ -186,23 +186,8 @@ class DefaultNodeRoutingService:
             observed_task_count=0,
         )
         # Project history is deliberately absent until M3; absent is never success evidence.
-        nodes = {n.node_id: n for n in graph.nodes}
-        parents = [
-            nodes[e.source].kind
-            for e in graph.edges
-            if e.target == node.node_id and e.source in nodes
-        ]
-        children = [
-            nodes[e.target].kind
-            for e in graph.edges
-            if e.source == node.node_id and e.target in nodes
-        ]
-        graph_features = GraphFeatures(
-            parent_node_types=parents,
-            child_node_types=children,
-            depth=0,
-            critical_path=False,
-            retry_number=max(0, int(node.labels.get("attempt", "1")) - 1),
+        structural_features = graph_features(
+            graph, node.node_id, int(node.labels.get("attempt", "1"))
         )
         return await store.put_routing_request(
             RoutingContext(  # type: ignore[call-arg]
@@ -213,7 +198,7 @@ class DefaultNodeRoutingService:
                 ),
                 task_features=task_features,
                 project_features=project_features,
-                graph_features=graph_features,
+                graph_features=structural_features,
                 available_runtime_snapshot_id=snapshot.available_runtime_snapshot_id,
                 capability_registry_snapshot_id=snapshot.capability_registry_snapshot_id,
                 connection_availability_snapshot_id=snapshot.connection_availability_snapshot_id,
