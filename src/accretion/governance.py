@@ -47,6 +47,8 @@ from accretion.contracts import (
     RiskLevel,
     Task,
 )
+from accretion.contracts.canonical import canonical_json
+from accretion.digests import legacy_json_digest
 from accretion.ids import new_id
 from accretion.persistence.side_effects import SideEffectLedger, SideEffectStatus
 from accretion.persistence.store import StateStore
@@ -267,10 +269,11 @@ def approval_binding(request: CapabilityRequest) -> str:
         "arguments": request.arguments,
         "idempotency_key": request.idempotency_key,
     }
-    digest = hashlib.sha256(
-        json.dumps(bound, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
-    return f"capability:{digest}"
+    # Byte-frozen, not converged (M8). ``arguments`` is arbitrary caller-supplied JSON,
+    # and this digest is persisted as an approval's ``native_request_id``: hashing a
+    # non-ASCII argument as itself rather than as ``\uXXXX`` would orphan every approval
+    # an earlier release recorded. See :mod:`accretion.digests`.
+    return f"capability:{legacy_json_digest(bound)}"
 
 
 class CapabilityGateway:
@@ -1019,9 +1022,14 @@ async def seed_governance(store: StateStore) -> None:
         "capabilities": [item.capability_id for item in capabilities],
         "skills": [skill.skill_id],
     }
-    checksum = hashlib.sha256(
-        json.dumps(plugin_payload, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+    # Converged onto ADR-056 canonical JSON in M8. The payload is four code literals, so
+    # its domain is closed and entirely ASCII and the digest is the same constant either
+    # way --- which had to be *proved* rather than assumed, because ``upsert_plugin``
+    # refuses any drift for an existing ``(plugin_id, version)`` and a moved checksum
+    # would fail every deployment that already seeded this row. ``canonical_json`` and not
+    # ``content_hash``: the latter drops a top-level ``content_hash`` key, and this digest
+    # must commit to every key it is given.
+    checksum = hashlib.sha256(canonical_json(plugin_payload)).hexdigest()
     await store.upsert_plugin(
         MetaPlugin(
             plugin_id="accretion-core-governance",
