@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import re
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from copy import copy, deepcopy
 from datetime import UTC, datetime
-from typing import Any, NamedTuple, Protocol
+from hashlib import sha256
+from typing import Any, NamedTuple, Protocol, cast
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -665,6 +668,10 @@ class _V04MemoryRow(NamedTuple):
 
 
 class StateStore(Protocol):
+    def routing_transaction(self, run_id: str) -> AbstractAsyncContextManager[StateStore]: ...
+    async def list_routing_receipts_for_run_graph(
+        self, *, workspace_id: str, run_graph_id: str
+    ) -> list[RoutingDecisionReceipt]: ...
     async def create_project(self, project: Project) -> Project: ...
     async def get_project(self, project_id: str) -> Project | None: ...
     async def list_projects(self) -> list[Project]: ...
@@ -1212,6 +1219,14 @@ class StateStore(Protocol):
 class MemoryStore:
     """Deterministic store for unit tests and protocol development, never production."""
 
+    async def list_routing_receipts_for_run_graph(
+        self, *, workspace_id: str, run_graph_id: str
+    ) -> list[RoutingDecisionReceipt]:
+        nodes = await self.list_node_contracts(workspace_id=workspace_id)
+        hashes = {n.immutable_hash for n in nodes if n.run_graph_id == run_graph_id}
+        return [r for r in await self.list_routing_receipts(workspace_id=workspace_id)
+                if r.node_contract_hash in hashes]
+
     def __init__(self) -> None:
         self.projects: dict[str, Project] = {}
         # One dict per §13 table, table name -> contract id -> row. Keyed by the
@@ -1292,6 +1307,20 @@ class MemoryStore:
         self.moderation_actions: dict[str, list[ModerationAction]] = {}
         self.trajectory_seeds: dict[str, list[TrajectorySeed]] = {}
         self._lock = asyncio.Lock()
+
+    @asynccontextmanager
+    async def routing_transaction(self, run_id: str) -> AsyncIterator[StateStore]:
+        """Commit routing records and audit events together; retain subclass test hooks."""
+        async with self._lock:
+            scoped = copy(self)
+            scoped._lock = asyncio.Lock()
+            scoped.v04_contracts = deepcopy(self.v04_contracts)
+            scoped.run_events = deepcopy(self.run_events)
+            scoped.runs = deepcopy(self.runs)
+            yield scoped
+            self.v04_contracts = scoped.v04_contracts
+            self.run_events = scoped.run_events
+            self.runs = scoped.runs
 
     async def create_project(self, project: Project) -> Project:
         self.projects[project.project_id] = project
@@ -3715,9 +3744,52 @@ class MemoryStore:
             project_id=project_id,
         )
 
+class _RoutingSessions:
+    """Reuse one transaction for the existing store methods' session scopes."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        self.session = session
+
+    @asynccontextmanager
+    async def __call__(self) -> AsyncIterator[AsyncSession]:
+        yield self.session
+
+    @asynccontextmanager
+    async def begin(self) -> AsyncIterator[AsyncSession]:
+        yield self.session
+        await self.session.flush()
+
+
 class PostgresStore:
     def __init__(self, sessions: async_sessionmaker[AsyncSession]) -> None:
         self.sessions = sessions
+
+    @asynccontextmanager
+    async def routing_transaction(self, run_id: str) -> AsyncIterator[StateStore]:
+        """Serialize decision amendments and dispatch claims across API processes.
+
+        The advisory lock is transaction-scoped: connection loss rolls back both
+        records and events, releases the lock, and allows a safe retry. No DDL needed.
+        """
+        key = int.from_bytes(sha256(("routing:" + run_id).encode()).digest()[:8],
+                             "big", signed=True)
+        async with self.sessions.begin() as session:
+            await session.execute(select(func.pg_advisory_xact_lock(key)))
+            yield PostgresStore(cast(async_sessionmaker[AsyncSession], _RoutingSessions(session)))
+
+    async def list_routing_receipts_for_run_graph(
+        self, *, workspace_id: str, run_graph_id: str
+    ) -> list[RoutingDecisionReceipt]:
+        query = (select(RoutingReceiptRow)
+                 .join(NodeContractRow,
+                       NodeContractRow.immutable_hash == RoutingReceiptRow.node_contract_hash)
+                 .where(RoutingReceiptRow.workspace_id == workspace_id,
+                        NodeContractRow.workspace_id == workspace_id,
+                        NodeContractRow.run_graph_id == run_graph_id)
+                 .order_by(RoutingReceiptRow.created_at, RoutingReceiptRow.id))
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [_load_v04_contract(RoutingDecisionReceipt, row.payload, row.id) for row in rows]
 
     async def create_project(self, project: Project) -> Project:
         async with self.sessions.begin() as session:

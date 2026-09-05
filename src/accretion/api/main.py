@@ -22,6 +22,7 @@ from accretion.api.auth import (
     is_exempt,
 )
 from accretion.api.auth import principal as current_principal
+from accretion.api.routing import router as routing_router
 from accretion.api.schemas import (
     ApprovalDecisionCreate,
     AuthorizationStart,
@@ -200,7 +201,9 @@ from accretion.plugins.trust import PluginTrustVerifier, load_trusted_keys
 from accretion.research.transforms import default_transform_registry
 from accretion.resolver import CapabilityResolver
 from accretion.routing.artifacts import ArtifactStore
+from accretion.routing.bootstrap import build_node_routing
 from accretion.routing.calibration import CalibrationReport
+from accretion.routing.errors import RoutingError
 from accretion.routing.train import (
     IDEMPOTENCY_LABEL,
     HoldoutEvaluation,
@@ -357,6 +360,12 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     app.state.engine = engine
     app.state.manager = manager
+    app.state.node_routing = None
+    if settings.enable_node_routing:
+        node_routing = build_node_routing(manager, policy_id=settings.capability_policy_id,
+                                         granted_permissions=set(settings.granted_permissions))
+        manager.routing_service = node_routing
+        app.state.node_routing = node_routing
     # The section 27 exit seam, wired for the API process. Without this the scheduler
     # holds a `capability_invoker` of `None` in production and a real one only in
     # tests --- the same asymmetry the verifier registry above had until M5. The
@@ -424,6 +433,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Accretion API", version=__version__, lifespan=lifespan)
+app.include_router(routing_router)
 settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
@@ -502,6 +512,11 @@ def enterprise_auth(request: Request) -> EnterpriseAuthManager | None:
 @app.exception_handler(KeyError)
 async def key_error_handler(request: Request, exc: KeyError) -> JSONResponse:
     return _error(404, "NOT_FOUND", f"Resource {exc.args[0]} was not found")
+
+
+@app.exception_handler(RoutingError)
+async def routing_error_handler(request: Request, exc: RoutingError) -> JSONResponse:
+    return _error(exc.status_code, exc.code, exc.message)
 
 
 @app.exception_handler(PermissionError)

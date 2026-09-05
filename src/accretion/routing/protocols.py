@@ -157,6 +157,18 @@ class NodeRoutingService(Protocol):
     the data rather than of the caller's discipline.
     """
 
+    async def claim_dispatch(
+        self, *, receipt: RoutingDecisionReceipt, run: Run
+    ) -> ExecutionConfiguration:
+        """Atomically claim an unamended persisted decision before any side effect."""
+        ...
+
+    async def latest_receipt(
+        self, *, frozen: FrozenNode, run: Run
+    ) -> RoutingDecisionReceipt | None:
+        """Restore the latest decision for a frozen execution, including amendments."""
+        ...
+
     async def freeze(
         self,
         *,

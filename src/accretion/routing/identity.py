@@ -128,6 +128,7 @@ def routing_request_id(
         workspace_router_version,
         project_adapter_version if project_adapter_version is not None else "\x00no-adapter",
         mode.value,
+        snapshot.fallback_bundle_digest,
     )
 
 

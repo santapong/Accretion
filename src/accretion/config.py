@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     session_cookie_name: str = "accretion_session"
     session_ttl_seconds: int = 28_800
     enable_dynamic_workflows: bool = False
+    # M2 is an explicit opt-in. Enabling it does not enable learned or live routing.
+    enable_node_routing: bool = False
     enable_candidate_search: bool = False
     enable_experience_retrieval: bool = False
     mcp_allowed_hosts: list[str] = Field(default_factory=list)
