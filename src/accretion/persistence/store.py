@@ -100,6 +100,7 @@ from accretion.contracts.routing import (
     ShadowRolloutResult,
     VerificationSpec,
 )
+from accretion.contracts.upcast import upcast
 from accretion.experience.models import (
     Experience,
     ExperienceEmbedding,
@@ -406,6 +407,14 @@ def _load_v04_contract[C: CanonicalContract](
     says, with nothing to show that it had ever been anything else. So the check happens
     here, before ``model_validate``, on both backends. A payload that still carries its
     digest is verified against the body by the model itself and refused on mismatch.
+
+    Construction goes through :func:`~accretion.contracts.upcast.upcast` rather than
+    straight to ``model_validate``, which is what makes this the read boundary registry
+    §20.5 names: a row written by a newer minor of the same major is projected onto the
+    shape this binary understands, with the dropped keys recorded on the record, while an
+    unknown major and an unsealed or edited body are refused exactly as before. The stored
+    payload is passed as a copy and is never modified — the projected record is the
+    reader's view of the row, not a replacement for it.
     """
 
     digest = payload.get("content_hash")
@@ -415,7 +424,7 @@ def _load_v04_contract[C: CanonicalContract](
             "lost its digest would be resealed by the reader as a valid copy of whatever "
             "its body now says, so it is refused rather than rebuilt"
         )
-    return model.model_validate(dict(payload))
+    return upcast(dict(payload), model)
 
 
 def _guard_v04_drift(

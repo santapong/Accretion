@@ -8,8 +8,6 @@ write path is the idempotent, checksum-pinned seed at startup.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from collections import deque
 from typing import TYPE_CHECKING
 
@@ -30,6 +28,7 @@ from accretion.contracts import (
     WorkflowNodeSpec,
     WorkflowTemplate,
 )
+from accretion.digests import legacy_json_digest
 from accretion.ids import new_id
 
 if TYPE_CHECKING:
@@ -69,9 +68,13 @@ _UNGUARDED_EDGE_KINDS = {GraphEdgeKind.NORMAL, GraphEdgeKind.LOOP_BACK}
 def compute_template_checksum(template: WorkflowTemplate) -> str:
     """Content digest over the normative template body, per governance rules."""
 
+    # Byte-frozen, not converged (M8). The committed built-in templates happen to hash
+    # identically under ADR-056 canonical JSON, but a template body carries free text and
+    # ``orchestration/materialize.py`` builds one from a planner proposal, so a non-ASCII
+    # label would fork this checksum --- which is persisted and re-verified before every
+    # run. See :mod:`accretion.digests`.
     payload = template.model_dump(mode="json", exclude=_CHECKSUM_EXCLUDED_FIELDS)
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode()).hexdigest()
+    return legacy_json_digest(payload)
 
 
 def _region_members(template: WorkflowTemplate) -> set[str]:

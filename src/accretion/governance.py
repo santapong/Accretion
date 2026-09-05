@@ -44,9 +44,12 @@ from accretion.contracts import (
     MetaPlugin,
     MetaSkill,
     PrincipalStatus,
+    Provider,
     RiskLevel,
     Task,
 )
+from accretion.contracts.canonical import canonical_json
+from accretion.digests import legacy_json_digest
 from accretion.ids import new_id
 from accretion.persistence.side_effects import SideEffectLedger, SideEffectStatus
 from accretion.persistence.store import StateStore
@@ -267,10 +270,11 @@ def approval_binding(request: CapabilityRequest) -> str:
         "arguments": request.arguments,
         "idempotency_key": request.idempotency_key,
     }
-    digest = hashlib.sha256(
-        json.dumps(bound, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
-    return f"capability:{digest}"
+    # Byte-frozen, not converged (M8). ``arguments`` is arbitrary caller-supplied JSON,
+    # and this digest is persisted as an approval's ``native_request_id``: hashing a
+    # non-ASCII argument as itself rather than as ``\uXXXX`` would orphan every approval
+    # an earlier release recorded. See :mod:`accretion.digests`.
+    return f"capability:{legacy_json_digest(bound)}"
 
 
 class CapabilityGateway:
@@ -373,7 +377,15 @@ class CapabilityGateway:
         request: CapabilityRequest,
         connection: ConnectionRef | None = None,
         binding: CapabilityBinding | None = None,
+        *,
+        executing_provider: Provider | None = None,
     ) -> CapabilityExecutionResult:
+        # Who gets named in the authorization terminals and the audit events. The run
+        # carries the *requested* provider; the provider that actually executed the
+        # node is a property of that node's session, which only the scheduler knows.
+        # Callers that hold no session -- the MCP gateway, the API, search, experience
+        # -- pass nothing and keep naming ``run.provider``, which is what every one of
+        # them named before this parameter existed.
         # The resolved connection and binding say which backend actually served the
         # call. They were previously read for credentials and then dropped, which
         # left the stored result unable to name its own connector.
@@ -387,6 +399,7 @@ class CapabilityGateway:
         run = await self.store.get_run(request.run_id)
         if run is None:
             raise KeyError(request.run_id)
+        provider = executing_provider if executing_provider is not None else run.provider
         task = await self.store.get_task(run.task_id)
         if task is None:
             raise KeyError(run.task_id)
@@ -413,7 +426,7 @@ class CapabilityGateway:
                 reason="unknown or unversioned capability",
             )
             return await self._terminal(
-                run.provider,
+                provider,
                 request,
                 authorization,
                 CapabilityExecutionStatus.DENIED,
@@ -436,7 +449,7 @@ class CapabilityGateway:
             approval=approval,
         )
         await self._event(
-            run.provider,
+            provider,
             request,
             EventType.TOOL_REQUESTED,
             "accretion/capability-requested",
@@ -444,7 +457,7 @@ class CapabilityGateway:
         )
         if authorization.outcome is AuthorizationOutcome.DENY:
             return await self._terminal(
-                run.provider,
+                provider,
                 request,
                 authorization,
                 CapabilityExecutionStatus.DENIED,
@@ -467,7 +480,7 @@ class CapabilityGateway:
             await self.store.save_capability_result(result)
             if not await self._approval_event_exists(request.run_id, approval.approval_id):
                 await self._event(
-                    run.provider,
+                    provider,
                     request,
                     EventType.APPROVAL_REQUIRED,
                     "accretion/capability-approval-required",
@@ -509,7 +522,7 @@ class CapabilityGateway:
             operation_id = operation.operation_id
             if not created:
                 return await self._duplicate_result(
-                    run.provider,
+                    provider,
                     request,
                     authorization,
                     operation,
@@ -528,7 +541,7 @@ class CapabilityGateway:
         )
         await self.store.save_capability_result(executing)
         await self._event(
-            run.provider,
+            provider,
             request,
             EventType.TOOL_STARTED,
             "accretion/capability-started",
@@ -576,7 +589,7 @@ class CapabilityGateway:
                     request.idempotency_key, succeeded=True, result=output
                 )
             return await self._terminal(
-                run.provider,
+                provider,
                 request,
                 authorization,
                 CapabilityExecutionStatus.SUCCEEDED,
@@ -600,7 +613,7 @@ class CapabilityGateway:
                     result={"error": error.model_dump(mode="json")},
                 )
             return await self._terminal(
-                run.provider,
+                provider,
                 request,
                 authorization,
                 CapabilityExecutionStatus.FAILED,
@@ -900,6 +913,7 @@ class GatewayCapabilityInvoker:
         node_id: str,
         capability_id: str,
         arguments: dict[str, Any],
+        executing_provider: Provider | None = None,
     ) -> CapabilityExecutionResult | None:
         resolved = await self.resolver.resolve(
             capability_id,
@@ -925,6 +939,7 @@ class GatewayCapabilityInvoker:
             ),
             resolved.connection,
             resolved.binding,
+            executing_provider=executing_provider,
         )
 
 
@@ -1019,9 +1034,14 @@ async def seed_governance(store: StateStore) -> None:
         "capabilities": [item.capability_id for item in capabilities],
         "skills": [skill.skill_id],
     }
-    checksum = hashlib.sha256(
-        json.dumps(plugin_payload, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+    # Converged onto ADR-056 canonical JSON in M8. The payload is four code literals, so
+    # its domain is closed and entirely ASCII and the digest is the same constant either
+    # way --- which had to be *proved* rather than assumed, because ``upsert_plugin``
+    # refuses any drift for an existing ``(plugin_id, version)`` and a moved checksum
+    # would fail every deployment that already seeded this row. ``canonical_json`` and not
+    # ``content_hash``: the latter drops a top-level ``content_hash`` key, and this digest
+    # must commit to every key it is given.
+    checksum = hashlib.sha256(canonical_json(plugin_payload)).hexdigest()
     await store.upsert_plugin(
         MetaPlugin(
             plugin_id="accretion-core-governance",
