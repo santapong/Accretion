@@ -99,6 +99,12 @@ _PREFIXES = {
     "router_training_snapshot": "rts",
     "router_promotion_report": "rpr",
     "shadow_decision": "shd",
+    # Added by the v0.4 freeze delta (5 Sep 2026, ADR-060 and ADR-061), not by M0. The
+    # rollout result is ``shr`` and not ``srr`` so that it reads beside ``shd`` as the
+    # record that scores one, and the activation is ``rac`` beside the ``rmv`` version it
+    # releases and the ``rpr`` report that authorised it.
+    "shadow_rollout_result": "shr",
+    "router_activation": "rac",
     # `routing_overrides` is the fifteenth SDD v0.4 §13 table and the one PR2 froze no
     # contract for, so it needs a record identity even though it has no model yet. It
     # cannot reuse `override` above: that kind is already minted by `planning.py` for the

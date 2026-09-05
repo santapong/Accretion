@@ -39,6 +39,7 @@ from accretion.contracts.routing import (
     IndependentVerificationResult,
     NodeContract,
     ObjectiveContract,
+    RouterActivation,
     RouterModelVersion,
     RouterPromotionReport,
     RouterScope,
@@ -47,6 +48,7 @@ from accretion.contracts.routing import (
     RoutingContext,
     RoutingDecisionReceipt,
     ShadowDecision,
+    ShadowRolloutResult,
     VerificationSpec,
 )
 from accretion.experience.models import (
@@ -97,6 +99,11 @@ TABLE_CONTRACTS: dict[str, type[CanonicalContract]] = {
     "router_training_snapshots": RouterTrainingSnapshot,
     "router_promotion_reports": RouterPromotionReport,
     "shadow_decisions": ShadowDecision,
+    # Added by the freeze delta (ADR-060, ADR-061). They join `TABLE_CONTRACTS` rather than
+    # getting a twin file of their own so that the Memory/Postgres parity assertion below —
+    # same objects, same order, same refusal — covers seventeen tables instead of fifteen.
+    "shadow_rollout_results": ShadowRolloutResult,
+    "router_activations": RouterActivation,
 }
 
 
@@ -271,7 +278,7 @@ def contracts_for(
 # ------------------------------------------------------------------ the indexes
 # The two migration tests that used to open this file now live in
 # ``tests/test_v04_m0_migration.py``. They call ``migration.downgrade()`` against the live
-# database, which drops all fifteen tables mid-session, and correctness here depended on
+# database, which drops all seventeen tables mid-session, and correctness here depended on
 # their being collected first in this file — true for a whole-file run and false for a
 # ``-k`` selection that picks one of them plus a later test, and false again for any future
 # module that writes v0.4 rows and sorts before this one. In their own module nothing can

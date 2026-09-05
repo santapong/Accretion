@@ -40,6 +40,35 @@
       "title": "ApprovalArtifactRef",
       "type": "object"
     },
+    "ExplorationPolicy": {
+      "additionalProperties": false,
+      "description": "OQ-410, ADR-062. The exploration budget an objective is willing to spend.\n\nM0 froze :class:`ObjectiveContract` with no exploration field, so M7's guarded bandit\nhad nowhere authoritative to read alpha from and would have had to invent one. The\nsafety inequality M7 enforces per (workspace, node class) is\n\n``sum(cost_ucb over explored) + cost_ucb(a) <= (1 + alpha) * sum(cost_lcb(a0))``\n\nwhere ``a0`` is what the deterministic baseline would have chosen, so ``alpha`` is the\nfraction of the baseline's cost the objective will pay for information and nothing\nelse. It is a property of the *objective* rather than of the router because the person\nwho approved the goal is the person entitled to say how much of the budget may be spent\nlearning, and a router that chose its own exploration rate would be answerable to\nnobody.\n\nA fraction alone is not a budget. ``max_explore_count`` and ``max_cost`` are absolute\nper-period caps, because a proportional bound scales with traffic: a workspace whose\nvolume doubles would double its exploration spend under ``alpha`` alone while the\napprover's intent had not changed. All three bind, and the tightest one wins.\n\n``alpha = 0`` is meaningful and is the default posture a project inherits by leaving\n``ObjectiveContract.exploration_policy`` unset: no exploration, deterministic routing\nonly. That is why the field is optional rather than defaulted to a policy object \u2014 an\nabsent policy and a zero policy say the same operational thing, and only one of them\nclaims somebody decided it.",
+      "properties": {
+        "alpha": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Alpha",
+          "type": "number"
+        },
+        "max_cost": {
+          "minimum": 0,
+          "title": "Max Cost",
+          "type": "number"
+        },
+        "max_explore_count": {
+          "minimum": 0,
+          "title": "Max Explore Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "alpha",
+        "max_explore_count",
+        "max_cost"
+      ],
+      "title": "ExplorationPolicy",
+      "type": "object"
+    },
     "HumanApprovalRequirement": {
       "additionalProperties": false,
       "description": "Registry \u00a77.1 ``required_human_approvals``, typed instead of left as ``[object]``.\n\n``required_role`` reuses v0.3's :class:`~accretion.contracts.WorkspaceRole` rather than\ninventing an approval-role vocabulary: the workspace roles are what the authorization\nlayer actually checks, and a second list of role names would be a second source of\ntruth about who may approve (registry \u00a721).",
@@ -397,7 +426,7 @@
   },
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "additionalProperties": false,
-  "description": "Registry \u00a77.1. The human-approved goal a project's routing is answerable to.\n\nThe registry owns this contract outright \u2014 SDD \u00a77 never gives it a schema, only a\nreference to it \u2014 so the field list is registry \u00a77.1's minimum, unabridged.\n\n**Field coverage (registry \u00a77.1 \u2192 here).** ``goal``, ``scope_in``, ``scope_out``,\n``verified_success_floor``, ``false_acceptance_ceiling``, ``utility_weights``,\n``resource_budget``, ``required_human_approvals``, ``revision`` \u2192 unchanged.\n``risk_policy_ref`` \u2192 ``risk_policy_ref``, typed as a\n:class:`~accretion.contracts.refs.PolicyRef`. ``approval_receipt_ref`` \u2192 typed as an\n:class:`~accretion.contracts.refs.ApprovalArtifactRef` and *not* as ``ArtifactRef``\n(ADR-054 f): an approval is not run-scoped, and ``ArtifactRef.run_id`` stays required\nfor the execution traces that depend on it.\n\n``false_acceptance_ceiling`` is the field that makes this contract more than a wish.\n``verified_success_floor`` alone can be satisfied by a verifier that says yes too often,\nso the objective states both the success it demands and the wrongness it will tolerate,\nand \u00a710.2's promotion evaluation checks non-regression on both.\n\nChanging an active objective creates a new ``revision`` with impact analysis and human\napproval, and affects only new runs and nodes. That is a process rule the schema\nsupports rather than enforces: ``supersedes_contract_id`` on the header records the\nlineage, and the append-only store PR3 adds is what makes a revision a second row rather\nthan an edit.",
+  "description": "Registry \u00a77.1. The human-approved goal a project's routing is answerable to.\n\nThe registry owns this contract outright \u2014 SDD \u00a77 never gives it a schema, only a\nreference to it \u2014 so the field list is registry \u00a77.1's minimum, unabridged.\n\n**Field coverage (registry \u00a77.1 \u2192 here).** ``goal``, ``scope_in``, ``scope_out``,\n``verified_success_floor``, ``false_acceptance_ceiling``, ``utility_weights``,\n``resource_budget``, ``required_human_approvals``, ``revision`` \u2192 unchanged.\n``risk_policy_ref`` \u2192 ``risk_policy_ref``, typed as a\n:class:`~accretion.contracts.refs.PolicyRef`. ``approval_receipt_ref`` \u2192 typed as an\n:class:`~accretion.contracts.refs.ApprovalArtifactRef` and *not* as ``ArtifactRef``\n(ADR-054 f): an approval is not run-scoped, and ``ArtifactRef.run_id`` stays required\nfor the execution traces that depend on it.\n\n``false_acceptance_ceiling`` is the field that makes this contract more than a wish.\n``verified_success_floor`` alone can be satisfied by a verifier that says yes too often,\nso the objective states both the success it demands and the wrongness it will tolerate,\nand \u00a710.2's promotion evaluation checks non-regression on both.\n\nChanging an active objective creates a new ``revision`` with impact analysis and human\napproval, and affects only new runs and nodes. That is a process rule the schema\nsupports rather than enforces: ``supersedes_contract_id`` on the header records the\nlineage, and the append-only store PR3 adds is what makes a revision a second row rather\nthan an edit.\n\n**``exploration_policy`` is the one field M0 did not freeze** (OQ-410, ADR-062, added by\nthe freeze delta of 5 Sep 2026). It is optional with a default of ``None``, which makes\nit a registry \u00a73.2 **Minor** change *of shape*: the field list of a document written\nbefore it existed is still accepted, and a reader on an older minor ignores a field it\ndoes not know. The seal is a separate promise, and this field does break that one \u2014\n``None`` is a value in the canonical form (ADR-056 keeps nulls, so that ``{\"a\": null}``\nand ``{}`` cannot collide), so every ``ObjectiveContract`` sealed after this field exists\ncarries a different ``content_hash`` from a byte-identical body sealed before it. The\ncommitted fixtures were therefore re-sealed and the schema digest re-recorded in\n``docs/releases/v0.4/m0-freeze.md``, and a document presented with the digest it was\nsealed with *before* the delta is refused by ``model_validate`` as edited-after-sealing \u2014\nat the store's read boundary as much as anywhere else. No such row exists outside the\ntests: migration 0017 is unreleased and no code outside the test suite writes an\n``objective_contracts`` row, so a developer database already at 0017 is recreated rather\nthan migrated, and registry \u00a720.5's read-boundary upcaster (M8) owns the general case.",
   "properties": {
     "approval_receipt_ref": {
       "$ref": "#/$defs/ApprovalArtifactRef"
@@ -427,6 +456,17 @@
     },
     "created_by": {
       "$ref": "#/$defs/PrincipalRef"
+    },
+    "exploration_policy": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ExplorationPolicy"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "false_acceptance_ceiling": {
       "maximum": 1,

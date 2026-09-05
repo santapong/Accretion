@@ -2,7 +2,7 @@
 
 Registry §19 requires that "golden fixtures cover minimal, complete, invalid, and
 unknown-version cases" for every contract. This script writes those four files for each of
-the nineteen models in :data:`~accretion.contracts.routing.CONTRACT_INVENTORY`, under
+the twenty-one models in :data:`~accretion.contracts.routing.CONTRACT_INVENTORY`, under
 ``tests/fixtures/contracts/v0.4/<model_snake_case>/``. The files are committed; the tests in
 ``tests/test_v04_m0_fixtures.py`` read them and never regenerate them, so a fixture edited
 by hand — or a model changed without regenerating — is a red test rather than a silent drift.
@@ -279,6 +279,9 @@ _PREFIX_FOR: dict[str, str] = {
     "router_promotion_report": "rpr",
     "shadow_decision": "shd",
     "experience": "exp",
+    # Added by the freeze delta of 5 Sep 2026 (ADR-060, ADR-061).
+    "shadow_rollout_result": "shr",
+    "router_activation": "rac",
 }
 
 
@@ -419,6 +422,32 @@ SHADOW_SUMMARY: dict[str, Any] = {
     "projected_utility_delta": 0.031,
     "sample_size": 1_842,
 }
+
+# ADR-060. A branched rollout runs two arms of the *same* node: the CONTROL fork re-runs the
+# configuration the live router chose — `CONFIGURATION_HASH`, the one every other fixture in
+# this file already names — and the SHADOW fork runs the candidate router's choice, which is
+# a different configuration and therefore a different digest. Reusing one hash for both arms
+# would have made the pair a comparison of a configuration against itself.
+SHADOW_CONFIGURATION_HASH = digest("shadow-configuration")
+
+ROLLOUT_SEED = 20_260_301
+"""The seed policy both arms of a pair share; the field that makes "same seed" checkable."""
+
+CONTROL_SERVING: dict[str, Any] = {
+    "provider": "FAKE",
+    "runtime_version": "2026.03.01",
+    "model_id": "fake-small",
+}
+SHADOW_SERVING: dict[str, Any] = {
+    "provider": "CLAUDE",
+    "runtime_version": "2026.03.01",
+    "model_id": "claude-router-eval",
+    "serving_labels": {"temperature": "0.0", "quantization": "bf16", "seed": "20260301"},
+}
+ROLLBACK_CAUSE = (
+    "Critical cohort regression on secrets handling; the workspace was withdrawn to the "
+    "last version whose drill passed."
+)
 
 
 def _minimal_bodies(objective_ref: dict[str, Any]) -> dict[str, dict[str, Any]]:
@@ -609,6 +638,43 @@ def _minimal_bodies(objective_ref: dict[str, Any]) -> dict[str, dict[str, Any]]:
             ),
             "evaluated_at": "2026-03-01T09:20:00Z",
         },
+        "ShadowRolloutResult": {
+            # `identifier("shd", "minimal")` is the `contract_id` of
+            # `shadow_decision/minimal.json`, because `header_minimal` seeds it with
+            # "minimal": a rollout scores a decision, and the reference is worth more when
+            # it resolves to a document the reader can open than when it names a string.
+            "shadow_decision_id": identifier("shd", "minimal"),
+            "kind": "CONTROL",
+            "fork_execution_id": identifier("rtc", "control-fork"),
+            "configuration_hash": CONFIGURATION_HASH,
+            # `serving_labels` is omitted rather than written as `{}`: it defaults, so a
+            # minimal document that spelled it out would be carrying a field the model can
+            # do without — the same rule every other minimal body here follows.
+            "serving": dict(CONTROL_SERVING),
+            # `verified` is false, so `verification_result_id` is absent and `false_accept`
+            # would be refused: an acceptance that was never made cannot have been false.
+            "observed": {
+                "quality": 0.71,
+                "cost": 0.42,
+                "latency_ms": 18_400.0,
+                "verified": False,
+            },
+            "budget_consumed": 0.42,
+            "trial_index": 0,
+            "seed": ROLLOUT_SEED,
+            "completed_at": "2026-03-01T09:31:00Z",
+        },
+        "RouterActivation": {
+            # Sequence 1 is the first entry in a ledger, so it displaces nothing and names
+            # no predecessor; `PROJECT_SCOPED` is False, so the header carries no
+            # `project_id` and the scope has to be the workspace prior.
+            "scope": "TEAM_WORKSPACE",
+            "family_key": "gradient-boosted-ranker",
+            "sequence": 1,
+            "kind": "PROMOTE",
+            "router_version_id": identifier("rmv", "candidate"),
+            "approved_by": PRINCIPAL,
+        },
     }
 
 
@@ -636,6 +702,10 @@ def _complete_bodies(objective_ref: dict[str, Any]) -> dict[str, dict[str, Any]]
             ],
             "revision": 3,
             "approval_receipt_ref": APPROVAL_ARTIFACT_REF,
+            # Added by the freeze delta of 5 Sep 2026 (OQ-410, ADR-062): additive, optional
+            # and defaulted to None, so the minimal body above still omits it — and still
+            # seals to a new digest, because ADR-056's canonical form keeps nulls.
+            "exploration_policy": {"alpha": 0.05, "max_explore_count": 200, "max_cost": 25.0},
         },
         "ObjectiveContractRef": dict(OBJECTIVE_CONTRACT_REF_BODY),
         "NodeContract": {
@@ -960,6 +1030,43 @@ def _complete_bodies(objective_ref: dict[str, Any]) -> dict[str, dict[str, Any]]
             "comparison_notes": "Shadow and executed decisions selected the same tuple.",
             "evaluated_at": "2026-03-01T09:20:00Z",
         },
+        "ShadowRolloutResult": {
+            # The `contract_id` of `shadow_decision/complete.json`, for the same reason the
+            # minimal body names the minimal decision.
+            "shadow_decision_id": identifier("shd", "complete"),
+            "kind": "SHADOW",
+            "fork_execution_id": identifier("rtc", "shadow-fork"),
+            "configuration_hash": SHADOW_CONFIGURATION_HASH,
+            "serving": dict(SHADOW_SERVING),
+            "verification_result_id": identifier("ivr", "rollout"),
+            "observed": {
+                "quality": 0.88,
+                "cost": 0.51,
+                "latency_ms": 16_250.0,
+                "verified": True,
+                "false_accept": False,
+            },
+            "budget_consumed": 0.51,
+            "trial_index": 7,
+            "seed": ROLLOUT_SEED,
+            "completed_at": "2026-03-01T09:29:00Z",
+        },
+        "RouterActivation": {
+            # A ROLLBACK is the only kind that populates every field: it restores a version
+            # (`router_version_id` == `rollback_target_version_id`), displaces the one that
+            # regressed, and states why. The complete header always carries a `project_id`,
+            # so the scope has to be the adapter.
+            "scope": "PROJECT_ADAPTER",
+            "family_key": "gradient-boosted-ranker",
+            "sequence": 4,
+            "kind": "ROLLBACK",
+            "router_version_id": identifier("rmv", "baseline"),
+            "previous_version_id": identifier("rmv", "candidate"),
+            "rollback_target_version_id": identifier("rmv", "baseline"),
+            "promotion_report_id": identifier("rpr", "freeze"),
+            "approved_by": PRINCIPAL,
+            "cause": ROLLBACK_CAUSE,
+        },
     }
 
 
@@ -974,8 +1081,9 @@ def _invalid_documents(complete: dict[str, dict[str, Any]]) -> dict[str, dict[st
 
     Every violation is chosen to exercise the rule that model actually owns, so that a
     validator quietly deleted during a refactor takes its ``invalid`` fixture down with it.
-    Nine of the nineteen trip a hand-written ``@model_validator``; the rest trip a field
-    constraint, an enum, or the header rules on the base class.
+    Twelve of the twenty-one trip a hand-written ``@model_validator`` on the contract
+    itself; the rest trip a field constraint, an enum, the derived digest sealed by
+    ``seal_derived_hashes``, or the header rules on the base class.
     """
 
     def with_nested(name: str, field: str, **replacements: Any) -> dict[str, Any]:
@@ -1047,6 +1155,13 @@ def _invalid_documents(complete: dict[str, dict[str, Any]]) -> dict[str, dict[st
         "RouterPromotionReport": _invalidate(complete["RouterPromotionReport"], decision="PROMOTE"),
         # Model validator: agreement must match the two hashes it summarises.
         "ShadowDecision": _invalidate(complete["ShadowDecision"], agreement=False),
+        # Model validator: a fork that scored itself verified is a self-report unless it
+        # names the independent verification that produced the verdict.
+        "ShadowRolloutResult": _invalidate(
+            complete["ShadowRolloutResult"], verification_result_id=None
+        ),
+        # Model validator: a withdrawal that does not say why is not an auditable reversal.
+        "RouterActivation": _invalidate(complete["RouterActivation"], cause=None),
     }
     return documents
 
@@ -1071,12 +1186,14 @@ INVALID_EXPECTATIONS: dict[str, str] = {
     "RouterTrainingSnapshot": "is not after window_start",
     "RouterPromotionReport": "critical correctness or safety regression",
     "ShadowDecision": "say otherwise",
+    "ShadowRolloutResult": "no verification_result_id is named",
+    "RouterActivation": "a ROLLBACK activation leaves",
 }
 """The substring each ``invalid.json`` records under ``_expect`` and the tests assert on."""
 
 
 def build_documents() -> dict[str, dict[str, dict[str, Any]]]:
-    """Build all four fixture documents for all nineteen contracts."""
+    """Build all four fixture documents for all twenty-one contracts."""
 
     objective_ref = objective_contract_ref_json()
     minimal_bodies = _minimal_bodies(objective_ref)
@@ -1122,7 +1239,7 @@ def build_documents() -> dict[str, dict[str, dict[str, Any]]]:
 
 
 def main() -> None:
-    """Write all seventy-six fixture files, deterministically and with a trailing newline."""
+    """Write all eighty-four fixture files, deterministically and with a trailing newline."""
 
     documents = build_documents()
     written = 0

@@ -14,6 +14,11 @@
     "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
     "status": "ACTIVE"
   },
+  "exploration_policy": {
+    "alpha": 0.05,
+    "max_cost": 25.0,
+    "max_explore_count": 200
+  },
   "false_acceptance_ceiling": 0.015,
   "goal": "Route every node to a configuration whose verified success clears the floor.",
   "labels": {

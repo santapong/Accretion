@@ -5,7 +5,7 @@
     "retention_class": "STANDARD",
     "uri": "https://approvals.example.test/receipts/2026-02-01"
   },
-  "content_hash": "f4fff3996530f4436ac1005e605967849d6325e4dc24351f7d60fb2f2ee4ea50",
+  "content_hash": "8afa7ae58ed8e8f2527f1e509474e77866c40992bc321630cb3728b60549e4e8",
   "contract_id": "obj_41JKBAC457D7HT28R74EDGBHWP",
   "contract_type": "accretion.objective-contract",
   "created_at": "2026-03-01T09:00:00Z",
@@ -13,6 +13,11 @@
     "display_name": "v0.4 contract freeze fixture",
     "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
     "status": "ACTIVE"
+  },
+  "exploration_policy": {
+    "alpha": 0.05,
+    "max_cost": 25.0,
+    "max_explore_count": 200
   },
   "false_acceptance_ceiling": 0.015,
   "goal": "Route every node to a configuration whose verified success clears the floor.",

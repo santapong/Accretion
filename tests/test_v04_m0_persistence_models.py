@@ -1,4 +1,4 @@
-"""The fifteen §13 tables, the §13.1 constraints, migration 0017 and the freeze record.
+"""The seventeen v0.4 tables, their constraints, migrations 0017/0018 and the freeze record.
 
 These are static tests: no database, no store, no clock. Everything asserted here is a
 property of the *declaration* — which tables exist, which columns they promote, which
@@ -37,16 +37,19 @@ from accretion.contracts.routing import (
     IndependentVerificationResult,
     NodeContract,
     ObjectiveContract,
+    RouterActivation,
     RouterModelVersion,
     RouterPromotionReport,
     RouterTrainingSnapshot,
     RoutingContext,
     RoutingDecisionReceipt,
     ShadowDecision,
+    ShadowRolloutResult,
     VerificationSpec,
 )
 from accretion.ids import _PREFIXES, has_prefix, new_id
 from accretion.persistence.models import (
+    V04_FREEZE_DELTA_TABLES,
     V04_M0_ROUTING_TABLES,
     Base,
     ExperienceRecordRow,
@@ -59,9 +62,17 @@ from accretion.persistence.store import _build_routing_override_payload
 
 ROOT = Path(__file__).resolve().parents[1]
 MIGRATION_PATH = ROOT / "migrations" / "versions" / "0017_v04_m0_routing_contracts.py"
+DELTA_MIGRATION_PATH = (
+    ROOT
+    / "migrations"
+    / "versions"
+    / "0018_v04_freeze_delta_shadow_rollouts_router_activations.py"
+)
 FREEZE_PATH = ROOT / "docs" / "releases" / "v0.4" / "m0-freeze.md"
 SCHEMA_ROOT = ROOT / "docs" / "contracts" / "v0.4"
 MIGRATION_REVISION = "0017_v04_m0_routing_contracts"
+DELTA_MIGRATION_REVISION = "0018_v04_freeze_delta"
+MIGRATION_REVISIONS = frozenset({MIGRATION_REVISION, DELTA_MIGRATION_REVISION})
 
 # SDD v0.4 §13's table, transcribed by hand from the document rather than imported from
 # the code. Importing it would have made this test assert that the code equals itself.
@@ -70,6 +81,15 @@ MIGRATION_REVISION = "0017_v04_m0_routing_contracts"
 # is the fifteenth here because §7.1 requires the contract and ADR-058 counts the table.
 # It leads the tuple because the tuple is also the migration's creation order, and the
 # objective contract is the root the rest of the family references.
+# The two the freeze delta of 5 Sep 2026 added (ADR-060, ADR-061). They are *not* in §13:
+# §13's table was written before the branched-rollout and activation-ledger decisions, and
+# the SDD now carries them in §7.13a, §7.14 and §13 instead. Transcribed here by hand for
+# the same reason the §13 list is — so the assertion is against the document, not the code.
+DELTA_TABLES = (
+    "shadow_rollout_results",
+    "router_activations",
+)
+
 SDD_13_TABLES = (
     "objective_contracts",
     "node_contracts",
@@ -138,6 +158,14 @@ def load_migration() -> Any:
     return module
 
 
+def load_delta_migration() -> Any:
+    spec = importlib.util.spec_from_file_location("delta_migration", DELTA_MIGRATION_PATH)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def freeze_section(heading: str) -> str:
     """The text of one ``##``/``###`` section of the freeze record.
 
@@ -189,9 +217,20 @@ def parse_freeze_table(section: str) -> dict[str, tuple[str, str, str, str]]:
 
 
 def freeze_rows() -> dict[str, tuple[str, str, str, str]]:
-    """The committed JSON Schemas the freeze record accounts for."""
+    """The committed JSON Schemas the freeze record accounts for, delta applied.
 
-    return parse_freeze_table(freeze_section("## The frozen schemas"))
+    Two tables and not one, and the later one wins. "The frozen schemas" is the record of
+    what M0 froze and is left at the bytes it was written with; "The frozen schemas, as
+    amended" records the freeze delta of 5 Sep 2026 — the two contracts it added and the
+    one whose digest it moved. Overlaying them is what lets the M0 table stay a historical
+    record instead of being rewritten every time the surface changes, which is the exact
+    failure a freeze record exists to prevent.
+    """
+
+    return {
+        **parse_freeze_table(freeze_section("## The frozen schemas")),
+        **parse_freeze_table(freeze_section("### The frozen schemas, as amended")),
+    }
 
 
 def frozen_document_rows() -> dict[str, tuple[str, str, str, str]]:
@@ -208,13 +247,17 @@ def frozen_document_rows() -> dict[str, tuple[str, str, str, str]]:
 # --------------------------------------------------------------------------- tables
 
 
-def test_the_migration_creates_the_fourteen_sdd_13_tables_plus_objective_contracts() -> None:
-    assert V04_M0_ROUTING_TABLES == SDD_13_TABLES
-    assert len(set(V04_M0_ROUTING_TABLES)) == 15
-    # Fourteen of them are §13's own list; the fifteenth is `objective_contracts`, which
-    # §7.1 requires and ADR-058 counts. Stated as an assertion so that "the fifteen §13
-    # tables" cannot creep back into the prose as a claim about §13.
+def test_the_v04_tables_are_the_sdd_13_fifteen_plus_the_two_the_freeze_delta_added() -> None:
+    assert V04_M0_ROUTING_TABLES == SDD_13_TABLES + DELTA_TABLES
+    assert len(set(V04_M0_ROUTING_TABLES)) == 17
+    # Fourteen of the first fifteen are §13's own list; the fifteenth is
+    # `objective_contracts`, which §7.1 requires and ADR-058 counts. Stated as an assertion
+    # so that "the fifteen §13 tables" cannot creep back into the prose as a claim about §13.
     assert len(set(SDD_13_TABLES) - {"objective_contracts"}) == 14
+    # The delta's two come last, because the tuple is also the creation order and they are
+    # created by 0018. Re-ordering it would move fifteen tables that are already in the field.
+    assert V04_M0_ROUTING_TABLES[-2:] == DELTA_TABLES
+    assert V04_FREEZE_DELTA_TABLES == DELTA_TABLES
 
 
 def test_every_v04_table_exists_in_the_metadata_the_migration_builds_from() -> None:
@@ -222,7 +265,7 @@ def test_every_v04_table_exists_in_the_metadata_the_migration_builds_from() -> N
         assert name in Base.metadata.tables
 
 
-def test_the_header_columns_are_identical_on_all_fifteen_tables() -> None:
+def test_the_header_columns_are_identical_on_all_seventeen_tables() -> None:
     for name in V04_M0_ROUTING_TABLES:
         columns = set(table(name).columns.keys())
         assert HEADER_COLUMNS <= columns, name
@@ -234,7 +277,7 @@ def test_no_v04_table_carries_an_updated_at_because_none_of_them_is_updatable() 
 
 
 def test_the_v04_tables_are_the_only_subclasses_of_the_shared_header_row() -> None:
-    """A sixteenth subclass would be a v0.4 table nobody added to the list."""
+    """An eighteenth subclass would be a v0.4 table nobody added to the list."""
 
     mapped = {
         subclass.__tablename__
@@ -244,7 +287,7 @@ def test_the_v04_tables_are_the_only_subclasses_of_the_shared_header_row() -> No
     assert mapped == set(V04_M0_ROUTING_TABLES)
 
 
-# Which frozen contract each table stores. Fourteen entries and not fifteen:
+# Which frozen contract each table stores. Sixteen entries and not seventeen:
 # `routing_overrides` is the §13 table PR2 froze no contract for (see m0-freeze.md).
 TABLE_CONTRACTS = {
     "objective_contracts": ObjectiveContract,
@@ -261,6 +304,8 @@ TABLE_CONTRACTS = {
     "router_training_snapshots": RouterTrainingSnapshot,
     "router_promotion_reports": RouterPromotionReport,
     "shadow_decisions": ShadowDecision,
+    "shadow_rollout_results": ShadowRolloutResult,
+    "router_activations": RouterActivation,
 }
 
 # The three columns that deliberately flatten something the contract nests, and are
@@ -340,7 +385,7 @@ def test_the_hash_uniqueness_constraints_are_named_one_per_table() -> None:
                 assert constraint.name.startswith("uq_")
                 assert constraint.name.endswith("_hash_version")
                 names.add(constraint.name)
-    assert len(names) == 15
+    assert len(names) == 17
 
 
 def test_one_immutable_receipt_per_routing_request_id() -> None:
@@ -423,7 +468,6 @@ def test_the_m0_migration_follows_0016_and_drops_exactly_what_it_creates() -> No
 
     assert module.revision == MIGRATION_REVISION
     assert module.down_revision == "0016_v03_m7_enterprise_auth"
-    assert module.M0_TABLES == V04_M0_ROUTING_TABLES
     for name in module.M0_TABLES:
         assert name in Base.metadata.tables
 
@@ -439,26 +483,82 @@ def test_the_m0_migration_follows_0016_and_drops_exactly_what_it_creates() -> No
         assert "execute" not in source
 
 
-def test_the_migration_is_the_only_one_that_names_the_v04_tables() -> None:
-    """No earlier migration may have created one of these under a different shape."""
+def test_0017_still_creates_exactly_the_fifteen_it_created_before_the_freeze_delta() -> None:
+    """A migration already applied in the field cannot grow two tables retroactively.
+
+    ``V04_M0_ROUTING_TABLES`` is seventeen names now, and 0017 reads it — so without the
+    subtraction this revision would start creating the delta's two tables, and a database
+    stamped 0017 would no longer be reproducible from the revision it records. Asserted as
+    a set difference rather than as a hard-coded list so that the next table added to the
+    family cannot pass by being appended in the right place by luck.
+    """
+
+    module = load_migration()
+
+    assert set(module.M0_TABLES) == set(V04_M0_ROUTING_TABLES) - set(DELTA_TABLES)
+    assert len(module.M0_TABLES) == 15
+    assert set(module.M0_TABLES).isdisjoint(DELTA_TABLES)
+
+
+def test_the_freeze_delta_migration_follows_0017_and_creates_only_its_own_two() -> None:
+    """ADR-060/061's migration: additive, reversible, and it leaves 0017's indexes alone.
+
+    The last assertion is the one that matters for M8.1: retiring the two partial unique
+    indexes belongs to 0019, and a database sitting between the two revisions must satisfy
+    both the old rule and the new one, which is only true while this migration does not
+    touch ``router_model_versions`` at all.
+    """
+
+    module = load_delta_migration()
+
+    assert module.revision == DELTA_MIGRATION_REVISION
+    assert module.down_revision == MIGRATION_REVISION
+    # Alembic stores the id in a ``VARCHAR(32)`` and 0018's file stem is longer than that,
+    # which is why its revision id is shorter than its file name. Every revision in the
+    # tree has to fit, or the stamp fails at the driver with a truncation error that names
+    # no migration at all.
+    for path in sorted((ROOT / "migrations" / "versions").glob("0*.py")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.startswith("revision: str = "):
+                assert len(line.split('"')[1]) <= 32, path.name
+    assert module.FREEZE_DELTA_TABLES == DELTA_TABLES
+    for name in module.FREEZE_DELTA_TABLES:
+        assert name in Base.metadata.tables
+
+    upgrade_source = inspect.getsource(module.upgrade)
+    downgrade_source = inspect.getsource(module.downgrade)
+    assert "checkfirst=True" in upgrade_source
+    assert "reversed(FREEZE_DELTA_TABLES)" in downgrade_source
+    for source in (upgrade_source, downgrade_source):
+        assert "add_column" not in source
+        assert "drop_column" not in source
+        assert "alter_column" not in source
+        assert "execute" not in source
+        assert "drop_index" not in source
+        assert "router_model_versions" not in source
+
+
+def test_no_other_migration_names_a_v04_table() -> None:
+    """No migration outside the two may create one of these under a different shape."""
 
     versions = ROOT / "migrations" / "versions"
+    owners = {MIGRATION_PATH.name, DELTA_MIGRATION_PATH.name}
     for path in sorted(versions.glob("0*.py")):
-        if path.name == MIGRATION_PATH.name:
+        if path.name in owners:
             continue
         text = path.read_text(encoding="utf-8")
         for name in V04_M0_ROUTING_TABLES:
             assert f'"{name}"' not in text, (path.name, name)
 
 
-def test_the_migration_docstring_names_every_table_and_every_constraint() -> None:
-    module = load_migration()
-    doc = module.__doc__ or ""
+def test_the_migration_docstrings_name_every_table_and_every_constraint() -> None:
+    doc = (load_migration().__doc__ or "") + (load_delta_migration().__doc__ or "")
 
     for name in V04_M0_ROUTING_TABLES:
         assert f"``{name}``" in doc, name
     assert "uq_router_versions_active_workspace" in doc
     assert "uq_router_versions_active_project_adapter" in doc
+    assert "uq_router_activations_sequence" in doc
     assert "RESTRICT" in doc
     assert "append-only" in doc
 
@@ -498,13 +598,13 @@ def test_the_freeze_record_states_the_schema_version_every_contract_declares() -
 def test_the_freeze_record_maps_each_schema_to_a_real_table_or_says_not_persisted() -> None:
     mapped: set[str] = set()
     for filename, (_digest, _version, stored_in, revision) in freeze_rows().items():
-        assert revision == MIGRATION_REVISION, filename
+        assert revision in MIGRATION_REVISIONS, filename
         if stored_in.startswith("not persisted"):
             continue
         name = stored_in.strip("`").split("`")[0]
         assert name in V04_M0_ROUTING_TABLES, (filename, name)
         mapped.add(name)
-    # Fourteen of the fifteen tables store a frozen contract; `routing_overrides` is the
+    # Sixteen of the seventeen tables store a frozen contract; `routing_overrides` is the
     # one that stores a canonical document with no model behind it (SDD §13, ADR-055).
     assert set(V04_M0_ROUTING_TABLES) - mapped == {"routing_overrides"}
 
@@ -527,7 +627,7 @@ def test_every_v04_table_has_a_frozen_shape() -> None:
     rather than in a committed schema file — could have had its shape changed by an edit to
     ``_build_routing_override_payload`` with no red test anywhere. That is precisely the
     drift the freeze record's own opening paragraph says it exists to prevent, so the
-    missing direction is walked here: every one of the fifteen tables is named in a
+    missing direction is walked here: every one of the seventeen tables is named in a
     "Stored in" column somewhere on the page.
     """
 

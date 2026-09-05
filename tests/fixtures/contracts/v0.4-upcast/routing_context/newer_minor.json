@@ -1,0 +1,148 @@
+{
+  "available_runtime_snapshot_id": "mcp_QF1HMTBMNB36GQHWT8JHYDEGP6",
+  "capability_registry_snapshot_id": "mcp_SMCJYH1VRSCC2HHMXFHYPXNP90",
+  "connection_availability_snapshot_id": "mcp_VXPW2590C7M84VNRYE2XTBX3HB",
+  "content_hash": "ce53ebb1ca5b8ee0419aba698fdb6ef4d3477acc3787258f081507af1ec09187",
+  "contract_id": "rrq_1KV31GWXHK3EXCTTVTFVBVBTTY",
+  "contract_type": "accretion.routing-context",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "feature_schema_version": "1.0.0",
+  "graph_features": {
+    "child_node_types": [
+      "VERIFIER"
+    ],
+    "critical_path": true,
+    "depth": 3,
+    "parent_node_types": [
+      "TASK",
+      "AGENT"
+    ],
+    "retry_number": 1
+  },
+  "historical_experience_refs": [
+    "exp_9GGR1WTFAY2TCVCVC0NK0E24MR",
+    "exp_93SGC60S7RXSRE3NTNHNW5EWXZ"
+  ],
+  "labels": {
+    "owner": "routing-platform",
+    "tier": "gold"
+  },
+  "node_contract_ref": {
+    "immutable_hash": "432d52336d47b46491433a0186a7b62e9e382134874f526483d0e592aef92c4a",
+    "node_contract_id": "nct_2GZRP05TEP5C4WPV6JFRTWFZNP"
+  },
+  "objective_contract_ref": {
+    "approved_at": "2026-02-01T08:00:00Z",
+    "approved_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "content_hash": "eeb604d2b673fc4518f6cc1028e1a3d67f72cc7ccd2110ce36b2c2f978371de9",
+    "contract_id": "objective-contract-ref-embedded",
+    "contract_type": "accretion.objective-contract-ref",
+    "created_at": "2026-03-01T09:00:00Z",
+    "created_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "labels": {},
+    "objective_contract_hash": "13f224df431229df61136c206eb2a5857df8c6a2907a3c3697192210aafc0ad4",
+    "objective_contract_id": "obj_HQ5A32JBQ5CTEZTZWCVPPPQ4JM",
+    "objective_contract_ref": null,
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": null,
+    "revision": 3,
+    "risk_policy": {
+      "content_digest": "b941fb5563b0aabec00a46d9150fff0d85e017346a26e12467ecdb80ffa458fd",
+      "policy_id": "workspace-risk-policy",
+      "version": "3.1.0"
+    },
+    "schema_version": "1.0.0",
+    "supersedes_contract_id": null,
+    "utility_profile_id": "balanced-delivery",
+    "verified_success_floor": 0.9,
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  "policy_snapshot_id": "pol_SHHZA9CFZ1EWF7Y7R6HDRH9K66",
+  "project_adapter_version": "rmv_WZP5BDHRP7SAK042XKRA617R1T",
+  "project_features": {
+    "content_hash": "7b8826089647074b7b710034b961f8cced7d64a5734e39abe102985d5521d748",
+    "contract_id": "project-features-nested-complete",
+    "contract_type": "accretion.project-features",
+    "created_at": "2026-03-01T09:00:00Z",
+    "created_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "dominant_expected_horizon": "MEDIUM",
+    "feature_window_days": 90,
+    "irreversible_action_rate": 0.12,
+    "labels": {
+      "owner": "routing-platform",
+      "tier": "gold"
+    },
+    "maximum_risk": "HIGH",
+    "mean_complexity": 0.58,
+    "mean_uncertainty": 0.41,
+    "mean_verifier_strength": 0.74,
+    "objective_contract_ref": null,
+    "observed_task_count": 214,
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": "STANDARD",
+    "schema_version": "1.0.0",
+    "supersedes_contract_id": "obj_RVSVKD7ZW914SZG7NP43AGMCJF",
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "requested_at": "2026-03-01T08:59:30Z",
+  "reserved_future_field": {
+    "introduced_in": "1.1.0",
+    "note": "an optional field added by a newer minor of major 1 (registry §3.2)"
+  },
+  "retention_class": "STANDARD",
+  "schema_version": "1.1.0",
+  "supersedes_contract_id": "rrq_Y0YW9E7MR01KSE0TH334J0JX09",
+  "task_features": {
+    "complexity": 0.62,
+    "content_hash": "89f66465970ce380396b5fec8eb843d08b0f47bc4b4493b353c535220b1d0ba2",
+    "contract_id": "task-features-nested-complete",
+    "contract_type": "accretion.task-features",
+    "created_at": "2026-03-01T09:00:00Z",
+    "created_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "dependency_complexity": 0.4,
+    "expected_horizon": "MEDIUM",
+    "feedback_dependency": 0.7,
+    "irreversible_actions": false,
+    "labels": {
+      "owner": "routing-platform",
+      "tier": "gold"
+    },
+    "objective_contract_ref": null,
+    "parallelism_potential": 0.3,
+    "profile_confidence": 0.78,
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": "STANDARD",
+    "risk": "MEDIUM",
+    "schema_version": "1.0.0",
+    "source_profile_id": "prf_060BKJW56KVJ0VGEPVFN37HCKZ",
+    "structure_certainty": 0.55,
+    "supersedes_contract_id": "obj_RVSVKD7ZW914SZG7NP43AGMCJF",
+    "uncertainty": 0.45,
+    "verifier_strength": 0.8,
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C",
+  "workspace_router_version": "rmv_D0Q67B7EW89E1W1KJJFEC3XVN5"
+}
