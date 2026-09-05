@@ -43,6 +43,21 @@ The M9 ladder is parked after its stylesheet port; the entries below it are v0.4
   deferral. All twelve SDD §12 routing, feedback and
   router `EventType` members are declared here once, so no later v0.4 PR regenerates
   `openapi.json` or `apps/ui/src/api/schema.d.ts` for them again (#TBD).
+- Added `routing/gates.py`, `routing/protocols.py` and `routing/identity.py`, which close
+  M1. Policy, risk and permission gates live in a module that imports nothing from a
+  selector, candidate builder, ranker, GBDT, project adapter or the experience layer, run
+  before any scoring in `gate_then_evaluate` and seal the same `CompatibilityDecision` a
+  rule seals; `REQUIRE_APPROVAL` becomes the new `APPROVAL_REQUIRED` reason code because
+  routing never pre-approves. `NodeRoutingService` and `FeedbackPipeline` freeze the seams
+  M2 and M3 implement, with `RoutingMode` and `FrozenNode`, and `RunManager` gains
+  `routing_service` and `feedback_pipeline` attributes defaulting to `None` on the
+  `search_executor` precedent, so nothing changes for a deployment that never sets them.
+  Identity is derived rather than minted: `execution_instance_id`, `routing_request_id`
+  (over all four snapshot ids, SDD §8.2), `workspace_for_run` (ADR4-M1-001) and a
+  `VerificationSpecBuilder` whose `contract_id` derives from the spec body, so a re-put is a
+  no-op. `RoutingSnapshot` now carries the observed `(id, state)` of each MCP server, which
+  lets `map_resolution` stop reporting a disabled *plugin* as an unready *server*. The four
+  M1 criteria rows flip to `test` (#TBD).
 
 ### v0.4 — M0 contract and feature freeze
 

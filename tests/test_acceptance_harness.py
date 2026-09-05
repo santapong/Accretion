@@ -531,7 +531,6 @@ def test_an_unknown_verification_mode_is_rejected(
 # --- The M7 governance surface ----------------------------------------------
 
 
-FLIPPED_V04_ROWS = {"AC4-M4-016"}
 """The v0.4 criteria whose ``not_yet_due`` policy row has been deleted by its milestone.
 
 A row leaves ``docs/acceptance/criteria.toml`` in the same PR as the test that claims it, so
@@ -544,19 +543,19 @@ which is exactly the accident the file exists to prevent.
 
 def test_the_fifty_v04_rows_load_from_the_sdd_under_their_owner_stages() -> None:
     """SDD v0.4 §20 must reach the harness: fifty ids, all MUST, each under the v0.4
-    milestone that owns it (ADR-052), and ``not_yet_due`` under that owner until the
-    milestone that owns it proves it.
+    milestone that owns it (ADR-052), and each in exactly the state its milestone put it in.
 
     Counting alone would let a row that fell into the ``unassigned`` fallback (a
     ``stage_of`` regex that stops at one digit drops every M10 row) still add up to
     fifty; asserting the exact owner partition and the stage set does not.
 
-    The partition, the stage set, the priority and the fifty ids are invariant for the whole
-    release. What moves is which rows are still waiting: a flipped row has no policy line at
-    all, so it carries no reason, defaults to ``test`` and is in scope. Both halves are
-    asserted — a waiting row must still be ``not_yet_due`` with its owner's reason, and a
-    flipped row must be neither — so neither a forgotten deletion nor a deletion without a
-    claiming test can pass here.
+    The blanket "all fifty are ``not_yet_due``" this test made while M0 was the only landed
+    milestone is now a *partition* instead, and it is the stronger statement: the four rows
+    M1 flipped are named here one by one, so a row that goes into scope without a milestone
+    delivering it is red in this test rather than invisible inside a count. A milestone flips
+    its rows by deleting them from ``criteria.toml`` — ``test`` is the default for a
+    criterion with no policy row — so a flipped row is recognised by carrying no policy
+    ``reason``, which is what the loop below checks.
     """
 
     criteria = harness.load_criteria()
@@ -579,21 +578,20 @@ def test_the_fifty_v04_rows_load_from_the_sdd_under_their_owner_stages() -> None
     assert len(expected) == 50
     assert sorted(v04) == expected
     assert {c.stage for c in v04.values()} == {f"v0.4-{owner}" for owner in owners}
-    assert FLIPPED_V04_ROWS <= set(v04)
 
-    waiting = {name: c for name, c in v04.items() if name not in FLIPPED_V04_ROWS}
     for name, criterion in v04.items():
         assert criterion.stage == "v0.4-" + name.split("-")[1], name
-    for name, criterion in waiting.items():
-        assert criterion.reason == "v0.4 " + name.split("-")[1], name
     assert {c.priority for c in v04.values()} == {"MUST"}
-    assert {c.verification for c in waiting.values()} == {"not_yet_due"}
-    assert not any(c.in_scope for c in waiting.values())
-    for name in FLIPPED_V04_ROWS:
-        flipped = v04[name]
-        assert flipped.verification == "test", name
-        assert flipped.reason == "", name
-        assert flipped.in_scope, name
+
+    delivered = {"AC4-M1-005", "AC4-M1-006", "AC4-M1-007", "AC4-M1-008", "AC4-M4-016"}
+    assert {name for name, c in v04.items() if c.in_scope} == delivered
+    for name, criterion in v04.items():
+        if name in delivered:
+            assert criterion.verification == "test", name
+            assert criterion.reason == "", name
+        else:
+            assert criterion.verification == "not_yet_due", name
+            assert criterion.reason == "v0.4 " + name.split("-")[1], name
 
 
 def test_the_seven_ema_rows_load_from_the_sdd_as_m7_musts() -> None:
