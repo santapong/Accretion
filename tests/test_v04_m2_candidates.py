@@ -323,6 +323,7 @@ def build(builder: CandidateBuilder, node: NodeContract, snapshot: RoutingSnapsh
     )
 
 
+@pytest.mark.acceptance("AC4-M2-009")
 def test_behaviorally_equivalent_tuples_are_deduplicated_by_configuration_hash() -> None:
     node, snapshot, _, builder = world(models=("fake-model", "fake-model"))
     result = build(builder, node, snapshot, task())
@@ -381,6 +382,7 @@ def test_policy_refusal_removes_candidate_before_joint_compatibility() -> None:
     assert len(result.compatibility_decisions) == 3
 
 
+@pytest.mark.acceptance("AC4-M2-010")
 def test_audited_fallback_survives_the_agent_beam() -> None:
     models = tuple(f"model-{index:02d}" for index in range(12)) + ("fake-model",)
     node, snapshot, _, builder = world(models=models)

@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 from datetime import UTC, datetime
 
+import pytest
+
 from accretion.contracts import PrincipalRef, PrincipalStatus, Provider
 from accretion.contracts.refs import EnvironmentRef, RuntimeRef, VerifierRef
 from accretion.contracts.routing import (
@@ -123,6 +125,7 @@ def select(*items: ConfigurationCandidate):
     )
 
 
+@pytest.mark.acceptance("AC4-M2-022")
 def test_cold_start_never_exploits_and_uses_audited_fallback() -> None:
     result = select(candidate("ordinary"), candidate("fallback", fallback=True))
 
@@ -132,6 +135,7 @@ def test_cold_start_never_exploits_and_uses_audited_fallback() -> None:
     assert result.explanation.factors
 
 
+@pytest.mark.acceptance("AC4-M2-022")
 def test_insufficient_evidence_without_fallback_requires_human_review() -> None:
     result = select(candidate("ordinary"))
 
@@ -181,6 +185,7 @@ def test_near_frontier_candidate_within_epsilon_is_not_pareto_pruned() -> None:
     assert not by_id[near.contract_id].pareto_dominated
 
 
+@pytest.mark.acceptance("AC4-M2-010")
 def test_materially_dominated_candidate_is_pruned_but_fallback_is_retained() -> None:
     dominant = candidate(
         "dominant",
