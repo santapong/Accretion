@@ -1,6 +1,6 @@
 # v0.4 — Evidence-Aware Node Configuration Routing
 
-Status: **M0, M1, and M4 delivered; M2 integration in progress (2026-09-06).**
+Status: **M0, M1, and M4 delivered; M2 locally verified, awaiting remote review (2026-09-06).**
 
 | Document | Purpose |
 |---|---|
@@ -8,6 +8,7 @@ Status: **M0, M1, and M4 delivered; M2 integration in progress (2026-09-06).**
 | [M0 plan](m0-plan.md) | How the contract freeze is built and proven |
 | [M1 plan](m1-plan.md) | The compatibility engine, the gates, and the identity a routing attempt derives |
 | [M2 implementation brief](m2-implementation-brief.md) | Work boundaries and the staged integration plan |
+| [M2 plan and evidence](m2-plan.md) | Acceptance witnesses, implementation decisions, and repeatable gates |
 | [M2 runbook](m2-runbook.md) | Opt-in baseline routing, operator controls, and uncertain-dispatch recovery |
 | [M4 plan](m4-plan.md) | The offline ranker, the calibration report, and why nothing learned loads without a holdout evaluation |
 | [Backlog](backlog.md) | Milestone order and the v0.3 deferrals carried into v0.4 |
