@@ -13,6 +13,7 @@ from accretion.routing.catalog import (
     WORKSPACE_ROUTER_VERSION,
     ConfigurationCatalog,
     ConfigurationCatalogFactory,
+    FallbackBundle,
 )
 from accretion.routing.service import DefaultNodeRoutingService
 from test_v04_m0_store import FIXTURE_PROJECT_ID, FIXTURE_WORKSPACE_ID, build
@@ -29,8 +30,12 @@ from accretion.contracts import (
     RunGraph,
     RunNode,
     RunState,
+    RuntimeHealth,
+    RuntimeStatus,
     Task,
     TaskEnvelope,
+    WorkflowNodeSpec,
+    WorkflowTemplate,
     WorkspaceEntity,
     WorkspaceMembership,
     WorkspaceRole,
@@ -87,6 +92,18 @@ class FailingEventStore(MemoryStore):
         return await super().append_event(event)
 
 
+class DriftedHealthRuntime(FakeRuntime):
+    """Report a controlled post-routing health observation."""
+
+    def __init__(self, **updates: object) -> None:
+        super().__init__()
+        self.updates = updates
+
+    async def health(self) -> RuntimeHealth:
+        health = await super().health()
+        return health.model_copy(update=self.updates)
+
+
 @dataclass(slots=True)
 class SeededRouting:
     store: MemoryStore
@@ -95,6 +112,7 @@ class SeededRouting:
     run: Run
     receipt: RoutingDecisionReceipt
     candidate: ConfigurationCandidate
+    rejected_candidate: ConfigurationCandidate
 
 
 @dataclass(slots=True)
@@ -105,9 +123,17 @@ class RoutableExecution:
     snapshot: RoutingSnapshot
     run: Run
     task: Task
+    node: RunNode
+    spec: WorkflowNodeSpec
+    template: WorkflowTemplate
+    policy: AcceptancePolicy
 
 
-async def _routable_execution(tmp_path: Path) -> RoutableExecution:
+async def _routable_execution(
+    tmp_path: Path,
+    *,
+    objective: str = "Route a deterministic fake-runtime node.",
+) -> RoutableExecution:
     """Freeze a real planned graph node against the real snapshot/catalog stack."""
 
     store = MemoryStore()
@@ -131,9 +157,7 @@ async def _routable_execution(tmp_path: Path) -> RoutableExecution:
     )
     await store.upsert_principal(principal)
     workspace_id = new_id("workspace_entity")
-    await store.upsert_workspace(
-        WorkspaceEntity(workspace_id=workspace_id, name="Route workspace")
-    )
+    await store.upsert_workspace(WorkspaceEntity(workspace_id=workspace_id, name="Route workspace"))
     await store.upsert_workspace_membership(
         WorkspaceMembership(
             membership_id=new_id("workspace_membership"),
@@ -145,13 +169,11 @@ async def _routable_execution(tmp_path: Path) -> RoutableExecution:
     project = await manager.create_project("route project", tmp_path)
     task = await manager.create_task(
         project_id=project.project_id,
-        objective="Route a deterministic fake-runtime node.",
+        objective=objective,
         task_patch={"risk_level": "LOW", "allowed_capabilities": []},
     )
     planning = await manager.get_task_planning(task.envelope.task_id)
-    template = await store.get_workflow_template(
-        planning.current_decision.selected_template_id
-    )
+    template = await store.get_workflow_template(planning.current_decision.selected_template_id)
     assert template is not None
     run = Run(
         run_id=new_id("run"),
@@ -231,7 +253,18 @@ async def _routable_execution(tmp_path: Path) -> RoutableExecution:
     snapshot = await service.snapshot(
         workspace_id=workspace_id, project_id=project.project_id, task=task
     )
-    return RoutableExecution(store, service, frozen, snapshot, run, task)
+    return RoutableExecution(
+        store,
+        service,
+        frozen,
+        snapshot,
+        run,
+        task,
+        node,
+        spec,
+        template,
+        policy,
+    )
 
 
 async def _seed(
@@ -333,6 +366,15 @@ async def _seed(
         routing_request_id=request_id,
     )
     await store.put_configuration_candidate(candidate)
+    rejected_candidate = build(
+        ConfigurationCandidate,
+        workspace_id=FIXTURE_WORKSPACE_ID,
+        project_id=FIXTURE_PROJECT_ID,
+        routing_request_id=request_id,
+        hard_eligible=False,
+        fallback_eligible=False,
+    )
+    await store.put_configuration_candidate(rejected_candidate)
     receipt = build(
         RoutingDecisionReceipt,
         workspace_id=FIXTURE_WORKSPACE_ID,
@@ -343,7 +385,7 @@ async def _seed(
         selected_configuration_id=candidate.configuration.contract_id,
         selected_configuration_hash=candidate.configuration.configuration_hash,
         decision_type=DecisionType.FALLBACK,
-        candidate_summary_refs=[candidate.contract_id],
+        candidate_summary_refs=[candidate.contract_id, rejected_candidate.contract_id],
         capability_registry_snapshot_id=context.capability_registry_snapshot_id,
         policy_snapshot_id=context.policy_snapshot_id,
         labels={
@@ -371,6 +413,7 @@ async def _seed(
         run=run,
         receipt=receipt,
         candidate=candidate,
+        rejected_candidate=rejected_candidate,
     )
 
 
@@ -391,17 +434,16 @@ async def test_receipt_lookup_does_not_distinguish_absent_from_inaccessible() ->
     failures: list[RoutingError] = []
     for receipt_id in (seeded.receipt.contract_id, new_id("routing_receipt")):
         with pytest.raises(RoutingError) as excinfo:
-            await seeded.service.get_receipt(
-                receipt_id=receipt_id, principal=stranger_ref
-            )
+            await seeded.service.get_receipt(receipt_id=receipt_id, principal=stranger_ref)
         failures.append(excinfo.value)
 
-    assert {
-        (failure.status_code, failure.code, failure.message) for failure in failures
-    } == {(404, "RECEIPT_NOT_FOUND", "Routing resource not found")}
+    assert {(failure.status_code, failure.code, failure.message) for failure in failures} == {
+        (404, "RECEIPT_NOT_FOUND", "Routing resource not found")
+    }
 
 
-async def test_same_override_request_is_idempotent_and_attributed() -> None:
+@pytest.mark.acceptance("AC4-M2-015")
+async def test_override_accepts_only_eligible_candidate_and_is_attributed() -> None:
     seeded = await _seed()
     request = {
         "receipt_id": seeded.receipt.contract_id,
@@ -427,7 +469,34 @@ async def test_same_override_request_is_idempotent_and_attributed() -> None:
     assert len(receipts) == 2
     assert len(overrides) == 1
     assert overrides[0]["principal_id"] == seeded.principal.principal_id
+    assert overrides[0]["reason_code"] == request["reason_code"]
+    assert overrides[0]["reason"] == request["reason"]
     assert overrides[0]["superseding_receipt_id"] == first.contract_id
+
+    rejected = await _seed()
+    with pytest.raises(RoutingError) as excinfo:
+        await rejected.service.override(
+            receipt_id=rejected.receipt.contract_id,
+            candidate_id=rejected.rejected_candidate.contract_id,
+            reason_code="EXPERIMENTAL_COMPARISON",
+            reason="An ineligible candidate must never become executable.",
+            expected_receipt_version=1,
+            principal=rejected.principal,
+        )
+
+    assert (excinfo.value.status_code, excinfo.value.code) == (
+        422,
+        "CANDIDATE_NOT_ELIGIBLE",
+    )
+    assert (
+        await rejected.store.list_routing_overrides(
+            workspace_id=FIXTURE_WORKSPACE_ID, project_id=FIXTURE_PROJECT_ID
+        )
+        == []
+    )
+    assert await rejected.store.list_routing_receipts(
+        workspace_id=FIXTURE_WORKSPACE_ID, project_id=FIXTURE_PROJECT_ID
+    ) == [rejected.receipt]
 
 
 async def test_viewer_can_read_but_cannot_override_or_cancel() -> None:
@@ -505,9 +574,7 @@ async def test_concurrent_override_and_cancel_create_only_one_executable_head() 
         workspace_id=FIXTURE_WORKSPACE_ID, project_id=FIXTURE_PROJECT_ID
     )
     successors = [
-        item
-        for item in receipts
-        if item.supersedes_contract_id == seeded.receipt.contract_id
+        item for item in receipts if item.supersedes_contract_id == seeded.receipt.contract_id
     ]
     assert len(receipts) == 2
     assert len(successors) == 1
@@ -556,9 +623,7 @@ async def test_amendment_and_event_roll_back_together_on_interrupted_write(
 
 async def test_dispatch_refuses_a_receipt_that_was_never_persisted() -> None:
     seeded = await _seed()
-    unpersisted = seeded.receipt.model_copy(
-        update={"contract_id": new_id("routing_receipt")}
-    )
+    unpersisted = seeded.receipt.model_copy(update={"contract_id": new_id("routing_receipt")})
 
     with pytest.raises(RoutingError) as excinfo:
         await seeded.service.claim_dispatch(receipt=unpersisted, run=seeded.run)
@@ -567,6 +632,7 @@ async def test_dispatch_refuses_a_receipt_that_was_never_persisted() -> None:
     assert await seeded.store.list_events(seeded.run.run_id) == []
 
 
+@pytest.mark.acceptance("AC4-M2-011")
 async def test_real_freeze_catalog_selection_and_receipt_replay_are_end_to_end(
     tmp_path: Path,
 ) -> None:
@@ -589,6 +655,9 @@ async def test_real_freeze_catalog_selection_and_receipt_replay_are_end_to_end(
     assert receipt.decision_type is DecisionType.FALLBACK
     assert receipt.node_contract_hash == execution.frozen.node_contract.immutable_hash
     assert await execution.store.get_routing_receipt(receipt.contract_id) == receipt
+    assert (
+        await execution.store.get_routing_receipt_for_request(receipt.routing_request_id) == receipt
+    )
     context = await execution.store.get_routing_request(receipt.routing_request_id)
     assert context is not None
     assert context.node_contract_ref.node_contract_id == execution.frozen.node_contract.contract_id
@@ -603,16 +672,168 @@ async def test_real_freeze_catalog_selection_and_receipt_replay_are_end_to_end(
     assert [event.native_type for event in events] == ["accretion/routing/created"]
 
 
+@pytest.mark.acceptance("AC4-M2-012")
+async def test_receipt_pins_versions_and_identity_changes_with_immutable_inputs(
+    tmp_path: Path,
+) -> None:
+    execution = await _routable_execution(tmp_path)
+    first = await execution.service.route(
+        frozen=execution.frozen,
+        snapshot=execution.snapshot,
+        mode=RoutingMode.BASELINE_ONLY,
+        run=execution.run,
+    )
+    configuration = await execution.service.configuration_for(first)
+    health = execution.snapshot.runtime_health[0]
+
+    assert first.workspace_router_version == WORKSPACE_ROUTER_VERSION
+    assert first.project_adapter_version is None
+    assert first.objective_contract_version == execution.frozen.objective_ref.revision
+    assert first.node_contract_hash == execution.frozen.node_contract.immutable_hash
+    assert (
+        first.capability_registry_snapshot_id == execution.snapshot.capability_registry_snapshot_id
+    )
+    assert first.policy_snapshot_id == execution.snapshot.policy_snapshot_id
+    assert configuration.runtime.runtime_id == health.runtime_id
+    assert configuration.runtime.adapter_version == health.runtime_version
+    assert configuration.model.model_id == "fake-model"
+
+    changed_registry_id = hashlib.sha256(b"changed registry snapshot").hexdigest()
+    changed_snapshot = replace(
+        execution.snapshot,
+        capability_registry_snapshot_id=changed_registry_id,
+    )
+    changed_snapshot_receipt = await execution.service.route(
+        frozen=execution.frozen,
+        snapshot=changed_snapshot,
+        mode=RoutingMode.BASELINE_ONLY,
+        run=execution.run,
+    )
+    assert changed_snapshot_receipt.contract_id != first.contract_id
+    assert changed_snapshot_receipt.routing_request_id != first.routing_request_id
+    assert changed_snapshot_receipt.supersedes_contract_id == first.contract_id
+    assert changed_snapshot_receipt.capability_registry_snapshot_id == changed_registry_id
+
+    changed_frozen = await execution.service.freeze(
+        run=execution.run,
+        task=execution.task,
+        node=execution.node,
+        spec=execution.spec,
+        template=execution.template,
+        policy=execution.policy,
+        graph_revision=1,
+        attempt=2,
+    )
+    changed_contract_receipt = await execution.service.route(
+        frozen=changed_frozen,
+        snapshot=execution.snapshot,
+        mode=RoutingMode.BASELINE_ONLY,
+        run=execution.run,
+    )
+    assert changed_contract_receipt.contract_id not in {
+        first.contract_id,
+        changed_snapshot_receipt.contract_id,
+    }
+    assert (
+        changed_contract_receipt.node_contract_hash == changed_frozen.node_contract.immutable_hash
+    )
+    assert changed_contract_receipt.node_contract_hash != first.node_contract_hash
+
+    catalog = await execution.service.catalog_factory(
+        execution.frozen, execution.snapshot, execution.run, execution.task
+    )
+    effective_snapshot = replace(
+        execution.snapshot, fallback_bundle_digest=catalog.fallback_bundle.digest
+    )
+    changed_model_snapshot = replace(
+        effective_snapshot,
+        available_runtime_snapshot_id=hashlib.sha256(
+            b"runtime snapshot with another model id"
+        ).hexdigest(),
+    )
+    changed_model_bundle = replace(
+        effective_snapshot,
+        fallback_bundle_digest=hashlib.sha256(b"fallback bundle with fake-model-v2").hexdigest(),
+    )
+    original_identity = routing_request_id(
+        execution.frozen.node_contract.immutable_hash,
+        effective_snapshot,
+        WORKSPACE_ROUTER_VERSION,
+        None,
+        RoutingMode.BASELINE_ONLY,
+    )
+    assert (
+        routing_request_id(
+            execution.frozen.node_contract.immutable_hash,
+            changed_model_snapshot,
+            WORKSPACE_ROUTER_VERSION,
+            None,
+            RoutingMode.BASELINE_ONLY,
+        )
+        != original_identity
+    )
+    assert (
+        routing_request_id(
+            execution.frozen.node_contract.immutable_hash,
+            changed_model_bundle,
+            WORKSPACE_ROUTER_VERSION,
+            None,
+            RoutingMode.BASELINE_ONLY,
+        )
+        != original_identity
+    )
+
+
+@pytest.mark.acceptance("AC4-M2-013")
+async def test_real_route_never_copies_secret_objective_into_receipt(
+    tmp_path: Path,
+) -> None:
+    secret = "Bearer abcdefghijklmnopqrstuvwxyz1234567890"
+    execution = await _routable_execution(
+        tmp_path,
+        objective=f"Route this request while protecting {secret} from receipts.",
+    )
+
+    receipt = await execution.service.route(
+        frozen=execution.frozen,
+        snapshot=execution.snapshot,
+        mode=RoutingMode.BASELINE_ONLY,
+        run=execution.run,
+    )
+
+    serialized = receipt.model_dump_json()
+    assert secret not in serialized
+    assert "Bearer " not in serialized
+    assert "private_reasoning" not in serialized
+    assert "chain_of_thought" not in serialized
+    assert receipt.explanation.summary
+
+
 async def test_route_execution_validates_real_snapshot_identity_before_persisting(
     tmp_path: Path,
 ) -> None:
     execution = await _routable_execution(tmp_path)
-    catalog = await execution.service.catalog_factory(
+    original_factory = execution.service.catalog_factory
+    catalog = await original_factory(
         execution.frozen, execution.snapshot, execution.run, execution.task
     )
-    snapshot = replace(
-        execution.snapshot, fallback_bundle_digest=catalog.fallback_bundle.digest
-    )
+    catalog_calls = 0
+
+    async def changing_catalog_factory(
+        frozen: FrozenNode,
+        routing_snapshot: RoutingSnapshot,
+        run: Run,
+        task: Task,
+    ) -> ConfigurationCatalog:
+        nonlocal catalog_calls
+        del frozen, routing_snapshot, run, task
+        catalog_calls += 1
+        if catalog_calls == 1:
+            return catalog
+        return replace(catalog, fallback_bundle=FallbackBundle(), digest="")
+
+    execution.service.catalog_factory = changing_catalog_factory
+    snapshot = replace(execution.snapshot, fallback_bundle_digest=catalog.fallback_bundle.digest)
     request_id = routing_request_id(
         execution.frozen.node_contract.immutable_hash,
         snapshot,
@@ -634,6 +855,7 @@ async def test_route_execution_validates_real_snapshot_identity_before_persistin
     )
 
     assert receipt.routing_request_id == request_id
+    assert catalog_calls == 1
     assert receipt.capability_registry_snapshot_id == snapshot.capability_registry_snapshot_id
     assert await execution.store.get_routing_receipt_for_request(request_id) == receipt
 
@@ -649,15 +871,11 @@ async def test_dispatch_claim_is_persisted_and_blocks_late_operator_changes(
         run=execution.run,
     )
 
-    configuration = await execution.service.claim_dispatch(
-        receipt=receipt, run=execution.run
-    )
+    configuration = await execution.service.claim_dispatch(receipt=receipt, run=execution.run)
 
     assert configuration.runtime.provider is Provider.FAKE
     events = await execution.store.list_events(execution.run.run_id)
-    dispatches = [
-        event for event in events if event.native_type == "accretion/routing/dispatch"
-    ]
+    dispatches = [event for event in events if event.native_type == "accretion/routing/dispatch"]
     assert len(dispatches) == 1
     assert dispatches[0].causation_id == receipt.contract_id
     candidate_id = receipt.candidate_summary_refs[0]
@@ -683,8 +901,57 @@ async def test_dispatch_claim_is_persisted_and_blocks_late_operator_changes(
     assert receipts == [receipt]
 
 
-async def test_runtime_version_drift_prevents_dispatch_claim(
+async def test_changed_snapshot_supersedes_old_head_and_allows_only_one_dispatch(
     tmp_path: Path,
+) -> None:
+    execution = await _routable_execution(tmp_path)
+    first = await execution.service.route(
+        frozen=execution.frozen,
+        snapshot=execution.snapshot,
+        mode=RoutingMode.BASELINE_ONLY,
+        run=execution.run,
+    )
+    changed_snapshot = replace(
+        execution.snapshot,
+        capability_registry_snapshot_id=hashlib.sha256(
+            b"registry state after first routing decision"
+        ).hexdigest(),
+    )
+    second = await execution.service.route(
+        frozen=execution.frozen,
+        snapshot=changed_snapshot,
+        mode=RoutingMode.BASELINE_ONLY,
+        run=execution.run,
+    )
+
+    assert second.supersedes_contract_id == first.contract_id
+    with pytest.raises(RoutingError) as excinfo:
+        await execution.service.claim_dispatch(receipt=first, run=execution.run)
+    assert excinfo.value.code == "RECEIPT_VERSION_CONFLICT"
+
+    await execution.service.claim_dispatch(receipt=second, run=execution.run)
+    dispatches = [
+        event
+        for event in await execution.store.list_events(execution.run.run_id)
+        if event.native_type == "accretion/routing/dispatch"
+    ]
+    assert [event.causation_id for event in dispatches] == [second.contract_id]
+
+
+@pytest.mark.parametrize(
+    ("health_updates", "error_code"),
+    [
+        ({"runtime_version": "fake-drifted-after-routing"}, "RUNTIME_VERSION_DRIFT"),
+        ({"runtime_id": "runtime_fake_replaced"}, "RUNTIME_VERSION_DRIFT"),
+        ({"capabilities": ["structured-events"]}, "RUNTIME_VERSION_DRIFT"),
+        ({"status": RuntimeStatus.UNAVAILABLE}, "RUNTIME_UNAVAILABLE"),
+    ],
+    ids=("adapter-version", "runtime-id", "capability-profile", "unavailable"),
+)
+async def test_runtime_health_drift_prevents_dispatch_claim(
+    tmp_path: Path,
+    health_updates: dict[str, object],
+    error_code: str,
 ) -> None:
     execution = await _routable_execution(tmp_path)
     receipt = await execution.service.route(
@@ -693,15 +960,12 @@ async def test_runtime_version_drift_prevents_dispatch_claim(
         mode=RoutingMode.BASELINE_ONLY,
         run=execution.run,
     )
-    drifted = FakeRuntime()
-    drifted.adapter_version = "fake-drifted-after-routing"
+    drifted = DriftedHealthRuntime(**health_updates)
     execution.service.runtimes = {Provider.FAKE: drifted}
 
     with pytest.raises(RoutingError) as excinfo:
         await execution.service.claim_dispatch(receipt=receipt, run=execution.run)
 
-    assert excinfo.value.code == "RUNTIME_VERSION_DRIFT"
+    assert excinfo.value.code == error_code
     events = await execution.store.list_events(execution.run.run_id)
-    assert not any(
-        event.native_type == "accretion/routing/dispatch" for event in events
-    )
+    assert not any(event.native_type == "accretion/routing/dispatch" for event in events)
