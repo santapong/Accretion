@@ -531,6 +531,16 @@ def test_an_unknown_verification_mode_is_rejected(
 # --- The M7 governance surface ----------------------------------------------
 
 
+"""The v0.4 criteria whose ``not_yet_due`` policy row has been deleted by its milestone.
+
+A row leaves ``docs/acceptance/criteria.toml`` in the same PR as the test that claims it, so
+this set grows by one entry per flip and is the only part of the test below that a milestone
+is expected to edit. It is an explicit list rather than "whatever is missing" on purpose: a
+row that vanished from the policy file *without* a claiming test would then pass silently,
+which is exactly the accident the file exists to prevent.
+"""
+
+
 def test_the_fifty_v04_rows_load_from_the_sdd_under_their_owner_stages() -> None:
     """SDD v0.4 §20 must reach the harness: fifty ids, all MUST, each under the v0.4
     milestone that owns it (ADR-052), and each in exactly the state its milestone put it in.
@@ -568,11 +578,12 @@ def test_the_fifty_v04_rows_load_from_the_sdd_under_their_owner_stages() -> None
     assert len(expected) == 50
     assert sorted(v04) == expected
     assert {c.stage for c in v04.values()} == {f"v0.4-{owner}" for owner in owners}
+
     for name, criterion in v04.items():
         assert criterion.stage == "v0.4-" + name.split("-")[1], name
     assert {c.priority for c in v04.values()} == {"MUST"}
 
-    delivered = {"AC4-M1-005", "AC4-M1-006", "AC4-M1-007", "AC4-M1-008"}
+    delivered = {"AC4-M1-005", "AC4-M1-006", "AC4-M1-007", "AC4-M1-008", "AC4-M4-016"}
     assert {name for name, c in v04.items() if c.in_scope} == delivered
     for name, criterion in v04.items():
         if name in delivered:

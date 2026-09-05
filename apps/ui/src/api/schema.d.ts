@@ -752,6 +752,67 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/router-models": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Router Models
+         * @description List a workspace's router versions with their lineage (SDD §11.3).
+         *
+         *     Every version carries what it descends from and what it was made of — the parent version,
+         *     the training snapshot, the artefact and calibration digests, the feature schema and the
+         *     labels holding the evaluation digests — so a reader can walk a promotion's ancestry
+         *     without a second call per hop.
+         *
+         *     ``workspace_id`` is required and checked against the caller's memberships. Ordering is
+         *     ``(created_at, contract_id)`` in both store backends, so two responses can be diffed.
+         */
+        get: operations["list_router_models_api_v1_router_models_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/router-models/train-candidate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Train Router Candidate
+         * @description Train one CANDIDATE router version over a window of the workspace's evidence.
+         *
+         *     SDD §11.3. Administering the workspace is required rather than membership: a training run
+         *     reads every eligible experience record in the workspace, and its output is a policy
+         *     artefact the workspace will later be asked to promote.
+         *
+         *     Idempotency is enforced against the *key*, not against the evidence. A repeated key
+         *     returns the version the first call produced, so a retry after a timeout cannot leave two
+         *     candidates behind; a different key over identical evidence is a deliberate second run and
+         *     produces a second version, because the key is what says the caller meant it.
+         *
+         *     The response carries the version, the snapshot it cites and the two evaluation summaries.
+         *     The full documents stay in the artefact store under the digests the version pins, so a
+         *     reader can recompute every number here instead of trusting it.
+         */
+        post: operations["train_router_candidate_api_v1_router_models_train_candidate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/runs": {
         parameters: {
             query?: never;
@@ -2220,6 +2281,13 @@ export interface components {
              */
             version: "budget-policy-v1";
         };
+        /**
+         * CalibrationMethod
+         * @description How a score became a probability. Recorded because a bound whose method is unknown
+         *     cannot be recalibrated later (the same reason ``DistributionEstimate`` carries ``method``).
+         * @enum {string}
+         */
+        CalibrationMethod: "IDENTITY" | "PLATT" | "ISOTONIC";
         /** CandidateScore */
         CandidateScore: {
             /** Candidate Id */
@@ -4618,6 +4686,93 @@ export interface components {
             status: components["schemas"]["GraphNodeStatus"];
         };
         /**
+         * ObjectiveContractRef
+         * @description SDD §7.1. The exact objective revision a node was authorised against.
+         *
+         *     This is the type of the registry §3 optional header field ``objective_contract_ref``,
+         *     which is why it is defined before every other contract in this module and why
+         *     :class:`~accretion.contracts.canonical.CanonicalContract` is rebuilt immediately below
+         *     it.
+         *
+         *     **Field coverage (SDD §7.1 → here).** ``project_id`` → the header's ``project_id``.
+         *     ``objective_contract_id`` → ``objective_contract_id``. ``version`` → ``revision``, the
+         *     registry §7.1 spelling, which is also what the ``ObjectiveContract`` aggregate calls its
+         *     own counter. ``content_hash`` → ``objective_contract_hash``. ``verified_success_floor``,
+         *     ``utility_profile_id``, ``approved_at`` → unchanged. ``risk_policy_id`` → ``risk_policy``,
+         *     a typed :class:`~accretion.contracts.refs.PolicyRef` (registry §3.1 requires policies to
+         *     use immutable typed references, and an authority decision audited against "policy v3" is
+         *     audited against a label). ``approved_by`` → a typed
+         *     :class:`~accretion.contracts.PrincipalRef` for the same reason.
+         *
+         *     **Why the target's identity is qualified.** Registry §3 describes the header field as
+         *     ``{contract_id, revision, content_hash}``, but inside a :class:`CanonicalContract` those
+         *     two unqualified names already mean *this reference's own* id and digest. The target's
+         *     are therefore spelled ``objective_contract_id`` and ``objective_contract_hash``. Nothing
+         *     is lost and the ambiguity that would otherwise sit in every receipt is.
+         *
+         *     ``ID_KIND`` is ``None``: ADR-055 mints no prefix for a reference, because a reference is
+         *     created and owned by the contract that embeds it and has no id space to collide in.
+         *     ``verified_success_floor`` is copied onto the reference rather than dereferenced because
+         *     §8.3 requires routing to run against an exact snapshot — a router that re-read the floor
+         *     from the live objective would be routing against a number the receipt cannot prove.
+         */
+        ObjectiveContractRef: {
+            /**
+             * Approved At
+             * Format: date-time
+             */
+            approved_at: string;
+            approved_by: components["schemas"]["PrincipalRef"];
+            /**
+             * Content Hash
+             * @default
+             */
+            content_hash: string;
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Contract Type
+             * @default accretion.objective-contract-ref
+             * @constant
+             */
+            contract_type: "accretion.objective-contract-ref";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            created_by: components["schemas"]["PrincipalRef"];
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** Objective Contract Hash */
+            objective_contract_hash: string;
+            /** Objective Contract Id */
+            objective_contract_id: string;
+            objective_contract_ref?: components["schemas"]["ObjectiveContractRef"] | null;
+            /** Project Id */
+            project_id?: string | null;
+            /** Retention Class */
+            retention_class?: string | null;
+            /** Revision */
+            revision: number;
+            risk_policy: components["schemas"]["PolicyRef"];
+            /**
+             * Schema Version
+             * @default 1.0.0
+             */
+            schema_version: string;
+            /** Supersedes Contract Id */
+            supersedes_contract_id?: string | null;
+            /** Utility Profile Id */
+            utility_profile_id: string;
+            /** Verified Success Floor */
+            verified_success_floor: number;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
          * OverridePolicyResult
          * @enum {string}
          */
@@ -4933,6 +5088,21 @@ export interface components {
             /** Workspace Id */
             workspace_id: string;
         };
+        /**
+         * PolicyRef
+         * @description A policy by id, version and content digest (registry §4).
+         *
+         *     Authority decisions are audited against the exact policy text that produced them, so the
+         *     content digest is required: "policy v3" is a label, and labels are editable.
+         */
+        PolicyRef: {
+            /** Content Digest */
+            content_digest: string;
+            /** Policy Id */
+            policy_id: string;
+            /** Version */
+            version: string;
+        };
         /** Principal */
         Principal: {
             /**
@@ -4960,6 +5130,14 @@ export interface components {
             subject: string;
             /** @default HUMAN */
             type: components["schemas"]["PrincipalType"];
+        };
+        /** PrincipalRef */
+        PrincipalRef: {
+            /** Display Name */
+            display_name?: string | null;
+            /** Principal Id */
+            principal_id: string;
+            status: components["schemas"]["PrincipalStatus"];
         };
         /**
          * PrincipalStatus
@@ -5198,6 +5376,213 @@ export interface components {
          * @enum {string}
          */
         RiskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+        /**
+         * RouterCalibrationSummary
+         * @description The calibration report's headline numbers, without its bins.
+         *
+         *     The bins are the evidence and stay in the stored artefact the version pins; this is the
+         *     summary a caller needs to decide whether to look at them.
+         */
+        RouterCalibrationSummary: {
+            /** Alpha */
+            alpha: number;
+            /** Bin Count */
+            bin_count: number;
+            /** Brier */
+            brier: number;
+            /** Conformal Quantile */
+            conformal_quantile: number;
+            /** Digest */
+            digest: string;
+            /** Ece 10Bin */
+            ece_10bin: number;
+            /** Holdout Coverage */
+            holdout_coverage: number;
+            method: components["schemas"]["CalibrationMethod"];
+        };
+        /**
+         * RouterCandidateTrained
+         * @description One training run's result: the version, the evidence it cites, and its two scores.
+         */
+        RouterCandidateTrained: {
+            calibration: components["schemas"]["RouterCalibrationSummary"];
+            holdout: components["schemas"]["RouterHoldoutSummary"];
+            /** Training Snapshot Id */
+            training_snapshot_id: string;
+            version: components["schemas"]["RouterModelVersion"];
+        };
+        /**
+         * RouterHoldoutSummary
+         * @description What the candidate scored on projects it was never fitted or calibrated on.
+         *
+         *     ``digest`` is the ``holdout_eval_digest`` the version carries and the artefact store
+         *     holds the document under, so a caller can fetch and recompute rather than trust this.
+         *     ``ranking_gain`` is ``None`` when the holdout held no comparable pair — an honest "not
+         *     measurable here" rather than a zero.
+         */
+        RouterHoldoutSummary: {
+            /** Baseline Ranking Concordance */
+            baseline_ranking_concordance?: number | null;
+            /** Brier */
+            brier: number;
+            /** Digest */
+            digest: string;
+            /** Ece 10Bin */
+            ece_10bin: number;
+            /** False Acceptance Rate */
+            false_acceptance_rate: number;
+            /** N Rows */
+            n_rows: number;
+            /** Observed Verified Success Rate */
+            observed_verified_success_rate: number;
+            /** Project Ids */
+            project_ids: string[];
+            /** Ranking Concordance */
+            ranking_concordance?: number | null;
+            /** Ranking Gain */
+            ranking_gain?: number | null;
+            /** Verified Success Lcb */
+            verified_success_lcb: number;
+        };
+        /**
+         * RouterModelVersion
+         * @description SDD §7.12. An immutable router artifact with its data, its config and its lineage.
+         *
+         *     ADR-049 makes promotion an offline, versioned, reversible release, which means a router
+         *     version must be a record rather than a file path: the artifact digest, the snapshot it
+         *     was trained on, the feature schema it assumes and the parent it descends from are all
+         *     part of what "this router" means, and a rollback that restored only the file would
+         *     restore the wrong thing.
+         *
+         *     **Field coverage (SDD §7.12 → here).** ``router_version_id`` → the header's
+         *     ``contract_id`` (``rmv``). ``workspace_id`` and ``project_id`` → header.
+         *     ``algorithm_id``, ``feature_schema_version``, ``training_snapshot_id``,
+         *     ``artifact_digest``, ``calibration_artifact_digest``, ``parent_version_id``,
+         *     ``created_at`` → unchanged. ``scope`` → :class:`RouterScope`; ``status`` →
+         *     :class:`RouterStatus`.
+         *
+         *     ``PROJECT_SCOPED`` is ``False`` here — one of three contracts in the family where it is.
+         *     SDD §7.12 makes ``project_id`` explicitly nullable, because a ``TEAM_WORKSPACE`` prior
+         *     belongs to the workspace and to no project; the validator makes the nullability exact
+         *     rather than merely permitted, requiring a project for a ``PROJECT_ADAPTER`` and refusing
+         *     one for a workspace prior.
+         *
+         *     ``calibration_artifact_digest`` is separate from ``artifact_digest`` because §9.3 and
+         *     OQ-405 make calibration a distinct, replaceable component: recalibrating a model without
+         *     retraining it produces a new router version, and one combined digest could not say which
+         *     half changed.
+         */
+        RouterModelVersion: {
+            /** Algorithm Id */
+            algorithm_id: string;
+            /** Artifact Digest */
+            artifact_digest: string;
+            /** Calibration Artifact Digest */
+            calibration_artifact_digest: string;
+            /**
+             * Content Hash
+             * @default
+             */
+            content_hash: string;
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Contract Type
+             * @default accretion.router-model-version
+             * @constant
+             */
+            contract_type: "accretion.router-model-version";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            created_by: components["schemas"]["PrincipalRef"];
+            /** Feature Schema Version */
+            feature_schema_version: string;
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            objective_contract_ref?: components["schemas"]["ObjectiveContractRef"] | null;
+            /** Parent Version Id */
+            parent_version_id?: string | null;
+            /** Project Id */
+            project_id?: string | null;
+            /** Retention Class */
+            retention_class?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0.0
+             */
+            schema_version: string;
+            scope: components["schemas"]["RouterScope"];
+            status: components["schemas"]["RouterStatus"];
+            /** Supersedes Contract Id */
+            supersedes_contract_id?: string | null;
+            /** Training Snapshot Id */
+            training_snapshot_id: string;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * RouterScope
+         * @description SDD §7.12. The two learning scopes of ADR-047: a workspace prior and a project adapter.
+         *
+         *     Shares the token ``TEAM_WORKSPACE`` with :class:`Visibility` and means something
+         *     different by it — there, who may read a record; here, what a model was fitted over.
+         *     They are kept as two enums rather than one because their value sets are not the same
+         *     and never will be: a project adapter is not a visibility and ``PROJECT`` is not a scope.
+         * @enum {string}
+         */
+        RouterScope: "TEAM_WORKSPACE" | "PROJECT_ADAPTER";
+        /**
+         * RouterStatus
+         * @description SDD §7.12. The lifecycle of a router artifact, and the reason rollback is possible.
+         *
+         *     ``RETIRED`` is not deletion: §10.3 requires the prior active model to stay
+         *     rollback-eligible, so a retired version is a live rollback target and
+         *     ``ROLLED_BACK`` records that the target was actually used. ``SHADOW`` sits between
+         *     ``CANDIDATE`` and ``ACTIVE`` because ADR-046 makes shadow evaluation a required stage
+         *     rather than an optional one.
+         * @enum {string}
+         */
+        RouterStatus: "CANDIDATE" | "SHADOW" | "ACTIVE" | "RETIRED" | "ROLLED_BACK";
+        /**
+         * RouterTrainCandidateCreate
+         * @description Ask for one offline training run over a window of a workspace's evidence (SDD §11.3).
+         *
+         *     ``window_start`` and ``window_end`` are the half-open bounds the training snapshot is cut
+         *     on, and ``seed`` fixes the project split — both are the caller's, not the server's,
+         *     because a candidate whose window or split depended on when the request arrived could not
+         *     be rebuilt afterwards.
+         *
+         *     ``split_fractions`` is the sealed :class:`~accretion.routing.split.SplitFractions`, whose
+         *     validator refuses fractions that do not sum to one or that would retire one of the five
+         *     required splits. Omitting it takes the protocol default.
+         */
+        RouterTrainCandidateCreate: {
+            /** Parent Version Id */
+            parent_version_id?: string | null;
+            /**
+             * Seed
+             * @default 0
+             */
+            seed: number;
+            split_fractions?: components["schemas"]["SplitFractions"] | null;
+            /**
+             * Window End
+             * Format: date-time
+             */
+            window_end: string;
+            /**
+             * Window Start
+             * Format: date-time
+             */
+            window_start: string;
+            /** Workspace Id */
+            workspace_id: string;
+        };
         /** Run */
         Run: {
             /** Acceptance Policy Id */
@@ -5778,6 +6163,26 @@ export interface components {
              * Format: path
              */
             workspace: string;
+        };
+        /**
+         * SplitFractions
+         * @description The share of lineage roots each split receives. All five are required.
+         *
+         *     Every fraction is ``> 0``: the protocol makes all five splits required, and a fraction
+         *     of zero would silently retire one of them while still validating. The sum is required to
+         *     be one within ``1e-9``, which is float equality stated honestly rather than pretended.
+         */
+        SplitFractions: {
+            /** Calibration */
+            calibration: number;
+            /** Development */
+            development: number;
+            /** Drift */
+            drift: number;
+            /** Test */
+            test: number;
+            /** Train */
+            train: number;
         };
         /** StrategyDecision */
         StrategyDecision: {
@@ -7805,6 +8210,73 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Project"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_router_models_api_v1_router_models_get: {
+        parameters: {
+            query: {
+                workspace_id: string;
+                project_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouterModelVersion"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    train_router_candidate_api_v1_router_models_train_candidate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RouterTrainCandidateCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouterCandidateTrained"];
                 };
             };
             /** @description Validation Error */

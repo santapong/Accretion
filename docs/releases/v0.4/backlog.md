@@ -134,6 +134,45 @@ so that a persisted decision stays explicable, and no decision under `compat-rul
 outside this repository's tests. M1 is the first milestone that emits one at all and it has
 not shipped, so there is no reader pointing at the old catalogue to mislead. Once v0.4 ships,
 the rule applies unmodified: the next code bumps the version.
+## Recorded during M4
+
+Three open questions closed while building the offline ranker. Each is recorded here rather than in
+the SDD, because the SDD states the question and these are the answers this release gave.
+
+**ADR4-M4-001 (OQ-401, outcome model) — an in-repo gradient-boosted ranker, and no new
+dependency.** The default was "gradient-boosted baseline first", with LightGBM or scikit-learn's
+`HistGradientBoosting` to be chosen by a dependency-weight check. The check ran and both lost.
+`routing/gbdt.py` is about six hundred lines of exact arithmetic and it buys three things a
+library would have cost: **determinism that is ours** (the same seed produces byte-identical trees
+on every machine and Python build, which is what makes `artifact_digest` a stable identity rather
+than a description of one machine's floating point), **a serialization format we own** (the
+artefact is canonical JSON that a reader can diff, not a pickle or a binary blob that a version
+bump can stop reading), and **no new wheel on the runtime image** for a workload measured in
+hundreds of rows and minutes. At low thousands of rows a compiled learner behind the existing
+`Learner` protocol starts to earn its weight; the protocol is why swapping it is a PR and not a
+migration. R1 agrees on the shape: a small tree ranker is the right cold-start model.
+
+**ADR4-M4-002 (OQ-405, verified-success lower bound) — conformal is primary, the bootstrap is the
+sensitivity check, and both travel in the report.** `conformal_quantile` is taken over *projects*,
+not rows, so a hundred rows from one project buy exactly as much confidence as five do; the
+quantile is fitted on the calibration split and its coverage is measured on the holdout, which is
+the only arrangement in which split conformal means anything. The bootstrap remains as the
+project-level ECE interval (B=200) in the same `CalibrationReport`, so a reader can see both. Two
+consequences are stated out loud rather than hidden: with fewer than `1/α − 1` calibration
+projects there is no finite quantile at all and the function returns 1.0, collapsing every lower
+bound to zero — vacuous and visibly so; and `DistributionEstimate.method` distinguishes the
+conformal success bounds from the magnitude heads' bag band, which is ensemble disagreement and
+not a coverage statement.
+
+**ADR4-M4-003 (OQ-415, drift window) — revalidate on a behaviourally material version change, and
+record the serving configuration inside the window.** The default stands, tightened by R7: a
+provider version alone does not identify what served a rollout, because quantization, temperature
+and the sampling seed move quality and cost without moving any field the router selected. The
+freeze delta's `ServingWindow` (ADR-060) carries those knobs as `serving_labels`, and a snapshot's
+`provider_version_boundaries` names the version window each cut was taken under, so a candidate
+trained across a material serving change is visible as two boundaries rather than as unexplained
+drift. M4 does not yet *detect* materiality; it makes the evidence for that detection recordable,
+and M6's branched rollouts are the first consumer.
 
 ## Parked beside v0.4
 
