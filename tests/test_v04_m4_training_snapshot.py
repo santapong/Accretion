@@ -261,9 +261,35 @@ async def test_building_the_snapshot_twice_gives_the_same_content_hash() -> None
     assert first.contract_id == second.contract_id
     assert first == second
 
+    # The declared rules canonicalise their inputs: a set and a differently ordered list of
+    # the same statuses are the same rules, so the same digest and the same derived id.
+    assert (
+        SnapshotRules.over(
+            excluded_contradiction_statuses={ContradictionStatus.OPEN, ContradictionStatus.RESOLVED}
+        ).digest()
+        == SnapshotRules.over(
+            excluded_contradiction_statuses=[ContradictionStatus.RESOLVED, ContradictionStatus.OPEN]
+        ).digest()
+    )
+
+    # A rebuild under a live clock is the same id with a different body, which the
+    # append-only store refuses: the precondition build() documents, pinned here.
+    later = await SnapshotBuilder(store).build(
+        workspace_id=WORKSPACE_ID,
+        window=WINDOW,
+        split=SPLIT,
+        rules=RULES,
+        created_by=CREATED_BY,
+        clock=lambda: frozen_clock() + timedelta(days=1),
+    )
+    assert later.contract_id == first.contract_id
+    assert later.content_hash != first.content_hash
+    await store.put_router_training_snapshot(first)
+    with pytest.raises(ValueError, match="is immutable"):
+        await store.put_router_training_snapshot(later)
+
     # The id is *derived*, not minted, which is what lets a rebuild be the no-op the
     # append-only store already knows how to recognise rather than a second row.
-    await store.put_router_training_snapshot(first)
     await store.put_router_training_snapshot(second)
     stored = await store.list_router_training_snapshots(workspace_id=WORKSPACE_ID)
     assert [snapshot.contract_id for snapshot in stored] == [first.contract_id]

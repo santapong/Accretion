@@ -170,7 +170,15 @@ class SnapshotRules:
         """Build rules from ordinary mappings and iterables, in canonical order."""
 
         boundaries = dict(provider_version_boundaries or {})
-        statuses = tuple(excluded_contradiction_statuses or (ContradictionStatus.OPEN,))
+        # Canonicalised like the boundaries: a caller passing a set must not get a
+        # PYTHONHASHSEED-dependent order, because this tuple feeds the rules digest and
+        # therefore the derived contract id.
+        statuses = tuple(
+            sorted(
+                dict.fromkeys(excluded_contradiction_statuses or (ContradictionStatus.OPEN,)),
+                key=lambda status: status.value,
+            )
+        )
         return cls(
             provider_version_boundaries=tuple(sorted(boundaries.items())),
             excluded_contradiction_statuses=statuses,
@@ -421,6 +429,13 @@ class SnapshotBuilder:
         Raises :class:`ValueError` when the window is empty or malformed, or when no record
         survives the filters: a snapshot over nothing is not a snapshot, and
         ``included_experience_ids`` is ``min_length=1`` for that reason.
+
+        ``clock`` MUST replay the original snapshot's ``created_at`` when rebuilding: the
+        derived id covers the workspace, window, rules and manifest but not ``created_at``,
+        while the sealed ``content_hash`` does, so a rebuild under a live clock produces the
+        same id with a different body and the append-only store refuses it as immutable.
+        That is deliberate — the rebuild is a *verification* of a stored snapshot, and the
+        thing verified is that the same inputs still give the same manifest digest.
         """
 
         window_start, window_end = window
@@ -572,6 +587,11 @@ async def materialize(
 
     The ids are re-sorted rather than trusted, so that a snapshot whose manifest was written
     by an older or a hand-edited writer still materialises in the canonical order.
+
+    The vocabulary check is skipped when the snapshot carries no ``vocab_digest`` label: a
+    writer that did not name its vocabulary cannot be held to one, and refusing such a
+    snapshot would make older or hand-edited documents unreadable rather than merely
+    unverifiable. The manifest digest still catches a mismatch downstream.
     """
 
     recorded_vocab = snapshot.labels.get("vocab_digest")

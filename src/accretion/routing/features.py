@@ -174,6 +174,10 @@ class Vocabulary:
     same column with the same value. :meth:`digest` is what a snapshot stores so that a
     later caller cannot quietly hand a different table to the same rows.
 
+    ``model_ids`` is indexed from two token spaces — ``ExecutionConfiguration.model.model_id``
+    at routing time and ``Experience.runtime_model`` at training time — so a snapshot must
+    freeze it over the *union* of both, or one side maps every token to ``OTHER_TOKEN``.
+
     Both tuples must arrive sorted and duplicate-free, and neither may contain
     :data:`OTHER_TOKEN`. That is checked rather than fixed up, because silently sorting a
     caller's list would mean two callers who passed the same tokens in different orders got
