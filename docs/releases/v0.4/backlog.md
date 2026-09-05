@@ -59,6 +59,33 @@ Until then the rule is narrow and enforceable: new v0.4 contract hashing goes th
 `accretion.contracts.canonical`, the seven sites stay byte-frozen, and no code compares a digest
 produced by one against a digest produced by the other.
 
+### Outcome (M8, PR `digests`) — three converged, four byte-frozen
+
+`tests/test_v04_m8_digests.py` measured all seven against the payloads this repository already
+commits, and ran green **before** any site was touched: every one of the seven is byte-identical
+under `canonical_json` on every committed payload. That is not sufficient to converge, because a
+committed payload is not the payload domain. The deciding question per site is whether a non-ASCII
+value is *reachable at runtime* and whether the digest is *persisted and compared*. Three sites
+answer no and were converged; four answer yes and now share one copy of the old expression in the
+new `src/accretion/digests.py` (`legacy_json_digest`), so there is one place left to change when
+the read-boundary upcaster (ADR-057) can finally carry the rehash.
+
+| Site | Outcome | Reason |
+|---|---|---|
+| `experience/embedding.py:46` `canonical_digest` | **converged** | Already passed `ensure_ascii=False`, so it agrees with `canonical_json` byte for byte on every payload *both* functions accept (there is no payload they both accept and serialize differently); `canonical_json` additionally refuses non-string object keys and non-finite floats, which now raise `CanonicalizationError` instead of digesting invalid JSON. Its persisted digests (`ExperienceEmbedding.input_digest`, segment `content_digest`, the three bundled plugin manifest digests) cannot move. |
+| `governance.py:1023` `seed_governance` | **converged**, no version bump | The payload is four code literals — plugin id, version, two built-in capability ids, one built-in skill id — so the domain is closed and entirely ASCII and the checksum is the same constant either way (`3328cb72…`, pinned in the test). Re-seeding a store that already holds the 1.0.0 row is proven idempotent. |
+| `live_sample.py:158` | **converged** | Not a digest: it serializes the expected artifact into the prompt that asks a provider to write `result.json`, and `verify_artifact` compares *parsed* objects, so the escaping cannot change a verdict or the recorded `artifact_sha256`. All ten frozen assignments serialize identically either way. |
+| `governance.py:271` `approval_binding` | **legacy** | `CapabilityRequest.arguments` is arbitrary caller-supplied JSON and the digest becomes an approval's `native_request_id`. |
+| `templates.py:73` `compute_template_checksum` | **legacy** | A template body carries free text, and `orchestration/materialize.py` builds one from a planner proposal. The checksum is persisted and re-verified at load and at run start. |
+| `mcp/manager.py:653` | **legacy** | The snapshot digest covers `server_info`, tool descriptions, resource names and prompt descriptions supplied by a *remote* server — the likeliest non-ASCII payload here — and is persisted as `McpDiscoverySnapshot.content_sha256`. |
+| `orchestration/validator.py:245` `normalized_hash` | **legacy** | Covers `DynamicWorkflowNodeSpec.objective`, four thousand characters of free planner text, persisted as `GraphValidationResult.normalized_graph_hash`. |
+
+No persisted digest moved: the built-in governance plugin checksum, the five built-in template
+checksums, the fragment-planner graph hash, the MCP discovery snapshot digest and the ASCII
+approval binding are all pinned as literal hex in the test, and each of the four legacy sites has a
+non-ASCII probe asserting the *site itself* still returns the legacy bytes. The narrow rule above
+survives unchanged for the four that remain.
+
 ## Parked beside v0.4
 
 The v0.3.1 operator-UI redesign (M9 of the v0.3 ladder) is parked after its stylesheet port
