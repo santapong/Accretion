@@ -262,6 +262,7 @@ def test_every_newer_minor_fixture_is_the_document_the_generator_produces(
     """The committed file and its ``complete.json`` cannot drift apart unnoticed."""
 
     assert load_newer_minor(model) == newer_minor_document(model)
+    assert fixture_path(model).read_text(encoding="utf-8") == serialize(newer_minor_document(model))
 
 
 @pytest.mark.parametrize("model", CONTRACT_INVENTORY, ids=IDS)

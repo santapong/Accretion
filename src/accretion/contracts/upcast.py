@@ -77,6 +77,18 @@ the same id. Nothing in this repository writes one back — the stores hand
 :func:`upcast` the row's payload and keep the row exactly as it found it — and a store test
 pins that.
 
+Three references in the family exist solely to be compared against those digests:
+``VerificationSpecRef.content_hash`` (the referenced spec's header digest),
+``NodeContractRef.immutable_hash`` (a promoted, indexed column) and
+``ObjectiveContractRef.objective_contract_hash``. A peer at a newer minor seals a spec as
+H1 and pins H1 in a node contract; this reader upcasts the spec, drops one unknown key and
+re-seals it as H2. The rule for whoever implements the ref-vs-record integrity check
+(ADR-044, SDD §8.3) is therefore explicit: a pinned digest MUST be compared against the
+digest carried by the stored payload (the row's ``content_hash`` / ``immutable_hash``
+column), never against the digest on the record ``upcast`` returned. Otherwise a
+well-formed peer reads as a forger on the one path the registry classifies as
+Major/fail-closed.
+
 **What is dropped is recorded, in the record itself.** Every v0.4 contract inherits
 ``labels`` from the registry §3 header, so the dropped key names go in
 ``labels[``:data:`UPCAST_DROPPED_KEYS_LABEL`\\ ``]`` on every contract without exception
@@ -85,6 +97,10 @@ into whatever read it — an explanation, an API response, a debugging session s
 later — while a log line is separated from its subject by the first process boundary it
 crosses. The label states what *this* projection dropped and replaces any value already
 present, because a merged value would be a claim about a projection nobody performed.
+Registry §3.2's reader rule for a Minor change reads "Preserve unknown field; may process".
+It is discharged by the untouched stored row (registry §20 decision 5, "never mutate stored
+event"), not by the projection: the reader's object carries the dropped key names, the row
+carries the values, and the row is what a later binary at the newer minor re-reads in full.
 
 **The other direction is free today and will not stay free.** A document that omits an
 optional field loads with the default and its seal still verifies, because ADR-056 hashes a
