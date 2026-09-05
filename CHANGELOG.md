@@ -78,7 +78,7 @@ The M9 ladder is parked after its stylesheet port; the entries below it are v0.4
   sha256 of every committed contract schema, the table that stores it and the migration
   that created it, checked by a test that also asserts every one of the fifteen tables has
   a frozen shape. The migration is reversible and no existing table, model, route or UI
-  file changes (#TBD).
+  file changes (#123).
 
 ### Added
 
