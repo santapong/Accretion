@@ -151,13 +151,6 @@ class ConfigurationCatalog:
         environments = tuple(
             sorted(self.environments, key=lambda item: item.environment.environment_id)
         )
-        runtime_keys = {
-            (item.runtime.runtime_id, item.runtime.adapter_version, item.model.model_id)
-            for item in runtime_models
-        }
-        tool_keys = {
-            (item.binding.capability.capability_id, item.binding.binding_id) for item in tools
-        }
         skill_keys = {(item.skill_id, item.version, item.package_digest) for item in skills}
         verifier_keys = {
             (item.verifier.verifier_contract_id, item.version, item.verifier.implementation_digest)
@@ -169,16 +162,15 @@ class ConfigurationCatalog:
             if option.runtime.model is not None and option.runtime.model != option.model.model_id:
                 raise CatalogError("runtime/model catalog entry names two different models")
         for configuration in self.fallback_bundle.configurations:
-            if (
-                configuration.runtime.runtime_id,
-                configuration.runtime.adapter_version,
-                configuration.model.model_id,
-            ) not in runtime_keys:
+            if not any(
+                configuration.runtime == item.runtime and configuration.model == item.model
+                for item in runtime_models
+            ):
                 raise CatalogError("fallback runtime/model is absent from its catalog")
             if configuration.environment not in environments:
                 raise CatalogError("fallback environment is absent from its catalog")
             if any(
-                (item.capability.capability_id, item.binding_id) not in tool_keys
+                not any(item == entry.binding for entry in tools)
                 for item in configuration.tools
             ):
                 raise CatalogError("fallback tool is absent from its catalog")
@@ -390,30 +382,21 @@ class ConfigurationCatalogFactory:
     def _validate_fallbacks(
         catalog: ConfigurationCatalog, snapshot: RoutingSnapshot
     ) -> None:
-        runtime_keys = {
-            (item.runtime.runtime_id, item.runtime.adapter_version, item.model.model_id)
-            for item in catalog.runtime_models
-        }
-        tools = {
-            (item.binding.capability.capability_id, item.binding.binding_id)
-            for item in catalog.tools
-        }
         skills = {(item.skill_id, item.version, item.package_digest) for item in catalog.skills}
         verifiers = {
             (item.verifier.verifier_contract_id, item.version, item.verifier.implementation_digest)
             for item in catalog.verifiers
         }
         for configuration in catalog.fallback_bundle.configurations:
-            if (
-                configuration.runtime.runtime_id,
-                configuration.runtime.adapter_version,
-                configuration.model.model_id,
-            ) not in runtime_keys:
+            if not any(
+                configuration.runtime == item.runtime and configuration.model == item.model
+                for item in catalog.runtime_models
+            ):
                 raise CatalogError("fallback runtime/model is absent from the observed catalog")
             if configuration.environment not in catalog.environments:
                 raise CatalogError("fallback environment is absent from the observed catalog")
             if any(
-                (tool.capability.capability_id, tool.binding_id) not in tools
+                not any(tool == entry.binding for entry in catalog.tools)
                 for tool in configuration.tools
             ):
                 raise CatalogError("fallback tool is absent from the observed catalog")

@@ -78,23 +78,27 @@ class CandidateBuilder:
         rejected: list[RejectedCandidate] = []
         decisions: list[CompatibilityDecision] = []
         tool_choices: list[tuple[ToolCatalogEntry, ...]] = []
-        missing_requirements: list[str] = []
+        resolution_failures: dict[str, str] = {}
         for requirement in node_contract.required_capabilities:
             capability_id = requirement.capability.capability_id
-            options = tuple(
+            registered = tuple(
                 entry
                 for entry in self.catalog.tools
                 if entry.binding.capability.capability_id == capability_id
                 and entry.binding.capability.capability_version
                 == requirement.capability.capability_version
-                and (
-                    not entry.connection_required
-                    or requirement.required_scope in entry.granted_scopes
-                )
                 and self._tool_is_in_snapshot(entry, snapshot)
             )
+            options = tuple(
+                entry
+                for entry in registered
+                if not entry.connection_required
+                or requirement.required_scope in entry.granted_scopes
+            )
             if not options:
-                missing_requirements.append(capability_id)
+                resolution_failures[capability_id] = (
+                    "SCOPE_INSUFFICIENT" if registered else "REQUIREMENT_UNAVAILABLE"
+                )
             tool_choices.append(options)
 
         requested_skills = tuple(dict.fromkeys(task.envelope.requested_skills))
@@ -106,20 +110,20 @@ class CandidateBuilder:
             )
             for skill_id in requested_skills
         ]
-        missing_requirements.extend(
-            skill_id
-            for skill_id, options in zip(requested_skills, skill_choices, strict=True)
-            if not options
-        )
-        if missing_requirements:
-            for missing in sorted(set(missing_requirements)):
+        for skill_id, available_skills in zip(
+            requested_skills, skill_choices, strict=True
+        ):
+            if not available_skills:
+                resolution_failures[skill_id] = "REQUIREMENT_UNAVAILABLE"
+        if resolution_failures:
+            for missing, reason_code in sorted(resolution_failures.items()):
                 rejected.append(
                     RejectedCandidate(
                         candidate_id=derived_id(
                             "configuration_candidate", routing_request_id, "missing", missing
                         ),
                         stage=ConstructionStage.RESOLVE_REQUIREMENTS,
-                        reason_code="REQUIREMENT_UNAVAILABLE",
+                        reason_code=reason_code,
                         detail=f"Required registry entry {missing!r} was unavailable.",
                     )
                 )

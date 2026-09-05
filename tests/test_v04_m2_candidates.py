@@ -4,6 +4,8 @@ import hashlib
 from dataclasses import replace
 from datetime import UTC, datetime
 
+import pytest
+
 from accretion.contracts import (
     AuthMode,
     Capability,
@@ -54,6 +56,7 @@ from accretion.persistence.store import MemoryStore
 from accretion.resolver import CapabilityResolver
 from accretion.routing.candidates import CandidateBuilder
 from accretion.routing.catalog import (
+    CatalogError,
     ConfigurationCatalog,
     ConfigurationCatalogFactory,
     FallbackBundle,
@@ -338,6 +341,36 @@ def test_unknown_required_capability_is_never_invented() -> None:
     assert [item.reason_code for item in result.rejected] == ["REQUIREMENT_UNAVAILABLE"]
 
 
+def test_connection_bound_capability_requires_the_frozen_scope() -> None:
+    node, snapshot, catalog, _ = world(fallback=False)
+    scoped_catalog = ConfigurationCatalog(
+        runtime_models=catalog.runtime_models,
+        tools=(
+            ToolCatalogEntry(
+                binding=catalog.tools[0].binding,
+                connection_required=True,
+                granted_scopes=("write",),
+            ),
+        ),
+        skills=catalog.skills,
+        verifiers=catalog.verifiers,
+        environments=catalog.environments,
+        fallback_bundle=FallbackBundle(),
+    )
+    builder = CandidateBuilder(
+        gate=PolicyGate(
+            CapabilityPolicyEngine(set()), snapshot.policy, created_by=PRINCIPAL
+        ),
+        evaluator=CompatibilityEngine(created_by=PRINCIPAL),
+        catalog=scoped_catalog,
+        created_by=PRINCIPAL,
+    )
+    result = build(builder, node, snapshot, task())
+
+    assert result.candidates == ()
+    assert result.rejected[0].reason_code == "SCOPE_INSUFFICIENT"
+
+
 def test_policy_refusal_removes_candidate_before_joint_compatibility() -> None:
     node, snapshot, _, builder = world()
     result = build(builder, node, snapshot, task(allowed=()))
@@ -362,6 +395,30 @@ def test_catalog_digest_changes_when_a_real_entry_changes() -> None:
     _, _, second, _ = world(models=("fake-model-v2",), fallback=False)
 
     assert first.digest != second.digest
+
+
+def test_fallback_cannot_claim_an_unregistered_runtime_profile() -> None:
+    node = node_contract()
+    resolved = capability()
+    tool = tool_entry(resolved)
+    original = fallback_configuration(node, tool)
+    payload = original.model_dump(mode="python")
+    payload["runtime"] = original.runtime.model_copy(
+        update={"capability_profile_digest": digest("invented-profile")}
+    )
+    payload["content_hash"] = ""
+    payload["configuration_hash"] = ""
+    invented = ExecutionConfiguration.model_validate(payload)
+
+    with pytest.raises(CatalogError, match="runtime/model"):
+        ConfigurationCatalog(
+            runtime_models=(runtime_model(),),
+            tools=(tool,),
+            skills=(SKILL,),
+            verifiers=(VERIFIER,),
+            environments=(ENVIRONMENT,),
+            fallback_bundle=FallbackBundle((invented,)),
+        )
 
 
 def test_fallback_digest_must_match_the_exact_snapshot() -> None:
