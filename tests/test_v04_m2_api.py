@@ -98,7 +98,7 @@ def _route_payload() -> dict[str, Any]:
         "node_contract_id": new_id("node_contract"),
         "expected_node_contract_hash": "a" * 64,
         "mode": "BASELINE_ONLY",
-        "expected_registry_snapshot_id": new_id("mcp_snapshot"),
+        "expected_registry_snapshot_id": "b" * 64,
     }
 
 

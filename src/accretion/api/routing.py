@@ -27,7 +27,7 @@ class RoutingRequestCreate(BaseModel):
     node_contract_id: str = Field(min_length=1, max_length=64)
     expected_node_contract_hash: str = Field(pattern=_DIGEST)
     mode: RoutingMode
-    expected_registry_snapshot_id: str = Field(min_length=1, max_length=64)
+    expected_registry_snapshot_id: str = Field(pattern=_DIGEST)
 
     @field_validator("routing_request_id")
     @classmethod
@@ -42,16 +42,6 @@ class RoutingRequestCreate(BaseModel):
         if not has_prefix(value, "node_contract"):
             raise ValueError("node_contract_id must be a canonical nct identifier")
         return value
-
-    @field_validator("expected_registry_snapshot_id")
-    @classmethod
-    def _registry_snapshot_id_is_canonical(cls, value: str) -> str:
-        if not has_prefix(value, "mcp_snapshot"):
-            raise ValueError(
-                "expected_registry_snapshot_id must be a canonical mcp identifier"
-            )
-        return value
-
 
 class RoutingOverrideCreate(BaseModel):
     """An attributed compare-and-set replacement of a persisted selection."""

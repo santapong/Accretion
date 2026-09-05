@@ -20,7 +20,10 @@ pytestmark = pytest.mark.asyncio
         ({"node_contract_id": "obj_wrong_kind"}, "node_contract_id"),
         ({"expected_node_contract_hash": "A" * 64}, "expected_node_contract_hash"),
         ({"expected_node_contract_hash": "0" * 63}, "expected_node_contract_hash"),
-        ({"expected_registry_snapshot_id": new_id("run")}, "expected_registry_snapshot_id"),
+        (
+            {"expected_registry_snapshot_id": new_id("mcp_snapshot")},
+            "expected_registry_snapshot_id",
+        ),
         ({"mode": "LEARNED"}, "mode"),
     ],
 )
