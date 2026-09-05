@@ -95,6 +95,7 @@ Both must pass before handoff.
 ## Local verification — 2026-09-06
 
 - Full backend suite: **2,972 passed, 6 intentionally skipped**.
+- M2 stage gate: **11 in scope, 11 proven, 0 unmet MUST**.
 - Acceptance: **133 in scope, 127 proven, 0 unmet MUST** (three frontend and
   three current manual records account for the other six in-scope criteria).
 - Five-part release gate: all conditions pass (acceptance, secret scans, policy
