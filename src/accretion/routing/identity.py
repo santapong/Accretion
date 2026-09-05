@@ -15,15 +15,10 @@ attempt, the snapshot, the policy — with :func:`accretion.ids.derived_id`, whi
 ``CanonicalContract.ID_KIND`` check keep working, and replaces the timestamp-and-randomness
 body with a digest over the parts.
 
-**The exception, named rather than hidden.** ``ids.py``'s prefix registry has no kind for a
-node *execution instance*: the field on
-:class:`~accretion.contracts.routing.NodeContract` is a free ``str`` and the M1.1 fixtures
-spell it ``"node-1#1"``. :func:`execution_instance_id` therefore derives under the ``run``
-kind, with a literal domain separator as its first part so that it cannot collide with any
-other value derived under that kind. The consequence is real and is recorded in
-``docs/releases/v0.4/m1-plan.md``: an execution instance id is shaped like a run id, so
-``has_prefix(value, "run")`` is true for both, and M2 — which is the milestone that first
-persists one — should mint the kind properly.
+M2 is the first milestone that persists a node execution instance.  It therefore has a
+dedicated ``exe_`` identity rather than borrowing the ``run_`` namespace used by the M1
+placeholder.  The digest remains a pure function of run, logical node key and attempt, so
+reconstructing an interrupted attempt restores the same identity.
 """
 
 from __future__ import annotations
@@ -55,16 +50,8 @@ from accretion.persistence.store import StateStore
 from accretion.routing.protocols import RoutingMode
 from accretion.routing.snapshot import RoutingSnapshot
 
-EXECUTION_INSTANCE_DOMAIN = "execution-instance"
-"""The domain separator that keeps an execution instance id out of the run id space.
-
-Inside the digest rather than in the prefix, because the prefix registry is closed to this
-module (see the module docstring). Two values derived under the ``run`` kind can only collide
-if their whole part lists are equal, and nothing else in the repository derives a run id at
-all — ``new_id("run")`` mints them — so this separator is belt and braces rather than the
-only guard. It is a named constant so that changing it is a visible change to every
-execution instance id, which is what it would be.
-"""
+EXECUTION_INSTANCE_DOMAIN = "execution-instance/v1"
+"""Versioned domain separator for deterministic node-execution identities."""
 
 
 def execution_instance_id(run_id: str, node_key: str, attempt: int) -> str:
@@ -89,7 +76,9 @@ def execution_instance_id(run_id: str, node_key: str, attempt: int) -> str:
             "and an attempt zero would give the first try the identity of a try that never "
             "happened"
         )
-    return derived_id("run", EXECUTION_INSTANCE_DOMAIN, run_id, node_key, str(attempt))
+    return derived_id(
+        "execution_instance", EXECUTION_INSTANCE_DOMAIN, run_id, node_key, str(attempt)
+    )
 
 
 def routing_request_id(

@@ -77,6 +77,7 @@ from accretion.contracts import (
     WorkflowTemplate,
     WorkspaceLease,
 )
+from accretion.contracts.routing import RoutingDecisionReceipt
 from accretion.ids import new_id
 from accretion.looping import (
     build_loop_execution,
@@ -92,7 +93,7 @@ from accretion.planning import (
     has_irreversible_capabilities,
 )
 from accretion.projections import build_graph_projection, build_loop_projection
-from accretion.routing.protocols import FeedbackPipeline, NodeRoutingService
+from accretion.routing.protocols import FeedbackPipeline, FrozenNode, NodeRoutingService
 from accretion.runtimes.common import make_event
 from accretion.templates import (
     compute_template_checksum,
@@ -226,6 +227,12 @@ class _GraphCursor:
     last_error: ErrorSummary | None = None
     stop_reason: LoopStopReason | None = None
     gate_wait_seconds: float = 0.0
+    # Routing is an opt-in sidecar.  Both maps are intentionally cursor-local: a running
+    # graph revision keeps the exact contract/receipt it started with even if a new graph
+    # revision is activated concurrently.  Durable recovery repopulates these through the
+    # routing service in M2.2.
+    frozen: dict[str, FrozenNode] = field(default_factory=dict)
+    receipts: dict[str, RoutingDecisionReceipt] = field(default_factory=dict)
 
 
 class RunManager:
@@ -1104,6 +1111,7 @@ class RunManager:
                 policy=policy,
                 deadline=deadline,
                 cursor=cursor,
+                graph_revision=graph.graph_revision,
             )
             if outcome is NodeOutcome.PAUSED:
                 await self._pause_graph(run)
@@ -1166,12 +1174,30 @@ class RunManager:
         policy: AcceptancePolicy,
         deadline: float,
         cursor: _GraphCursor,
+        graph_revision: int = 1,
     ) -> tuple[NodeOutcome, SessionRef]:
         from accretion.contracts import GateSpec
 
         spec = template_node if isinstance(template_node, WorkflowNodeSpec) else None
         entered_via = cursor.entry_edge_key
         cursor.entry_edge_key = None
+        if (
+            self.routing_service is not None
+            and spec is not None
+            and node.kind
+            in {GraphNodeKind.AGENT, GraphNodeKind.TOOL, GraphNodeKind.VERIFIER}
+            and node.key not in cursor.frozen
+        ):
+            cursor.frozen[node.key] = await self.routing_service.freeze(
+                run=run,
+                task=task,
+                node=node,
+                spec=spec,
+                template=template,
+                policy=policy,
+                graph_revision=graph_revision,
+                attempt=1,
+            )
         if node.kind is GraphNodeKind.TASK:
             if cursor.statuses.get(node.key) is GraphNodeStatus.SUCCEEDED:
                 return NodeOutcome.SUCCESS, session
