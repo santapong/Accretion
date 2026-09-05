@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 
@@ -18,6 +19,7 @@ from accretion.contracts import (
     MetaSkill,
     PrincipalRef,
     PrincipalStatus,
+    Project,
     Provider,
     ResolvedCapability,
     RiskLevel,
@@ -309,9 +311,17 @@ def world(*, models: tuple[str, ...] = ("fake-model",), fallback: bool = True):
     return node, snapshot, catalog, builder
 
 
-def build(builder: CandidateBuilder, node: NodeContract, snapshot: RoutingSnapshot, row: Task):
+def build(
+    builder: CandidateBuilder,
+    node: NodeContract,
+    snapshot: RoutingSnapshot,
+    row: Task,
+    *,
+    request_id: str | None = None,
+    at: datetime = NOW,
+):
     return builder.build(
-        routing_request_id=derived_id("routing_request", "m2-selector"),
+        routing_request_id=request_id or derived_id("routing_request", "m2-selector"),
         node_contract=node,
         task=row,
         principal=PRINCIPAL,
@@ -319,7 +329,7 @@ def build(builder: CandidateBuilder, node: NodeContract, snapshot: RoutingSnapsh
         snapshot=snapshot,
         workspace_id=WORKSPACE,
         project_id=PROJECT,
-        clock=lambda: NOW,
+        clock=lambda: at,
     )
 
 
@@ -331,6 +341,55 @@ def test_behaviorally_equivalent_tuples_are_deduplicated_by_configuration_hash()
     assert len(result.candidates) == 1
     assert result.candidates[0].fallback_eligible
     assert len({item.configuration.configuration_hash for item in result.candidates}) == 1
+
+
+@pytest.mark.asyncio
+async def test_compatibility_records_are_scoped_to_distinct_routing_attempts() -> None:
+    node, snapshot, _, builder = world()
+    second_payload = node.model_dump(mode="python")
+    second_payload.update(
+        contract_id=derived_id("node_contract", "m2-selector", "attempt-2"),
+        content_hash="",
+        immutable_hash="",
+        created_at=NOW + timedelta(minutes=1),
+        execution_instance_id="execution-two",
+    )
+    second_node = NodeContract.model_validate(second_payload)
+    first = build(
+        builder,
+        node,
+        snapshot,
+        task(),
+        request_id=derived_id("routing_request", "m2-selector", "attempt-1"),
+    )
+    second = build(
+        builder,
+        second_node,
+        snapshot,
+        task(),
+        request_id=derived_id("routing_request", "m2-selector", "attempt-2"),
+        at=NOW + timedelta(minutes=1),
+    )
+
+    first_ids = {decision.contract_id for decision in first.compatibility_decisions}
+    second_ids = {decision.contract_id for decision in second.compatibility_decisions}
+    assert first_ids.isdisjoint(second_ids)
+    assert all(
+        decision.labels["routing_request_id"].startswith("rrq_")
+        for decision in (*first.compatibility_decisions, *second.compatibility_decisions)
+    )
+
+    store = MemoryStore()
+    await store.create_project(
+        Project(project_id=PROJECT, name="M2 attempts", repository_path=Path("/tmp"))
+    )
+    for decision in (*first.compatibility_decisions, *second.compatibility_decisions):
+        await store.put_compatibility_decision(decision)
+    assert len(
+        await store.list_compatibility_decisions(
+            workspace_id=WORKSPACE, project_id=PROJECT
+        )
+    ) == len(first.compatibility_decisions) + len(second.compatibility_decisions)
 
 
 def test_unknown_required_capability_is_never_invented() -> None:

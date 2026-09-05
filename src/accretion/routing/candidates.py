@@ -260,7 +260,11 @@ class CandidateBuilder:
                 project_id=project_id,
                 clock=lambda: at,
             )
-            decisions.extend(evaluation.decisions())
+            evaluation_decisions = tuple(
+                self._scope_decision(decision, routing_request_id)
+                for decision in evaluation.decisions()
+            )
+            decisions.extend(evaluation_decisions)
             if not evaluation.eligible():
                 refusal = next(
                     decision
@@ -290,13 +294,13 @@ class CandidateBuilder:
                     configuration=configuration,
                     construction_stage=ConstructionStage.PREDICT_OUTCOME,
                     hard_eligible=True,
-                    compatibility_decision_refs=[
-                        decision.contract_id for decision in evaluation.decisions()
-                    ],
                     predicted=predictions,
                     uncertainty_score=0.5,
                     lower_confidence_success=predictions.node_verified_success.lower_bound,
                     fallback_eligible=configuration.configuration_hash in fallback_hashes,
+                    compatibility_decision_refs=[
+                        decision.contract_id for decision in evaluation_decisions
+                    ],
                 )
             )
 
@@ -330,6 +334,33 @@ class CandidateBuilder:
                     )
                 )
         return CandidateBuildResult(tuple(kept), tuple(rejected), tuple(decisions))
+
+    @staticmethod
+    def _scope_decision(
+        decision: CompatibilityDecision, routing_request_id: str
+    ) -> CompatibilityDecision:
+        """Bind a reusable M1 verdict to the M2 request that evaluated it.
+
+        The M1 engine deliberately gives an equal subject/world/verdict one stable id.
+        M2 evaluates that verdict at the routing request's persisted clock, which is part
+        of the decision body.  Without a request scope, a later node attempt in the same
+        unchanged world reuses the M1 id with a different ``evaluated_at`` and the
+        append-only store correctly rejects it as content drift.
+
+        Retain the M1 id as an input rather than changing the frozen M1 identity contract.
+        A retry of one routing request remains byte-identical, while a distinct request or
+        node attempt has a distinct persisted compatibility record.
+        """
+
+        payload = decision.model_dump(mode="python")
+        payload.update(
+            contract_id=derived_id(
+                "compatibility_decision", routing_request_id, decision.contract_id
+            ),
+            content_hash="",
+            labels={**decision.labels, "routing_request_id": routing_request_id},
+        )
+        return CompatibilityDecision.model_validate(payload)
 
     @staticmethod
     def _runtime_is_in_snapshot(
