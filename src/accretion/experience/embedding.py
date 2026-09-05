@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import math
 import re
 import unicodedata
@@ -10,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from accretion.contracts import Task, TaskProfile
+from accretion.contracts.canonical import canonical_json
 from accretion.experience.models import (
     EXPERIENCE_EMBEDDING_VERSION,
     EXPERIENCE_VECTOR_DIMENSIONS,
@@ -43,8 +43,13 @@ class EmbeddingResult:
 
 
 def canonical_digest(value: Any) -> str:
-    payload = json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    return hashlib.sha256(payload.encode()).hexdigest()
+    # Converged onto ADR-056 canonical JSON in M8. This site already passed
+    # ``ensure_ascii=False``, so it agrees with ``canonical_json`` byte for byte on every
+    # payload ``json.dumps`` would have accepted --- not merely on the committed ones ---
+    # and none of the digests it persists can move. ``canonical_json`` and not
+    # ``content_hash``: callers pass arbitrary parsed content, which may legitimately carry
+    # a top-level ``content_hash`` key that this digest must still commit to.
+    return hashlib.sha256(canonical_json(value)).hexdigest()
 
 
 def repository_manifests(repository: Path) -> list[str]:
