@@ -1,0 +1,2009 @@
+{
+  "suite_version": "v1",
+  "tasks": [
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.826908,
+        "CODEX|1.9.0": 0.669857,
+        "DETERMINISTIC|1.0.0": 0.466434,
+        "OPENCODE|0.7.0": 0.784387
+      },
+      "node_class": "IMPLEMENTATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.230778,
+        "cnf-claude-sonnet-lean": 0.907112,
+        "cnf-codex-mini": 0.242755,
+        "cnf-codex-standard": 0.355276,
+        "cnf-deterministic-scripted": 0.710601,
+        "cnf-opencode-local": 0.3684
+      },
+      "planner_choice": "cnf-claude-sonnet-lean",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.760081,
+        "cnf-claude-sonnet-lean": 0.73913,
+        "cnf-codex-mini": 0.57423,
+        "cnf-codex-standard": 0.7355,
+        "cnf-deterministic-scripted": 0.38644,
+        "cnf-opencode-local": 0.557601
+      },
+      "project_id": "prj-router-cli-generator",
+      "run_id": "run-prj-router-cli-generator",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "BUSY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "LOOP",
+      "task_id": "prj-router-cli-generator-n0"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.825223,
+        "CODEX|1.9.0": 0.753681,
+        "DETERMINISTIC|1.0.0": 0.37002,
+        "OPENCODE|0.7.0": 0.568336
+      },
+      "node_class": "ANALYSIS",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.402944,
+        "cnf-claude-sonnet-lean": 0.61504,
+        "cnf-codex-mini": 0.249342,
+        "cnf-codex-standard": 0.585182,
+        "cnf-deterministic-scripted": 0.853668,
+        "cnf-opencode-local": 0.372335
+      },
+      "planner_choice": "cnf-claude-opus-full",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.751557,
+        "cnf-claude-sonnet-lean": 0.693348,
+        "cnf-codex-mini": 0.503582,
+        "cnf-codex-standard": 0.833443,
+        "cnf-deterministic-scripted": 0.363279,
+        "cnf-opencode-local": 0.418473
+      },
+      "project_id": "prj-router-cli-generator",
+      "run_id": "run-prj-router-cli-generator",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "DEGRADED"
+        }
+      ],
+      "strategy_decision": "GRAPH",
+      "task_id": "prj-router-cli-generator-n1"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.509661,
+        "CODEX|1.9.0": 0.573479,
+        "DETERMINISTIC|1.0.0": 0.890268,
+        "OPENCODE|0.7.0": 0.866196
+      },
+      "node_class": "VERIFICATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.922774,
+        "cnf-claude-sonnet-lean": 0.79189,
+        "cnf-codex-mini": 0.268666,
+        "cnf-codex-standard": 0.485349,
+        "cnf-deterministic-scripted": 0.548628,
+        "cnf-opencode-local": 0.700863
+      },
+      "planner_choice": "cnf-codex-standard",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.939323,
+        "cnf-claude-sonnet-lean": 0.69484,
+        "cnf-codex-mini": 0.658715,
+        "cnf-codex-standard": 0.66651,
+        "cnf-deterministic-scripted": 0.461466,
+        "cnf-opencode-local": 0.503158
+      },
+      "project_id": "prj-router-cli-generator",
+      "run_id": "run-prj-router-cli-generator",
+      "runtime_health": [],
+      "strategy_decision": "HYBRID",
+      "task_id": "prj-router-cli-generator-n2"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.522742,
+        "CODEX|1.9.0": 0.638505,
+        "DETERMINISTIC|1.0.0": 0.400525,
+        "OPENCODE|0.7.0": 0.665463
+      },
+      "node_class": "ANALYSIS",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.269655,
+        "cnf-claude-sonnet-lean": 0.212326,
+        "cnf-codex-mini": 0.885584,
+        "cnf-codex-standard": 0.940181,
+        "cnf-deterministic-scripted": 0.609329,
+        "cnf-opencode-local": 0.285924
+      },
+      "planner_choice": "cnf-opencode-local",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.751098,
+        "cnf-claude-sonnet-lean": 0.634007,
+        "cnf-codex-mini": 0.47578,
+        "cnf-codex-standard": 0.714923,
+        "cnf-deterministic-scripted": 0.402853,
+        "cnf-opencode-local": 0.382488
+      },
+      "project_id": "prj-router-cli-scaffold",
+      "run_id": "run-prj-router-cli-scaffold",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "BUSY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "DIRECT",
+      "task_id": "prj-router-cli-scaffold-n0"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.464661,
+        "CODEX|1.9.0": 0.649516,
+        "DETERMINISTIC|1.0.0": 0.832795,
+        "OPENCODE|0.7.0": 0.780771
+      },
+      "node_class": "VERIFICATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.469223,
+        "cnf-claude-sonnet-lean": 0.749095,
+        "cnf-codex-mini": 0.826917,
+        "cnf-codex-standard": 0.626705,
+        "cnf-deterministic-scripted": 0.50297,
+        "cnf-opencode-local": 0.879734
+      },
+      "planner_choice": "cnf-opencode-local",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.781416,
+        "cnf-claude-sonnet-lean": 0.776548,
+        "cnf-codex-mini": 0.555258,
+        "cnf-codex-standard": 0.861526,
+        "cnf-deterministic-scripted": 0.241785,
+        "cnf-opencode-local": 0.554607
+      },
+      "project_id": "prj-router-cli-scaffold",
+      "run_id": "run-prj-router-cli-scaffold",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "BUSY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "LOOP",
+      "task_id": "prj-router-cli-scaffold-n1"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.854778,
+        "CODEX|1.9.0": 0.431557,
+        "DETERMINISTIC|1.0.0": 0.686137,
+        "OPENCODE|0.7.0": 0.825561
+      },
+      "node_class": "MIGRATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.852702,
+        "cnf-claude-sonnet-lean": 0.209913,
+        "cnf-codex-mini": 0.586153,
+        "cnf-codex-standard": 0.503886,
+        "cnf-deterministic-scripted": 0.759415,
+        "cnf-opencode-local": 0.768747
+      },
+      "planner_choice": "cnf-claude-opus-full",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.797614,
+        "cnf-claude-sonnet-lean": 0.636795,
+        "cnf-codex-mini": 0.617492,
+        "cnf-codex-standard": 0.724891,
+        "cnf-deterministic-scripted": 0.37882,
+        "cnf-opencode-local": 0.547007
+      },
+      "project_id": "prj-router-cli-scaffold",
+      "run_id": "run-prj-router-cli-scaffold",
+      "runtime_health": [],
+      "strategy_decision": "GRAPH",
+      "task_id": "prj-router-cli-scaffold-n2"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.373858,
+        "CODEX|1.9.0": 0.448445,
+        "DETERMINISTIC|1.0.0": 0.830521,
+        "OPENCODE|0.7.0": 0.541722
+      },
+      "node_class": "VERIFICATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.543227,
+        "cnf-claude-sonnet-lean": 0.278581,
+        "cnf-codex-mini": 0.273305,
+        "cnf-codex-standard": 0.267672,
+        "cnf-deterministic-scripted": 0.578395,
+        "cnf-opencode-local": 0.397015
+      },
+      "planner_choice": "cnf-claude-opus-full",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.901899,
+        "cnf-claude-sonnet-lean": 0.693967,
+        "cnf-codex-mini": 0.61565,
+        "cnf-codex-standard": 0.850219,
+        "cnf-deterministic-scripted": 0.338458,
+        "cnf-opencode-local": 0.491283
+      },
+      "project_id": "prj-router-infra-terraform",
+      "run_id": "run-prj-router-infra-terraform",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "BUSY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "BUSY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "HYBRID",
+      "task_id": "prj-router-infra-terraform-n0"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.453067,
+        "CODEX|1.9.0": 0.418424,
+        "DETERMINISTIC|1.0.0": 0.521807,
+        "OPENCODE|0.7.0": 0.395014
+      },
+      "node_class": "MIGRATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.897075,
+        "cnf-claude-sonnet-lean": 0.65183,
+        "cnf-codex-mini": 0.461793,
+        "cnf-codex-standard": 0.801186,
+        "cnf-deterministic-scripted": 0.288423,
+        "cnf-opencode-local": 0.693853
+      },
+      "planner_choice": "cnf-codex-standard",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.751734,
+        "cnf-claude-sonnet-lean": 0.605566,
+        "cnf-codex-mini": 0.49057,
+        "cnf-codex-standard": 0.808574,
+        "cnf-deterministic-scripted": 0.468613,
+        "cnf-opencode-local": 0.445301
+      },
+      "project_id": "prj-router-infra-terraform",
+      "run_id": "run-prj-router-infra-terraform",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "DIRECT",
+      "task_id": "prj-router-infra-terraform-n1"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.748459,
+        "CODEX|1.9.0": 0.465207,
+        "DETERMINISTIC|1.0.0": 0.772855,
+        "OPENCODE|0.7.0": 0.770131
+      },
+      "node_class": "IMPLEMENTATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.519687,
+        "cnf-claude-sonnet-lean": 0.729198,
+        "cnf-codex-mini": 0.802364,
+        "cnf-codex-standard": 0.201033,
+        "cnf-deterministic-scripted": 0.327389,
+        "cnf-opencode-local": 0.465462
+      },
+      "planner_choice": "cnf-codex-standard",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.790628,
+        "cnf-claude-sonnet-lean": 0.699966,
+        "cnf-codex-mini": 0.676731,
+        "cnf-codex-standard": 0.708032,
+        "cnf-deterministic-scripted": 0.332076,
+        "cnf-opencode-local": 0.46621
+      },
+      "project_id": "prj-router-infra-terraform",
+      "run_id": "run-prj-router-infra-terraform",
+      "runtime_health": [],
+      "strategy_decision": "LOOP",
+      "task_id": "prj-router-infra-terraform-n2"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.725997,
+        "CODEX|1.9.0": 0.590878,
+        "DETERMINISTIC|1.0.0": 0.814303,
+        "OPENCODE|0.7.0": 0.643029
+      },
+      "node_class": "MIGRATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.923247,
+        "cnf-claude-sonnet-lean": 0.873437,
+        "cnf-codex-mini": 0.385798,
+        "cnf-codex-standard": 0.925216,
+        "cnf-deterministic-scripted": 0.589184,
+        "cnf-opencode-local": 0.669656
+      },
+      "planner_choice": "cnf-opencode-local",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.888538,
+        "cnf-claude-sonnet-lean": 0.758769,
+        "cnf-codex-mini": 0.503639,
+        "cnf-codex-standard": 0.84918,
+        "cnf-deterministic-scripted": 0.398955,
+        "cnf-opencode-local": 0.465915
+      },
+      "project_id": "prj-router-paper-baseline",
+      "run_id": "run-prj-router-paper-baseline",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "BUSY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "BUSY"
+        }
+      ],
+      "strategy_decision": "GRAPH",
+      "task_id": "prj-router-paper-baseline-n0"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.779495,
+        "CODEX|1.9.0": 0.474103,
+        "DETERMINISTIC|1.0.0": 0.600316,
+        "OPENCODE|0.7.0": 0.358376
+      },
+      "node_class": "IMPLEMENTATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.877758,
+        "cnf-claude-sonnet-lean": 0.792631,
+        "cnf-codex-mini": 0.870892,
+        "cnf-codex-standard": 0.672218,
+        "cnf-deterministic-scripted": 0.289048,
+        "cnf-opencode-local": 0.769882
+      },
+      "planner_choice": "cnf-claude-opus-full",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.800957,
+        "cnf-claude-sonnet-lean": 0.622551,
+        "cnf-codex-mini": 0.561413,
+        "cnf-codex-standard": 0.692735,
+        "cnf-deterministic-scripted": 0.258828,
+        "cnf-opencode-local": 0.603075
+      },
+      "project_id": "prj-router-paper-baseline",
+      "run_id": "run-prj-router-paper-baseline",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "HYBRID",
+      "task_id": "prj-router-paper-baseline-n1"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.580314,
+        "CODEX|1.9.0": 0.897095,
+        "DETERMINISTIC|1.0.0": 0.727404,
+        "OPENCODE|0.7.0": 0.620816
+      },
+      "node_class": "ANALYSIS",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.712449,
+        "cnf-claude-sonnet-lean": 0.846151,
+        "cnf-codex-mini": 0.663485,
+        "cnf-codex-standard": 0.569794,
+        "cnf-deterministic-scripted": 0.459143,
+        "cnf-opencode-local": 0.724182
+      },
+      "planner_choice": "cnf-codex-standard",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.969193,
+        "cnf-claude-sonnet-lean": 0.631405,
+        "cnf-codex-mini": 0.670462,
+        "cnf-codex-standard": 0.703507,
+        "cnf-deterministic-scripted": 0.316573,
+        "cnf-opencode-local": 0.415377
+      },
+      "project_id": "prj-router-paper-baseline",
+      "run_id": "run-prj-router-paper-baseline",
+      "runtime_health": [],
+      "strategy_decision": "DIRECT",
+      "task_id": "prj-router-paper-baseline-n2"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.380051,
+        "CODEX|1.9.0": 0.415741,
+        "DETERMINISTIC|1.0.0": 0.644236,
+        "OPENCODE|0.7.0": 0.875069
+      },
+      "node_class": "IMPLEMENTATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.634202,
+        "cnf-claude-sonnet-lean": 0.624395,
+        "cnf-codex-mini": 0.586763,
+        "cnf-codex-standard": 0.677503,
+        "cnf-deterministic-scripted": 0.632502,
+        "cnf-opencode-local": 0.826057
+      },
+      "planner_choice": "cnf-codex-standard",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.96502,
+        "cnf-claude-sonnet-lean": 0.763112,
+        "cnf-codex-mini": 0.587156,
+        "cnf-codex-standard": 0.709816,
+        "cnf-deterministic-scripted": 0.448932,
+        "cnf-opencode-local": 0.39663
+      },
+      "project_id": "prj-router-paper-benchmark",
+      "run_id": "run-prj-router-paper-benchmark",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "BUSY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "LOOP",
+      "task_id": "prj-router-paper-benchmark-n0"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.44583,
+        "CODEX|1.9.0": 0.36412,
+        "DETERMINISTIC|1.0.0": 0.433366,
+        "OPENCODE|0.7.0": 0.718778
+      },
+      "node_class": "ANALYSIS",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.478773,
+        "cnf-claude-sonnet-lean": 0.723211,
+        "cnf-codex-mini": 0.673183,
+        "cnf-codex-standard": 0.922982,
+        "cnf-deterministic-scripted": 0.793629,
+        "cnf-opencode-local": 0.494495
+      },
+      "planner_choice": "cnf-claude-sonnet-lean",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.888608,
+        "cnf-claude-sonnet-lean": 0.66043,
+        "cnf-codex-mini": 0.579818,
+        "cnf-codex-standard": 0.823454,
+        "cnf-deterministic-scripted": 0.382592,
+        "cnf-opencode-local": 0.577315
+      },
+      "project_id": "prj-router-paper-benchmark",
+      "run_id": "run-prj-router-paper-benchmark",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "GRAPH",
+      "task_id": "prj-router-paper-benchmark-n1"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.772797,
+        "CODEX|1.9.0": 0.604573,
+        "DETERMINISTIC|1.0.0": 0.47403,
+        "OPENCODE|0.7.0": 0.558047
+      },
+      "node_class": "VERIFICATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.822928,
+        "cnf-claude-sonnet-lean": 0.912965,
+        "cnf-codex-mini": 0.877576,
+        "cnf-codex-standard": 0.457456,
+        "cnf-deterministic-scripted": 0.577837,
+        "cnf-opencode-local": 0.829292
+      },
+      "planner_choice": "cnf-claude-opus-full",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.799564,
+        "cnf-claude-sonnet-lean": 0.82492,
+        "cnf-codex-mini": 0.65086,
+        "cnf-codex-standard": 0.682016,
+        "cnf-deterministic-scripted": 0.374782,
+        "cnf-opencode-local": 0.581695
+      },
+      "project_id": "prj-router-paper-benchmark",
+      "run_id": "run-prj-router-paper-benchmark",
+      "runtime_health": [],
+      "strategy_decision": "HYBRID",
+      "task_id": "prj-router-paper-benchmark-n2"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.887184,
+        "CODEX|1.9.0": 0.392744,
+        "DETERMINISTIC|1.0.0": 0.625128,
+        "OPENCODE|0.7.0": 0.851495
+      },
+      "node_class": "ANALYSIS",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.659161,
+        "cnf-claude-sonnet-lean": 0.31005,
+        "cnf-codex-mini": 0.725045,
+        "cnf-codex-standard": 0.922968,
+        "cnf-deterministic-scripted": 0.719281,
+        "cnf-opencode-local": 0.417235
+      },
+      "planner_choice": "cnf-codex-standard",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.972221,
+        "cnf-claude-sonnet-lean": 0.833882,
+        "cnf-codex-mini": 0.672537,
+        "cnf-codex-standard": 0.760201,
+        "cnf-deterministic-scripted": 0.355747,
+        "cnf-opencode-local": 0.37237
+      },
+      "project_id": "prj-router-paper-extension",
+      "run_id": "run-prj-router-paper-extension",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "BUSY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "BUSY"
+        }
+      ],
+      "strategy_decision": "DIRECT",
+      "task_id": "prj-router-paper-extension-n0"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.555573,
+        "CODEX|1.9.0": 0.683711,
+        "DETERMINISTIC|1.0.0": 0.587471,
+        "OPENCODE|0.7.0": 0.722768
+      },
+      "node_class": "VERIFICATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.703025,
+        "cnf-claude-sonnet-lean": 0.46185,
+        "cnf-codex-mini": 0.534191,
+        "cnf-codex-standard": 0.390855,
+        "cnf-deterministic-scripted": 0.736928,
+        "cnf-opencode-local": 0.86802
+      },
+      "planner_choice": "cnf-deterministic-scripted",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.943091,
+        "cnf-claude-sonnet-lean": 0.635607,
+        "cnf-codex-mini": 0.556896,
+        "cnf-codex-standard": 0.803363,
+        "cnf-deterministic-scripted": 0.454683,
+        "cnf-opencode-local": 0.503276
+      },
+      "project_id": "prj-router-paper-extension",
+      "run_id": "run-prj-router-paper-extension",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "BUSY"
+        }
+      ],
+      "strategy_decision": "LOOP",
+      "task_id": "prj-router-paper-extension-n1"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.497096,
+        "CODEX|1.9.0": 0.853189,
+        "DETERMINISTIC|1.0.0": 0.764734,
+        "OPENCODE|0.7.0": 0.705068
+      },
+      "node_class": "MIGRATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.668435,
+        "cnf-claude-sonnet-lean": 0.318892,
+        "cnf-codex-mini": 0.338485,
+        "cnf-codex-standard": 0.322223,
+        "cnf-deterministic-scripted": 0.765887,
+        "cnf-opencode-local": 0.30079
+      },
+      "planner_choice": "cnf-claude-sonnet-lean",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.765824,
+        "cnf-claude-sonnet-lean": 0.699305,
+        "cnf-codex-mini": 0.689171,
+        "cnf-codex-standard": 0.751572,
+        "cnf-deterministic-scripted": 0.233245,
+        "cnf-opencode-local": 0.55932
+      },
+      "project_id": "prj-router-paper-extension",
+      "run_id": "run-prj-router-paper-extension",
+      "runtime_health": [],
+      "strategy_decision": "GRAPH",
+      "task_id": "prj-router-paper-extension-n2"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.723675,
+        "CODEX|1.9.0": 0.371913,
+        "DETERMINISTIC|1.0.0": 0.367197,
+        "OPENCODE|0.7.0": 0.574691
+      },
+      "node_class": "IMPLEMENTATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.768663,
+        "cnf-claude-sonnet-lean": 0.513551,
+        "cnf-codex-mini": 0.517107,
+        "cnf-codex-standard": 0.902486,
+        "cnf-deterministic-scripted": 0.861242,
+        "cnf-opencode-local": 0.630682
+      },
+      "planner_choice": "cnf-claude-sonnet-lean",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.89473,
+        "cnf-claude-sonnet-lean": 0.824972,
+        "cnf-codex-mini": 0.662308,
+        "cnf-codex-standard": 0.816367,
+        "cnf-deterministic-scripted": 0.381645,
+        "cnf-opencode-local": 0.546191
+      },
+      "project_id": "prj-router-docs-site",
+      "run_id": "run-prj-router-docs-site",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "HYBRID",
+      "task_id": "prj-router-docs-site-n0"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.579718,
+        "CODEX|1.9.0": 0.574898,
+        "DETERMINISTIC|1.0.0": 0.711933,
+        "OPENCODE|0.7.0": 0.634917
+      },
+      "node_class": "ANALYSIS",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.287986,
+        "cnf-claude-sonnet-lean": 0.869779,
+        "cnf-codex-mini": 0.561684,
+        "cnf-codex-standard": 0.686364,
+        "cnf-deterministic-scripted": 0.441222,
+        "cnf-opencode-local": 0.887502
+      },
+      "planner_choice": "cnf-opencode-local",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.871189,
+        "cnf-claude-sonnet-lean": 0.681641,
+        "cnf-codex-mini": 0.697407,
+        "cnf-codex-standard": 0.871093,
+        "cnf-deterministic-scripted": 0.261228,
+        "cnf-opencode-local": 0.511859
+      },
+      "project_id": "prj-router-docs-site",
+      "run_id": "run-prj-router-docs-site",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "DIRECT",
+      "task_id": "prj-router-docs-site-n1"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.380755,
+        "CODEX|1.9.0": 0.829546,
+        "DETERMINISTIC|1.0.0": 0.783281,
+        "OPENCODE|0.7.0": 0.863342
+      },
+      "node_class": "VERIFICATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.666777,
+        "cnf-claude-sonnet-lean": 0.344566,
+        "cnf-codex-mini": 0.692486,
+        "cnf-codex-standard": 0.742702,
+        "cnf-deterministic-scripted": 0.301061,
+        "cnf-opencode-local": 0.900389
+      },
+      "planner_choice": "cnf-deterministic-scripted",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.865571,
+        "cnf-claude-sonnet-lean": 0.602895,
+        "cnf-codex-mini": 0.573845,
+        "cnf-codex-standard": 0.861492,
+        "cnf-deterministic-scripted": 0.437458,
+        "cnf-opencode-local": 0.496754
+      },
+      "project_id": "prj-router-docs-site",
+      "run_id": "run-prj-router-docs-site",
+      "runtime_health": [],
+      "strategy_decision": "LOOP",
+      "task_id": "prj-router-docs-site-n2"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.778992,
+        "CODEX|1.9.0": 0.899677,
+        "DETERMINISTIC|1.0.0": 0.813652,
+        "OPENCODE|0.7.0": 0.706993
+      },
+      "node_class": "ANALYSIS",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.304302,
+        "cnf-claude-sonnet-lean": 0.329344,
+        "cnf-codex-mini": 0.517465,
+        "cnf-codex-standard": 0.380981,
+        "cnf-deterministic-scripted": 0.522356,
+        "cnf-opencode-local": 0.898047
+      },
+      "planner_choice": "cnf-claude-opus-full",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.748724,
+        "cnf-claude-sonnet-lean": 0.759148,
+        "cnf-codex-mini": 0.621115,
+        "cnf-codex-standard": 0.785803,
+        "cnf-deterministic-scripted": 0.232398,
+        "cnf-opencode-local": 0.478664
+      },
+      "project_id": "prj-router-etl-batch",
+      "run_id": "run-prj-router-etl-batch",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "DEGRADED"
+        }
+      ],
+      "strategy_decision": "GRAPH",
+      "task_id": "prj-router-etl-batch-n0"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.74566,
+        "CODEX|1.9.0": 0.655924,
+        "DETERMINISTIC|1.0.0": 0.589327,
+        "OPENCODE|0.7.0": 0.469183
+      },
+      "node_class": "VERIFICATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.694246,
+        "cnf-claude-sonnet-lean": 0.759227,
+        "cnf-codex-mini": 0.347713,
+        "cnf-codex-standard": 0.566172,
+        "cnf-deterministic-scripted": 0.472028,
+        "cnf-opencode-local": 0.648944
+      },
+      "planner_choice": "cnf-claude-opus-full",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.764038,
+        "cnf-claude-sonnet-lean": 0.678487,
+        "cnf-codex-mini": 0.689555,
+        "cnf-codex-standard": 0.6709,
+        "cnf-deterministic-scripted": 0.426417,
+        "cnf-opencode-local": 0.563202
+      },
+      "project_id": "prj-router-etl-batch",
+      "run_id": "run-prj-router-etl-batch",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "BUSY"
+        }
+      ],
+      "strategy_decision": "HYBRID",
+      "task_id": "prj-router-etl-batch-n1"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.778836,
+        "CODEX|1.9.0": 0.4979,
+        "DETERMINISTIC|1.0.0": 0.823614,
+        "OPENCODE|0.7.0": 0.608314
+      },
+      "node_class": "MIGRATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.783703,
+        "cnf-claude-sonnet-lean": 0.318806,
+        "cnf-codex-mini": 0.721638,
+        "cnf-codex-standard": 0.467632,
+        "cnf-deterministic-scripted": 0.50618,
+        "cnf-opencode-local": 0.768319
+      },
+      "planner_choice": "cnf-claude-opus-full",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.757429,
+        "cnf-claude-sonnet-lean": 0.787706,
+        "cnf-codex-mini": 0.470536,
+        "cnf-codex-standard": 0.663229,
+        "cnf-deterministic-scripted": 0.36674,
+        "cnf-opencode-local": 0.410971
+      },
+      "project_id": "prj-router-etl-batch",
+      "run_id": "run-prj-router-etl-batch",
+      "runtime_health": [],
+      "strategy_decision": "DIRECT",
+      "task_id": "prj-router-etl-batch-n2"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.751744,
+        "CODEX|1.9.0": 0.468489,
+        "DETERMINISTIC|1.0.0": 0.766438,
+        "OPENCODE|0.7.0": 0.804413
+      },
+      "node_class": "VERIFICATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.879232,
+        "cnf-claude-sonnet-lean": 0.226561,
+        "cnf-codex-mini": 0.88385,
+        "cnf-codex-standard": 0.450166,
+        "cnf-deterministic-scripted": 0.249385,
+        "cnf-opencode-local": 0.740907
+      },
+      "planner_choice": "cnf-opencode-local",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.790861,
+        "cnf-claude-sonnet-lean": 0.812779,
+        "cnf-codex-mini": 0.498751,
+        "cnf-codex-standard": 0.691113,
+        "cnf-deterministic-scripted": 0.419022,
+        "cnf-opencode-local": 0.524665
+      },
+      "project_id": "prj-router-etl-batch-fork",
+      "run_id": "run-prj-router-etl-batch-fork",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "BUSY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "DEGRADED"
+        }
+      ],
+      "strategy_decision": "LOOP",
+      "task_id": "prj-router-etl-batch-fork-n0"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.817633,
+        "CODEX|1.9.0": 0.723954,
+        "DETERMINISTIC|1.0.0": 0.450901,
+        "OPENCODE|0.7.0": 0.639031
+      },
+      "node_class": "MIGRATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.691228,
+        "cnf-claude-sonnet-lean": 0.500018,
+        "cnf-codex-mini": 0.303217,
+        "cnf-codex-standard": 0.336052,
+        "cnf-deterministic-scripted": 0.222345,
+        "cnf-opencode-local": 0.207988
+      },
+      "planner_choice": "cnf-codex-standard",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.792833,
+        "cnf-claude-sonnet-lean": 0.720913,
+        "cnf-codex-mini": 0.587767,
+        "cnf-codex-standard": 0.720888,
+        "cnf-deterministic-scripted": 0.264657,
+        "cnf-opencode-local": 0.403809
+      },
+      "project_id": "prj-router-etl-batch-fork",
+      "run_id": "run-prj-router-etl-batch-fork",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "BUSY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "BUSY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "GRAPH",
+      "task_id": "prj-router-etl-batch-fork-n1"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.787702,
+        "CODEX|1.9.0": 0.520597,
+        "DETERMINISTIC|1.0.0": 0.509273,
+        "OPENCODE|0.7.0": 0.463889
+      },
+      "node_class": "IMPLEMENTATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.572262,
+        "cnf-claude-sonnet-lean": 0.448434,
+        "cnf-codex-mini": 0.535819,
+        "cnf-codex-standard": 0.374173,
+        "cnf-deterministic-scripted": 0.22764,
+        "cnf-opencode-local": 0.657536
+      },
+      "planner_choice": "cnf-claude-opus-full",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.786325,
+        "cnf-claude-sonnet-lean": 0.637896,
+        "cnf-codex-mini": 0.599659,
+        "cnf-codex-standard": 0.834347,
+        "cnf-deterministic-scripted": 0.451782,
+        "cnf-opencode-local": 0.416972
+      },
+      "project_id": "prj-router-etl-batch-fork",
+      "run_id": "run-prj-router-etl-batch-fork",
+      "runtime_health": [],
+      "strategy_decision": "HYBRID",
+      "task_id": "prj-router-etl-batch-fork-n2"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.568938,
+        "CODEX|1.9.0": 0.61327,
+        "DETERMINISTIC|1.0.0": 0.674757,
+        "OPENCODE|0.7.0": 0.584459
+      },
+      "node_class": "MIGRATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.639223,
+        "cnf-claude-sonnet-lean": 0.538952,
+        "cnf-codex-mini": 0.727926,
+        "cnf-codex-standard": 0.72944,
+        "cnf-deterministic-scripted": 0.701274,
+        "cnf-opencode-local": 0.556475
+      },
+      "planner_choice": "cnf-claude-opus-full",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.851746,
+        "cnf-claude-sonnet-lean": 0.656415,
+        "cnf-codex-mini": 0.545403,
+        "cnf-codex-standard": 0.796961,
+        "cnf-deterministic-scripted": 0.353153,
+        "cnf-opencode-local": 0.598683
+      },
+      "project_id": "prj-router-notebook-analysis",
+      "run_id": "run-prj-router-notebook-analysis",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "DIRECT",
+      "task_id": "prj-router-notebook-analysis-n0"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.405667,
+        "CODEX|1.9.0": 0.389475,
+        "DETERMINISTIC|1.0.0": 0.455756,
+        "OPENCODE|0.7.0": 0.351503
+      },
+      "node_class": "IMPLEMENTATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.802165,
+        "cnf-claude-sonnet-lean": 0.776114,
+        "cnf-codex-mini": 0.910219,
+        "cnf-codex-standard": 0.445377,
+        "cnf-deterministic-scripted": 0.890857,
+        "cnf-opencode-local": 0.226738
+      },
+      "planner_choice": "cnf-claude-opus-full",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.966159,
+        "cnf-claude-sonnet-lean": 0.83184,
+        "cnf-codex-mini": 0.493355,
+        "cnf-codex-standard": 0.896344,
+        "cnf-deterministic-scripted": 0.262095,
+        "cnf-opencode-local": 0.495608
+      },
+      "project_id": "prj-router-notebook-analysis",
+      "run_id": "run-prj-router-notebook-analysis",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "LOOP",
+      "task_id": "prj-router-notebook-analysis-n1"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.610104,
+        "CODEX|1.9.0": 0.492093,
+        "DETERMINISTIC|1.0.0": 0.595651,
+        "OPENCODE|0.7.0": 0.382994
+      },
+      "node_class": "ANALYSIS",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.471085,
+        "cnf-claude-sonnet-lean": 0.278959,
+        "cnf-codex-mini": 0.549238,
+        "cnf-codex-standard": 0.462661,
+        "cnf-deterministic-scripted": 0.64248,
+        "cnf-opencode-local": 0.791307
+      },
+      "planner_choice": "cnf-claude-opus-full",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.781682,
+        "cnf-claude-sonnet-lean": 0.785585,
+        "cnf-codex-mini": 0.559941,
+        "cnf-codex-standard": 0.845303,
+        "cnf-deterministic-scripted": 0.422936,
+        "cnf-opencode-local": 0.604532
+      },
+      "project_id": "prj-router-notebook-analysis",
+      "run_id": "run-prj-router-notebook-analysis",
+      "runtime_health": [],
+      "strategy_decision": "GRAPH",
+      "task_id": "prj-router-notebook-analysis-n2"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.397995,
+        "CODEX|1.9.0": 0.539574,
+        "DETERMINISTIC|1.0.0": 0.81555,
+        "OPENCODE|0.7.0": 0.893913
+      },
+      "node_class": "IMPLEMENTATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.788979,
+        "cnf-claude-sonnet-lean": 0.903655,
+        "cnf-codex-mini": 0.505216,
+        "cnf-codex-standard": 0.235782,
+        "cnf-deterministic-scripted": 0.460492,
+        "cnf-opencode-local": 0.793784
+      },
+      "planner_choice": "cnf-codex-standard",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.915664,
+        "cnf-claude-sonnet-lean": 0.778924,
+        "cnf-codex-mini": 0.628099,
+        "cnf-codex-standard": 0.818393,
+        "cnf-deterministic-scripted": 0.398633,
+        "cnf-opencode-local": 0.57561
+      },
+      "project_id": "prj-router-web-api",
+      "run_id": "run-prj-router-web-api",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "HYBRID",
+      "task_id": "prj-router-web-api-n0"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.39701,
+        "CODEX|1.9.0": 0.87329,
+        "DETERMINISTIC|1.0.0": 0.361694,
+        "OPENCODE|0.7.0": 0.373051
+      },
+      "node_class": "ANALYSIS",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.752102,
+        "cnf-claude-sonnet-lean": 0.288132,
+        "cnf-codex-mini": 0.901332,
+        "cnf-codex-standard": 0.863119,
+        "cnf-deterministic-scripted": 0.766534,
+        "cnf-opencode-local": 0.823447
+      },
+      "planner_choice": "cnf-opencode-local",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.859284,
+        "cnf-claude-sonnet-lean": 0.74981,
+        "cnf-codex-mini": 0.678737,
+        "cnf-codex-standard": 0.744908,
+        "cnf-deterministic-scripted": 0.290696,
+        "cnf-opencode-local": 0.431055
+      },
+      "project_id": "prj-router-web-api",
+      "run_id": "run-prj-router-web-api",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "READY"
+        }
+      ],
+      "strategy_decision": "DIRECT",
+      "task_id": "prj-router-web-api-n1"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.818784,
+        "CODEX|1.9.0": 0.7662,
+        "DETERMINISTIC|1.0.0": 0.47252,
+        "OPENCODE|0.7.0": 0.521494
+      },
+      "node_class": "VERIFICATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.429534,
+        "cnf-claude-sonnet-lean": 0.280367,
+        "cnf-codex-mini": 0.257122,
+        "cnf-codex-standard": 0.756422,
+        "cnf-deterministic-scripted": 0.436603,
+        "cnf-opencode-local": 0.892606
+      },
+      "planner_choice": "cnf-deterministic-scripted",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.91895,
+        "cnf-claude-sonnet-lean": 0.79963,
+        "cnf-codex-mini": 0.617806,
+        "cnf-codex-standard": 0.772341,
+        "cnf-deterministic-scripted": 0.234165,
+        "cnf-opencode-local": 0.465823
+      },
+      "project_id": "prj-router-web-api",
+      "run_id": "run-prj-router-web-api",
+      "runtime_health": [],
+      "strategy_decision": "LOOP",
+      "task_id": "prj-router-web-api-n2"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.689683,
+        "CODEX|1.9.0": 0.557513,
+        "DETERMINISTIC|1.0.0": 0.710002,
+        "OPENCODE|0.7.0": 0.65501
+      },
+      "node_class": "ANALYSIS",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.937743,
+        "cnf-claude-sonnet-lean": 0.574002,
+        "cnf-codex-mini": 0.469308,
+        "cnf-codex-standard": 0.691863,
+        "cnf-deterministic-scripted": 0.4341,
+        "cnf-opencode-local": 0.948172
+      },
+      "planner_choice": "cnf-claude-opus-full",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.891066,
+        "cnf-claude-sonnet-lean": 0.815101,
+        "cnf-codex-mini": 0.460885,
+        "cnf-codex-standard": 0.701897,
+        "cnf-deterministic-scripted": 0.466078,
+        "cnf-opencode-local": 0.42281
+      },
+      "project_id": "prj-router-web-api-fork",
+      "run_id": "run-prj-router-web-api-fork",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "LOW",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "BUSY"
+        }
+      ],
+      "strategy_decision": "GRAPH",
+      "task_id": "prj-router-web-api-fork-n0"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.811524,
+        "CODEX|1.9.0": 0.818931,
+        "DETERMINISTIC|1.0.0": 0.836865,
+        "OPENCODE|0.7.0": 0.429885
+      },
+      "node_class": "VERIFICATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.569895,
+        "cnf-claude-sonnet-lean": 0.821186,
+        "cnf-codex-mini": 0.796107,
+        "cnf-codex-standard": 0.450612,
+        "cnf-deterministic-scripted": 0.658829,
+        "cnf-opencode-local": 0.828628
+      },
+      "planner_choice": "cnf-claude-sonnet-lean",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.786191,
+        "cnf-claude-sonnet-lean": 0.61824,
+        "cnf-codex-mini": 0.565487,
+        "cnf-codex-standard": 0.703836,
+        "cnf-deterministic-scripted": 0.379522,
+        "cnf-opencode-local": 0.53875
+      },
+      "project_id": "prj-router-web-api-fork",
+      "run_id": "run-prj-router-web-api-fork",
+      "runtime_health": [
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "CLAUDE",
+          "runtime_id": "claude-cli",
+          "runtime_version": "2.4.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "HIGH",
+          "provider": "CODEX",
+          "runtime_id": "codex-cli",
+          "runtime_version": "1.9.0",
+          "status": "READY"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "DETERMINISTIC",
+          "runtime_id": "deterministic-runtime",
+          "runtime_version": "1.0.0",
+          "status": "DEGRADED"
+        },
+        {
+          "auth_mode": "SUBSCRIPTION",
+          "observed_at": "2026-09-01T00:00:00Z",
+          "observed_usage_pressure": "MEDIUM",
+          "provider": "OPENCODE",
+          "runtime_id": "opencode-cli",
+          "runtime_version": "0.7.0",
+          "status": "DEGRADED"
+        }
+      ],
+      "strategy_decision": "HYBRID",
+      "task_id": "prj-router-web-api-fork-n1"
+    },
+    {
+      "historical_quality": {
+        "CLAUDE|2.4.0": 0.488898,
+        "CODEX|1.9.0": 0.85983,
+        "DETERMINISTIC|1.0.0": 0.620935,
+        "OPENCODE|0.7.0": 0.534232
+      },
+      "node_class": "MIGRATION",
+      "performance_scores": {
+        "cnf-claude-opus-full": 0.50976,
+        "cnf-claude-sonnet-lean": 0.390459,
+        "cnf-codex-mini": 0.892358,
+        "cnf-codex-standard": 0.411676,
+        "cnf-deterministic-scripted": 0.876252,
+        "cnf-opencode-local": 0.941012
+      },
+      "planner_choice": "cnf-deterministic-scripted",
+      "predicted_success": {
+        "cnf-claude-opus-full": 0.885877,
+        "cnf-claude-sonnet-lean": 0.680701,
+        "cnf-codex-mini": 0.68862,
+        "cnf-codex-standard": 0.887839,
+        "cnf-deterministic-scripted": 0.325804,
+        "cnf-opencode-local": 0.470967
+      },
+      "project_id": "prj-router-web-api-fork",
+      "run_id": "run-prj-router-web-api-fork",
+      "runtime_health": [],
+      "strategy_decision": "DIRECT",
+      "task_id": "prj-router-web-api-fork-n2"
+    }
+  ]
+}
