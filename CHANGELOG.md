@@ -9,6 +9,22 @@ the three milestone PRs that merged before this file was updated.
 
 The M9 ladder is parked after its stylesheet port; the entries below it are v0.4 work.
 
+### v0.4 — M4 offline ranker and candidate gate
+
+- Added `src/accretion/routing/train.py` and `routing/artifacts.py`: `RouterTrainingService`
+  cuts a training snapshot over a project-disjoint split, fits the five-head ranker on the
+  training projects, calibrates on the calibration projects and scores a `HoldoutEvaluation`
+  (verified-success lower bound, ECE, Brier, per-cohort ECE, false acceptance and a pairwise
+  ranking metric against the deterministic §9.4 baseline) on projects it never saw, then
+  writes the snapshot **before** the CANDIDATE `RouterModelVersion` that cites it.
+  `LearnedPredictorLoader` is the only way a learned predictor enters routing and refuses any
+  version without a `holdout_eval_digest` and a `calibration_report_digest` on record, or
+  outside `{CANDIDATE, SHADOW, ACTIVE}`, verifying the pinned artefact digest on load —
+  `AC4-M4-016` (offline ranking precedes any shadow or live learned policy) is now proven.
+  Adds `POST /api/v1/router-models/train-candidate` (workspace admin, `Idempotency-Key`
+  required) and `GET /api/v1/router-models`, and the `ACCRETION_ROUTER_ARTIFACT_DIR`
+  setting (#TBD).
+
 ### v0.4 — M1 compatibility engine
 
 - Added `src/accretion/routing/` with the deterministic compatibility engine: a versioned

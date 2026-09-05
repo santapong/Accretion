@@ -14,6 +14,10 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str = "postgresql+asyncpg://accretion:accretion@localhost:5432/accretion"
     data_dir: Path = Path(".accretion")
+    # Where the v0.4 router keeps trained artefacts, calibrations and holdout
+    # evaluations (SDD §7.12). Inside the gitignored data directory by default, because
+    # an artefact tree under version control would make every training run a diff.
+    router_artifact_dir: Path = Path(".accretion") / "router-artifacts"
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
     global_max_runs: int = 4
     provider_max_runs: int = 2
