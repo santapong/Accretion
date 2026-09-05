@@ -1,0 +1,101 @@
+{
+  "content_hash": "9aadf4208219037a3fe734bcd2acad9ca7041c65e6fe38814c81b7f72bcf07a0",
+  "contract_id": "rts_YC8Z5KCAVEFCWF10X8EWSQZ8KE",
+  "contract_schema_version": "1.0.0",
+  "contract_type": "accretion.router-training-snapshot",
+  "contradiction_treatment": "OPEN contradictions excluded; RESOLVED kept with their adjudication.",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "deduplication_rule": "One record per (configuration_hash, source_node_execution_id).",
+  "excluded_contradiction_statuses": [
+    "OPEN"
+  ],
+  "feature_schema_version": "1.0.0",
+  "included_experience_ids": [
+    "exp_9GGR1WTFAY2TCVCVC0NK0E24MR",
+    "exp_93SGC60S7RXSRE3NTNHNW5EWXZ"
+  ],
+  "labels": {
+    "owner": "routing-platform",
+    "tier": "gold"
+  },
+  "objective_contract_ref": {
+    "approved_at": "2026-02-01T08:00:00Z",
+    "approved_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "content_hash": "eeb604d2b673fc4518f6cc1028e1a3d67f72cc7ccd2110ce36b2c2f978371de9",
+    "contract_id": "objective-contract-ref-embedded",
+    "contract_type": "accretion.objective-contract-ref",
+    "created_at": "2026-03-01T09:00:00Z",
+    "created_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "labels": {},
+    "objective_contract_hash": "13f224df431229df61136c206eb2a5857df8c6a2907a3c3697192210aafc0ad4",
+    "objective_contract_id": "obj_HQ5A32JBQ5CTEZTZWCVPPPQ4JM",
+    "objective_contract_ref": null,
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": null,
+    "revision": 3,
+    "risk_policy": {
+      "content_digest": "b941fb5563b0aabec00a46d9150fff0d85e017346a26e12467ecdb80ffa458fd",
+      "policy_id": "workspace-risk-policy",
+      "version": "3.1.0"
+    },
+    "schema_version": "1.0.0",
+    "supersedes_contract_id": null,
+    "utility_profile_id": "balanced-delivery",
+    "verified_success_floor": 0.9,
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  "permission_proof": {
+    "granted_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "justification": "Shared under the workspace evidence-sharing policy.",
+    "policy": {
+      "content_digest": "b941fb5563b0aabec00a46d9150fff0d85e017346a26e12467ecdb80ffa458fd",
+      "policy_id": "workspace-risk-policy",
+      "version": "3.1.0"
+    },
+    "scope": "TEAM_WORKSPACE"
+  },
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "provider_version_boundaries": {
+    "CLAUDE": "<=claude-opus-4",
+    "CODEX": "<=codex-1.4"
+  },
+  "reserved_future_field": {
+    "introduced_in": "1.1.0",
+    "note": "an optional field added by a newer minor of major 1 (registry §3.2)"
+  },
+  "retention_class": "STANDARD",
+  "schema_version": "1.1.0",
+  "split": {
+    "holdout_project_ids": [
+      "prj_FHYW7NW5TND9QGZTYTXBP73EME"
+    ],
+    "training_project_ids": [
+      "prj_V5VTWCEPYWB9XC521RTV7WWBRX",
+      "prj_6TZDSQP0SSP630CXEKYZ4ZWN20"
+    ],
+    "validation_project_ids": [
+      "prj_ZVMK204GF0C7ZHRB2C80B7R3PG"
+    ]
+  },
+  "supersedes_contract_id": "rts_2STBXGE3ZTWB8RPVBA1V2BN1RB",
+  "window_end": "2026-03-01T00:00:00Z",
+  "window_start": "2026-01-01T00:00:00Z",
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}
