@@ -76,7 +76,7 @@ With the lane database up, after deleting the `AC4-M4-016` policy row:
 in scope: 122   proven: 116   unmet MUST: 0
 ```
 
-(M1.2 has not merged; when it does the same run reads `122` / `116`.) `--stage v0.4-M4` reports
+(M1.2 merged before this PR, so the four M1 rows are already in scope.) `--stage v0.4-M4` reports
 `in scope: 1   proven: 1   unmet MUST: 0`, which is the form CI gates this milestone on.
 
 Measured on a worktree with no lane database, the same command reads `118 / 111` with one
