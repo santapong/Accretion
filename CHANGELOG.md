@@ -9,6 +9,25 @@ the three milestone PRs that merged before this file was updated.
 
 The M9 ladder is parked after its stylesheet port; the entries below it are v0.4 work.
 
+### v0.4 — M1 compatibility engine
+
+- Added `src/accretion/routing/` with the deterministic compatibility engine: a versioned
+  `ReasonCode` catalogue (`compat-rules/1`) that lifts the nine configuration-relevant P7
+  codes and adds nine v0.4 ones, `RegistrySnapshotBuilder`/`RoutingSnapshot` (four snapshot
+  digests over narrow `(id, status, version)` projections that never contain a token), and
+  `CompatibilityEngine.evaluate`/`evaluate_joint`/`map_resolution`, which emit one
+  `CompatibilityDecision` per registry §7.3 layer plus the SDD §9.1 stage-7 joint decision.
+  The engine is pure — it reads a snapshot and never the store — decision ids are derived
+  by a new `ids.derived_id(kind, *parts)` so the same snapshot replays byte-identical
+  decisions, and `UNKNOWN` is never compatible. Stage 7 also enforces each
+  `CapabilityRequirement.version_range` against the version the snapshot observed, refusing
+  an out-of-range binding as `CAPABILITY_UNAVAILABLE` and a range grammar it may not
+  interpret as `COMPATIBILITY_UNKNOWN`; `required_scope` is authority rather than
+  availability and is deferred to M1.2's permission gate, pinned by a test named for the
+  deferral. All twelve SDD §12 routing, feedback and
+  router `EventType` members are declared here once, so no later v0.4 PR regenerates
+  `openapi.json` or `apps/ui/src/api/schema.d.ts` for them again (#TBD).
+
 ### v0.4 — M0 contract and feature freeze
 
 - Unlocked the v0.4 SDD (evidence-aware node configuration routing): it moved from the

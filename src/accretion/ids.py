@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import os
 import time
 
@@ -122,6 +123,38 @@ def new_id(kind: str) -> str:
     timestamp_ms = int(time.time() * 1000) & ((1 << 48) - 1)
     randomness = int.from_bytes(os.urandom(10))
     return f"{prefix}_{_encode_base32(timestamp_ms, 10)}{_encode_base32(randomness, 16)}"
+
+
+def derived_id(kind: str, *parts: str) -> str:
+    """Return the identifier ``kind`` deterministically derives from ``parts``.
+
+    :func:`new_id` mints a fresh identity every call, which is exactly right for a record
+    that is created once and exactly wrong for one that must be *re-derivable*: a
+    compatibility decision replayed from the same registry snapshot is the same decision,
+    and giving it a new id on every evaluation would make replay unprovable and idempotent
+    ingestion impossible. So this function keeps :func:`new_id`'s prefix table and its
+    26-character base32 body — ``has_prefix`` and every ``CanonicalContract.ID_KIND`` check
+    compare a prefix and a total length, and neither may learn that a second id shape
+    exists — and replaces the timestamp-plus-randomness body with the leading bits of a
+    SHA-256 digest over the canonical JSON of ``parts``.
+
+    The digest input is :func:`~accretion.contracts.canonical.canonical_json` of the parts
+    *as a list*, not their concatenation. Concatenation would let ``("ab", "c")`` and
+    ``("a", "bc")`` derive one id, which is how two different decisions come to share an
+    identity; the JSON encoding keeps the boundary between parts inside the hash. That
+    import is deliberately function-local: :mod:`accretion.contracts.canonical` imports
+    :func:`has_prefix` from this module, so a module-level import here would be a cycle.
+
+    The body carries 130 of the digest's 256 bits, which is what a 26-character base32
+    encoding holds. That is the same width :func:`new_id` uses and far beyond the
+    collision budget of any id space in this repository.
+    """
+
+    from accretion.contracts.canonical import canonical_json
+
+    prefix = _PREFIXES[kind]
+    digest = hashlib.sha256(canonical_json(list(parts))).digest()
+    return f"{prefix}_{_encode_base32(int.from_bytes(digest), 26)}"
 
 
 def has_prefix(value: str, kind: str) -> bool:
