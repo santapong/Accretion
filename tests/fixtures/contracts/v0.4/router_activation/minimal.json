@@ -1,0 +1,21 @@
+{
+  "approved_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "content_hash": "79a1cfe52c30c93a9fd99596d6f1bf1588204150c872594cfd78e89bdbc2609f",
+  "contract_id": "rac_1PVDZ8K3MQXWTNH54B7JC0GRE9",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "family_key": "gradient-boosted-ranker",
+  "kind": "PROMOTE",
+  "router_version_id": "rmv_2KPQMJ4VCETFFK2Z973NZSM3NV",
+  "scope": "TEAM_WORKSPACE",
+  "sequence": 1,
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

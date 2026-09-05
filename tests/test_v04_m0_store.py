@@ -4,7 +4,7 @@ Everything here is a claim about *behaviour a later milestone could break*: that
 written once cannot be rewritten, that a retry is free, that a revision is a second row
 rather than an edit, that the two §13.1 partial unique rules hold in memory exactly as they
 hold in PostgreSQL, and that no method exists anywhere in the store that could update or
-delete one of these fifteen tables.
+delete one of these seventeen tables.
 
 The contracts under test are built from the **committed golden fixtures**, not assembled
 field by field here. A test that built its own ``NodeContract`` would prove that the store
@@ -43,6 +43,7 @@ from accretion.contracts.routing import (
     IndependentVerificationResult,
     NodeContract,
     ObjectiveContract,
+    RouterActivation,
     RouterModelVersion,
     RouterPromotionReport,
     RouterScope,
@@ -51,6 +52,7 @@ from accretion.contracts.routing import (
     RoutingContext,
     RoutingDecisionReceipt,
     ShadowDecision,
+    ShadowRolloutResult,
     VerificationSpec,
 )
 from accretion.experience.models import (
@@ -76,7 +78,7 @@ from accretion.persistence.store import (
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "contracts" / "v0.4"
 
 # One contract per table that stores a frozen model, so that the round-trip, immutability
-# and ordering tests below run over all fourteen rather than over a convenient one.
+# and ordering tests below run over all sixteen rather than over a convenient one.
 TABLE_CONTRACTS: dict[str, type[CanonicalContract]] = {
     "objective_contracts": ObjectiveContract,
     "node_contracts": NodeContract,
@@ -92,6 +94,8 @@ TABLE_CONTRACTS: dict[str, type[CanonicalContract]] = {
     "router_training_snapshots": RouterTrainingSnapshot,
     "router_promotion_reports": RouterPromotionReport,
     "shadow_decisions": ShadowDecision,
+    "shadow_rollout_results": ShadowRolloutResult,
+    "router_activations": RouterActivation,
 }
 TABLE_IDS = sorted(TABLE_CONTRACTS)
 
@@ -112,6 +116,8 @@ VARIABLE_FIELD: dict[str, str] = {
     "router_training_snapshots": "contradiction_treatment",
     "router_promotion_reports": "rollback_target",
     "shadow_decisions": "comparison_notes",
+    "shadow_rollout_results": "fork_execution_id",
+    "router_activations": "family_key",
 }
 VARIABLE_VALUE: dict[str, Any] = {
     # The golden fixture is already at revision 2, so a variant has to be somewhere else.
@@ -1101,7 +1107,7 @@ async def test_a_stored_routing_override_has_exactly_the_frozen_key_set() -> Non
 
 
 def v04_method_names() -> set[str]:
-    """The method names the fifteen tables imply, derived and never listed by hand.
+    """The method names the seventeen tables imply, derived and never listed by hand.
 
     A table added to ``V04_M0_ROUTING_TABLES`` without store methods is a red test here,
     which is the only way this file stays complete as v0.4 grows.
