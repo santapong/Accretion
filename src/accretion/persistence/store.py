@@ -489,7 +489,9 @@ def _missing_v04_reference(
     """The two §13 foreign keys, worded once so ``MemoryStore`` can raise them.
 
     Every v0.4 table has ``project_id -> projects.id`` and ``experience_records`` has
-    ``id -> experiences.id``, both ``ON DELETE RESTRICT``. PostgreSQL refuses a row naming
+    ``experience_id -> experiences.id`` (migration 0020 moved it off the primary key so
+    that revisions of one projection can coexist), both ``ON DELETE RESTRICT``.
+    PostgreSQL refuses a row naming
     a parent that does not exist; an in-memory dict of contracts knows nothing about
     ``projects`` or ``experiences`` and would take it. Left unmirrored, a unit test written
     against ``MemoryStore`` passes on a record PostgreSQL will refuse — the same failure
@@ -501,6 +503,49 @@ def _missing_v04_reference(
     return ValueError(
         f"{noun} {contract_id} names {column} {value}, which is not in {table}; "
         "the foreign key would refuse this row in PostgreSQL"
+    )
+
+
+def _experience_record_parent(
+    record: ExperienceRecord, experience_id: str | None
+) -> str:
+    """Which ``experiences`` row a projection is filed under, decided once for both stores.
+
+    The sealed ``ExperienceRecord`` (SDD §7.10) declares no field naming the P7 experience:
+    it is "keyed by the same ``experience_id`` — carried as the header's ``contract_id``",
+    which is precisely why the root projection needs no argument here. A *revision* — a
+    recomputed attribution, a contradiction moving OPEN → RESOLVED, a ``final_run_status``
+    that arrived after the run finished — is a new row under a new derived id (registry
+    §17, §9.6), and only the caller minting it knows which experience it still projects, so
+    it passes the parent explicitly.
+
+    ``None`` therefore means "this record is its own root", which is the M0 behaviour every
+    existing caller and test already relies on, and is why the keyword has a default rather
+    than being required. It lives in one function instead of two so that the two backends
+    cannot answer the question differently — the failure that would show up as a record
+    filed under one parent in memory and another in PostgreSQL.
+    """
+
+    return record.contract_id if experience_id is None else experience_id
+
+
+def _guard_v04_derived_column_drift(
+    noun: str, contract_id: str, column: str, stored: str | None, requested: str
+) -> None:
+    """Refuse a re-put that would change a column the payload does not carry.
+
+    ``experience_records.experience_id`` is the only such column: the sealed
+    ``ExperienceRecord`` declares no field for it, so ``_guard_v04_drift`` — which compares
+    payloads — cannot see a caller re-filing an existing record under a different parent
+    experience. Without this the re-put would be silently accepted as a no-op on both
+    backends and the row would keep its first parent, which is the quietest possible way
+    for a projection to end up attributed to the wrong experience.
+    """
+
+    if stored == requested:
+        return
+    raise ValueError(
+        f"{noun} {contract_id} is immutable: {column} differs from the stored record"
     )
 
 
@@ -610,6 +655,12 @@ class _V04MemoryRow(NamedTuple):
     schema_version: str
     created_at: datetime
     payload: dict[str, Any]
+    # ``experience_records.experience_id`` and nothing else: the one promoted column in
+    # the family that is *not* a projection of a payload field, so the one that has to be
+    # carried on the row rather than recomputed from it. ``None`` on the other sixteen
+    # tables, which have no such column — a per-table row type would have been sixteen
+    # NamedTuples to keep in step with one Postgres base class.
+    experience_id: str | None = None
 
 
 
@@ -1076,13 +1127,16 @@ class StateStore(Protocol):
         self, *, workspace_id: str, project_id: str | None = None
     ) -> list[IndependentVerificationResult]: ...
     async def put_experience_record(
-        self, record: ExperienceRecord
+        self, record: ExperienceRecord, *, experience_id: str | None = None
     ) -> ExperienceRecord: ...
     async def get_experience_record(
         self, contract_id: str
     ) -> ExperienceRecord | None: ...
     async def list_experience_records(
         self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ExperienceRecord]: ...
+    async def list_experience_record_revisions(
+        self, experience_id: str, *, workspace_id: str
     ) -> list[ExperienceRecord]: ...
     async def put_failure_event(
         self, record: FailureEvent
@@ -2889,6 +2943,7 @@ class MemoryStore:
         record: C,
         *,
         extra_guard: Callable[[], None] | None = None,
+        experience_id: str | None = None,
     ) -> C:
         """Insert one sealed contract, or refuse. Never updates.
 
@@ -2904,6 +2959,12 @@ class MemoryStore:
         deliberately *after* the id and digest checks, so that a document which breaks
         more than one rule at once is always reported by the same rule on both backends
         rather than by whichever check happened to be written first.
+
+        ``experience_id`` is the one promoted column no payload carries — see
+        ``_V04MemoryRow`` — and it is passed through here rather than looked up from the
+        record so that ``MemoryStore`` and ``PostgresStore`` derive it in one place, in
+        ``put_experience_record``, and cannot disagree about what a record with no explicit
+        parent projects.
         """
 
         async with self._lock:
@@ -2918,6 +2979,7 @@ class MemoryStore:
                 record.created_at,
                 _v04_payload(record),
                 extra_guard=extra_guard,
+                experience_id=experience_id,
             )
         return _load_v04_contract(type(record), stored.payload, record.contract_id)
 
@@ -2966,6 +3028,7 @@ class MemoryStore:
         *,
         identity_fields: tuple[str, ...] | None = None,
         extra_guard: Callable[[], None] | None = None,
+        experience_id: str | None = None,
     ) -> _V04MemoryRow:
         """The one write path. Returns the row now in the table, new or pre-existing.
 
@@ -2992,6 +3055,14 @@ class MemoryStore:
                 payload,
                 identity_fields=identity_fields,
             )
+            if experience_id is not None:
+                _guard_v04_derived_column_drift(
+                    noun,
+                    contract_id,
+                    "experience_id",
+                    current.experience_id,
+                    experience_id,
+                )
             return current
         for other in rows.values():
             if other.content_hash == digest and other.schema_version == schema_version:
@@ -3012,6 +3083,7 @@ class MemoryStore:
             schema_version=schema_version,
             created_at=created_at,
             payload=payload,
+            experience_id=experience_id,
         )
         rows[contract_id] = row
         return row
@@ -3386,32 +3458,43 @@ class MemoryStore:
             project_id=project_id,
         )
 
-    def _guard_experience_reference(self, record: ExperienceRecord) -> None:
-        """Mirror ``experience_records.id -> experiences.id`` (ADR-054 b, §13.1).
+    def _guard_experience_reference(
+        self, record: ExperienceRecord, experience_id: str
+    ) -> None:
+        """Mirror ``experience_records.experience_id -> experiences.id`` (ADR-054 b, §13.1).
 
-        The table's primary key *is* its foreign key: an experience record is a projection
-        of the v0.2 P7 experience of the same id, never a copy of it. So a projection of an
-        experience that does not exist is not a record with a dangling field, it is a
-        record of nothing — which PostgreSQL refuses and this refuses alike.
+        An experience record is a projection of the v0.2 P7 experience it names, never a
+        copy of it. So a projection of an experience that does not exist is not a record
+        with a dangling field, it is a record of nothing — which PostgreSQL refuses and
+        this refuses alike.
+
+        The column checked is ``experience_id`` and no longer ``contract_id``: migration
+        0020 moved the key off the primary key so that a revision, whose own id is a fresh
+        ``exp_`` id naming no ``experiences`` row, is storable at all. Checking the id
+        again here would have re-imposed in Python exactly the constraint the migration
+        lifted, and every revision would have been refused by the mirror after the database
+        stopped refusing it.
         """
 
-        if record.contract_id not in self.experiences:
+        if experience_id not in self.experiences:
             raise _missing_v04_reference(
                 "experience record",
                 record.contract_id,
-                "experience",
+                "experience_id",
                 "experiences",
-                record.contract_id,
+                experience_id,
             )
 
     async def put_experience_record(
-        self, record: ExperienceRecord
+        self, record: ExperienceRecord, *, experience_id: str | None = None
     ) -> ExperienceRecord:
+        parent = _experience_record_parent(record, experience_id)
         return await self._put_v04_contract(
             "experience_records",
             "experience record",
             record,
-            extra_guard=lambda: self._guard_experience_reference(record),
+            extra_guard=lambda: self._guard_experience_reference(record, parent),
+            experience_id=parent,
         )
 
     async def get_experience_record(
@@ -3430,6 +3513,42 @@ class MemoryStore:
             workspace_id=workspace_id,
             project_id=project_id,
         )
+
+    async def list_experience_record_revisions(
+        self, experience_id: str, *, workspace_id: str
+    ) -> list[ExperienceRecord]:
+        """Every projection of one experience, oldest first — ``(created_at, id)``.
+
+        The same tie-break ``_scoped_v04_rows`` uses and ``PostgresStore`` orders by, for
+        the same reason: a revision sealed in the same millisecond as the row it supersedes
+        is ordinary in a test, and an order that fell back to dict insertion would pass
+        here and fail against a database. ``workspace_id`` is required and unconditionally
+        applied, exactly as on every other ``list_`` in this family.
+
+        This is also the column a *reader* of revisions must resolve the experience by, and
+        one existing reader does not. ``SnapshotBuilder.build``
+        (``src/accretion/routing/training_snapshot.py``, the
+        ``get_experience(record.contract_id)`` call) is the only production consumer of
+        ``list_experience_records``; it relies on the M0 identity that a record's id *is*
+        its experience's id, which migration 0020 ends. A revision's derived ``contract_id``
+        names no ``experiences`` row, so that lookup returns ``None``, the builder treats the
+        revision as retracted (ADR-054 b) and drops it, and the superseded root stays
+        eligible — silently, with no error and no counter. M3a.2, the milestone that first
+        writes a §9.6 recomputed-attribution revision, MUST move that resolution onto
+        ``experience_id`` before it writes one, or snapshots will train on stale
+        attribution. Pinned by
+        ``test_list_experience_records_returns_revisions_that_name_no_experience_row``.
+        """
+
+        rows = [
+            row
+            for row in self.v04_contracts["experience_records"].values()
+            if row.workspace_id == workspace_id and row.experience_id == experience_id
+        ]
+        return [
+            _load_v04_contract(ExperienceRecord, row.payload, row.contract_id)
+            for row in sorted(rows, key=lambda row: (row.created_at, row.contract_id))
+        ]
 
     async def put_failure_event(
         self, record: FailureEvent
@@ -6973,6 +7092,7 @@ class PostgresStore:
         record: C,
         *,
         extra_guard: Callable[[AsyncSession], Awaitable[None]] | None = None,
+        experience_id: str | None = None,
         **promoted: Any,
     ) -> C:
         """Insert one sealed contract, or refuse. Never updates.
@@ -6997,13 +7117,29 @@ class PostgresStore:
         another connection's snapshot — and deliberately *after* the id and digest checks,
         so that a document which breaks more than one rule at once is always reported by
         the same rule as it would be in ``MemoryStore``.
+
+        ``experience_id`` is separated out of ``**promoted`` because it is the one promoted
+        column in the family that is *not* a projection of a payload field: the drift check
+        above compares payloads, so it is blind to this column and has to be told about it
+        explicitly. Every other promoted value is derived from the payload the drift check
+        already compared, and so cannot differ when that comparison passed.
         """
 
         payload = _v04_payload(record)
+        if experience_id is not None:
+            promoted["experience_id"] = experience_id
         async with self.sessions.begin() as session:
             row = await session.get(row_type, record.contract_id)
             if row is not None:
                 _guard_v04_drift(noun, record.contract_id, row.payload, payload)
+                if experience_id is not None:
+                    _guard_v04_derived_column_drift(
+                        noun,
+                        record.contract_id,
+                        "experience_id",
+                        getattr(row, "experience_id", None),
+                        experience_id,
+                    )
                 return _load_v04_contract(type(record), row.payload, record.contract_id)
             clash = await session.scalar(
                 select(row_type).where(
@@ -7528,12 +7664,13 @@ class PostgresStore:
         )
 
     async def put_experience_record(
-        self, record: ExperienceRecord
+        self, record: ExperienceRecord, *, experience_id: str | None = None
     ) -> ExperienceRecord:
         return await self._put_v04_contract(
             ExperienceRecordRow,
             "experience record",
             record,
+            experience_id=_experience_record_parent(record, experience_id),
             source_node_execution_id=record.source_node_execution_id,
             configuration_hash=record.configuration_hash,
             visibility=record.visibility.value,
@@ -7563,6 +7700,37 @@ class PostgresStore:
             workspace_id=workspace_id,
             project_id=project_id,
         )
+
+    async def list_experience_record_revisions(
+        self, experience_id: str, *, workspace_id: str
+    ) -> list[ExperienceRecord]:
+        """``ORDER BY created_at, id`` — the tie-break ``MemoryStore`` sorts by.
+
+        Served by ``ix_experience_records_experience_id``; the workspace predicate is
+        unconditional for the reason ``_list_v04_contracts`` gives.
+
+        Carries the same hand-off as the ``MemoryStore`` twin: ``SnapshotBuilder.build``
+        (``src/accretion/routing/training_snapshot.py``, the
+        ``get_experience(record.contract_id)`` call) still resolves a record's P7 experience
+        from its ``contract_id``, so every revision returned by ``list_experience_records``
+        looks retracted to it and is dropped while the superseded root stays eligible.
+        M3a.2 must move that resolution onto ``experience_id`` before it writes its first
+        §9.6 revision.
+        """
+
+        query = (
+            select(ExperienceRecordRow)
+            .where(
+                ExperienceRecordRow.workspace_id == workspace_id,
+                ExperienceRecordRow.experience_id == experience_id,
+            )
+            .order_by(ExperienceRecordRow.created_at, ExperienceRecordRow.id)
+        )
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [
+            _load_v04_contract(ExperienceRecord, row.payload, row.id) for row in rows
+        ]
 
     async def put_failure_event(
         self, record: FailureEvent

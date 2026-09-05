@@ -68,6 +68,12 @@ DELTA_MIGRATION_PATH = (
     / "versions"
     / "0018_v04_freeze_delta_shadow_rollouts_router_activations.py"
 )
+# 0020 creates no table. It moves ``experience_records``' foreign key off the primary key
+# so that revisions of one projection can coexist, which is why the "no other migration
+# names a v0.4 table" rule below checks it rather than exempting it.
+EXPERIENCE_FK_MIGRATION_PATH = (
+    ROOT / "migrations" / "versions" / "0020_v04_experience_record_revisions.py"
+)
 FREEZE_PATH = ROOT / "docs" / "releases" / "v0.4" / "m0-freeze.md"
 SCHEMA_ROOT = ROOT / "docs" / "contracts" / "v0.4"
 MIGRATION_REVISION = "0017_v04_m0_routing_contracts"
@@ -308,12 +314,18 @@ TABLE_CONTRACTS = {
     "router_activations": RouterActivation,
 }
 
-# The three columns that deliberately flatten something the contract nests, and are
-# therefore spelled differently from any top-level field. Each is named so that a
-# fourth cannot appear by accident.
+# The four columns that are deliberately not a top-level field of the contract they sit
+# beside. Three flatten something the contract nests and are therefore spelled
+# differently from any field. The fourth, ``experience_records.experience_id``, is
+# derived rather than flattened: the sealed ``ExperienceRecord`` declares no field naming
+# the P7 experience — it is keyed by it through ``contract_id`` — so migration 0020's
+# separate foreign key, which is what lets revisions of one projection coexist, projects
+# no field at all and is filled in at the store boundary. Each is named so that a fifth
+# cannot appear by accident.
 FLATTENED_COLUMNS = {
     "routing_requests": {"node_contract_id", "node_contract_hash"},
     "configuration_candidates": {"configuration_hash"},
+    "experience_records": {"experience_id"},
 }
 
 
@@ -346,11 +358,19 @@ def test_the_one_table_with_no_frozen_contract_is_routing_overrides() -> None:
 
 
 def test_the_experience_record_is_keyed_by_the_p7_experience_row_it_projects() -> None:
-    """ADR-054 b: one experience id, two tables, no copied fields."""
+    """ADR-054 b: one experience id, two tables, no copied fields.
+
+    The key is on ``experience_id`` and no longer on ``id`` (migration 0020). It is still
+    exactly one key into ``experiences`` and still the only thing this table says about the
+    P7 record; what changed is that a projection may now have more than one row, so the
+    column that names the experience cannot also be the column that tells the rows apart.
+    """
 
     keys = {(fk.parent.name, fk.column.table.name, fk.column.name) for fk in
             ExperienceRecordRow.__table__.foreign_keys}
-    assert ("id", "experiences", "id") in keys
+    assert ("experience_id", "experiences", "id") in keys
+    # And the primary key is free to be a revision's own derived id.
+    assert not [key for key in keys if key[0] == "id"]
     # Nothing from the P7 Experience is restated here.
     duplicated = {"repository_identity", "trust", "polarity", "task_id", "source_run_id"}
     assert duplicated.isdisjoint(ExperienceRecordRow.__table__.columns.keys())
@@ -539,7 +559,15 @@ def test_the_freeze_delta_migration_follows_0017_and_creates_only_its_own_two() 
 
 
 def test_no_other_migration_names_a_v04_table() -> None:
-    """No migration outside the two may create one of these under a different shape."""
+    """No migration outside the two may create one of these under a different shape.
+
+    0020 is the single exception, and it is *checked* rather than exempted: it names
+    exactly one of these tables — ``experience_records``, whose foreign key it moves from
+    the primary key onto its own column — and creates none of them. A migration that
+    created a v0.4 table outside 0017 and 0018 would be a second definition of a table
+    that already has one, and the two would drift; a migration that alters one is a
+    different thing and has to say which table and prove it builds nothing.
+    """
 
     versions = ROOT / "migrations" / "versions"
     owners = {MIGRATION_PATH.name, DELTA_MIGRATION_PATH.name}
@@ -547,8 +575,13 @@ def test_no_other_migration_names_a_v04_table() -> None:
         if path.name in owners:
             continue
         text = path.read_text(encoding="utf-8")
-        for name in V04_M0_ROUTING_TABLES:
-            assert f'"{name}"' not in text, (path.name, name)
+        named = {name for name in V04_M0_ROUTING_TABLES if f'"{name}"' in text}
+        if path.name == EXPERIENCE_FK_MIGRATION_PATH.name:
+            assert named == {"experience_records"}, path.name
+            assert "create_table" not in text, path.name
+            assert ".create(bind" not in text, path.name
+            continue
+        assert not named, (path.name, sorted(named))
 
 
 def test_the_migration_docstrings_name_every_table_and_every_constraint() -> None:
