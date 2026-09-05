@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -27,7 +28,7 @@ from accretion.contracts import (
     WorkflowNodeSpec,
     WorkflowTemplate,
 )
-from accretion.contracts.routing import RoutingDecisionReceipt
+from accretion.contracts.routing import DecisionType, RoutingDecisionReceipt
 from accretion.ids import has_prefix
 from accretion.persistence.store import MemoryStore
 from accretion.routing.freeze import NodeContractFreezer, ObjectiveContractMinter
@@ -213,6 +214,7 @@ async def test_objective_is_one_persisted_revision_per_task() -> None:
     assert objectives[0].verified_success_floor == 0.5
 
 
+@pytest.mark.acceptance("AC4-M2-002")
 async def test_freeze_persists_spec_first_and_replays_byte_identically() -> None:
     store = OrderingStore()
     freezer, run, task, node, spec, template = await freeze_setup(store)
@@ -250,9 +252,10 @@ async def test_freeze_persists_spec_first_and_replays_byte_identically() -> None
     assert {
         item.capability.capability_id for item in frozen.node_contract.required_capabilities
     } == {"cap.node.write", "cap.repo.read"}
-    assert frozen.node_contract.environment_constraints[0].value == Provider.FAKE.value
+    assert frozen.node_contract.environment_constraints == []
 
 
+@pytest.mark.acceptance("AC4-M2-004")
 async def test_graph_revision_supersedes_without_mutating_active_freeze() -> None:
     store = MemoryStore()
     freezer, run, task, node, spec, template = await freeze_setup(store)
@@ -323,6 +326,9 @@ async def test_cursor_keeps_an_existing_freeze_for_the_active_execution() -> Non
             self.calls += 1
             raise AssertionError("an active cursor must not be refrozen")
 
+        async def latest_receipt(self, **kwargs):  # type: ignore[no-untyped-def]
+            return SimpleNamespace(decision_type=DecisionType.HUMAN_REVIEW_REQUIRED)
+
     store = MemoryStore()
     freezer, run, task, node, spec, template = await freeze_setup(store)
     frozen = await freezer.freeze(
@@ -342,10 +348,6 @@ async def test_cursor_keeps_an_existing_freeze_for_the_active_execution() -> Non
         statuses={}, entered_via={}, current_key=node.key, frozen={node.key: frozen}
     )
 
-    async def agent_stub(*args, **kwargs):  # type: ignore[no-untyped-def]
-        return NodeOutcome.SUCCESS, args[3]
-
-    manager._graph_agent = agent_stub
     session = object()
     outcome, returned = await manager._run_graph_node(
         run,
@@ -362,14 +364,14 @@ async def test_cursor_keeps_an_existing_freeze_for_the_active_execution() -> Non
         graph_revision=2,
     )
 
-    assert outcome is NodeOutcome.SUCCESS
+    assert outcome is NodeOutcome.INCONCLUSIVE
     assert returned is session
     assert spy.calls == 0
     assert (
         cursor.frozen[node.key].node_contract.immutable_hash
         == frozen.node_contract.immutable_hash
     )
-    assert cursor.receipts == {}
+    assert cursor.receipts[node.key].decision_type is DecisionType.HUMAN_REVIEW_REQUIRED
 
 
 def test_execution_instance_identity_is_attempt_scoped() -> None:

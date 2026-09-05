@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, cast
 
 from accretion.checkpoints import (
     ReconcileClassification,
@@ -60,6 +60,7 @@ from accretion.contracts import (
     RunRef,
     RunState,
     RuntimeExecutionRequest,
+    RuntimeStatus,
     SessionConfig,
     SessionRef,
     StrategyOverrideResult,
@@ -77,7 +78,13 @@ from accretion.contracts import (
     WorkflowTemplate,
     WorkspaceLease,
 )
-from accretion.contracts.routing import RoutingDecisionReceipt
+from accretion.contracts.canonical import content_hash
+from accretion.contracts.routing import (
+    DecisionType,
+    ExecutionConfiguration,
+    RoutingDecisionReceipt,
+    ToolBinding,
+)
 from accretion.ids import new_id
 from accretion.looping import (
     build_loop_execution,
@@ -93,7 +100,12 @@ from accretion.planning import (
     has_irreversible_capabilities,
 )
 from accretion.projections import build_graph_projection, build_loop_projection
-from accretion.routing.protocols import FeedbackPipeline, FrozenNode, NodeRoutingService
+from accretion.routing.protocols import (
+    FeedbackPipeline,
+    FrozenNode,
+    NodeRoutingService,
+    RoutingMode,
+)
 from accretion.runtimes.common import make_event
 from accretion.templates import (
     compute_template_checksum,
@@ -165,6 +177,20 @@ class CapabilityNodeInvoker(Protocol):
     ) -> object | None: ...
 
 
+class SelectedCapabilityNodeInvoker(Protocol):
+    """Executes the exact immutable tool binding selected by the router."""
+
+    async def invoke_selected(
+        self,
+        *,
+        run_id: str,
+        node_id: str,
+        selected: ToolBinding,
+        arguments: dict[str, object],
+        executing_provider: Provider,
+    ) -> object | None: ...
+
+
 class SearchNodeExecutor(Protocol):
     async def __call__(
         self,
@@ -230,9 +256,12 @@ class _GraphCursor:
     # Routing is an opt-in sidecar.  Both maps are intentionally cursor-local: a running
     # graph revision keeps the exact contract/receipt it started with even if a new graph
     # revision is activated concurrently.  Durable recovery repopulates these through the
-    # routing service in M2.2.
+    # routing service in M2.2. Receipts cache the last observed durable head (and are
+    # refreshed before claim); configurations mark an uncertain claimed dispatch that must
+    # never be submitted again without reconciliation.
     frozen: dict[str, FrozenNode] = field(default_factory=dict)
     receipts: dict[str, RoutingDecisionReceipt] = field(default_factory=dict)
+    configurations: dict[str, ExecutionConfiguration] = field(default_factory=dict)
 
 
 class RunManager:
@@ -1198,6 +1227,21 @@ class RunManager:
                 graph_revision=graph_revision,
                 attempt=1,
             )
+        if (
+            self.routing_service is not None
+            and node.kind
+            in {GraphNodeKind.AGENT, GraphNodeKind.TOOL, GraphNodeKind.VERIFIER}
+        ):
+            session, routing_outcome = await self._prepare_routed_node(
+                run=run,
+                task=task,
+                lease=lease,
+                session=session,
+                node=node,
+                cursor=cursor,
+            )
+            if routing_outcome is not None:
+                return routing_outcome, session
         if node.kind is GraphNodeKind.TASK:
             if cursor.statuses.get(node.key) is GraphNodeStatus.SUCCEEDED:
                 return NodeOutcome.SUCCESS, session
@@ -1218,6 +1262,8 @@ class RunManager:
                 deadline=deadline,
                 cursor=cursor,
                 entered_via=entered_via,
+                routing_receipt=cursor.receipts.get(node.key),
+                routing_configuration=cursor.configurations.get(node.key),
             )
         if node.kind is GraphNodeKind.TOOL:
             await self._node_transition(
@@ -1230,7 +1276,15 @@ class RunManager:
             # below --- the entirety of pre-M5 TOOL behaviour --- is untouched.
             if spec is not None and spec.capability_refs:
                 await self._invoke_node_capabilities(
-                    run, node, spec, executing_provider=session.provider
+                    run,
+                    node,
+                    spec,
+                    executing_provider=(
+                        cursor.configurations[node.key].runtime.provider
+                        if node.key in cursor.configurations
+                        else session.provider
+                    ),
+                    routing_configuration=cursor.configurations.get(node.key),
                 )
             captures = cursor.entered_via.get(f"capture:{node.key}", 0) + 1
             cursor.entered_via[f"capture:{node.key}"] = captures
@@ -1256,6 +1310,8 @@ class RunManager:
                 policy=policy,
                 cursor=cursor,
                 entered_via=entered_via,
+                routing_configuration=cursor.configurations.get(node.key),
+                frozen=cursor.frozen.get(node.key),
             )
         if node.kind is GraphNodeKind.GATE:
             assert isinstance(gate, GateSpec)
@@ -1285,6 +1341,82 @@ class RunManager:
             )
         raise RuntimeError(f"unsupported graph node kind {node.kind.value}")
 
+    async def _prepare_routed_node(
+        self,
+        *,
+        run: Run,
+        task: Task,
+        lease: WorkspaceLease,
+        session: SessionRef,
+        node: RunNode,
+        cursor: _GraphCursor,
+    ) -> tuple[SessionRef, NodeOutcome | None]:
+        """Restore or create a receipt, claim it, then prepare the selected runtime.
+
+        The dispatch claim is the last durable control-plane act before any external side
+        effect.  If the process dies after that claim, a reconstructed cursor calls
+        ``claim_dispatch`` again and the service refuses it until runtime evidence has been
+        reconciled; this is deliberately fail-closed and does not pretend the external
+        boundary is exactly-once.
+        """
+
+        assert self.routing_service is not None
+        frozen = cursor.frozen.get(node.key)
+        if frozen is None:
+            raise RuntimeError("DISPATCH_WITHOUT_RECEIPT: node was not frozen")
+        if node.key in cursor.configurations:
+            raise RuntimeError(
+                "RECEIPT_ALREADY_DISPATCHED: prior dispatch is uncertain until runtime "
+                "evidence is reconciled"
+            )
+
+        # A review decision can be superseded by an operator override while this cursor is
+        # still alive.  The durable head, not the cursor cache, is authoritative before each
+        # claim attempt.
+        receipt = await self.routing_service.latest_receipt(frozen=frozen, run=run)
+        if receipt is None:
+            snapshot = await self.routing_service.snapshot(
+                workspace_id=frozen.node_contract.workspace_id,
+                project_id=run.project_id,
+                task=task,
+            )
+            receipt = await self.routing_service.route(
+                frozen=frozen,
+                snapshot=snapshot,
+                mode=RoutingMode.BASELINE_ONLY,
+                run=run,
+            )
+        cursor.receipts[node.key] = receipt
+
+        if receipt.decision_type is DecisionType.HUMAN_REVIEW_REQUIRED:
+            cursor.statuses[node.key] = GraphNodeStatus.WAITING
+            return session, NodeOutcome.INCONCLUSIVE
+
+        # This persists the dispatch claim before session creation, capability invocation,
+        # verifier execution, worktree capture, or runtime submission.  A second entry on
+        # this cursor is refused above rather than resubmitted without another durable claim.
+        configuration = await self.routing_service.claim_dispatch(receipt=receipt, run=run)
+        cursor.configurations[node.key] = configuration
+
+        if node.kind is not GraphNodeKind.AGENT:
+            return session, None
+
+        self._require_runtime(configuration.runtime.provider)
+        runtime = self.runtimes[configuration.runtime.provider]
+        routed_session = await runtime.create_session(
+            SessionConfig(
+                run_id=run.run_id,
+                workspace=lease.path,
+                model=configuration.model.model_id,
+                allowed_tools=[
+                    tool.capability.capability_id for tool in configuration.tools
+                ],
+                denied_tools=task.envelope.denied_capabilities,
+            )
+        )
+        await self.store.save_session(routed_session)
+        return routed_session, None
+
     async def _invoke_node_capabilities(
         self,
         run: Run,
@@ -1292,6 +1424,7 @@ class RunManager:
         spec: WorkflowNodeSpec,
         *,
         executing_provider: Provider | None = None,
+        routing_configuration: ExecutionConfiguration | None = None,
     ) -> None:
         """Spend each of the node's capability references, in declared order.
 
@@ -1314,13 +1447,48 @@ class RunManager:
         exactly what they attributed before.
         """
 
-        if self.capability_invoker is None:
-            return
         query = (spec.instruction or spec.label).strip()
         if not query:
             return
         provider = executing_provider if executing_provider is not None else run.provider
         for capability_id in spec.capability_refs:
+            if routing_configuration is not None:
+                matches = [
+                    binding
+                    for binding in routing_configuration.tools
+                    if binding.capability.capability_id == capability_id
+                ]
+                if len(matches) != 1:
+                    raise RuntimeError(
+                        "SELECTED_TOOL_BINDING_MISMATCH: routed capability has no unique "
+                        "selected binding"
+                    )
+                selected = matches[0]
+                invoke_selected = getattr(
+                    self.capability_invoker, "invoke_selected", None
+                )
+                if invoke_selected is None:
+                    raise RuntimeError(
+                        "SELECTED_TOOL_BINDING_UNAVAILABLE: capability invoker cannot pin "
+                        "the selected binding"
+                    )
+                selected_invoker = cast(
+                    SelectedCapabilityNodeInvoker, self.capability_invoker
+                )
+                result = await selected_invoker.invoke_selected(
+                    run_id=run.run_id,
+                    node_id=node.key,
+                    selected=selected,
+                    arguments={"query": query},
+                    executing_provider=provider,
+                )
+                if result is None:
+                    raise RuntimeError(
+                        "SELECTED_TOOL_BINDING_UNAVAILABLE: selected binding was not invoked"
+                    )
+                continue
+            if self.capability_invoker is None:
+                return
             try:
                 await self.capability_invoker(
                     run_id=run.run_id,
@@ -1344,6 +1512,8 @@ class RunManager:
         deadline: float,
         cursor: _GraphCursor,
         entered_via: str | None,
+        routing_receipt: RoutingDecisionReceipt | None,
+        routing_configuration: ExecutionConfiguration | None,
     ) -> tuple[NodeOutcome, SessionRef]:
         revisions = await self.store.list_graph_revisions(run.run_id)
         graph_revision = revisions[-1].revision if revisions else 1
@@ -1464,6 +1634,8 @@ class RunManager:
             deadline=deadline,
             node_key=node.key,
             directive=directive,
+            routing_receipt=routing_receipt,
+            routing_configuration=routing_configuration,
         )
         session = outcome.session
         await self.store.add_budget_spent(
@@ -1503,7 +1675,18 @@ class RunManager:
         policy: AcceptancePolicy,
         cursor: _GraphCursor,
         entered_via: str | None,
+        routing_configuration: ExecutionConfiguration | None = None,
+        frozen: FrozenNode | None = None,
     ) -> tuple[NodeOutcome, SessionRef]:
+        if routing_configuration is not None:
+            if frozen is None:
+                raise RuntimeError("DISPATCH_WITHOUT_RECEIPT: verifier was not frozen")
+            selected_verifier_id = self._selected_verifier_id(
+                routing_configuration, frozen
+            )
+            policy = policy.model_copy(
+                update={"required_verifiers": [selected_verifier_id]}
+            )
         await self._node_transition(
             run, session.session_id, node.key, entered=True, entered_via=entered_via
         )
@@ -1542,6 +1725,36 @@ class RunManager:
             VerificationStatus.FAIL: NodeOutcome.FAIL,
             VerificationStatus.INCONCLUSIVE: NodeOutcome.INCONCLUSIVE,
         }[acceptance], session
+
+    def _selected_verifier_id(
+        self, configuration: ExecutionConfiguration, frozen: FrozenNode
+    ) -> str:
+        selected = configuration.verifier
+        if selected.verification_spec_hash != frozen.verification_spec.content_hash:
+            raise RuntimeError(
+                "SELECTED_VERIFIER_MISMATCH: verifier pins a different verification spec"
+            )
+        verifier_id = selected.verifier.verifier_contract_id
+        verifier = self.verifiers.get(verifier_id)
+        implementation_identity = (
+            f"{type(verifier).__module__}.{type(verifier).__qualname__}"
+        )
+        implementation_digest = content_hash(
+            {
+                "verifier_id": verifier_id,
+                "version": verifier.verifier_version,
+                "implementation": implementation_identity,
+            },
+            exclude=(),
+        )
+        if (
+            verifier.verifier_version != selected.version
+            or implementation_digest != selected.verifier.implementation_digest
+        ):
+            raise RuntimeError(
+                "SELECTED_VERIFIER_MISMATCH: selected verifier implementation changed"
+            )
+        return verifier_id
 
     async def _graph_gate(
         self,
@@ -2495,8 +2708,38 @@ class RunManager:
         node_key: str,
         iteration_number: int = 1,
         directive: IterationDirective | None = None,
+        routing_receipt: RoutingDecisionReceipt | None = None,
+        routing_configuration: ExecutionConfiguration | None = None,
     ) -> RuntimeCallOutcome:
         runtime = self._runtime_for(session)
+        if (routing_receipt is None) != (routing_configuration is None):
+            raise RuntimeError(
+                "DISPATCH_WITHOUT_RECEIPT: routed calls require both receipt and configuration"
+            )
+        if routing_configuration is not None:
+            self._require_runtime(routing_configuration.runtime.provider)
+            health = await runtime.health()
+            if (
+                session.provider is not routing_configuration.runtime.provider
+                or health.provider is not routing_configuration.runtime.provider
+                or health.runtime_id != routing_configuration.runtime.runtime_id
+                or health.status is not RuntimeStatus.READY
+                or health.runtime_version
+                != routing_configuration.runtime.adapter_version
+                or content_hash(
+                    {
+                        "runtime_id": health.runtime_id,
+                        "provider": health.provider,
+                        "runtime_version": health.runtime_version,
+                        "capabilities": sorted(health.capabilities),
+                    },
+                    exclude=(),
+                )
+                != routing_configuration.runtime.capability_profile_digest
+            ):
+                raise RuntimeError(
+                    "RUNTIME_VERSION_DRIFT: selected runtime changed before submission"
+                )
         remaining = max(1, int(deadline - datetime.now(UTC).timestamp()))
         request_envelope = envelope.model_copy(
             update={
@@ -2538,6 +2781,9 @@ class RunManager:
             async for event in runtime.events(ref):
                 payload = dict(event.payload)
                 payload.setdefault("runtime_call_id", ref.runtime_call_id or runtime_call_id)
+                if routing_receipt is not None:
+                    payload["routing_receipt_id"] = routing_receipt.contract_id
+                    payload["node_contract_hash"] = routing_receipt.node_contract_hash
                 stored = await self._append(
                     event.model_copy(
                         update={

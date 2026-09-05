@@ -26,8 +26,6 @@ from accretion.contracts.canonical import canonical_json
 from accretion.contracts.refs import ApprovalArtifactRef, CapabilityRef, PolicyRef
 from accretion.contracts.routing import (
     CapabilityRequirement,
-    EnvironmentConstraint,
-    MetricOperator,
     NodeContract,
     ObjectiveContract,
     ObjectiveContractRef,
@@ -247,15 +245,6 @@ class NodeContractFreezer:
                 objective=spec.instruction or task.envelope.objective,
                 node_kind=node.kind,
                 required_capabilities=requirements,
-                environment_constraints=[
-                    EnvironmentConstraint(
-                        constraint_id="runtime.provider",
-                        attribute="runtime.provider",
-                        operator=MetricOperator.EQ,
-                        value=run.provider.value,
-                        rationale="M2 routes only within the provider selected for the run",
-                    )
-                ],
                 allowed_risk_class=_RISK_CLASS_BY_LEVEL[task.envelope.risk_level],
                 resource_cap=ResourceBudget(
                     maximum_cost=Decimal("0"),
