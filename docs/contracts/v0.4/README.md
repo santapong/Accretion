@@ -1,15 +1,22 @@
 # v0.4 contract schemas
 
-Nineteen JSON Schema 2020-12 documents, one per contract in the v0.4 family, generated from
-the pydantic models in [`src/accretion/contracts/routing.py`](../../../src/accretion/contracts/routing.py)
+Twenty-one JSON Schema 2020-12 documents, one per contract in the v0.4 family, generated
+from the pydantic models in [`src/accretion/contracts/routing.py`](../../../src/accretion/contracts/routing.py)
 and **committed**. They are the machine-readable half of the M0 contract freeze (SDD v0.4
 §19; cross-release registry §19, §20 decision 1).
+
+Nineteen of them were frozen by M0. The last two — `ShadowRolloutResult.schema.json` and
+`RouterActivation.schema.json` — arrived with the **freeze delta of 5 Sep 2026**
+(ADR-060, ADR-061), which also re-sealed `ObjectiveContract.schema.json` for the additive
+`exploration_policy` field (OQ-410, ADR-062). The delta and the digests it moved are
+recorded in [`docs/releases/v0.4/m0-freeze.md`](../../releases/v0.4/m0-freeze.md); the
+freeze rule below applies to all twenty-one identically.
 
 ## What they are
 
 Each file is `<Model>.schema.json` — the class name, not the module path — and describes the
 **validation** view of the model: what a reader must accept, with every nested value object
-inlined under `$defs`. The registry §3 canonical header appears in all nineteen, because
+inlined under `$defs`. The registry §3 canonical header appears in all twenty-one, because
 every v0.4 contract inherits it:
 
 | Field | Meaning |

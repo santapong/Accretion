@@ -2,8 +2,8 @@
   "_expect": "no verification_result_id is named",
   "budget_consumed": 0.51,
   "completed_at": "2026-03-01T09:29:00Z",
-  "configuration_hash": "de0d3a8ac1f6f43ff7a2e05ba9ad46fd9b2c3f0b5e6c17d18b2e3f4a5c6d7e8f",
-  "contract_id": "shr_3H0PDXW6RB9CJVQ2K4NZTGYE81",
+  "configuration_hash": "627e71640320f824fc24bb69530cb8b7e59ef9b3f118860db5336ef6110b939e",
+  "contract_id": "shr_QQVHPQ7K845NPCB99YQ51M3Q7A",
   "contract_type": "accretion.shadow-rollout-result",
   "created_at": "2026-03-01T09:00:00Z",
   "created_by": {
@@ -11,7 +11,7 @@
     "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
     "status": "ACTIVE"
   },
-  "fork_execution_id": "rtc_0KZ4M8CVXT62BWNDHJ9QRAG5P7",
+  "fork_execution_id": "rtc_Q5VC355DMXZ9CDFS3PGZ251Q20",
   "kind": "SHADOW",
   "labels": {
     "owner": "routing-platform",
@@ -73,7 +73,7 @@
     }
   },
   "shadow_decision_id": "shd_C12YJCNZBTPJQA17MNG4GJ2E59",
-  "supersedes_contract_id": "shr_9TAB2VNK5QCWJ4XZ0MHD7GFP63",
+  "supersedes_contract_id": "shr_HE3HFKSK2JTP5FKXT8KBZMDJ6D",
   "trial_index": 7,
   "verification_result_id": null,
   "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"

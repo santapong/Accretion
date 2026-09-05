@@ -4,8 +4,8 @@
     "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
     "status": "ACTIVE"
   },
-  "content_hash": "79a1cfe52c30c93a9fd99596d6f1bf1588204150c872594cfd78e89bdbc2609f",
-  "contract_id": "rac_1PVDZ8K3MQXWTNH54B7JC0GRE9",
+  "content_hash": "8a3f03c51c85c16b3e9886aa61afabf7b7793545df46a6b4615c6011c6301947",
+  "contract_id": "rac_Y6BZ0VYYMDNM22MN0RF001HDBJ",
   "created_at": "2026-03-01T09:00:00Z",
   "created_by": {
     "display_name": "v0.4 contract freeze fixture",

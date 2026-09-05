@@ -2,15 +2,15 @@
   "budget_consumed": 0.42,
   "completed_at": "2026-03-01T09:31:00Z",
   "configuration_hash": "73828f6546f6e3b4730d76d7cf0530c39e50d9b0c6b605e42c52148ff6c91a44",
-  "content_hash": "11b7eb79244e5c516e9c2a674c4ac6a391848880ba89c34d1b0d7369ebe2e6f6",
-  "contract_id": "shr_5MJ7WQ2K0YHBEXV3NAT8CD16PZ",
+  "content_hash": "761a21d9df0a48f7b83a2b5ab9b358c533d7eca3c1fe500737855f6c1caf990b",
+  "contract_id": "shr_DTNZXNG5TB73MNQ9EPN0DHQ3E0",
   "created_at": "2026-03-01T09:00:00Z",
   "created_by": {
     "display_name": "v0.4 contract freeze fixture",
     "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
     "status": "ACTIVE"
   },
-  "fork_execution_id": "rtc_7QW1ZP4C8VHMK0DNBJ35XGT2FA",
+  "fork_execution_id": "rtc_5ZJMHERRBPC501VWHKNKK8SYTN",
   "kind": "CONTROL",
   "observed": {
     "cost": 0.42,
@@ -23,8 +23,7 @@
   "serving": {
     "model_id": "fake-small",
     "provider": "FAKE",
-    "runtime_version": "2026.03.01",
-    "serving_labels": {}
+    "runtime_version": "2026.03.01"
   },
   "shadow_decision_id": "shd_J48FGJ9RHFA4YJPWGBRMT2VZ00",
   "trial_index": 0,

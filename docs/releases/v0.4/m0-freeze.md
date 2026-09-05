@@ -301,4 +301,10 @@ replaces status mutation), ADR-062 (the bandit safety inequality and where α co
 ADR-063 (the promotion gate as calibrated safe policy improvement), and ADR-064 (the
 research artefacts and the locked-test access rule) are written in
 [`docs/sdd/Accretion_SDD_v0.4.md`](../../sdd/Accretion_SDD_v0.4.md) §21, and §22 now carries
-a decision for fifteen of the twenty open questions.
+a decision for sixteen of the twenty open questions. The sixteenth is OQ-409, and its cell
+is a decision about how to proceed rather than an answer: minimum shadow evidence stays
+**open**, blocked on the §21 protocol freeze, and the cell records the *interim rule* the
+M6 gate runs under until the power analysis lands — at least nine paired runs per
+configuration per node class. A cell that had been left empty would have said the question
+was untouched; one that read as settled would have said a number nobody has computed is
+final. It says neither.
