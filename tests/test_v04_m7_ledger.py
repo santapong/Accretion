@@ -49,7 +49,11 @@ def test_the_ledger_refuses_when_the_conservative_inequality_would_break() -> No
         candidate_cost_ucb=0.75, baseline_cost_lcb=0.5, alpha=0.5, caps=GENEROUS
     )
     assert at_the_bound.allowed is True
-    assert at_the_bound.reason
+    # The allowed case names the headroom that let it through, so a receipt can be replayed
+    # against the inequality; a constant sentence would fail all three fragments.
+    assert "0.75 of 0.75 conservative" in at_the_bound.reason
+    assert "1 of 8 explorations" in at_the_bound.reason
+    assert "0.75 of 4.0 cost" in at_the_bound.reason
 
     over_the_bound = ledger.can_explore(
         candidate_cost_ucb=math.nextafter(0.75, 1.0),
@@ -140,6 +144,13 @@ def test_unsettled_explorations_are_charged_at_their_upper_bound_until_settled()
     # A second, unsettled exploration goes on charging its bound while the first is settled.
     ledger.record("rcp_2", 0.5, 0.5)
     assert ledger.explored_cost_sum == 0.75
+
+    # A denormalised cost is refused at the door and never booked.
+    with pytest.raises(ValueError, match="cost_ucb"):
+        ledger.record("rcp_bad", 1.5, 0.5)
+    with pytest.raises(ValueError, match="baseline_cost_lcb"):
+        ledger.record("rcp_bad2", 0.5, -0.25)
+    assert ledger.explore_count == 2
     entries = ledger.snapshot()["entries"]
     assert entries == [
         {
