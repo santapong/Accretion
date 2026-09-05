@@ -136,6 +136,7 @@ async def test_regret_is_recomputed_identically_from_a_cold_store() -> None:
     assert expected.total_regret != other.total_regret
 
     store = await setup_cold_store(runner.stored_decisions(result.policy("M1")))
+    other_decisions = runner.stored_decisions(result.policy("M6"))
     del runner, result
 
     receipts = await store.list_routing_receipts(workspace_id=BENCHMARK_WORKSPACE_ID)
@@ -154,6 +155,23 @@ async def test_regret_is_recomputed_identically_from_a_cold_store() -> None:
     assert recomputed.mean_regret == expected.mean_regret
     assert dict(recomputed.regret_by_project) == dict(expected.regret_by_project)
     assert recomputed.safety == expected.safety
+
+    # A second cold store holding a different policy's receipts over the same tasks must
+    # recompute that policy's report, not anything left over from the first call: an
+    # implementation that cached a selection per task would hand M1's rows back here.
+    other_store = await setup_cold_store(other_decisions)
+    other_recomputed = regret_from_receipts(
+        receipts=await other_store.list_routing_receipts(workspace_id=BENCHMARK_WORKSPACE_ID),
+        candidates=await other_store.list_configuration_candidates(
+            workspace_id=BENCHMARK_WORKSPACE_ID
+        ),
+        outcomes=corpus.stored_outcomes(),
+        weights=corpus.config.weights,
+        invalid_penalty=corpus.config.invalid_action_penalty,
+    )
+    assert other_recomputed.rows == as_stored(other)
+    assert other_recomputed.rows != recomputed.rows
+    assert other_recomputed.total_regret == other.total_regret
 
 
 async def test_a_tampered_receipt_changes_the_recomputed_regret_for_the_row_it_names() -> None:
