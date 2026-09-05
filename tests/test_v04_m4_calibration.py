@@ -116,7 +116,23 @@ def test_conformal_lcb_covers_at_least_one_minus_alpha_on_grouped_synthetic_data
     fit_residuals = success_residuals(fit_p, fit_y)
     holdout_residuals = success_residuals(holdout_p, holdout_y)
 
+    # One-sided by construction: under-prediction contributes exactly nothing and cannot
+    # buy back the budget over-prediction spends, so the bound stays conservative.
+    assert success_residuals([0.2, 0.9], [1.0, 0.0]) == [0.0, 0.9]
+    assert min(holdout_residuals) >= 0.0
+
     grouped = conformal_quantile(fit_residuals, ALPHA, fit_groups)
+    # Adding a project that only under-predicts can never lower the quantile.
+    under_p = [0.0] * 8
+    under_y = [1.0] * 8
+    assert (
+        conformal_quantile(
+            fit_residuals + success_residuals(under_p, under_y),
+            ALPHA,
+            list(fit_groups) + ["under-predicting-project"] * 8,
+        )
+        >= grouped
+    )
     # The ungrouped variant, without a second implementation: one row per group is exactly the
     # row-level quantile this bound must not be computed with.
     ungrouped = conformal_quantile(
@@ -255,3 +271,11 @@ def test_calibration_report_is_deterministic_and_serialisable() -> None:
                 bootstraps=5,
             )
             assert sum(item.count for item in edge_report.bins) == count
+
+    # The injected-quantile branch is what keeps holdout_coverage held out: a report that
+    # ignored the injected value and refitted on the rows it scores would fail both fields.
+    injected = build_calibration_report(
+        seed=7, **{**arguments, "conformal_quantile_value": 0.9}
+    )
+    assert injected.conformal_quantile == 0.9
+    assert injected.holdout_coverage > first.holdout_coverage
