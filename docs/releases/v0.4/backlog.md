@@ -7,7 +7,7 @@ its §19 orders the milestones and its §20 owns the criteria. This ledger recor
 
 | Priority | Milestone | Owns (SDD §20) | Status |
 |---:|---|---|---|
-| 1 | M0 contract and feature freeze | none (ADR-052) | in progress ([plan](m0-plan.md)) |
+| 1 | M0 contract and feature freeze | none (ADR-052) | delivered (#TBD) ([plan](m0-plan.md), [freeze record](m0-freeze.md)) |
 | 2 | M1 compatibility engine | 005-008 | not started |
 | 3 | M2 hierarchical deterministic selector | 001, 002, 004, 009-015, 022 | not started |
 | 4 | M3 experience and feedback pipeline | 003, 023-034 | not started |

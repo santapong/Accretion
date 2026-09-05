@@ -39,6 +39,46 @@ The M9 ladder is parked after its stylesheet port; the entries below it are v0.4
   unknown-version) carrying real content hashes; and nineteen committed JSON Schema 2020-12
   documents under `docs/contracts/v0.4/` with an export-and-`--check` script. No table,
   migration, store method, route or UI file changes (#122).
+- Froze v0.4 persistence: migration `0017_v04_m0_routing_contracts` adds the fourteen
+  tables SDD v0.4 §13 lists plus `objective_contracts`, which §7.1 requires and ADR-058
+  counts — fifteen additive tables in all (`objective_contracts`, `node_contracts`,
+  `verification_specs`, `routing_requests`, `configuration_candidates`,
+  `compatibility_decisions`, `routing_receipts`, `routing_overrides`,
+  `verification_results`, `experience_records`, `failure_events`,
+  `router_model_versions`, `router_training_snapshots`, `router_promotion_reports`,
+  `shadow_decisions`) carrying the §13.1 constraints —
+  unique `(content_hash, schema_version)` on every table, a unique `routing_request_id`
+  on receipts, and the repository's first two partial unique indexes for "one ACTIVE
+  workspace router per workspace" and "one ACTIVE adapter per project and algorithm",
+  both mirrored in `MemoryStore`; every foreign key is `ON DELETE RESTRICT` so nothing
+  cascades into provenance, and `experience_records` is keyed by the P7 `experience_id`
+  it projects. The `StateStore` protocol gains append-only `put_`/`get_`/`list_` methods
+  for each table — implemented identically in `MemoryStore` and `PostgresStore`, refusing
+  a different payload under a stored id or a stored digest, treating a byte-identical
+  repeat as a no-op, and offering no `update_` or `delete_` anywhere. Every `list_` takes
+  `workspace_id` as a required keyword with no default, so a v0.4 listing cannot be taken
+  across tenants by forgetting an argument. The receipt rule and the two ACTIVE-router
+  rules are mirrored in Python on both backends too, each inside the same lock or
+  transaction as the insert it guards, so a second receipt for one routing request raises
+  `ValueError` rather than escaping `PostgresStore` as a driver `IntegrityError`;
+  `MemoryStore` also mirrors the two foreign keys, refusing a record that names a project
+  or an experience it does not hold.
+  `routing_overrides` — the one §13 table PR2 froze no contract for — stores a
+  *pre-contract* record: its type marker is `document_type`, held deliberately outside the
+  frozen `accretion.<contract>` namespace so it makes no promise M2's `RoutingOverride`
+  would have to keep, its ids come from a new `routing_override` -> `rov` kind rather than
+  the v0.1 strategy-override `ovr`, its retry check ignores the store-stamped clock so an
+  at-least-once redelivery is a no-op (an *explicitly supplied* `created_at` is part of
+  the identity a retry is compared on), and its shape is frozen by a committed golden
+  document with a recorded digest. The freeze record classifies M2's future
+  `RoutingOverride` as a **Major, fail-closed** replacement of that pre-contract record
+  rather than an additive Minor change, and records the discrimination rule: a row
+  carrying `document_type` is an M0 pre-contract record and must never be fed to a
+  contract's `model_validate`. Plus `docs/releases/v0.4/m0-freeze.md` recording the
+  sha256 of every committed contract schema, the table that stores it and the migration
+  that created it, checked by a test that also asserts every one of the fifteen tables has
+  a frozen shape. The migration is reversible and no existing table, model, route or UI
+  file changes (#TBD).
 
 ### Added
 

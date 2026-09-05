@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Sequence
+import re
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from typing import Any, NamedTuple, Protocol
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -74,6 +75,29 @@ from accretion.contracts import (
     WorkspaceLease,
     WorkspaceMembership,
 )
+from accretion.contracts.canonical import (
+    CONTRACT_SCHEMA_VERSION,
+    CanonicalContract,
+    content_hash,
+)
+from accretion.contracts.routing import (
+    CompatibilityDecision,
+    ConfigurationCandidate,
+    ExperienceRecord,
+    FailureEvent,
+    IndependentVerificationResult,
+    NodeContract,
+    ObjectiveContract,
+    RouterModelVersion,
+    RouterPromotionReport,
+    RouterScope,
+    RouterStatus,
+    RouterTrainingSnapshot,
+    RoutingContext,
+    RoutingDecisionReceipt,
+    ShadowDecision,
+    VerificationSpec,
+)
 from accretion.experience.models import (
     Experience,
     ExperienceEmbedding,
@@ -98,6 +122,7 @@ from accretion.orchestration.models import (
     WorkflowProposal,
 )
 from accretion.persistence.models import (
+    V04_M0_ROUTING_TABLES,
     AcceptancePolicyRow,
     AgentEventRow,
     ApprovalRow,
@@ -112,6 +137,8 @@ from accretion.persistence.models import (
     CapabilityRequestRow,
     CapabilityRow,
     CheckpointRow,
+    CompatibilityDecisionRow,
+    ConfigurationCandidateRow,
     ConnectionRow,
     ConnectorDefinitionRow,
     ContextBundleRow,
@@ -120,8 +147,10 @@ from accretion.persistence.models import (
     ExperienceMatchRow,
     ExperienceModerationActionRow,
     ExperienceQueryRow,
+    ExperienceRecordRow,
     ExperienceRow,
     ExperienceSelectionRow,
+    FailureEventRow,
     GraphValidationResultRow,
     IdentityAssertionRow,
     LoopExecutionRow,
@@ -129,7 +158,9 @@ from accretion.persistence.models import (
     McpDiscoverySnapshotRow,
     McpServerEventRow,
     McpServerRow,
+    NodeContractRow,
     OAuthTransactionRow,
+    ObjectiveContractRow,
     PluginAuditEventRow,
     PluginInstallationRow,
     PluginRow,
@@ -140,6 +171,12 @@ from accretion.persistence.models import (
     PromptContractRow,
     ReplanRequestRow,
     ResearchEvidenceRow,
+    RouterModelVersionRow,
+    RouterPromotionReportRow,
+    RouterTrainingSnapshotRow,
+    RoutingOverrideRow,
+    RoutingReceiptRow,
+    RoutingRequestRow,
     RunGraphEdgeRow,
     RunGraphNodeRow,
     RunGraphRevisionRow,
@@ -151,6 +188,7 @@ from accretion.persistence.models import (
     SearchPlanRow,
     SearchPromotionRow,
     SecretRecordRow,
+    ShadowDecisionRow,
     SkillRow,
     StrategyDecisionRow,
     StrategyOverrideRow,
@@ -159,7 +197,10 @@ from accretion.persistence.models import (
     TokenHandleRow,
     TrajectoryReplaySeedRow,
     TrajectorySegmentRow,
+    V04ContractRow,
+    VerificationResultRow,
     VerificationRow,
+    VerificationSpecRow,
     WorkflowProposalRow,
     WorkflowTemplateRow,
     WorkspaceLeaseRow,
@@ -231,6 +272,332 @@ def _ordered_context_history(contexts: Sequence[ContextBundle]) -> list[ContextB
     for context in sorted(contexts, key=lambda item: (item.created_at, item.context_bundle_id)):
         visit(context)
     return ordered
+
+
+# ---------------------------------------------------------------------------
+# v0.4 M0 — the append-only routing contract store (SDD v0.4 §13.1, ADR-058)
+#
+# One set of helpers, shared verbatim by ``MemoryStore`` and ``PostgresStore``,
+# because the two must not merely behave alike — they must fail alike. Every rule
+# below (what counts as a duplicate, which error a caller sees, what order a list
+# comes back in, when a stored payload is refused) is written once here or once in
+# each store's private ``_put_v04_*`` helper, and the protocol-parity test walks
+# the whole surface to prove neither backend grew a method the other lacks.
+# ---------------------------------------------------------------------------
+
+ROUTING_OVERRIDE_DOCUMENT_TYPE = "accretion.internal.routing-override-record/0"
+"""The ``document_type`` of the one v0.4 record with no pydantic model behind it.
+
+``routing_overrides`` is one of the fifteen §13 tables and is the only one PR2 froze no
+contract for: the SDD describes an override as an API request body (§11.1) and an event
+payload (§12), never as a schema, and M0 is a freeze — it may not mint a twentieth
+contract to fill the gap. So the row is stored as a plain canonical JSON document, sealed
+with the same ADR-056 digest and refused on drift by the same guard as every other row.
+
+**The value is deliberately outside the frozen ``accretion.<contract>`` namespace, and
+deliberately unparseable as a contract type.** ``CanonicalContract.contract_type`` is
+constrained to ``^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$``; the ``/0`` suffix here cannot match
+it. That is the whole point. An earlier draft of this module wrote
+``accretion.routing-override``, which is exactly the shape PR2's nineteen ``CONTRACT_TYPE``
+class vars use — and a document under that name is a promise that it validates as the
+contract of that name. It would not have. ``CanonicalContract`` requires ``created_by``,
+which this document does not carry, and forbids every field it does carry beyond the
+header; ``objective_contract_ref``, ``labels`` and ``retention_class`` are optional there,
+which is worse rather than better, because a reader would fill them from their defaults and
+validate a document whose digest was computed without them. ADR-056 hashes the *whole*
+body, so a row sealed over the smaller field set can never be made to re-verify by adding
+the missing fields later: the digest would
+recompute differently and ``_validate_header_and_seal`` would report it as a record edited
+after sealing. On a human-authority governance record, that is a false tampering alarm, and
+the cross-release registry classifies a reserved name reused with different semantics as
+fail-closed Major. So the name is not reserved.
+
+Rows written here are **pre-contract records**. When M2 freezes ``RoutingOverride`` beside
+``POST /routing-decisions/{receipt_id}/override``, that model will carry its own
+``contract_type`` in the ``accretion.*`` namespace and its own registry §3 header; these
+rows are not claimed to validate against it, and the table's ``payload`` column is what
+holds them. ``ids.py`` already mints the record identity (``routing_override`` -> ``rov``).
+"""
+
+ROUTING_OVERRIDE_IDENTITY_FIELDS: tuple[str, ...] = (
+    "workspace_id",
+    "project_id",
+    "receipt_id",
+    "principal_id",
+    "candidate_id",
+    "reason_code",
+    "reason",
+    "superseding_receipt_id",
+    "supersedes_contract_id",
+    "schema_version",
+)
+"""Everything a caller supplies to ``put_routing_override`` *except the clock*.
+
+``routing_overrides`` is the one table where the *store* builds the document rather than
+receiving it sealed, which makes "a byte-identical put is a no-op" a claim the store itself
+can break: ``created_at`` defaults to the wall clock and is inside the hashed body, so two
+identical calls a millisecond apart produce two different documents under one id. Comparing
+whole bodies would then turn the ordinary at-least-once redelivery of §11.1's override
+endpoint into a spurious ``... is immutable``. So the retry check compares the caller's own
+arguments and leaves the *defaulted* clock out of it: same arguments, same override, no-op;
+any of these fields different, immutable.
+
+A ``created_at`` the caller supplied explicitly is a different matter and is added back by
+``_routing_override_identity_fields`` below.
+"""
+
+
+def _routing_override_identity_fields(created_at: datetime | None) -> tuple[str, ...]:
+    """Which fields decide "same override" for this call, on both backends.
+
+    The clock is excluded only when the *store* stamped it. When the caller passed a
+    ``created_at``, it is one of the caller's arguments like every other, and dropping it
+    from the comparison would make a replay under one id with a different instant a silent
+    no-op that returns the first document — so the caller would be handed a
+    ``content_hash`` that is not the digest of the document it asked to store, with nothing
+    to say anything had been ignored. ``created_at`` is inside the ADR-056 hashed body, so
+    that divergence is unrecoverable once the row is sealed. Supplied means compared.
+    """
+
+    if created_at is None:
+        return ROUTING_OVERRIDE_IDENTITY_FIELDS
+    return ROUTING_OVERRIDE_IDENTITY_FIELDS + ("created_at",)
+
+
+REASON_CODE_PATTERN = r"[A-Z][A-Z0-9_]*"
+"""The one spelling of a reason code in the v0.4 family, as a pattern rather than as prose.
+
+``CompatibilityDecision.reason_code`` and ``RejectedCandidate.reason_code`` are frozen with
+``pattern=r"^[A-Z][A-Z0-9_]*$"``, and ``routing_overrides`` — which has no frozen model to
+carry the constraint for it — has to spell the same rule itself. It is a compiled-shape
+constant and not an ad-hoc ``isupper()``/``isalnum()`` test because those two accept
+``"1_ABC"`` and ``"_A"``, which this pattern rejects: ``reason_code`` is a promoted column
+*and* inside the hashed body, so a code the freeze record says is impossible would be
+sealed into a row no later method can correct.
+"""
+
+
+def _v04_payload(record: CanonicalContract) -> dict[str, Any]:
+    """The canonical JSON form a v0.4 row stores, and the thing drift is measured against.
+
+    ``mode="json"`` and not ``mode="python"``: the stored form has to be the one a
+    ``JSON`` column round-trips without loss, so a ``Decimal`` is a string and a
+    ``datetime`` is an RFC 3339 instant *before* it reaches the database rather than
+    after. Comparing two of these dicts is therefore comparing exactly what was written,
+    which is what makes "a byte-identical put is a no-op" a claim about bytes.
+    """
+
+    return record.model_dump(mode="json")
+
+
+def _load_v04_contract[C: CanonicalContract](
+    model: type[C], payload: Mapping[str, Any], contract_id: str
+) -> C:
+    """Rebuild a v0.4 contract from a stored payload, refusing an unsealed one.
+
+    ``CanonicalContract`` seals a document that arrives without a ``content_hash``,
+    which is right for a record being *created* and wrong for a record being *read
+    back*: a payload that lost its digest to a partial write, a hand edit or a dropped
+    column would otherwise come back as a validly sealed copy of whatever the body now
+    says, with nothing to show that it had ever been anything else. So the check happens
+    here, before ``model_validate``, on both backends. A payload that still carries its
+    digest is verified against the body by the model itself and refused on mismatch.
+    """
+
+    digest = payload.get("content_hash")
+    if not isinstance(digest, str) or not digest:
+        raise ValueError(
+            f"stored v0.4 record {contract_id} carries no content_hash; a payload that "
+            "lost its digest would be resealed by the reader as a valid copy of whatever "
+            "its body now says, so it is refused rather than rebuilt"
+        )
+    return model.model_validate(dict(payload))
+
+
+def _guard_v04_drift(
+    noun: str,
+    contract_id: str,
+    stored: Mapping[str, Any],
+    incoming: Mapping[str, Any],
+    *,
+    identity_fields: tuple[str, ...] | None = None,
+) -> bool:
+    """Decide between "already stored" and "immutable", the ``upsert_plugin`` rule.
+
+    Returns ``True`` when the incoming document is the same record as the stored one, in
+    which case the put is a no-op and the caller gets the stored row — a retried write,
+    a replayed event, an at-least-once delivery. Anything else raises: a v0.4 record is
+    sealed by its own digest, so a *different* body under the same id is not an update,
+    it is an attempt to make history say something it did not say.
+
+    "The same record" is the whole body for the fourteen tables that store a contract:
+    the caller sealed it, ``created_at`` is the caller's own field, and a retry replays
+    the identical object. For ``routing_overrides`` the store builds the body and stamps
+    it with the wall clock, so ``identity_fields`` narrows the comparison to the fields
+    the caller actually supplied — see ``ROUTING_OVERRIDE_IDENTITY_FIELDS``. The rule is
+    passed in rather than inferred so that both backends read it from the same constant.
+    """
+
+    if identity_fields is None:
+        if dict(stored) == dict(incoming):
+            return True
+        raise ValueError(f"{noun} {contract_id} is immutable")
+    differing = sorted(
+        field for field in identity_fields if stored.get(field) != incoming.get(field)
+    )
+    if not differing:
+        return True
+    raise ValueError(
+        f"{noun} {contract_id} is immutable: {', '.join(differing)} "
+        "differ from the stored record"
+    )
+
+
+def _guard_v04_hash_reuse(
+    noun: str, contract_id: str, existing_id: str, digest: str, schema_version: str
+) -> None:
+    """§13.1: "Contract hash/version tuples are unique."
+
+    Reached only when a *different* id arrives carrying a digest the table already
+    holds. Because ``contract_id`` is inside the hashed body (ADR-056 excludes only
+    ``content_hash`` itself), two ids can share a digest only if one of them was filed
+    under a forged header, so this is the fail-closed case and not a merge.
+    """
+
+    raise ValueError(
+        f"{noun} {contract_id} is immutable: content hash {digest} at schema version "
+        f"{schema_version} is already stored as {existing_id}"
+    )
+
+
+def _missing_v04_reference(
+    noun: str, contract_id: str, column: str, table: str, value: str
+) -> ValueError:
+    """The two §13 foreign keys, worded once so ``MemoryStore`` can raise them.
+
+    Every v0.4 table has ``project_id -> projects.id`` and ``experience_records`` has
+    ``id -> experiences.id``, both ``ON DELETE RESTRICT``. PostgreSQL refuses a row naming
+    a parent that does not exist; an in-memory dict of contracts knows nothing about
+    ``projects`` or ``experiences`` and would take it. Left unmirrored, a unit test written
+    against ``MemoryStore`` passes on a record PostgreSQL will refuse — the same failure
+    mode ``_routing_request_conflict`` exists to prevent, and the module header's rule that
+    the two backends must *fail alike* covers referential rules as much as unique ones. The
+    database key stays the backstop; this is what makes the error the same one.
+    """
+
+    return ValueError(
+        f"{noun} {contract_id} names {column} {value}, which is not in {table}; "
+        "the foreign key would refuse this row in PostgreSQL"
+    )
+
+
+def _routing_request_conflict(
+    contract_id: str, routing_request_id: str, existing_id: str
+) -> ValueError:
+    """§13.1: "One immutable receipt per routing request ID", as both stores say it.
+
+    ``routing_receipts.routing_request_id`` is UNIQUE in PostgreSQL, and an in-memory
+    dict keyed by ``contract_id`` knows nothing about that. Left unmirrored, the two
+    backends disagree in the worst possible direction: ``MemoryStore`` accepts a second,
+    differently-argued receipt for one routing request — silently breaking §8.2's promise
+    that "repeated requests with identical immutable inputs MUST return the same receipt"
+    for every unit test written against it — while the same code in production escapes the
+    store as an ``IntegrityError`` out of a poisoned transaction. So the rule is checked
+    before the insert on both backends and raises this one error, exactly as the two
+    partial router indexes are mirrored by ``_guard_active_router_uniqueness``. The
+    database constraint stays the backstop for the racing second writer.
+    """
+
+    return ValueError(
+        f"routing receipt {contract_id} is immutable: routing request "
+        f"{routing_request_id} already has receipt {existing_id}"
+    )
+
+
+def _build_routing_override_payload(
+    *,
+    override_id: str,
+    workspace_id: str,
+    project_id: str | None,
+    receipt_id: str,
+    principal_id: str,
+    candidate_id: str,
+    reason_code: str,
+    reason: str,
+    superseding_receipt_id: str | None,
+    supersedes_contract_id: str | None,
+    schema_version: str,
+    created_at: datetime | None,
+) -> dict[str, Any]:
+    """Seal a ``routing_overrides`` document (SDD §13; §11.1's override request).
+
+    Built by one function so that ``MemoryStore`` and ``PostgresStore`` cannot produce
+    two different documents from the same arguments — which, since the digest is over
+    the document, would produce two different digests and break parity in the one place
+    parity is hardest to notice.
+
+    ``reason_code`` is upper-cased-token shaped like every other reason code in the v0.4
+    family, and ``reason`` is the free text §11.1 sends beside it; OQ-417 leaves the
+    taxonomy open, so nothing here enumerates the codes.
+
+    The key set this returns is frozen by
+    ``tests/fixtures/records/v0.4/routing_override/minimal.json`` and by the digest
+    recorded for that file in ``docs/releases/v0.4/m0-freeze.md``. That file lives under
+    ``records/`` and not under ``tests/fixtures/contracts/v0.4/``, because that tree holds
+    exactly one directory per frozen contract and this record is not one. Reordering a key is
+    harmless (the digest sorts keys), but renaming, adding or dropping one changes the
+    shape and the digest of every row written afterwards, so it is a red test rather than
+    a silent fork — which is the same protection the fourteen committed schemas get.
+    """
+
+    if not re.fullmatch(REASON_CODE_PATTERN, reason_code):
+        raise ValueError(
+            f"routing override reason_code {reason_code!r} is not an upper-case token; "
+            f"the v0.4 family spells every reason code ^{REASON_CODE_PATTERN}$"
+        )
+    document: dict[str, Any] = {
+        # ``document_type`` and not ``contract_type``: this record is not a registry §3
+        # contract and must not answer to a field name that says it is. See
+        # ``ROUTING_OVERRIDE_DOCUMENT_TYPE``.
+        "document_type": ROUTING_OVERRIDE_DOCUMENT_TYPE,
+        "schema_version": schema_version,
+        "contract_id": override_id,
+        "created_at": (created_at or datetime.now(UTC))
+        .astimezone(UTC)
+        .isoformat()
+        .replace("+00:00", "Z"),
+        "workspace_id": workspace_id,
+        "project_id": project_id,
+        "supersedes_contract_id": supersedes_contract_id,
+        "receipt_id": receipt_id,
+        "principal_id": principal_id,
+        "candidate_id": candidate_id,
+        "reason_code": reason_code,
+        "reason": reason,
+        "superseding_receipt_id": superseding_receipt_id,
+    }
+    document["content_hash"] = content_hash(document)
+    return document
+
+
+class _V04MemoryRow(NamedTuple):
+    """What ``MemoryStore`` keeps per v0.4 row: exactly the columns Postgres promotes.
+
+    Not the pydantic object. Keeping the model would have made the in-memory backend
+    strictly more forgiving than the real one — it would never exercise
+    ``model_validate``, never notice a payload that lost its digest, and never prove that
+    a contract survives the JSON round trip — so the parity tests would have been
+    comparing a store against a slightly easier version of itself.
+    """
+
+    contract_id: str
+    workspace_id: str
+    project_id: str | None
+    content_hash: str
+    schema_version: str
+    created_at: datetime
+    payload: dict[str, Any]
+
 
 
 class StateStore(Protocol):
@@ -582,12 +949,186 @@ class StateStore(Protocol):
     async def save_trajectory_seed(self, seed: TrajectorySeed) -> TrajectorySeed: ...
     async def list_trajectory_seeds(self, search_id: str) -> list[TrajectorySeed]: ...
 
+    # -- v0.4 M0 routing contracts (SDD §13). Append-only: put/get/list only.
+    #
+    # There is deliberately no ``update_`` and no ``delete_`` for any of the fifteen
+    # tables, on this protocol or on either implementation. §13.1 requires promotion
+    # reports to be append-only and registry §17 requires that historical records are
+    # never rewritten in place; both are enforced here by the absence of a method that
+    # could do it, and by a test that asserts the absence rather than trusting it. A
+    # revision is a new record whose ``supersedes_contract_id`` names the one it replaces.
+    #
+    # ``workspace_id`` is a **required** keyword on every ``list_`` below, with no
+    # default, and ``project_id`` narrows it further. A tenancy filter with a default is
+    # a filter a caller can omit by accident and still type-check, and omitting this one
+    # would return every row of a table across every workspace — the provenance registry
+    # §16 protects. Freezing the signature that way now is what stops M1 and M2 from
+    # building on an unscoped read; an admin-wide listing, if one is ever wanted, is a
+    # separately named method that has to be declared on all three surfaces deliberately.
+    async def put_objective_contract(
+        self, record: ObjectiveContract
+    ) -> ObjectiveContract: ...
+    async def get_objective_contract(
+        self, contract_id: str
+    ) -> ObjectiveContract | None: ...
+    async def list_objective_contracts(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ObjectiveContract]: ...
+    async def put_node_contract(
+        self, record: NodeContract
+    ) -> NodeContract: ...
+    async def get_node_contract(
+        self, contract_id: str
+    ) -> NodeContract | None: ...
+    async def list_node_contracts(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[NodeContract]: ...
+    async def put_verification_spec(
+        self, record: VerificationSpec
+    ) -> VerificationSpec: ...
+    async def get_verification_spec(
+        self, contract_id: str
+    ) -> VerificationSpec | None: ...
+    async def list_verification_specs(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[VerificationSpec]: ...
+    async def put_routing_request(
+        self, record: RoutingContext
+    ) -> RoutingContext: ...
+    async def get_routing_request(
+        self, contract_id: str
+    ) -> RoutingContext | None: ...
+    async def list_routing_requests(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RoutingContext]: ...
+    async def put_configuration_candidate(
+        self, record: ConfigurationCandidate
+    ) -> ConfigurationCandidate: ...
+    async def get_configuration_candidate(
+        self, contract_id: str
+    ) -> ConfigurationCandidate | None: ...
+    async def list_configuration_candidates(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ConfigurationCandidate]: ...
+    async def put_compatibility_decision(
+        self, record: CompatibilityDecision
+    ) -> CompatibilityDecision: ...
+    async def get_compatibility_decision(
+        self, contract_id: str
+    ) -> CompatibilityDecision | None: ...
+    async def list_compatibility_decisions(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[CompatibilityDecision]: ...
+    async def put_routing_override(
+        self,
+        *,
+        override_id: str,
+        workspace_id: str,
+        project_id: str | None,
+        receipt_id: str,
+        principal_id: str,
+        candidate_id: str,
+        reason_code: str,
+        reason: str,
+        superseding_receipt_id: str | None = None,
+        supersedes_contract_id: str | None = None,
+        schema_version: str = CONTRACT_SCHEMA_VERSION,
+        created_at: datetime | None = None,
+    ) -> dict[str, Any]: ...
+    async def get_routing_override(
+        self, override_id: str
+    ) -> dict[str, Any] | None: ...
+    async def list_routing_overrides(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[dict[str, Any]]: ...
+    async def put_routing_receipt(
+        self, record: RoutingDecisionReceipt
+    ) -> RoutingDecisionReceipt: ...
+    async def get_routing_receipt(
+        self, contract_id: str
+    ) -> RoutingDecisionReceipt | None: ...
+    async def list_routing_receipts(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RoutingDecisionReceipt]: ...
+    async def get_routing_receipt_for_request(
+        self, routing_request_id: str
+    ) -> RoutingDecisionReceipt | None: ...
+    async def put_verification_result(
+        self, record: IndependentVerificationResult
+    ) -> IndependentVerificationResult: ...
+    async def get_verification_result(
+        self, contract_id: str
+    ) -> IndependentVerificationResult | None: ...
+    async def list_verification_results(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[IndependentVerificationResult]: ...
+    async def put_experience_record(
+        self, record: ExperienceRecord
+    ) -> ExperienceRecord: ...
+    async def get_experience_record(
+        self, contract_id: str
+    ) -> ExperienceRecord | None: ...
+    async def list_experience_records(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ExperienceRecord]: ...
+    async def put_failure_event(
+        self, record: FailureEvent
+    ) -> FailureEvent: ...
+    async def get_failure_event(
+        self, contract_id: str
+    ) -> FailureEvent | None: ...
+    async def list_failure_events(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[FailureEvent]: ...
+    async def put_router_model_version(
+        self, record: RouterModelVersion
+    ) -> RouterModelVersion: ...
+    async def get_router_model_version(
+        self, contract_id: str
+    ) -> RouterModelVersion | None: ...
+    async def list_router_model_versions(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RouterModelVersion]: ...
+    async def put_router_training_snapshot(
+        self, record: RouterTrainingSnapshot
+    ) -> RouterTrainingSnapshot: ...
+    async def get_router_training_snapshot(
+        self, contract_id: str
+    ) -> RouterTrainingSnapshot | None: ...
+    async def list_router_training_snapshots(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RouterTrainingSnapshot]: ...
+    async def put_router_promotion_report(
+        self, record: RouterPromotionReport
+    ) -> RouterPromotionReport: ...
+    async def get_router_promotion_report(
+        self, contract_id: str
+    ) -> RouterPromotionReport | None: ...
+    async def list_router_promotion_reports(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RouterPromotionReport]: ...
+    async def put_shadow_decision(
+        self, record: ShadowDecision
+    ) -> ShadowDecision: ...
+    async def get_shadow_decision(
+        self, contract_id: str
+    ) -> ShadowDecision | None: ...
+    async def list_shadow_decisions(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ShadowDecision]: ...
+
 
 class MemoryStore:
     """Deterministic store for unit tests and protocol development, never production."""
 
     def __init__(self) -> None:
         self.projects: dict[str, Project] = {}
+        # One dict per §13 table, table name -> contract id -> row. Keyed by the
+        # shared table list so a table added to the schema without a store method
+        # is a KeyError here rather than a silently missing surface.
+        self.v04_contracts: dict[str, dict[str, _V04MemoryRow]] = {
+            name: {} for name in V04_M0_ROUTING_TABLES
+        }
         self.tasks: dict[str, Task] = {}
         self.runs: dict[str, Run] = {}
         self.leases: dict[str, WorkspaceLease] = {}
@@ -2302,6 +2843,679 @@ class MemoryStore:
     async def list_trajectory_seeds(self, search_id: str) -> list[TrajectorySeed]:
         return sorted(self.trajectory_seeds.get(search_id, []), key=lambda item: item.created_at)
 
+    # -- v0.4 M0 routing contracts (SDD §13) -------------------------------------
+
+    async def _put_v04_contract[C: CanonicalContract](
+        self,
+        table: str,
+        noun: str,
+        record: C,
+        *,
+        extra_guard: Callable[[], None] | None = None,
+    ) -> C:
+        """Insert one sealed contract, or refuse. Never updates.
+
+        The lock is held across the whole check-then-insert because the two duplicate
+        rules — same id, same digest — are only meaningful together: without it, two
+        concurrent writes of the same revision could each see an empty table and both
+        insert, which is exactly the "history says two things" outcome the digest exists
+        to prevent.
+
+        ``extra_guard`` is a per-table §13.1 rule that is neither of those two:
+        ``routing_receipts``' one-receipt-per-routing-request, and
+        ``router_model_versions``' two ACTIVE-router rules. It runs *inside* the lock, and
+        deliberately *after* the id and digest checks, so that a document which breaks
+        more than one rule at once is always reported by the same rule on both backends
+        rather than by whichever check happened to be written first.
+        """
+
+        async with self._lock:
+            stored = self._put_v04_row(
+                table,
+                noun,
+                record.contract_id,
+                record.workspace_id,
+                record.project_id,
+                record.content_hash,
+                record.schema_version,
+                record.created_at,
+                _v04_payload(record),
+                extra_guard=extra_guard,
+            )
+        return _load_v04_contract(type(record), stored.payload, record.contract_id)
+
+    async def _put_v04_document(
+        self,
+        table: str,
+        noun: str,
+        payload: dict[str, Any],
+        *,
+        identity_fields: tuple[str, ...],
+    ) -> dict[str, Any]:
+        """The same insert for the one table with no pydantic model (``routing_overrides``).
+
+        ``identity_fields`` is passed in rather than read from the constant here, because
+        it depends on whether the caller supplied the clock — see
+        ``_routing_override_identity_fields`` — and both backends must decide it the same
+        way from the same function.
+        """
+
+        async with self._lock:
+            stored = self._put_v04_row(
+                table,
+                noun,
+                str(payload["contract_id"]),
+                str(payload["workspace_id"]),
+                payload["project_id"],
+                str(payload["content_hash"]),
+                str(payload["schema_version"]),
+                datetime.fromisoformat(str(payload["created_at"])),
+                payload,
+                identity_fields=identity_fields,
+            )
+        return dict(stored.payload)
+
+    def _put_v04_row(
+        self,
+        table: str,
+        noun: str,
+        contract_id: str,
+        workspace_id: str,
+        project_id: str | None,
+        digest: str,
+        schema_version: str,
+        created_at: datetime,
+        payload: dict[str, Any],
+        *,
+        identity_fields: tuple[str, ...] | None = None,
+        extra_guard: Callable[[], None] | None = None,
+    ) -> _V04MemoryRow:
+        """The one write path. Returns the row now in the table, new or pre-existing.
+
+        Returning the *stored* row rather than the argument is what makes a byte-identical
+        re-put a genuine no-op: the caller is handed what the table holds, so a second
+        writer cannot learn from the return value that its own copy was the one kept. It
+        is also what makes the ``identity_fields`` retry path correct for
+        ``routing_overrides``: the second caller gets the first document, clock and digest
+        included, rather than its own freshly stamped copy.
+
+        The ``project_id`` check is last, after every §13.1 rule, because that is where
+        PostgreSQL enforces it: a foreign key is checked when the row is inserted, so a
+        record that breaks a uniqueness rule *and* names a missing project is reported by
+        the uniqueness rule on both backends.
+        """
+
+        rows = self.v04_contracts[table]
+        current = rows.get(contract_id)
+        if current is not None:
+            _guard_v04_drift(
+                noun,
+                contract_id,
+                current.payload,
+                payload,
+                identity_fields=identity_fields,
+            )
+            return current
+        for other in rows.values():
+            if other.content_hash == digest and other.schema_version == schema_version:
+                _guard_v04_hash_reuse(
+                    noun, contract_id, other.contract_id, digest, schema_version
+                )
+        if extra_guard is not None:
+            extra_guard()
+        if project_id is not None and project_id not in self.projects:
+            raise _missing_v04_reference(
+                noun, contract_id, "project_id", "projects", project_id
+            )
+        row = _V04MemoryRow(
+            contract_id=contract_id,
+            workspace_id=workspace_id,
+            project_id=project_id,
+            content_hash=digest,
+            schema_version=schema_version,
+            created_at=created_at,
+            payload=payload,
+        )
+        rows[contract_id] = row
+        return row
+
+    def _get_v04_contract[C: CanonicalContract](
+        self, table: str, contract_id: str, model: type[C]
+    ) -> C | None:
+        row = self.v04_contracts[table].get(contract_id)
+        if row is None:
+            return None
+        return _load_v04_contract(model, row.payload, contract_id)
+
+    def _scoped_v04_rows(
+        self, table: str, *, workspace_id: str, project_id: str | None
+    ) -> list[_V04MemoryRow]:
+        """The one ordering rule, so PostgreSQL's ``ORDER BY`` has something to equal.
+
+        ``(created_at, id)`` and not ``created_at`` alone: contracts sealed inside the
+        same millisecond are ordinary in a test and not unheard of in production, and a
+        list whose order depends on dict insertion would pass in memory and fail against
+        a database, which is the worst way to find out.
+
+        ``workspace_id`` is required and is always applied. There is no unscoped listing
+        of a v0.4 table on any of the three surfaces: a keyword with a default is a
+        keyword a caller can forget, and forgetting this one would return every row in
+        the table across every tenant — the provenance rows registry §16 is about. A
+        future admin-wide read would be a separately named method, declared on all three
+        layers on purpose.
+        """
+
+        rows = [
+            row
+            for row in self.v04_contracts[table].values()
+            if row.workspace_id == workspace_id
+            and (project_id is None or row.project_id == project_id)
+        ]
+        return sorted(rows, key=lambda row: (row.created_at, row.contract_id))
+
+    def _list_v04_contracts[C: CanonicalContract](
+        self,
+        table: str,
+        model: type[C],
+        *,
+        workspace_id: str,
+        project_id: str | None,
+    ) -> list[C]:
+        return [
+            _load_v04_contract(model, row.payload, row.contract_id)
+            for row in self._scoped_v04_rows(
+                table, workspace_id=workspace_id, project_id=project_id
+            )
+        ]
+
+    def _guard_active_router_uniqueness(self, record: RouterModelVersion) -> None:
+        """Mirror the two partial unique indexes of §13.1 in Python.
+
+        PostgreSQL expresses "one ACTIVE workspace router per workspace" and "one ACTIVE
+        adapter per project and algorithm" as partial unique indexes; nothing in an
+        in-memory dict does. Restating the rule here is what keeps the store-parity tests
+        honest, and doing it *before* the insert on both backends is what makes the error
+        a caller sees the same ``ValueError`` either way rather than a ``ValueError`` in
+        one place and an ``IntegrityError`` in the other.
+
+        It runs through ``_put_v04_contract``'s ``extra_guard`` channel, which means it
+        runs inside ``self._lock`` and after the id and digest checks — the same position
+        its PostgreSQL twin holds inside ``sessions.begin()``. Checking it before the lock
+        would have read a snapshot the insert could no longer rely on, and would have put
+        the two backends' guards in different places in the write path.
+        """
+
+        if record.status is not RouterStatus.ACTIVE:
+            return
+        for row in self.v04_contracts["router_model_versions"].values():
+            if row.contract_id == record.contract_id:
+                continue
+            payload = row.payload
+            if payload.get("status") != RouterStatus.ACTIVE.value:
+                continue
+            if record.scope is RouterScope.TEAM_WORKSPACE:
+                if (
+                    payload.get("scope") == RouterScope.TEAM_WORKSPACE.value
+                    and row.workspace_id == record.workspace_id
+                ):
+                    raise ValueError(
+                        f"workspace {record.workspace_id} already has an ACTIVE workspace "
+                        f"router ({row.contract_id}); §13.1 allows exactly one"
+                    )
+            elif (
+                payload.get("scope") == RouterScope.PROJECT_ADAPTER.value
+                and row.project_id == record.project_id
+                and payload.get("algorithm_id") == record.algorithm_id
+            ):
+                raise ValueError(
+                    f"project {record.project_id} already has an ACTIVE "
+                    f"{record.algorithm_id} adapter ({row.contract_id}); §13.1 allows "
+                    "exactly one per project and algorithm"
+                )
+
+    def _guard_receipt_request_uniqueness(
+        self, record: RoutingDecisionReceipt
+    ) -> None:
+        """Mirror ``routing_receipts.routing_request_id UNIQUE`` in Python (§13.1, §8.2).
+
+        The same reasoning as ``_guard_active_router_uniqueness`` above, for the one
+        uniqueness rule in this family that is not about a content digest. A receipt whose
+        ``contract_id`` already exists is handled by the drift guard on the write path;
+        this catches the other shape — a *different* receipt id answering a routing request
+        that already has one — which the id-keyed dict cannot see at all.
+        """
+
+        for row in self.v04_contracts["routing_receipts"].values():
+            if row.contract_id == record.contract_id:
+                continue
+            if row.payload.get("routing_request_id") == record.routing_request_id:
+                raise _routing_request_conflict(
+                    record.contract_id, record.routing_request_id, row.contract_id
+                )
+
+    async def put_objective_contract(
+        self, record: ObjectiveContract
+    ) -> ObjectiveContract:
+        return await self._put_v04_contract(
+            "objective_contracts", "objective contract", record
+        )
+
+    async def get_objective_contract(
+        self, contract_id: str
+    ) -> ObjectiveContract | None:
+        return self._get_v04_contract(
+            "objective_contracts", contract_id, ObjectiveContract
+        )
+
+    async def list_objective_contracts(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ObjectiveContract]:
+        return self._list_v04_contracts(
+            "objective_contracts",
+            ObjectiveContract,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_node_contract(
+        self, record: NodeContract
+    ) -> NodeContract:
+        return await self._put_v04_contract(
+            "node_contracts", "node contract", record
+        )
+
+    async def get_node_contract(
+        self, contract_id: str
+    ) -> NodeContract | None:
+        return self._get_v04_contract(
+            "node_contracts", contract_id, NodeContract
+        )
+
+    async def list_node_contracts(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[NodeContract]:
+        return self._list_v04_contracts(
+            "node_contracts",
+            NodeContract,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_verification_spec(
+        self, record: VerificationSpec
+    ) -> VerificationSpec:
+        return await self._put_v04_contract(
+            "verification_specs", "verification spec", record
+        )
+
+    async def get_verification_spec(
+        self, contract_id: str
+    ) -> VerificationSpec | None:
+        return self._get_v04_contract(
+            "verification_specs", contract_id, VerificationSpec
+        )
+
+    async def list_verification_specs(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[VerificationSpec]:
+        return self._list_v04_contracts(
+            "verification_specs",
+            VerificationSpec,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_routing_request(
+        self, record: RoutingContext
+    ) -> RoutingContext:
+        return await self._put_v04_contract(
+            "routing_requests", "routing request", record
+        )
+
+    async def get_routing_request(
+        self, contract_id: str
+    ) -> RoutingContext | None:
+        return self._get_v04_contract(
+            "routing_requests", contract_id, RoutingContext
+        )
+
+    async def list_routing_requests(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RoutingContext]:
+        return self._list_v04_contracts(
+            "routing_requests",
+            RoutingContext,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_configuration_candidate(
+        self, record: ConfigurationCandidate
+    ) -> ConfigurationCandidate:
+        return await self._put_v04_contract(
+            "configuration_candidates", "configuration candidate", record
+        )
+
+    async def get_configuration_candidate(
+        self, contract_id: str
+    ) -> ConfigurationCandidate | None:
+        return self._get_v04_contract(
+            "configuration_candidates", contract_id, ConfigurationCandidate
+        )
+
+    async def list_configuration_candidates(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ConfigurationCandidate]:
+        return self._list_v04_contracts(
+            "configuration_candidates",
+            ConfigurationCandidate,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_compatibility_decision(
+        self, record: CompatibilityDecision
+    ) -> CompatibilityDecision:
+        return await self._put_v04_contract(
+            "compatibility_decisions", "compatibility decision", record
+        )
+
+    async def get_compatibility_decision(
+        self, contract_id: str
+    ) -> CompatibilityDecision | None:
+        return self._get_v04_contract(
+            "compatibility_decisions", contract_id, CompatibilityDecision
+        )
+
+    async def list_compatibility_decisions(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[CompatibilityDecision]:
+        return self._list_v04_contracts(
+            "compatibility_decisions",
+            CompatibilityDecision,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_routing_override(
+        self,
+        *,
+        override_id: str,
+        workspace_id: str,
+        project_id: str | None,
+        receipt_id: str,
+        principal_id: str,
+        candidate_id: str,
+        reason_code: str,
+        reason: str,
+        superseding_receipt_id: str | None = None,
+        supersedes_contract_id: str | None = None,
+        schema_version: str = CONTRACT_SCHEMA_VERSION,
+        created_at: datetime | None = None,
+    ) -> dict[str, Any]:
+        payload = _build_routing_override_payload(
+            override_id=override_id,
+            workspace_id=workspace_id,
+            project_id=project_id,
+            receipt_id=receipt_id,
+            principal_id=principal_id,
+            candidate_id=candidate_id,
+            reason_code=reason_code,
+            reason=reason,
+            superseding_receipt_id=superseding_receipt_id,
+            supersedes_contract_id=supersedes_contract_id,
+            schema_version=schema_version,
+            created_at=created_at,
+        )
+        return await self._put_v04_document(
+            "routing_overrides",
+            "routing override",
+            payload,
+            identity_fields=_routing_override_identity_fields(created_at),
+        )
+
+    async def get_routing_override(self, override_id: str) -> dict[str, Any] | None:
+        row = self.v04_contracts["routing_overrides"].get(override_id)
+        return None if row is None else dict(row.payload)
+
+    async def list_routing_overrides(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        return [
+            dict(row.payload)
+            for row in self._scoped_v04_rows(
+                "routing_overrides", workspace_id=workspace_id, project_id=project_id
+            )
+        ]
+
+    async def put_routing_receipt(
+        self, record: RoutingDecisionReceipt
+    ) -> RoutingDecisionReceipt:
+        return await self._put_v04_contract(
+            "routing_receipts",
+            "routing receipt",
+            record,
+            extra_guard=lambda: self._guard_receipt_request_uniqueness(record),
+        )
+
+    async def get_routing_receipt(
+        self, contract_id: str
+    ) -> RoutingDecisionReceipt | None:
+        return self._get_v04_contract(
+            "routing_receipts", contract_id, RoutingDecisionReceipt
+        )
+
+    async def list_routing_receipts(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RoutingDecisionReceipt]:
+        return self._list_v04_contracts(
+            "routing_receipts",
+            RoutingDecisionReceipt,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def get_routing_receipt_for_request(
+        self, routing_request_id: str
+    ) -> RoutingDecisionReceipt | None:
+        for row in self.v04_contracts["routing_receipts"].values():
+            if row.payload.get("routing_request_id") == routing_request_id:
+                return _load_v04_contract(
+                    RoutingDecisionReceipt, row.payload, row.contract_id
+                )
+        return None
+
+    async def put_verification_result(
+        self, record: IndependentVerificationResult
+    ) -> IndependentVerificationResult:
+        return await self._put_v04_contract(
+            "verification_results", "verification result", record
+        )
+
+    async def get_verification_result(
+        self, contract_id: str
+    ) -> IndependentVerificationResult | None:
+        return self._get_v04_contract(
+            "verification_results", contract_id, IndependentVerificationResult
+        )
+
+    async def list_verification_results(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[IndependentVerificationResult]:
+        return self._list_v04_contracts(
+            "verification_results",
+            IndependentVerificationResult,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    def _guard_experience_reference(self, record: ExperienceRecord) -> None:
+        """Mirror ``experience_records.id -> experiences.id`` (ADR-054 b, §13.1).
+
+        The table's primary key *is* its foreign key: an experience record is a projection
+        of the v0.2 P7 experience of the same id, never a copy of it. So a projection of an
+        experience that does not exist is not a record with a dangling field, it is a
+        record of nothing — which PostgreSQL refuses and this refuses alike.
+        """
+
+        if record.contract_id not in self.experiences:
+            raise _missing_v04_reference(
+                "experience record",
+                record.contract_id,
+                "experience",
+                "experiences",
+                record.contract_id,
+            )
+
+    async def put_experience_record(
+        self, record: ExperienceRecord
+    ) -> ExperienceRecord:
+        return await self._put_v04_contract(
+            "experience_records",
+            "experience record",
+            record,
+            extra_guard=lambda: self._guard_experience_reference(record),
+        )
+
+    async def get_experience_record(
+        self, contract_id: str
+    ) -> ExperienceRecord | None:
+        return self._get_v04_contract(
+            "experience_records", contract_id, ExperienceRecord
+        )
+
+    async def list_experience_records(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ExperienceRecord]:
+        return self._list_v04_contracts(
+            "experience_records",
+            ExperienceRecord,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_failure_event(
+        self, record: FailureEvent
+    ) -> FailureEvent:
+        return await self._put_v04_contract(
+            "failure_events", "failure event", record
+        )
+
+    async def get_failure_event(
+        self, contract_id: str
+    ) -> FailureEvent | None:
+        return self._get_v04_contract(
+            "failure_events", contract_id, FailureEvent
+        )
+
+    async def list_failure_events(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[FailureEvent]:
+        return self._list_v04_contracts(
+            "failure_events",
+            FailureEvent,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_router_model_version(
+        self, record: RouterModelVersion
+    ) -> RouterModelVersion:
+        return await self._put_v04_contract(
+            "router_model_versions",
+            "router model version",
+            record,
+            extra_guard=lambda: self._guard_active_router_uniqueness(record),
+        )
+
+    async def get_router_model_version(
+        self, contract_id: str
+    ) -> RouterModelVersion | None:
+        return self._get_v04_contract(
+            "router_model_versions", contract_id, RouterModelVersion
+        )
+
+    async def list_router_model_versions(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RouterModelVersion]:
+        return self._list_v04_contracts(
+            "router_model_versions",
+            RouterModelVersion,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_router_training_snapshot(
+        self, record: RouterTrainingSnapshot
+    ) -> RouterTrainingSnapshot:
+        return await self._put_v04_contract(
+            "router_training_snapshots", "router training snapshot", record
+        )
+
+    async def get_router_training_snapshot(
+        self, contract_id: str
+    ) -> RouterTrainingSnapshot | None:
+        return self._get_v04_contract(
+            "router_training_snapshots", contract_id, RouterTrainingSnapshot
+        )
+
+    async def list_router_training_snapshots(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RouterTrainingSnapshot]:
+        return self._list_v04_contracts(
+            "router_training_snapshots",
+            RouterTrainingSnapshot,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_router_promotion_report(
+        self, record: RouterPromotionReport
+    ) -> RouterPromotionReport:
+        return await self._put_v04_contract(
+            "router_promotion_reports", "router promotion report", record
+        )
+
+    async def get_router_promotion_report(
+        self, contract_id: str
+    ) -> RouterPromotionReport | None:
+        return self._get_v04_contract(
+            "router_promotion_reports", contract_id, RouterPromotionReport
+        )
+
+    async def list_router_promotion_reports(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RouterPromotionReport]:
+        return self._list_v04_contracts(
+            "router_promotion_reports",
+            RouterPromotionReport,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_shadow_decision(
+        self, record: ShadowDecision
+    ) -> ShadowDecision:
+        return await self._put_v04_contract(
+            "shadow_decisions", "shadow decision", record
+        )
+
+    async def get_shadow_decision(
+        self, contract_id: str
+    ) -> ShadowDecision | None:
+        return self._get_v04_contract(
+            "shadow_decisions", contract_id, ShadowDecision
+        )
+
+    async def list_shadow_decisions(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ShadowDecision]:
+        return self._list_v04_contracts(
+            "shadow_decisions",
+            ShadowDecision,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
 
 class PostgresStore:
     def __init__(self, sessions: async_sessionmaker[AsyncSession]) -> None:
@@ -5668,6 +6882,765 @@ class PostgresStore:
             error=run.error.model_dump(mode="json") if run.error else None,
             created_at=run.created_at,
             updated_at=run.updated_at,
+        )
+
+
+    # -- v0.4 M0 routing contracts (SDD §13) -------------------------------------
+
+    async def _put_v04_contract[C: CanonicalContract, R: V04ContractRow](
+        self,
+        row_type: type[R],
+        noun: str,
+        record: C,
+        *,
+        extra_guard: Callable[[AsyncSession], Awaitable[None]] | None = None,
+        **promoted: Any,
+    ) -> C:
+        """Insert one sealed contract, or refuse. Never updates.
+
+        ``**promoted`` carries the §13 key columns the table indexes: they are lifted
+        out of the record by the public method above so that the JSON payload stays the
+        single source of truth and the columns stay a projection of it. A column and its
+        payload field can therefore never disagree, because only one of them is ever
+        written by hand.
+
+        The read-then-insert runs inside one ``sessions.begin()`` transaction, and the
+        unique constraints on the table are the backstop for the racing second writer
+        this cannot see. The *pre*-check exists so that the ordinary case — a retry, a
+        replay — raises the same ``ValueError`` a caller gets from ``MemoryStore``
+        instead of surfacing a driver-level integrity error.
+
+        ``extra_guard`` is a per-table §13.1 rule that is neither of those two:
+        ``routing_receipts``' one-receipt-per-routing-request, and
+        ``router_model_versions``' two ACTIVE-router rules. It runs on the same session
+        and inside the same transaction as the insert — which is what makes the check and
+        the insert atomic, so a second concurrent writer cannot pass a pre-check taken on
+        another connection's snapshot — and deliberately *after* the id and digest checks,
+        so that a document which breaks more than one rule at once is always reported by
+        the same rule as it would be in ``MemoryStore``.
+        """
+
+        payload = _v04_payload(record)
+        async with self.sessions.begin() as session:
+            row = await session.get(row_type, record.contract_id)
+            if row is not None:
+                _guard_v04_drift(noun, record.contract_id, row.payload, payload)
+                return _load_v04_contract(type(record), row.payload, record.contract_id)
+            clash = await session.scalar(
+                select(row_type).where(
+                    row_type.content_hash == record.content_hash,
+                    row_type.schema_version == record.schema_version,
+                )
+            )
+            if clash is not None:
+                _guard_v04_hash_reuse(
+                    noun,
+                    record.contract_id,
+                    clash.id,
+                    record.content_hash,
+                    record.schema_version,
+                )
+            if extra_guard is not None:
+                await extra_guard(session)
+            session.add(
+                row_type(
+                    id=record.contract_id,
+                    workspace_id=record.workspace_id,
+                    project_id=record.project_id,
+                    content_hash=record.content_hash,
+                    schema_version=record.schema_version,
+                    supersedes_contract_id=record.supersedes_contract_id,
+                    payload=payload,
+                    created_at=record.created_at,
+                    **promoted,
+                )
+            )
+        return _load_v04_contract(type(record), payload, record.contract_id)
+
+    async def _put_v04_document[R: V04ContractRow](
+        self,
+        row_type: type[R],
+        noun: str,
+        payload: dict[str, Any],
+        *,
+        identity_fields: tuple[str, ...],
+        **promoted: Any,
+    ) -> dict[str, Any]:
+        """The same insert for the one table with no pydantic model (``routing_overrides``).
+
+        ``identity_fields`` is passed in rather than read from the constant here, for the
+        reason ``MemoryStore._put_v04_document`` gives: the rule depends on whether the
+        caller supplied the clock, and one function decides it for both backends.
+        """
+
+        contract_id = str(payload["contract_id"])
+        async with self.sessions.begin() as session:
+            row = await session.get(row_type, contract_id)
+            if row is not None:
+                _guard_v04_drift(
+                    noun,
+                    contract_id,
+                    row.payload,
+                    payload,
+                    identity_fields=identity_fields,
+                )
+                return dict(row.payload)
+            clash = await session.scalar(
+                select(row_type).where(
+                    row_type.content_hash == payload["content_hash"],
+                    row_type.schema_version == payload["schema_version"],
+                )
+            )
+            if clash is not None:
+                _guard_v04_hash_reuse(
+                    noun,
+                    contract_id,
+                    clash.id,
+                    str(payload["content_hash"]),
+                    str(payload["schema_version"]),
+                )
+            session.add(
+                row_type(
+                    id=contract_id,
+                    workspace_id=payload["workspace_id"],
+                    project_id=payload["project_id"],
+                    content_hash=payload["content_hash"],
+                    schema_version=payload["schema_version"],
+                    supersedes_contract_id=payload["supersedes_contract_id"],
+                    payload=payload,
+                    created_at=datetime.fromisoformat(str(payload["created_at"])),
+                    **promoted,
+                )
+            )
+        return dict(payload)
+
+    async def _get_v04_contract[C: CanonicalContract, R: V04ContractRow](
+        self, row_type: type[R], model: type[C], contract_id: str
+    ) -> C | None:
+        async with self.sessions() as session:
+            row = await session.get(row_type, contract_id)
+        if row is None:
+            return None
+        return _load_v04_contract(model, row.payload, contract_id)
+
+    async def _list_v04_contracts[C: CanonicalContract, R: V04ContractRow](
+        self,
+        row_type: type[R],
+        model: type[C],
+        *,
+        workspace_id: str,
+        project_id: str | None,
+    ) -> list[C]:
+        """``ORDER BY created_at, id`` — the tie-break ``MemoryStore`` sorts by.
+
+        The workspace predicate is unconditional, exactly as it is in ``MemoryStore``:
+        ``workspace_id`` is a required keyword on every ``list_`` method, so no caller can
+        emit this statement without a ``WHERE`` and read another tenant's rows.
+        """
+
+        query = select(row_type).where(row_type.workspace_id == workspace_id)
+        query = query.order_by(row_type.created_at, row_type.id)
+        if project_id is not None:
+            query = query.where(row_type.project_id == project_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [_load_v04_contract(model, row.payload, row.id) for row in rows]
+
+    async def _guard_active_router_uniqueness(
+        self, session: AsyncSession, record: RouterModelVersion
+    ) -> None:
+        """§13.1's two partial unique indexes, checked before the insert.
+
+        The indexes ``uq_router_versions_active_workspace`` and
+        ``uq_router_versions_active_project_adapter`` enforce this in the database and are
+        what actually holds under concurrency. This query exists so that a single-writer
+        violation — the overwhelmingly common case, and the one a caller can do something
+        about — raises the same ``ValueError`` with the same message as ``MemoryStore``
+        rather than an ``IntegrityError`` naming an index the caller has never heard of.
+
+        It runs on the caller's session, for the reason
+        ``_guard_receipt_request_uniqueness`` gives: that is what makes the check and the
+        insert one transaction. An earlier draft opened its own session before
+        ``_put_v04_contract`` began its transaction, so the rule was checked against a
+        snapshot from a different connection and a second concurrent ACTIVE writer could
+        pass the pre-check and then take the ``IntegrityError`` the pre-check exists to
+        replace.
+        """
+
+        if record.status is not RouterStatus.ACTIVE:
+            return
+        query = select(RouterModelVersionRow).where(
+            RouterModelVersionRow.status == RouterStatus.ACTIVE.value,
+            RouterModelVersionRow.id != record.contract_id,
+        )
+        if record.scope is RouterScope.TEAM_WORKSPACE:
+            query = query.where(
+                RouterModelVersionRow.scope == RouterScope.TEAM_WORKSPACE.value,
+                RouterModelVersionRow.workspace_id == record.workspace_id,
+            )
+        else:
+            query = query.where(
+                RouterModelVersionRow.scope == RouterScope.PROJECT_ADAPTER.value,
+                RouterModelVersionRow.project_id == record.project_id,
+                RouterModelVersionRow.algorithm_id == record.algorithm_id,
+            )
+        clash = await session.scalar(query)
+        if clash is None:
+            return
+        if record.scope is RouterScope.TEAM_WORKSPACE:
+            raise ValueError(
+                f"workspace {record.workspace_id} already has an ACTIVE workspace router "
+                f"({clash.id}); §13.1 allows exactly one"
+            )
+        raise ValueError(
+            f"project {record.project_id} already has an ACTIVE {record.algorithm_id} "
+            f"adapter ({clash.id}); §13.1 allows exactly one per project and algorithm"
+        )
+
+    async def _guard_receipt_request_uniqueness(
+        self, session: AsyncSession, record: RoutingDecisionReceipt
+    ) -> None:
+        """§13.1's ``routing_receipts.routing_request_id UNIQUE``, checked before the insert.
+
+        The column constraint is what actually holds under concurrency. This query exists
+        for the same reason the router pre-check does: without it a second receipt for one
+        routing request leaves ``put_routing_receipt`` as an ``IntegrityError`` raised out
+        of the ``sessions.begin()`` commit — a poisoned transaction and a driver error —
+        where ``MemoryStore`` raises a ``ValueError`` naming the receipt that already
+        answers the request. Callers should not have to handle two error types for one
+        rule. Running it on the caller's session rather than opening its own is what makes
+        the check and the insert one transaction: a separate session would read a snapshot
+        that the insert could no longer rely on.
+        """
+
+        clash = await session.scalar(
+            select(RoutingReceiptRow).where(
+                RoutingReceiptRow.routing_request_id == record.routing_request_id,
+                RoutingReceiptRow.id != record.contract_id,
+            )
+        )
+        if clash is not None:
+            raise _routing_request_conflict(
+                record.contract_id, record.routing_request_id, clash.id
+            )
+
+    async def put_objective_contract(
+        self, record: ObjectiveContract
+    ) -> ObjectiveContract:
+        return await self._put_v04_contract(
+            ObjectiveContractRow,
+            "objective contract",
+            record,
+            revision=record.revision,
+        )
+
+    async def get_objective_contract(
+        self, contract_id: str
+    ) -> ObjectiveContract | None:
+        return await self._get_v04_contract(
+            ObjectiveContractRow, ObjectiveContract, contract_id
+        )
+
+    async def list_objective_contracts(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ObjectiveContract]:
+        return await self._list_v04_contracts(
+            ObjectiveContractRow,
+            ObjectiveContract,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_node_contract(
+        self, record: NodeContract
+    ) -> NodeContract:
+        return await self._put_v04_contract(
+            NodeContractRow,
+            "node contract",
+            record,
+            node_id=record.node_id,
+            run_graph_id=record.run_graph_id,
+            graph_revision=record.graph_revision,
+            execution_instance_id=record.execution_instance_id,
+            immutable_hash=record.immutable_hash,
+        )
+
+    async def get_node_contract(
+        self, contract_id: str
+    ) -> NodeContract | None:
+        return await self._get_v04_contract(
+            NodeContractRow, NodeContract, contract_id
+        )
+
+    async def list_node_contracts(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[NodeContract]:
+        return await self._list_v04_contracts(
+            NodeContractRow,
+            NodeContract,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_verification_spec(
+        self, record: VerificationSpec
+    ) -> VerificationSpec:
+        return await self._put_v04_contract(
+            VerificationSpecRow,
+            "verification spec",
+            record,
+            revision=record.revision,
+        )
+
+    async def get_verification_spec(
+        self, contract_id: str
+    ) -> VerificationSpec | None:
+        return await self._get_v04_contract(
+            VerificationSpecRow, VerificationSpec, contract_id
+        )
+
+    async def list_verification_specs(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[VerificationSpec]:
+        return await self._list_v04_contracts(
+            VerificationSpecRow,
+            VerificationSpec,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_routing_request(
+        self, record: RoutingContext
+    ) -> RoutingContext:
+        return await self._put_v04_contract(
+            RoutingRequestRow,
+            "routing request",
+            record,
+            node_contract_id=record.node_contract_ref.node_contract_id,
+            node_contract_hash=record.node_contract_ref.immutable_hash,
+            available_runtime_snapshot_id=record.available_runtime_snapshot_id,
+            capability_registry_snapshot_id=record.capability_registry_snapshot_id,
+            connection_availability_snapshot_id=record.connection_availability_snapshot_id,
+            policy_snapshot_id=record.policy_snapshot_id,
+            workspace_router_version=record.workspace_router_version,
+            project_adapter_version=record.project_adapter_version,
+            requested_at=record.requested_at,
+        )
+
+    async def get_routing_request(
+        self, contract_id: str
+    ) -> RoutingContext | None:
+        return await self._get_v04_contract(
+            RoutingRequestRow, RoutingContext, contract_id
+        )
+
+    async def list_routing_requests(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RoutingContext]:
+        return await self._list_v04_contracts(
+            RoutingRequestRow,
+            RoutingContext,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_configuration_candidate(
+        self, record: ConfigurationCandidate
+    ) -> ConfigurationCandidate:
+        return await self._put_v04_contract(
+            ConfigurationCandidateRow,
+            "configuration candidate",
+            record,
+            routing_request_id=record.routing_request_id,
+            configuration_hash=record.configuration.configuration_hash,
+            construction_stage=record.construction_stage.value,
+            hard_eligible=record.hard_eligible,
+        )
+
+    async def get_configuration_candidate(
+        self, contract_id: str
+    ) -> ConfigurationCandidate | None:
+        return await self._get_v04_contract(
+            ConfigurationCandidateRow, ConfigurationCandidate, contract_id
+        )
+
+    async def list_configuration_candidates(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ConfigurationCandidate]:
+        return await self._list_v04_contracts(
+            ConfigurationCandidateRow,
+            ConfigurationCandidate,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_compatibility_decision(
+        self, record: CompatibilityDecision
+    ) -> CompatibilityDecision:
+        return await self._put_v04_contract(
+            CompatibilityDecisionRow,
+            "compatibility decision",
+            record,
+            subject_type=record.subject_type.value,
+            subject_ref=record.subject_ref,
+            status=record.status.value,
+            rule_id=record.rule_id,
+            rule_version=record.rule_version,
+            reason_code=record.reason_code,
+        )
+
+    async def get_compatibility_decision(
+        self, contract_id: str
+    ) -> CompatibilityDecision | None:
+        return await self._get_v04_contract(
+            CompatibilityDecisionRow, CompatibilityDecision, contract_id
+        )
+
+    async def list_compatibility_decisions(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[CompatibilityDecision]:
+        return await self._list_v04_contracts(
+            CompatibilityDecisionRow,
+            CompatibilityDecision,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_routing_override(
+        self,
+        *,
+        override_id: str,
+        workspace_id: str,
+        project_id: str | None,
+        receipt_id: str,
+        principal_id: str,
+        candidate_id: str,
+        reason_code: str,
+        reason: str,
+        superseding_receipt_id: str | None = None,
+        supersedes_contract_id: str | None = None,
+        schema_version: str = CONTRACT_SCHEMA_VERSION,
+        created_at: datetime | None = None,
+    ) -> dict[str, Any]:
+        payload = _build_routing_override_payload(
+            override_id=override_id,
+            workspace_id=workspace_id,
+            project_id=project_id,
+            receipt_id=receipt_id,
+            principal_id=principal_id,
+            candidate_id=candidate_id,
+            reason_code=reason_code,
+            reason=reason,
+            superseding_receipt_id=superseding_receipt_id,
+            supersedes_contract_id=supersedes_contract_id,
+            schema_version=schema_version,
+            created_at=created_at,
+        )
+        return await self._put_v04_document(
+            RoutingOverrideRow,
+            "routing override",
+            payload,
+            identity_fields=_routing_override_identity_fields(created_at),
+            receipt_id=receipt_id,
+            principal_id=principal_id,
+            candidate_id=candidate_id,
+            reason_code=reason_code,
+            superseding_receipt_id=superseding_receipt_id,
+        )
+
+    async def get_routing_override(self, override_id: str) -> dict[str, Any] | None:
+        async with self.sessions() as session:
+            row = await session.get(RoutingOverrideRow, override_id)
+        return None if row is None else dict(row.payload)
+
+    async def list_routing_overrides(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[dict[str, Any]]:
+        query = (
+            select(RoutingOverrideRow)
+            .where(RoutingOverrideRow.workspace_id == workspace_id)
+            .order_by(RoutingOverrideRow.created_at, RoutingOverrideRow.id)
+        )
+        if project_id is not None:
+            query = query.where(RoutingOverrideRow.project_id == project_id)
+        async with self.sessions() as session:
+            rows = (await session.scalars(query)).all()
+        return [dict(row.payload) for row in rows]
+
+    async def put_routing_receipt(
+        self, record: RoutingDecisionReceipt
+    ) -> RoutingDecisionReceipt:
+        return await self._put_v04_contract(
+            RoutingReceiptRow,
+            "routing receipt",
+            record,
+            extra_guard=lambda session: self._guard_receipt_request_uniqueness(
+                session, record
+            ),
+            routing_request_id=record.routing_request_id,
+            node_contract_hash=record.node_contract_hash,
+            selected_configuration_id=record.selected_configuration_id,
+            selected_configuration_hash=record.selected_configuration_hash,
+            decision_type=record.decision_type.value,
+            selection_propensity=record.selection_propensity,
+            workspace_router_version=record.workspace_router_version,
+            project_adapter_version=record.project_adapter_version,
+        )
+
+    async def get_routing_receipt(
+        self, contract_id: str
+    ) -> RoutingDecisionReceipt | None:
+        return await self._get_v04_contract(
+            RoutingReceiptRow, RoutingDecisionReceipt, contract_id
+        )
+
+    async def list_routing_receipts(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RoutingDecisionReceipt]:
+        return await self._list_v04_contracts(
+            RoutingReceiptRow,
+            RoutingDecisionReceipt,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def get_routing_receipt_for_request(
+        self, routing_request_id: str
+    ) -> RoutingDecisionReceipt | None:
+        async with self.sessions() as session:
+            row = await session.scalar(
+                select(RoutingReceiptRow).where(
+                    RoutingReceiptRow.routing_request_id == routing_request_id
+                )
+            )
+        if row is None:
+            return None
+        return _load_v04_contract(RoutingDecisionReceipt, row.payload, row.id)
+
+    async def put_verification_result(
+        self, record: IndependentVerificationResult
+    ) -> IndependentVerificationResult:
+        return await self._put_v04_contract(
+            VerificationResultRow,
+            "verification result",
+            record,
+            execution_instance_id=record.execution_instance_id,
+            verification_spec_hash=record.verification_spec_hash,
+            status=record.status.value,
+            source_verification_id=record.source_verification_id,
+            signed_at=record.signed_at,
+        )
+
+    async def get_verification_result(
+        self, contract_id: str
+    ) -> IndependentVerificationResult | None:
+        return await self._get_v04_contract(
+            VerificationResultRow, IndependentVerificationResult, contract_id
+        )
+
+    async def list_verification_results(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[IndependentVerificationResult]:
+        return await self._list_v04_contracts(
+            VerificationResultRow,
+            IndependentVerificationResult,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_experience_record(
+        self, record: ExperienceRecord
+    ) -> ExperienceRecord:
+        return await self._put_v04_contract(
+            ExperienceRecordRow,
+            "experience record",
+            record,
+            source_node_execution_id=record.source_node_execution_id,
+            configuration_hash=record.configuration_hash,
+            visibility=record.visibility.value,
+            local_verification_status=record.local_verification_status.value,
+            final_run_status=(
+                None
+                if record.final_run_status is None
+                else record.final_run_status.value
+            ),
+            contradiction_status=record.contradiction_status.value,
+            eligible_for_learning=record.eligible_for_learning,
+        )
+
+    async def get_experience_record(
+        self, contract_id: str
+    ) -> ExperienceRecord | None:
+        return await self._get_v04_contract(
+            ExperienceRecordRow, ExperienceRecord, contract_id
+        )
+
+    async def list_experience_records(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ExperienceRecord]:
+        return await self._list_v04_contracts(
+            ExperienceRecordRow,
+            ExperienceRecord,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_failure_event(
+        self, record: FailureEvent
+    ) -> FailureEvent:
+        return await self._put_v04_contract(
+            FailureEventRow,
+            "failure event",
+            record,
+            execution_instance_id=record.execution_instance_id,
+            failure_type=record.failure_type.value,
+            assigned_owner=record.assigned_owner.value,
+            retryable=record.retryable,
+        )
+
+    async def get_failure_event(
+        self, contract_id: str
+    ) -> FailureEvent | None:
+        return await self._get_v04_contract(
+            FailureEventRow, FailureEvent, contract_id
+        )
+
+    async def list_failure_events(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[FailureEvent]:
+        return await self._list_v04_contracts(
+            FailureEventRow,
+            FailureEvent,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_router_model_version(
+        self, record: RouterModelVersion
+    ) -> RouterModelVersion:
+        return await self._put_v04_contract(
+            RouterModelVersionRow,
+            "router model version",
+            record,
+            extra_guard=lambda session: self._guard_active_router_uniqueness(
+                session, record
+            ),
+            scope=record.scope.value,
+            algorithm_id=record.algorithm_id,
+            feature_schema_version=record.feature_schema_version,
+            training_snapshot_id=record.training_snapshot_id,
+            artifact_digest=record.artifact_digest,
+            parent_version_id=record.parent_version_id,
+            status=record.status.value,
+        )
+
+    async def get_router_model_version(
+        self, contract_id: str
+    ) -> RouterModelVersion | None:
+        return await self._get_v04_contract(
+            RouterModelVersionRow, RouterModelVersion, contract_id
+        )
+
+    async def list_router_model_versions(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RouterModelVersion]:
+        return await self._list_v04_contracts(
+            RouterModelVersionRow,
+            RouterModelVersion,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_router_training_snapshot(
+        self, record: RouterTrainingSnapshot
+    ) -> RouterTrainingSnapshot:
+        return await self._put_v04_contract(
+            RouterTrainingSnapshotRow,
+            "router training snapshot",
+            record,
+            feature_schema_version=record.feature_schema_version,
+            contract_schema_version=record.contract_schema_version,
+            window_start=record.window_start,
+            window_end=record.window_end,
+        )
+
+    async def get_router_training_snapshot(
+        self, contract_id: str
+    ) -> RouterTrainingSnapshot | None:
+        return await self._get_v04_contract(
+            RouterTrainingSnapshotRow, RouterTrainingSnapshot, contract_id
+        )
+
+    async def list_router_training_snapshots(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RouterTrainingSnapshot]:
+        return await self._list_v04_contracts(
+            RouterTrainingSnapshotRow,
+            RouterTrainingSnapshot,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_router_promotion_report(
+        self, record: RouterPromotionReport
+    ) -> RouterPromotionReport:
+        return await self._put_v04_contract(
+            RouterPromotionReportRow,
+            "router promotion report",
+            record,
+            candidate_version=record.candidate_version,
+            baseline_version=record.baseline_version,
+            training_snapshot_id=record.training_snapshot_id,
+            holdout_definition_id=record.holdout_definition_id,
+            decision=record.decision.value,
+            rollback_target=record.rollback_target,
+        )
+
+    async def get_router_promotion_report(
+        self, contract_id: str
+    ) -> RouterPromotionReport | None:
+        return await self._get_v04_contract(
+            RouterPromotionReportRow, RouterPromotionReport, contract_id
+        )
+
+    async def list_router_promotion_reports(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[RouterPromotionReport]:
+        return await self._list_v04_contracts(
+            RouterPromotionReportRow,
+            RouterPromotionReport,
+            workspace_id=workspace_id,
+            project_id=project_id,
+        )
+
+    async def put_shadow_decision(
+        self, record: ShadowDecision
+    ) -> ShadowDecision:
+        return await self._put_v04_contract(
+            ShadowDecisionRow,
+            "shadow decision",
+            record,
+            executed_receipt_id=record.executed_receipt_id,
+            shadow_receipt_id=record.shadow_receipt_id,
+            shadow_router_version_id=record.shadow_router_version_id,
+            agreement=record.agreement,
+        )
+
+    async def get_shadow_decision(
+        self, contract_id: str
+    ) -> ShadowDecision | None:
+        return await self._get_v04_contract(
+            ShadowDecisionRow, ShadowDecision, contract_id
+        )
+
+    async def list_shadow_decisions(
+        self, *, workspace_id: str, project_id: str | None = None
+    ) -> list[ShadowDecision]:
+        return await self._list_v04_contracts(
+            ShadowDecisionRow,
+            ShadowDecision,
+            workspace_id=workspace_id,
+            project_id=project_id,
         )
 
     @staticmethod
