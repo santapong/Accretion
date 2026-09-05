@@ -85,6 +85,7 @@ curl http://localhost:8000/api/v1/runs/<run-id>/trace
 | Operator UI | `apps/ui/src/` | generated API contract + component tests + production build |
 | Benchmark | `src/accretion/*_benchmark.py` + `evals/` | fixture hashes + deterministic ACR-ARCH/P5/P6/P7 replay metrics |
 | Verified experience | `src/accretion/experience/` | compatibility, redaction, retrieval, replay, and PostgreSQL tests |
+| Configuration routing | `src/accretion/routing/` | registry-snapshot digests + deterministic compatibility rules + replay tests |
 
 ## 6. Preserve the authority boundary
 
