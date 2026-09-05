@@ -294,9 +294,7 @@ async def setup_registry(
     )
     if register_capability:
         await store.upsert_capability(
-            capability_row(
-                "cap.search", enabled=capability_enabled, version=capability_version
-            )
+            capability_row("cap.search", enabled=capability_enabled, version=capability_version)
         )
         await store.upsert_connector_definition(
             connector_row(
@@ -669,6 +667,7 @@ async def test_a_required_capability_the_tuple_never_bound_is_reported_by_the_jo
     assert joint.reason_code == ReasonCode.CAPABILITY_UNAVAILABLE.value
 
 
+@pytest.mark.acceptance("AC4-M1-007")
 async def test_an_unbound_requirement_the_snapshot_never_saw_is_unknown_not_unavailable() -> None:
     """The two coverage failures are different facts and carry different codes."""
 
@@ -688,6 +687,7 @@ async def test_an_unbound_requirement_the_snapshot_never_saw_is_unknown_not_unav
     joint = by_subject(decisions, SubjectType.CONFIGURATION)[0]
     assert joint.status is CompatibilityStatus.UNKNOWN
     assert joint.reason_code == ReasonCode.COMPATIBILITY_UNKNOWN.value
+    assert eligible(decisions) is False
 
 
 # --------------------------------------------------------------------------------------
@@ -747,9 +747,7 @@ async def test_a_bound_capability_inside_a_two_sided_range_is_compatible() -> No
     )
     decisions = engine.evaluate_joint(
         configuration=execution_configuration(spec_hash=spec.content_hash),
-        node_contract=node_contract(
-            spec_hash=spec.content_hash, version_range=">=1.9.0,<2.0.0"
-        ),
+        node_contract=node_contract(spec_hash=spec.content_hash, version_range=">=1.9.0,<2.0.0"),
         snapshot=snapshot,
         workspace_id=WORKSPACE_ID,
         project_id=PROJECT_ID,
@@ -761,6 +759,7 @@ async def test_a_bound_capability_inside_a_two_sided_range_is_compatible() -> No
     assert eligible(decisions) is True
 
 
+@pytest.mark.acceptance("AC4-M1-007")
 async def test_a_version_range_the_rule_may_not_interpret_is_unknown_not_compatible() -> None:
     """A caret range belongs to an ecosystem's convention, not to this rule's vocabulary.
 
@@ -910,9 +909,7 @@ async def test_reason_codes_are_stable_screaming_snake_and_enumerated() -> None:
                 node_contract(spec_hash=spec.content_hash),
             ),
             (
-                execution_configuration(
-                    spec_hash=spec.content_hash, adapter_version="fake-p2-v9"
-                ),
+                execution_configuration(spec_hash=spec.content_hash, adapter_version="fake-p2-v9"),
                 node_contract(spec_hash=spec.content_hash),
             ),
             (
@@ -958,6 +955,59 @@ async def test_reason_codes_are_stable_screaming_snake_and_enumerated() -> None:
         "VERIFIER_SPEC_HASH_MISMATCH",
         "VERIFIER_UNAVAILABLE",
     } <= emitted
+
+    # "Exposes" means readable back out of the store, not merely present on the object the
+    # engine returned: persist one INCOMPATIBLE and one UNKNOWN rejection and assert the
+    # code, rule and version survive the round trip.
+    store, builder, engine, _ = await setup_registry(capability_enabled=False)
+    snapshot = await builder.build(
+        workspace_id=WORKSPACE_ID, project_id=PROJECT_ID, task=task_row(), clock=clock
+    )
+    rejected = engine.evaluate_joint(
+        configuration=execution_configuration(spec_hash=spec.content_hash),
+        node_contract=node_contract(spec_hash=spec.content_hash),
+        snapshot=snapshot,
+        workspace_id=WORKSPACE_ID,
+        project_id=PROJECT_ID,
+        clock=clock,
+    )
+    incompatible = next(d for d in rejected if d.status is CompatibilityStatus.INCOMPATIBLE)
+    unknown_store, unknown_builder, unknown_engine, _ = await setup_registry(
+        register_capability=False
+    )
+    unknown_snapshot = await unknown_builder.build(
+        workspace_id=WORKSPACE_ID, project_id=PROJECT_ID, task=task_row(), clock=clock
+    )
+    unknown = next(
+        d
+        for d in unknown_engine.evaluate_joint(
+            configuration=execution_configuration(spec_hash=spec.content_hash),
+            node_contract=node_contract(spec_hash=spec.content_hash),
+            snapshot=unknown_snapshot,
+            workspace_id=WORKSPACE_ID,
+            project_id=PROJECT_ID,
+            clock=clock,
+        )
+        if d.status is CompatibilityStatus.UNKNOWN
+    )
+    await store.put_compatibility_decision(incompatible)
+    await store.put_compatibility_decision(unknown)
+    exposed = {
+        (d.subject_type, d.status, d.reason_code, d.rule_version)
+        for d in await store.list_compatibility_decisions(workspace_id=WORKSPACE_ID)
+    }
+    assert exposed >= {
+        (
+            incompatible.subject_type,
+            CompatibilityStatus.INCOMPATIBLE,
+            incompatible.reason_code,
+            RULE_VERSION,
+        ),
+        (unknown.subject_type, CompatibilityStatus.UNKNOWN, unknown.reason_code, RULE_VERSION),
+    }
+    assert {incompatible.reason_code, unknown.reason_code} <= set(GOLDEN_REASON_CODES)
+    assert ReasonCode.COMPATIBLE.value not in {incompatible.reason_code, unknown.reason_code}
+    del unknown_store
 
 
 # --------------------------------------------------------------------------------------
@@ -1154,13 +1204,8 @@ async def test_snapshot_ids_carry_no_secret() -> None:
     plain = await plain_builder.build(
         workspace_id=WORKSPACE_ID, project_id=PROJECT_ID, task=task_row(), clock=clock
     )
-    assert (
-        snapshot.connection_availability_snapshot_id
-        == plain.connection_availability_snapshot_id
-    )
-    assert (
-        snapshot.capability_registry_snapshot_id == plain.capability_registry_snapshot_id
-    )
+    assert snapshot.connection_availability_snapshot_id == plain.connection_availability_snapshot_id
+    assert snapshot.capability_registry_snapshot_id == plain.capability_registry_snapshot_id
     assert snapshot.available_runtime_snapshot_id == plain.available_runtime_snapshot_id
     assert snapshot.policy_snapshot_id == plain.policy_snapshot_id
 
@@ -1181,9 +1226,7 @@ async def test_a_connection_status_change_still_moves_the_connection_snapshot_id
     after = await builder.build(
         workspace_id=WORKSPACE_ID, project_id=PROJECT_ID, task=task_row(), clock=clock
     )
-    assert (
-        before.connection_availability_snapshot_id != after.connection_availability_snapshot_id
-    )
+    assert before.connection_availability_snapshot_id != after.connection_availability_snapshot_id
 
 
 # --------------------------------------------------------------------------------------
