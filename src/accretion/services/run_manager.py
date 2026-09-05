@@ -120,6 +120,23 @@ class RuntimeCallOutcome:
     stop_reason: LoopStopReason | None = None
 
 
+@dataclass(slots=True, frozen=True)
+class ActiveRuntimeRef:
+    """One in-flight provider call, together with the session that owns it.
+
+    ``RunRef`` names a call by run and session id but not by provider, so a bare ref
+    cannot say which runtime is holding it. That was harmless while every session on a
+    run ran on ``run.provider``; it stops being harmless the moment a node executes on
+    a runtime other than the run's, because interrupt, resume and terminate would then
+    be delivered to a runtime that has never heard of the call. Pairing the ref with
+    its session keeps the owning runtime derivable from the entry itself, which is
+    what :meth:`RunManager._runtime_for` reads.
+    """
+
+    session: SessionRef
+    ref: RunRef
+
+
 class CapabilityNodeInvoker(Protocol):
     """Executes one capability reference hung on a workflow node.
 
@@ -142,6 +159,7 @@ class CapabilityNodeInvoker(Protocol):
         node_id: str,
         capability_id: str,
         arguments: dict[str, object],
+        executing_provider: Provider | None = None,
     ) -> object | None: ...
 
 
@@ -237,7 +255,7 @@ class RunManager:
         self.default_verifier_ids = default_verifier_ids
         self.auto_resume_on_reconcile = auto_resume_on_reconcile
         self.background: dict[str, asyncio.Task[None]] = {}
-        self.active_refs: dict[str, RunRef] = {}
+        self.active_refs: dict[str, ActiveRuntimeRef] = {}
         self.event_conditions: dict[str, asyncio.Condition] = {}
         self.pause_requested: set[str] = set()
         self.terminal_locks: dict[str, asyncio.Lock] = {}
@@ -682,6 +700,22 @@ class RunManager:
                 "live providers are disabled; set ACCRETION_ENABLE_LIVE_PROVIDERS=true"
             )
 
+    def _runtime_for(self, session: SessionRef) -> AgentRuntime:
+        """The runtime that is actually executing ``session``.
+
+        ``run.provider`` is the provider the operator *requested* for the run. The
+        provider that executes a given call is a property of the session that call was
+        submitted on, and the two coincide only for as long as every session on a run
+        is created on ``run.provider``. Every site that has a session in hand reads it
+        from here instead, so per-node runtime selection becomes a change to session
+        creation and to nothing else.
+        """
+
+        runtime = self.runtimes.get(session.provider)
+        if runtime is None:
+            raise ValueError(f"runtime {session.provider.value} is not configured")
+        return runtime
+
     def _verifier_ids(self, task: Task) -> list[str]:
         selected = list(self.default_verifier_ids)
         if task.envelope.required_outputs:
@@ -702,6 +736,9 @@ class RunManager:
     async def _execute_new(self, run_id: str) -> None:
         run = await self._require_run(run_id)
         task = await self._require_task(run.task_id)
+        # A session-creation site, and the only surviving one that reads the run: there
+        # is no session yet, so the requested provider is the right and only answer.
+        # Everything downstream of ``create_session`` reads the session instead.
         runtime = self.runtimes[run.provider]
         lease: WorkspaceLease | None = None
         session: SessionRef | None = None
@@ -1155,7 +1192,9 @@ class RunManager:
             # with no references does not reach this call at all, so the diff capture
             # below --- the entirety of pre-M5 TOOL behaviour --- is untouched.
             if spec is not None and spec.capability_refs:
-                await self._invoke_node_capabilities(run, node, spec)
+                await self._invoke_node_capabilities(
+                    run, node, spec, executing_provider=session.provider
+                )
             captures = cursor.entered_via.get(f"capture:{node.key}", 0) + 1
             cursor.entered_via[f"capture:{node.key}"] = captures
             artifact = await self.worktrees.capture_diff(
@@ -1210,7 +1249,12 @@ class RunManager:
         raise RuntimeError(f"unsupported graph node kind {node.kind.value}")
 
     async def _invoke_node_capabilities(
-        self, run: Run, node: RunNode, spec: WorkflowNodeSpec
+        self,
+        run: Run,
+        node: RunNode,
+        spec: WorkflowNodeSpec,
+        *,
+        executing_provider: Provider | None = None,
     ) -> None:
         """Spend each of the node's capability references, in declared order.
 
@@ -1225,6 +1269,12 @@ class RunManager:
 
         One reference failing does not stop the next, and none of them changes the
         node's outcome: this loop cannot make a TOOL node fail.
+
+        ``executing_provider`` is the provider of the session the node is running on,
+        and is what the gateway's authorization terminals and audit events name. It
+        defaults to the run's requested provider so that the two callers that hold no
+        session --- the tests that spend a node's references directly --- attribute
+        exactly what they attributed before.
         """
 
         if self.capability_invoker is None:
@@ -1232,6 +1282,7 @@ class RunManager:
         query = (spec.instruction or spec.label).strip()
         if not query:
             return
+        provider = executing_provider if executing_provider is not None else run.provider
         for capability_id in spec.capability_refs:
             try:
                 await self.capability_invoker(
@@ -1239,6 +1290,7 @@ class RunManager:
                     node_id=node.key,
                     capability_id=capability_id,
                     arguments={"query": query},
+                    executing_provider=provider,
                 )
             except Exception:  # noqa: BLE001 - a reference must not abort the run
                 continue
@@ -2407,7 +2459,7 @@ class RunManager:
         iteration_number: int = 1,
         directive: IterationDirective | None = None,
     ) -> RuntimeCallOutcome:
-        runtime = self.runtimes[run.provider]
+        runtime = self._runtime_for(session)
         remaining = max(1, int(deadline - datetime.now(UTC).timestamp()))
         request_envelope = envelope.model_copy(
             update={
@@ -2436,7 +2488,7 @@ class RunManager:
         if ref.native_run_id and ref.native_run_id != session.native_session_id:
             session = session.model_copy(update={"native_session_id": ref.native_run_id})
             await self.store.save_session(session)
-        self.active_refs[run.run_id] = ref
+        self.active_refs[run.run_id] = ActiveRuntimeRef(session=session, ref=ref)
         completed = False
         cancelled = False
         tool_ids: set[str] = set()
@@ -3334,9 +3386,9 @@ class RunManager:
         if run.state in TERMINAL_RUN_STATES or run.state is RunState.PAUSED:
             return run
         self.pause_requested.add(run_id)
-        ref = self.active_refs.get(run_id)
-        if ref:
-            await self.runtimes[run.provider].interrupt(ref)
+        active = self.active_refs.get(run_id)
+        if active:
+            await self._runtime_for(active.session).interrupt(active.ref)
         elif run.execution_mode is ExecutionMode.LOOP:
             execution = await self._require_loop(run_id)
             await self.store.update_loop_execution(
@@ -3354,10 +3406,10 @@ class RunManager:
         if run.state in TERMINAL_RUN_STATES:
             return run
         if run.state is not RunState.PAUSED:
-            ref = self.active_refs.get(run_id)
-            if not ref:
+            active = self.active_refs.get(run_id)
+            if not active:
                 return run
-            await self.runtimes[run.provider].resume(ref)
+            await self._runtime_for(active.session).resume(active.ref)
             return await self.store.update_run(run_id, RunState.RUNNING)
         if run_id in self.background and not self.background[run_id].done():
             return run
@@ -3405,8 +3457,12 @@ class RunManager:
             )
             return
         try:
-            async with self.limiter.slot(run.provider, run.project_id):
-                session = await self.runtimes[run.provider].create_session(
+            # A resume continues the prior session rather than opening a new one: the
+            # native session id handed to ``create_session`` below is meaningful only to
+            # the runtime that minted it, so both the slot and the call follow the
+            # session's provider, not the run's. They are the same provider today.
+            async with self.limiter.slot(prior_session.provider, run.project_id):
+                session = await self._runtime_for(prior_session).create_session(
                     SessionConfig(
                         run_id=run_id,
                         workspace=lease.path,
@@ -3454,8 +3510,12 @@ class RunManager:
             )
             return
         try:
-            async with self.limiter.slot(run.provider, run.project_id):
-                session = await self.runtimes[run.provider].create_session(
+            # A resume continues the prior session rather than opening a new one: the
+            # native session id handed to ``create_session`` below is meaningful only to
+            # the runtime that minted it, so both the slot and the call follow the
+            # session's provider, not the run's. They are the same provider today.
+            async with self.limiter.slot(prior_session.provider, run.project_id):
+                session = await self._runtime_for(prior_session).create_session(
                     SessionConfig(
                         run_id=run_id,
                         workspace=lease.path,
@@ -3509,8 +3569,12 @@ class RunManager:
             )
             return
         try:
-            async with self.limiter.slot(run.provider, run.project_id):
-                session = await self.runtimes[run.provider].create_session(
+            # A resume continues the prior session rather than opening a new one: the
+            # native session id handed to ``create_session`` below is meaningful only to
+            # the runtime that minted it, so both the slot and the call follow the
+            # session's provider, not the run's. They are the same provider today.
+            async with self.limiter.slot(prior_session.provider, run.project_id):
+                session = await self._runtime_for(prior_session).create_session(
                     SessionConfig(
                         run_id=run_id,
                         workspace=lease.path,
@@ -3544,9 +3608,9 @@ class RunManager:
         run = await self._require_run(run_id)
         if run.state in TERMINAL_RUN_STATES:
             return run
-        ref = self.active_refs.get(run_id)
-        if ref:
-            await self.runtimes[run.provider].terminate(ref)
+        active = self.active_refs.get(run_id)
+        if active:
+            await self._runtime_for(active.session).terminate(active.ref)
         task = self.background.get(run_id)
         if task and not task.done():
             task.cancel()
@@ -3746,7 +3810,7 @@ class RunManager:
                 and checkpoint is not None
                 and evaluation is not None
                 and evaluation.valid
-                and self._runtime_available(run.provider)
+                and await self._resume_runtime_available(run)
             ):
                 # resume() registers background[run_id] itself; a distinct key
                 # keeps its not-already-running check truthful.
@@ -3756,6 +3820,19 @@ class RunManager:
 
     async def _auto_resume(self, run_id: str) -> None:
         await self.resume(run_id)
+
+    async def _resume_runtime_available(self, run: Run) -> bool:
+        """Can the runtime an auto-resume would actually reach be reached?
+
+        A resume re-enters the prior session's runtime, because only that runtime knows
+        the native session id it is asked to continue. Probing ``run.provider`` instead
+        would clear a run for auto-resume against a runtime that is not the one about
+        to be called. A run with no session cannot be resumed at all --- the resume
+        paths escalate --- so the run's requested provider is the honest fallback.
+        """
+
+        session = await self.store.get_session_for_run(run.run_id)
+        return self._runtime_available(session.provider if session is not None else run.provider)
 
     def _runtime_available(self, provider: Provider) -> bool:
         if provider not in self.runtimes:
