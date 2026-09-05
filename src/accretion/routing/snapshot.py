@@ -38,6 +38,7 @@ from datetime import UTC, datetime
 from accretion.contracts import (
     AgentRuntime,
     CapabilityPolicy,
+    McpServerState,
     Provider,
     ResolvedCapability,
     RuntimeHealth,
@@ -80,6 +81,15 @@ class RoutingSnapshot:
     store. ``policy`` is the whole :class:`~accretion.contracts.CapabilityPolicy` because
     M1.2's gates evaluate it; ``policy_snapshot_id`` is its ``id@version`` identity, which is
     a label rather than a digest and therefore the one snapshot id that is not hex.
+
+    ``mcp_server_states`` carries the ``(server id, state)`` pairs the capability-registry
+    digest is computed over, and nothing else about a server. It exists because two
+    different worlds reach ``CompatibilityEngine.map_resolution`` as the same resolver
+    outcome: a plugin-gated capability whose installation is disabled and
+    an MCP-backed capability whose server is down both resolve ``DISABLED``. Telling them
+    apart needs the server's observed state, and reaching back to the store for it would
+    break the property this whole module exists for — that a rule reads the snapshot and
+    nothing else.
     """
 
     capability_registry_snapshot_id: str
@@ -91,6 +101,7 @@ class RoutingSnapshot:
     plugins: tuple[str, ...]
     verifier_ids: tuple[str, ...]
     runtime_health: tuple[RuntimeHealth, ...]
+    mcp_server_states: tuple[tuple[str, McpServerState], ...]
     policy: CapabilityPolicy
     fallback_bundle_digest: str
     taken_at: datetime
@@ -117,6 +128,23 @@ class RoutingSnapshot:
                 return health
         return None
 
+    def mcp_server_state(self, mcp_server_id: str | None) -> McpServerState | None:
+        """The state this snapshot observed for ``mcp_server_id``, or ``None``.
+
+        ``None`` covers both "the binding names no server" and "this snapshot never saw
+        that server", and both are correctly *not ready*: a binding that points at nothing
+        is exactly as unusable as one that points at a server the workspace cannot see.
+        Callers therefore compare against :attr:`McpServerState.READY` rather than testing
+        for ``None`` separately, and a missing server is not silently treated as healthy.
+        """
+
+        if mcp_server_id is None:
+            return None
+        for server_id, state in self.mcp_server_states:
+            if server_id == mcp_server_id:
+                return state
+        return None
+
 
 def _digest(sections: Mapping[str, object]) -> str:
     """SHA-256 over the canonical JSON of ``sections``.
@@ -129,6 +157,21 @@ def _digest(sections: Mapping[str, object]) -> str:
     """
 
     return hashlib.sha256(canonical_json(sections)).hexdigest()
+
+
+def policy_snapshot_id(policy: CapabilityPolicy) -> str:
+    """The ``id@version`` identity of the capability policy a decision was made under.
+
+    The one snapshot id that is a label rather than a digest, and therefore the one that a
+    caller holding only a :class:`~accretion.contracts.CapabilityPolicy` — M1.2's gates,
+    which are handed a policy and never a snapshot — can compute for itself. It lives here
+    beside the three digests rather than in :mod:`accretion.routing.gates` so that the
+    builder below and the gates cannot spell one identity two ways; a gate that wrote
+    ``id:version`` while the snapshot wrote ``id@version`` would produce decision ids that
+    replay against nothing, and nothing would notice until an audit.
+    """
+
+    return f"{policy.policy_id}@{policy.version}"
 
 
 class RegistrySnapshotBuilder:
@@ -300,12 +343,20 @@ class RegistrySnapshotBuilder:
             capability_registry_snapshot_id=capability_registry_snapshot_id,
             available_runtime_snapshot_id=available_runtime_snapshot_id,
             connection_availability_snapshot_id=connection_availability_snapshot_id,
-            policy_snapshot_id=f"{policy.policy_id}@{policy.version}",
+            policy_snapshot_id=policy_snapshot_id(policy),
             capabilities=capabilities,
             skills=tuple(sorted(skill.skill_id for skill in skill_rows)),
             plugins=tuple(sorted(plugin.plugin_id for plugin in plugin_rows)),
             verifier_ids=tuple(self.verifiers.list_ids()),
             runtime_health=tuple(runtime_health),
+            # Id and state only, exactly the projection the capability-registry digest
+            # above already carries: an MCP server's endpoint, command line and auth
+            # profile are configuration a routing rule does not read, and two of the three
+            # can carry credentials. Sorted so that two observations of one world produce
+            # one tuple.
+            mcp_server_states=tuple(
+                sorted((server.mcp_server_id, server.state) for server in mcp_rows)
+            ),
             policy=policy,
             fallback_bundle_digest=FALLBACK_BUNDLE_DIGEST_M1,
             taken_at=clock() if clock is not None else datetime.now(UTC),
@@ -317,4 +368,5 @@ __all__ = [
     "FALLBACK_BUNDLE_DIGEST_M1",
     "RegistrySnapshotBuilder",
     "RoutingSnapshot",
+    "policy_snapshot_id",
 ]

@@ -79,6 +79,7 @@ from accretion.contracts import (
     CapabilityResolutionOutcome,
     ConnectionStatus,
     EvidenceClass,
+    McpServerState,
     PrincipalRef,
     ResolvedCapability,
     RuntimeStatus,
@@ -548,11 +549,13 @@ class CompatibilityEngine:
 
         Two refinements sharpen the resolver's coarser outcomes, both structurally rather
         than by reading its ``reason`` prose. A ``DISABLED`` outcome on an *enabled*
-        capability with an *enabled* MCP-backed binding can only have come from the MCP
-        readiness gate, so it reports ``MCP_SERVER_NOT_READY``. A ``REQUIRE_REAUTH`` outcome
-        whose connection is nonetheless in a usable status can only have come from the
-        missing-scopes branch, so it reports ``SCOPE_INSUFFICIENT``. Both codes would
-        otherwise be vocabulary no rule could ever emit.
+        capability with an *enabled* MCP-backed binding whose server the snapshot did not
+        observe as ``READY`` came from the MCP readiness gate, so it reports
+        ``MCP_SERVER_NOT_READY``; the same outcome with a ``READY`` server came from the
+        plugin gate that runs before it, and stays ``CAPABILITY_DISABLED``. A
+        ``REQUIRE_REAUTH`` outcome whose connection is nonetheless in a usable status can
+        only have come from the missing-scopes branch, so it reports ``SCOPE_INSUFFICIENT``.
+        Both codes would otherwise be vocabulary no rule could ever emit.
         """
 
         if resolved is None:
@@ -581,6 +584,18 @@ class CompatibilityEngine:
                 and binding is not None
                 and binding.enabled
                 and binding.backend.type is CapabilityBackend.MCP
+                # The four conditions above narrow `DISABLED` to "an enabled capability
+                # behind an enabled MCP binding", which the resolver reaches from two
+                # different gates: the MCP readiness gate, and the *plugin* gate that runs
+                # before it (`resolver.py:189`) for a capability a disabled or reinstalled
+                # plugin contributed. Both look identical from here, so the coarse test
+                # labelled a plugin problem as a server problem and sent an operator to
+                # restart a server that was never down. The snapshot's observed state is
+                # what separates them, and it is read structurally rather than from the
+                # resolver's prose: MCP_SERVER_NOT_READY only when the bound server is not
+                # READY, which includes the server this snapshot never saw.
+                and snapshot.mcp_server_state(binding.backend.server_ref)
+                is not McpServerState.READY
             )
             status = CompatibilityStatus.INCOMPATIBLE
             reason = (
