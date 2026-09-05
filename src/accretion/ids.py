@@ -98,6 +98,13 @@ _PREFIXES = {
     "router_training_snapshot": "rts",
     "router_promotion_report": "rpr",
     "shadow_decision": "shd",
+    # `routing_overrides` is the fifteenth SDD v0.4 §13 table and the one PR2 froze no
+    # contract for, so it needs a record identity even though it has no model yet. It
+    # cannot reuse `override` above: that kind is already minted by `planning.py` for the
+    # v0.1/v0.2 strategy override, and sharing it would mean an `ovr_` id no longer told a
+    # reader — or `has_prefix`, or M2's future `RoutingOverride.ID_KIND` check — which
+    # record class or which table it names. So the routing override gets its own kind.
+    "routing_override": "rov",
 }
 
 
