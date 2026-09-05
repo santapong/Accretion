@@ -1,0 +1,98 @@
+{
+  "candidates": [
+    {
+      "candidate_id": "cnf-claude-opus-full",
+      "declared_cost": 0.62,
+      "declared_latency_ms": 41000,
+      "eligible_node_classes": [
+        "ANALYSIS",
+        "IMPLEMENTATION",
+        "MIGRATION",
+        "VERIFICATION"
+      ],
+      "model_id": "claude-opus-4",
+      "predicted_success": 0.86,
+      "provider": "CLAUDE",
+      "runtime_id": "claude-cli",
+      "runtime_version": "2.4.0",
+      "tool_profile": "full"
+    },
+    {
+      "candidate_id": "cnf-claude-sonnet-lean",
+      "declared_cost": 0.28,
+      "declared_latency_ms": 22000,
+      "eligible_node_classes": [
+        "ANALYSIS",
+        "IMPLEMENTATION",
+        "VERIFICATION"
+      ],
+      "model_id": "claude-sonnet-4",
+      "predicted_success": 0.72,
+      "provider": "CLAUDE",
+      "runtime_id": "claude-cli",
+      "runtime_version": "2.4.0",
+      "tool_profile": "lean"
+    },
+    {
+      "candidate_id": "cnf-codex-standard",
+      "declared_cost": 0.41,
+      "declared_latency_ms": 28000,
+      "eligible_node_classes": [
+        "IMPLEMENTATION",
+        "MIGRATION",
+        "VERIFICATION"
+      ],
+      "model_id": "codex-standard",
+      "predicted_success": 0.78,
+      "provider": "CODEX",
+      "runtime_id": "codex-cli",
+      "runtime_version": "1.9.0",
+      "tool_profile": "standard"
+    },
+    {
+      "candidate_id": "cnf-codex-mini",
+      "declared_cost": 0.12,
+      "declared_latency_ms": 15000,
+      "eligible_node_classes": [
+        "ANALYSIS",
+        "VERIFICATION"
+      ],
+      "model_id": "codex-mini",
+      "predicted_success": 0.58,
+      "provider": "CODEX",
+      "runtime_id": "codex-cli",
+      "runtime_version": "1.9.0",
+      "tool_profile": "minimal"
+    },
+    {
+      "candidate_id": "cnf-opencode-local",
+      "declared_cost": 0.05,
+      "declared_latency_ms": 52000,
+      "eligible_node_classes": [
+        "ANALYSIS"
+      ],
+      "model_id": "local-coder",
+      "predicted_success": 0.49,
+      "provider": "OPENCODE",
+      "runtime_id": "opencode-cli",
+      "runtime_version": "0.7.0",
+      "tool_profile": "local"
+    },
+    {
+      "candidate_id": "cnf-deterministic-scripted",
+      "declared_cost": 0.02,
+      "declared_latency_ms": 5000,
+      "eligible_node_classes": [
+        "MIGRATION",
+        "VERIFICATION"
+      ],
+      "model_id": "scripted-v1",
+      "predicted_success": 0.35,
+      "provider": "DETERMINISTIC",
+      "runtime_id": "deterministic-runtime",
+      "runtime_version": "1.0.0",
+      "tool_profile": "scripted"
+    }
+  ],
+  "suite_version": "v1"
+}
