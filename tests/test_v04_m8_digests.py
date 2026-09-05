@@ -23,6 +23,8 @@ import json
 from dataclasses import replace
 from pathlib import Path
 
+import pytest
+
 from accretion.benchmark import AcrArchRunner
 from accretion.contracts import (
     CapabilityRequest,
@@ -36,7 +38,7 @@ from accretion.contracts import (
     TaskProfile,
     TaskType,
 )
-from accretion.contracts.canonical import canonical_json
+from accretion.contracts.canonical import CanonicalizationError, canonical_json, content_hash
 from accretion.digests import legacy_json_bytes, legacy_json_digest
 from accretion.experience.embedding import canonical_digest
 from accretion.governance import approval_binding, seed_governance
@@ -269,6 +271,18 @@ def test_experience_canonical_digest_agrees_with_canonical_json_on_non_ascii_pay
     ]
     for payload in payloads:
         assert canonical_digest(payload) == hashlib.sha256(canonical_json(payload)).hexdigest()
+
+    # The narrowing is deliberate: the two classes ``json.dumps`` tolerated but canonical JSON
+    # has no form for are refused loudly rather than digested.
+    for refused in ({1: "a"}, {"x": float("nan")}):
+        with pytest.raises(CanonicalizationError):
+            canonical_digest(refused)
+
+    # ``canonical_json`` and not ``content_hash``: a top-level ``content_hash`` key in
+    # arbitrary parsed content must still be committed to by this digest.
+    with_hash = {"content_hash": "deadbeef", "body": "x"}
+    assert canonical_digest(with_hash) == hashlib.sha256(canonical_json(with_hash)).hexdigest()
+    assert canonical_digest(with_hash) != content_hash(with_hash)
 
 
 def test_every_bundled_plugin_manifest_digest_survives_the_embedding_convergence() -> None:

@@ -45,10 +45,13 @@ class EmbeddingResult:
 def canonical_digest(value: Any) -> str:
     # Converged onto ADR-056 canonical JSON in M8. This site already passed
     # ``ensure_ascii=False``, so it agrees with ``canonical_json`` byte for byte on every
-    # payload ``json.dumps`` would have accepted --- not merely on the committed ones ---
-    # and none of the digests it persists can move. ``canonical_json`` and not
-    # ``content_hash``: callers pass arbitrary parsed content, which may legitimately carry
-    # a top-level ``content_hash`` key that this digest must still commit to.
+    # payload BOTH functions accept --- there is no payload they both accept and serialize
+    # differently --- so none of the digests it persists can move. ``canonical_json``
+    # additionally refuses two classes ``json.dumps`` tolerated, non-string object keys and
+    # non-finite floats, which have no canonical JSON form: those are now a loud
+    # ``CanonicalizationError`` instead of a digest over invalid JSON. ``canonical_json`` and
+    # not ``content_hash``: callers pass arbitrary parsed content, which may legitimately
+    # carry a top-level ``content_hash`` key that this digest must still commit to.
     return hashlib.sha256(canonical_json(value)).hexdigest()
 
 

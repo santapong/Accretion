@@ -11,9 +11,13 @@ with one copy of the old expression instead of four, which is what this module i
 
 * ``experience/embedding.py`` ``canonical_digest`` — it already passed
   ``ensure_ascii=False``, so it agrees with :func:`~accretion.contracts.canonical.canonical_json`
-  byte for byte on *every* payload `json.dumps` would accept, not merely on the committed
-  ones. Nothing about its persisted digests (`ExperienceEmbedding.input_digest`,
-  segment ``content_digest``, the bundled plugin manifest digests) can move.
+  byte for byte on every payload *both* functions accept: there is no payload they both
+  accept and serialize differently, so nothing about its persisted digests
+  (`ExperienceEmbedding.input_digest`, segment ``content_digest``, the bundled plugin
+  manifest digests) can move. ``canonical_json`` additionally refuses two classes
+  ``json.dumps`` tolerated — non-string object keys and non-finite floats — which have no
+  canonical JSON form and now raise ``CanonicalizationError`` instead of yielding a digest
+  over invalid JSON.
 * ``governance.py`` ``seed_governance`` — the built-in
   ``accretion-core-governance@1.0.0`` manifest checksum. Its payload is four code
   literals: the plugin id, the version, the two built-in capability ids and the one
