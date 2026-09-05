@@ -636,3 +636,72 @@ async def test_route_execution_validates_real_snapshot_identity_before_persistin
     assert receipt.routing_request_id == request_id
     assert receipt.capability_registry_snapshot_id == snapshot.capability_registry_snapshot_id
     assert await execution.store.get_routing_receipt_for_request(request_id) == receipt
+
+
+async def test_dispatch_claim_is_persisted_and_blocks_late_operator_changes(
+    tmp_path: Path,
+) -> None:
+    execution = await _routable_execution(tmp_path)
+    receipt = await execution.service.route(
+        frozen=execution.frozen,
+        snapshot=execution.snapshot,
+        mode=RoutingMode.BASELINE_ONLY,
+        run=execution.run,
+    )
+
+    configuration = await execution.service.claim_dispatch(
+        receipt=receipt, run=execution.run
+    )
+
+    assert configuration.runtime.provider is Provider.FAKE
+    events = await execution.store.list_events(execution.run.run_id)
+    dispatches = [
+        event for event in events if event.native_type == "accretion/routing/dispatch"
+    ]
+    assert len(dispatches) == 1
+    assert dispatches[0].causation_id == receipt.contract_id
+    candidate_id = receipt.candidate_summary_refs[0]
+    for operation in ("override", "cancel"):
+        with pytest.raises(RoutingError) as excinfo:
+            if operation == "override":
+                await execution.service.override(
+                    receipt_id=receipt.contract_id,
+                    candidate_id=candidate_id,
+                    reason_code="EXPERIMENTAL_COMPARISON",
+                    reason="This is too late after the dispatch claim.",
+                    expected_receipt_version=1,
+                    principal=receipt.created_by,
+                )
+            else:
+                await execution.service.cancel(
+                    receipt_id=receipt.contract_id, principal=receipt.created_by
+                )
+        assert excinfo.value.code == "RECEIPT_ALREADY_DISPATCHED"
+    receipts = await execution.store.list_routing_receipts(
+        workspace_id=receipt.workspace_id, project_id=receipt.project_id
+    )
+    assert receipts == [receipt]
+
+
+async def test_runtime_version_drift_prevents_dispatch_claim(
+    tmp_path: Path,
+) -> None:
+    execution = await _routable_execution(tmp_path)
+    receipt = await execution.service.route(
+        frozen=execution.frozen,
+        snapshot=execution.snapshot,
+        mode=RoutingMode.BASELINE_ONLY,
+        run=execution.run,
+    )
+    drifted = FakeRuntime()
+    drifted.adapter_version = "fake-drifted-after-routing"
+    execution.service.runtimes = {Provider.FAKE: drifted}
+
+    with pytest.raises(RoutingError) as excinfo:
+        await execution.service.claim_dispatch(receipt=receipt, run=execution.run)
+
+    assert excinfo.value.code == "RUNTIME_VERSION_DRIFT"
+    events = await execution.store.list_events(execution.run.run_id)
+    assert not any(
+        event.native_type == "accretion/routing/dispatch" for event in events
+    )
