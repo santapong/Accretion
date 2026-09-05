@@ -17,11 +17,13 @@ from accretion.contracts import (
     Provider,
     Run,
     RunNode,
+    RuntimeStatus,
     Task,
     WorkflowNodeSpec,
     WorkflowTemplate,
     WorkspaceRole,
 )
+from accretion.contracts.canonical import content_hash
 from accretion.contracts.routing import (
     ConfigurationCandidate,
     DecisionType,
@@ -237,6 +239,24 @@ class DefaultNodeRoutingService:
         task = await self.store.get_task(run.task_id)
         if task is None:
             raise _error("ROUTING_INPUT_MISSING", "Task not found", 404)
+        persisted_node = await self.store.get_node_contract(frozen.node_contract.contract_id)
+        persisted_spec = await self.store.get_verification_spec(
+            frozen.verification_spec.contract_id
+        )
+        graph = await self.store.get_run_graph(run.run_id)
+        if (
+            persisted_node is None
+            or persisted_spec is None
+            or graph is None
+            or persisted_node.content_hash != frozen.node_contract.content_hash
+            or persisted_spec.content_hash != frozen.verification_spec.content_hash
+            or persisted_node.verification_spec_ref.content_hash != persisted_spec.content_hash
+            or persisted_node.run_graph_id != graph.run_graph_id
+            or persisted_node.project_id != run.project_id
+        ):
+            raise _error(
+                "ROUTING_INPUT_INVALID", "Matching persisted frozen inputs are required", 422
+            )
         await self._authorize(frozen.node_contract.workspace_id, principal_ref_for_run(run))
         catalog = _catalog or await self.catalog_factory(frozen, snapshot, run, task)
         snapshot = replace(snapshot, fallback_bundle_digest=catalog.fallback_bundle.digest)
@@ -254,6 +274,21 @@ class DefaultNodeRoutingService:
                 existing = await store.get_routing_receipt_for_request(request_id)
                 if existing is not None:
                     return existing
+                history = [
+                    r
+                    for r in await store.list_routing_receipts_for_run_graph(
+                        workspace_id=frozen.node_contract.workspace_id,
+                        run_graph_id=frozen.node_contract.run_graph_id,
+                    )
+                    if r.node_contract_hash == frozen.node_contract.immutable_hash
+                ]
+                superseded = {r.supersedes_contract_id for r in history}
+                heads = [r for r in history if r.contract_id not in superseded]
+                if len(heads) > 1:
+                    raise _error("RECEIPT_VERSION_CONFLICT", "Routing history has competing heads")
+                predecessor = heads[0] if heads else None
+                if predecessor:
+                    await self._assert_amendable(store, predecessor, run)
                 context = await self._context(store, frozen, snapshot, run, request_id)
                 who = frozen.node_contract.created_by
                 builder = CandidateBuilder(
@@ -300,6 +335,7 @@ class DefaultNodeRoutingService:
                 selected = selection.selected
                 receipt = RoutingDecisionReceipt(  # type: ignore[call-arg]
                     contract_id=derived_id("routing_receipt", request_id),
+                    supersedes_contract_id=predecessor.contract_id if predecessor else None,
                     created_at=context.requested_at,
                     created_by=who,
                     workspace_id=context.workspace_id,
@@ -341,7 +377,11 @@ class DefaultNodeRoutingService:
                     explanation=selection.explanation,
                     labels={
                         "run_id": run.run_id,
-                        "decision_version": "1",
+                        "decision_version": str(
+                            int(predecessor.labels.get("decision_version", "1")) + 1
+                        )
+                        if predecessor
+                        else "1",
                         "routing_status": "READY",
                     },
                 )
@@ -474,7 +514,8 @@ class DefaultNodeRoutingService:
             raise _error("RECEIPT_CANCELLED", "Routing decision was cancelled")
         events = await store.list_events(run.run_id)
         if any(
-            e.native_type == "accretion/routing/dispatch" and e.causation_id == receipt.contract_id
+            e.native_type == "accretion/routing/dispatch"
+            and e.payload.get("node_contract_hash") == receipt.node_contract_hash
             for e in events
         ):
             raise _error(
@@ -492,8 +533,25 @@ class DefaultNodeRoutingService:
         await self._authorize(receipt.workspace_id, principal_ref_for_run(run))
         runtime = self.runtimes.get(configuration.runtime.provider)
         health = await runtime.health() if runtime else None
-        if health is None or health.runtime_version != configuration.runtime.adapter_version:
+        if (
+            health is None
+            or health.runtime_id != configuration.runtime.runtime_id
+            or health.provider != configuration.runtime.provider
+            or health.runtime_version != configuration.runtime.adapter_version
+            or content_hash(
+                {
+                    "runtime_id": health.runtime_id,
+                    "provider": health.provider,
+                    "runtime_version": health.runtime_version,
+                    "capabilities": sorted(health.capabilities),
+                },
+                exclude=(),
+            )
+            != configuration.runtime.capability_profile_digest
+        ):
             raise _error("RUNTIME_VERSION_DRIFT", "Runtime changed after routing")
+        if health.status is not RuntimeStatus.READY:
+            raise _error("RUNTIME_UNAVAILABLE", "Selected runtime is not ready for dispatch")
         async with self.store.routing_transaction(run.run_id) as store:
             await self._authorize(
                 receipt.workspace_id, principal_ref_for_run(run), mutate=True, store=store
