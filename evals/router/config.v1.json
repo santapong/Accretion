@@ -1,0 +1,45 @@
+{
+  "configuration_version": "router-baselines-v1",
+  "deterministic_v01_table": {
+    "DIRECT": "cnf-codex-mini",
+    "GRAPH": "cnf-codex-standard",
+    "HYBRID": "cnf-claude-opus-full",
+    "LOOP": "cnf-claude-sonnet-lean"
+  },
+  "false_acceptance_ceiling": 0.05,
+  "invalid_action_penalty": 1.0,
+  "latency_budget_ms": 60000,
+  "oracle_candidate_subset": [
+    "cnf-claude-opus-full",
+    "cnf-claude-sonnet-lean",
+    "cnf-codex-mini",
+    "cnf-codex-standard",
+    "cnf-deterministic-scripted"
+  ],
+  "seed": 20260905,
+  "selection_split": {
+    "evaluation_project_ids": [
+      "prj-router-docs-site",
+      "prj-router-etl-batch",
+      "prj-router-etl-batch-fork",
+      "prj-router-notebook-analysis",
+      "prj-router-web-api",
+      "prj-router-web-api-fork"
+    ],
+    "selection_project_ids": [
+      "prj-router-cli-generator",
+      "prj-router-cli-scaffold",
+      "prj-router-infra-terraform",
+      "prj-router-paper-baseline",
+      "prj-router-paper-benchmark",
+      "prj-router-paper-extension"
+    ]
+  },
+  "suite_version": "v1",
+  "verified_success_floor": 0.7,
+  "weights": {
+    "cost": 0.3,
+    "latency": 0.15,
+    "quality": 1.0
+  }
+}
