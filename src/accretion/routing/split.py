@@ -80,9 +80,12 @@ class SplitName(StrEnum):
     ``CALIBRATION`` and ``DEVELOPMENT`` are separate because they answer different
     questions: calibration fits thresholds and probability calibrators, development is read
     repeatedly while iterating. Folding them together would let a threshold be tuned on the
-    set used to decide the shape of the model. ``DRIFT`` is the temporal/provider-drift
-    holdout the program plan promotes to required — a locked test set drawn from the same
-    period as training cannot show provider drift, because it does not contain any.
+    set used to decide the shape of the model. ``DRIFT`` is reserved for the temporal/
+    provider-drift holdout the program plan promotes to required. In this module it is
+    allocated by the same seeded root hash as every other split and no temporal or
+    provider key (such as the corpus's ``labels.provider_era``) is read; the era-aware
+    separation that makes it a real drift holdout is deferred to the read-time enforcement
+    PR, and the tests pin the current hash-only behaviour so that change is deliberate.
     """
 
     TRAIN = "TRAIN"
@@ -495,9 +498,7 @@ def _quotas(total: int, fractions: SplitFractions) -> dict[SplitName, int]:
     return counts
 
 
-def assign(
-    roots: Mapping[str, str], *, fractions: SplitFractions, seed: int
-) -> SplitAssignment:
+def assign(roots: Mapping[str, str], *, fractions: SplitFractions, seed: int) -> SplitAssignment:
     """Allocate whole lineages to the five splits.
 
     The unit of allocation is the lineage root, never the project. Splitting by project
@@ -605,9 +606,7 @@ def exact_duplicate_digests(records: Mapping[str, str]) -> dict[str, list[str]]:
     for record_id in sorted(records):
         grouped.setdefault(records[record_id], []).append(record_id)
     return {
-        digest: sorted(grouped[digest])
-        for digest in sorted(grouped)
-        if len(grouped[digest]) > 1
+        digest: sorted(grouped[digest]) for digest in sorted(grouped) if len(grouped[digest]) > 1
     }
 
 
@@ -656,8 +655,6 @@ def near_duplicate_objectives(
             similarity = jaccard(tokenised[left_id], tokenised[right_id])
             if similarity >= threshold:
                 pairs.append(
-                    NearDuplicatePair(
-                        left_id=left_id, right_id=right_id, similarity=similarity
-                    )
+                    NearDuplicatePair(left_id=left_id, right_id=right_id, similarity=similarity)
                 )
     return sorted(pairs, key=lambda pair: (-pair.similarity, pair.left_id, pair.right_id))

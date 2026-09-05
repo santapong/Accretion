@@ -41,6 +41,7 @@ from accretion.routing.split import (
     DEFAULT_FRACTIONS,
     SPLIT_ORDER,
     ProjectLineage,
+    ProjectRegistry,
     SplitAssignment,
     SplitFractions,
     SplitName,
@@ -49,6 +50,7 @@ from accretion.routing.split import (
     assert_disjoint,
     assign,
     exact_duplicate_digests,
+    jaccard,
     lineage_roots,
     load_project_registry,
     near_duplicate_objectives,
@@ -219,9 +221,7 @@ def test_a_lineage_never_straddles_two_splits() -> None:
         assert_disjoint(assignment)
 
         placed = [
-            project_id
-            for split in SPLIT_ORDER
-            for project_id in assignment.project_ids_for(split)
+            project_id for split in SPLIT_ORDER for project_id in assignment.project_ids_for(split)
         ]
         assert sorted(placed) == sorted(roots), seed
         assert len(placed) == len(set(placed)), seed
@@ -309,6 +309,27 @@ def test_assignment_is_seed_deterministic() -> None:
     assert first.model_dump() == second.model_dump()
     assert first.seed == 20260905
 
+    # A golden pin, not merely self-consistency: later PRs seal this split into training
+    # snapshots, so a refactor of the hash key must turn this red rather than silently
+    # re-answer every published split.
+    assert first.by_split() == {
+        SplitName.TRAIN: (
+            "prj-router-etl-batch",
+            "prj-router-etl-batch-fork",
+            "prj-router-notebook-analysis",
+            "prj-router-web-api",
+            "prj-router-web-api-fork",
+        ),
+        SplitName.CALIBRATION: (
+            "prj-router-paper-baseline",
+            "prj-router-paper-benchmark",
+            "prj-router-paper-extension",
+        ),
+        SplitName.DEVELOPMENT: ("prj-router-cli-generator", "prj-router-cli-scaffold"),
+        SplitName.TEST: ("prj-router-docs-site",),
+        SplitName.DRIFT: ("prj-router-infra-terraform",),
+    }
+
     shuffled = dict(sorted(roots.items(), reverse=True))
     assert list(shuffled) != list(roots)
     reordered = assign(shuffled, fractions=DEFAULT_FRACTIONS, seed=20260905)
@@ -331,19 +352,28 @@ def test_drift_split_is_required_and_non_empty_for_the_shipped_corpus() -> None:
     the program plan promoted this split to prevent.
     """
 
-    roots = lineage_roots(load_project_registry().projects)
+    registry = load_project_registry()
+    roots = lineage_roots(registry.projects)
+
+    # Honest scope: DRIFT is allocated by the seeded root hash only. No temporal or
+    # provider key is consulted, so stripping every label leaves the assignment identical.
+    # The day assignment becomes era-aware this assertion must change deliberately.
+    unlabelled = lineage_roots(
+        [entry.model_copy(update={"labels": {}}) for entry in registry.projects]
+    )
+    for seed in (0, 20260905):
+        assert (
+            assign(unlabelled, fractions=DEFAULT_FRACTIONS, seed=seed).by_split()
+            == assign(roots, fractions=DEFAULT_FRACTIONS, seed=seed).by_split()
+        )
 
     for seed in range(50):
         assignment = assign(roots, fractions=DEFAULT_FRACTIONS, seed=seed)
         for split in SPLIT_ORDER:
             assert assignment.project_ids_for(split), (seed, split)
         sealed = assignment.to_sealed()
-        assert set(assignment.project_ids_for(SplitName.DRIFT)) <= set(
-            sealed.holdout_project_ids
-        )
-        assert set(assignment.project_ids_for(SplitName.TEST)) <= set(
-            sealed.holdout_project_ids
-        )
+        assert set(assignment.project_ids_for(SplitName.DRIFT)) <= set(sealed.holdout_project_ids)
+        assert set(assignment.project_ids_for(SplitName.TEST)) <= set(sealed.holdout_project_ids)
         assert set(assignment.project_ids_for(SplitName.DEVELOPMENT)) <= set(
             sealed.validation_project_ids
         )
@@ -366,6 +396,7 @@ def test_near_duplicate_objectives_are_flagged_above_the_threshold_only() -> Non
         "obj-near": "Refactor the alpha beta gamma epsilon service",
         "obj-far": "Draft the quarterly financial report",
         "obj-empty": "!!! ???",
+        "obj-empty-two": "### ---",
     }
 
     at_six_tenths = near_duplicate_objectives(texts, 0.6)
@@ -382,15 +413,15 @@ def test_near_duplicate_objectives_are_flagged_above_the_threshold_only() -> Non
     boundary = min(pair.similarity for pair in at_six_tenths)
     assert near_duplicate_objectives(texts, boundary) == at_six_tenths
     tighter = near_duplicate_objectives(texts, boundary + 1e-9)
-    assert [(pair.left_id, pair.right_id) for pair in tighter] == [
-        ("obj-base", "obj-restyled")
-    ]
+    assert [(pair.left_id, pair.right_id) for pair in tighter] == [("obj-base", "obj-restyled")]
 
     # An objective with no tokens is a near duplicate of nothing, not of everything.
     assert all(
         "obj-empty" not in (pair.left_id, pair.right_id)
+        and "obj-empty-two" not in (pair.left_id, pair.right_id)
         for pair in near_duplicate_objectives(texts, 0.05)
     )
+    assert jaccard([], []) == 0.0
     assert all(
         "obj-far" not in (pair.left_id, pair.right_id)
         for pair in near_duplicate_objectives(texts, 0.3)
@@ -400,9 +431,9 @@ def test_near_duplicate_objectives_are_flagged_above_the_threshold_only() -> Non
         near_duplicate_objectives(texts, 1.5)
 
     # The cheaper control beside it: identical digests are one piece of evidence.
-    assert exact_duplicate_digests(
-        {"rec-1": DIGEST_A, "rec-2": DIGEST_B, "rec-3": DIGEST_A}
-    ) == {DIGEST_A: ["rec-1", "rec-3"]}
+    assert exact_duplicate_digests({"rec-1": DIGEST_A, "rec-2": DIGEST_B, "rec-3": DIGEST_A}) == {
+        DIGEST_A: ["rec-1", "rec-3"]
+    }
 
 
 def test_access_log_is_append_only() -> None:
@@ -425,9 +456,7 @@ def test_access_log_is_append_only() -> None:
 
     assert isinstance(first_view, tuple)
     assert [entry.principal for entry in first_view] == ["usr_analyst", "usr_reviewer"]
-    assert not any(
-        hasattr(log, name) for name in ("clear", "pop", "remove", "delete", "truncate")
-    )
+    assert not any(hasattr(log, name) for name in ("clear", "pop", "remove", "delete", "truncate"))
 
     log.record(
         principal="usr_analyst",
@@ -488,9 +517,7 @@ def test_shipped_projects_file_validates_and_is_disjoint() -> None:
         )
         for identity in {item.repository_identity for item in registry.projects}
     }
-    fork_pairs = sorted(
-        members for members in shared_repositories.values() if len(members) == 2
-    )
+    fork_pairs = sorted(members for members in shared_repositories.values() if len(members) == 2)
     assert fork_pairs == [
         ["prj-router-etl-batch", "prj-router-etl-batch-fork"],
         ["prj-router-web-api", "prj-router-web-api-fork"],
@@ -515,7 +542,33 @@ def test_shipped_projects_file_validates_and_is_disjoint() -> None:
     assert_disjoint(assignment)
     sealed = assignment.to_sealed()
     assert sorted(
-        sealed.training_project_ids
-        + sealed.validation_project_ids
-        + sealed.holdout_project_ids
+        sealed.training_project_ids + sealed.validation_project_ids + sealed.holdout_project_ids
     ) == sorted(item.project_id for item in registry.projects)
+
+
+def test_registry_and_assignment_guards_refuse_malformed_input() -> None:
+    """Every guard branch is a raise that a test must reach, or it is prose."""
+
+    with pytest.raises(ValidationError):
+        ProjectRegistry.model_validate(
+            {
+                "suite_version": "v1",
+                "projects": [
+                    project("prj-dup", repository=DIGEST_A, family="f").model_dump(),
+                    project("prj-dup", repository=DIGEST_B, family="g").model_dump(),
+                ],
+            }
+        )
+    with pytest.raises(ValidationError):
+        project("prj-x", repository=DIGEST_A, family="f", ancestors=["prj-x"])
+    with pytest.raises(ValidationError):
+        project("prj-y", repository=DIGEST_A, family="f", ancestors=["prj-z", "prj-z"])
+    with pytest.raises(ValueError):
+        assign({}, fractions=DEFAULT_FRACTIONS, seed=1)
+    with pytest.raises(SplitViolation):
+        SplitAssignment(
+            seed=1,
+            fractions=DEFAULT_FRACTIONS,
+            root_by_project={"a": "a"},
+            train_project_ids=["a"],
+        ).to_sealed()
