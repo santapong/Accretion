@@ -73,7 +73,7 @@ cannot classify `SKIPPED_ONLY`; the Postgres twin carries no acceptance marker.
 With the lane database up, after deleting the `AC4-M4-016` policy row:
 
 ```
-in scope: 118   proven: 112   unmet MUST: 0
+in scope: 122   proven: 116   unmet MUST: 0
 ```
 
 (M1.2 has not merged; when it does the same run reads `122` / `116`.) `--stage v0.4-M4` reports
