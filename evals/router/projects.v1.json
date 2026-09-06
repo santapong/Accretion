@@ -1,0 +1,143 @@
+{
+  "suite_version": "v1",
+  "projects": [
+    {
+      "project_id": "prj-router-web-api",
+      "repository_identity": "d22808b801bcab22c2a2640fd6a3f6fb9f8383f7fb7aa2d3ecc4a66958ad78c2",
+      "task_family": "web-api-refactor",
+      "ancestors": [],
+      "labels": {
+        "origin": "SYNTHETIC",
+        "lineage_role": "FORK_PAIR_A_UPSTREAM",
+        "provider_era": "2026-H1"
+      }
+    },
+    {
+      "project_id": "prj-router-web-api-fork",
+      "repository_identity": "d22808b801bcab22c2a2640fd6a3f6fb9f8383f7fb7aa2d3ecc4a66958ad78c2",
+      "task_family": "web-api-hardening",
+      "ancestors": [],
+      "labels": {
+        "origin": "SYNTHETIC",
+        "lineage_role": "FORK_PAIR_A_FORK",
+        "provider_era": "2026-H2"
+      }
+    },
+    {
+      "project_id": "prj-router-etl-batch",
+      "repository_identity": "1d8839b0b1a80c514a25df5333dcaa307b3ea151fab912f1993db01fd333565b",
+      "task_family": "etl-pipeline-hardening",
+      "ancestors": [],
+      "labels": {
+        "origin": "SYNTHETIC",
+        "lineage_role": "FORK_PAIR_B_UPSTREAM",
+        "provider_era": "2026-H1"
+      }
+    },
+    {
+      "project_id": "prj-router-etl-batch-fork",
+      "repository_identity": "1d8839b0b1a80c514a25df5333dcaa307b3ea151fab912f1993db01fd333565b",
+      "task_family": "etl-pipeline-hardening",
+      "ancestors": [
+        "prj-router-etl-batch"
+      ],
+      "labels": {
+        "origin": "SYNTHETIC",
+        "lineage_role": "FORK_PAIR_B_FORK",
+        "provider_era": "2026-H2"
+      }
+    },
+    {
+      "project_id": "prj-router-paper-baseline",
+      "repository_identity": "78bc64f3adb21ae8e3edd8d807f51906507f918b9f8314b54b8ef7d0890a67bb",
+      "task_family": "planner-ablation-baseline",
+      "ancestors": [],
+      "labels": {
+        "origin": "SYNTHETIC",
+        "lineage_role": "PAPER_CHAIN_ROOT",
+        "provider_era": "2026-H1"
+      }
+    },
+    {
+      "project_id": "prj-router-paper-extension",
+      "repository_identity": "f9bd53db913e79cbbc799289d6c2707334982963742c97eb7dcfc8fcd44d977e",
+      "task_family": "planner-ablation-extension",
+      "ancestors": [
+        "prj-router-paper-baseline"
+      ],
+      "labels": {
+        "origin": "SYNTHETIC",
+        "lineage_role": "PAPER_CHAIN_EXTENSION",
+        "provider_era": "2026-H1"
+      }
+    },
+    {
+      "project_id": "prj-router-paper-benchmark",
+      "repository_identity": "6794452146de904ef5f0d3f824d0363560c5f4a5b23f4548e8a626925b028479",
+      "task_family": "planner-ablation-benchmark",
+      "ancestors": [
+        "prj-router-paper-extension"
+      ],
+      "labels": {
+        "origin": "SYNTHETIC",
+        "lineage_role": "PAPER_CHAIN_BENCHMARK",
+        "provider_era": "2026-H2"
+      }
+    },
+    {
+      "project_id": "prj-router-cli-scaffold",
+      "repository_identity": "0698080dfef3f810571e4e3409eb6dbe4975dfa2bb600a53eee221381e309543",
+      "task_family": "cli-scaffolding",
+      "ancestors": [],
+      "labels": {
+        "origin": "SYNTHETIC",
+        "lineage_role": "GENERATED_INSTANCE_A",
+        "provider_era": "2026-H1"
+      }
+    },
+    {
+      "project_id": "prj-router-cli-generator",
+      "repository_identity": "c4e5d298927d0805477b83cfe40fffad928cbf1699b3c691faf422158eb22550",
+      "task_family": "cli-scaffolding",
+      "ancestors": [],
+      "labels": {
+        "origin": "SYNTHETIC",
+        "lineage_role": "GENERATED_INSTANCE_B",
+        "provider_era": "2026-H2"
+      }
+    },
+    {
+      "project_id": "prj-router-infra-terraform",
+      "repository_identity": "39339dd2ca506d35156d3d4a724efeb4576fb9d65ad7f222605d2236ec5252b5",
+      "task_family": "infrastructure-drift-repair",
+      "ancestors": [],
+      "labels": {
+        "origin": "SYNTHETIC",
+        "lineage_role": "STANDALONE",
+        "provider_era": "2026-H1"
+      }
+    },
+    {
+      "project_id": "prj-router-docs-site",
+      "repository_identity": "dba05f8f3e51c7a682f2aa3e3ccce44ae24ba26d57a980cbe87c0238f238456a",
+      "task_family": "documentation-site-build",
+      "ancestors": [],
+      "labels": {
+        "origin": "SYNTHETIC",
+        "lineage_role": "STANDALONE",
+        "provider_era": "2026-H2"
+      }
+    },
+    {
+      "project_id": "prj-router-notebook-analysis",
+      "repository_identity": "f3930f6b7925dee3985481929223f6b43e3f0fd3a4e6c5a91d73a9c0dc380415",
+      "task_family": "notebook-analysis-port",
+      "ancestors": [],
+      "labels": {
+        "origin": "SYNTHETIC",
+        "lineage_role": "STANDALONE",
+        "provider_era": "2026-H2"
+      }
+    }
+  ]
+}

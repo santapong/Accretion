@@ -1,0 +1,143 @@
+{
+  "projects": [
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "FORK_PAIR_A_UPSTREAM",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-drift-web-api",
+      "repository_identity": "909bdcb40c9ec84670e8e910f9f4e764ef04eab3143cf3cdcf6b566331f21849",
+      "task_family": "drift-web-api-refactor"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "FORK_PAIR_A_FORK",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-drift-web-api-fork",
+      "repository_identity": "909bdcb40c9ec84670e8e910f9f4e764ef04eab3143cf3cdcf6b566331f21849",
+      "task_family": "drift-web-api-hardening"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "FORK_PAIR_B_UPSTREAM",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-drift-etl-batch",
+      "repository_identity": "133289b72ee85595520da131cbb42bebaed0be25ba2ff5c2b93bfd463d5e3ed2",
+      "task_family": "drift-etl-pipeline-hardening"
+    },
+    {
+      "ancestors": [
+        "prj-router-drift-etl-batch"
+      ],
+      "labels": {
+        "lineage_role": "FORK_PAIR_B_FORK",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-drift-etl-batch-fork",
+      "repository_identity": "133289b72ee85595520da131cbb42bebaed0be25ba2ff5c2b93bfd463d5e3ed2",
+      "task_family": "drift-etl-pipeline-hardening"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "PAPER_CHAIN_ROOT",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-drift-paper-baseline",
+      "repository_identity": "604b14a083ce663285903b77aa4025f8a2431eb47b803488b1fa1f2a52a4e7ca",
+      "task_family": "drift-planner-ablation-baseline"
+    },
+    {
+      "ancestors": [
+        "prj-router-drift-paper-baseline"
+      ],
+      "labels": {
+        "lineage_role": "PAPER_CHAIN_EXTENSION",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-drift-paper-extension",
+      "repository_identity": "63d1bcbf6671adf54efeb6cc4b7a863e2683c1495268a52232ae45a2d2902a3c",
+      "task_family": "drift-planner-ablation-extension"
+    },
+    {
+      "ancestors": [
+        "prj-router-drift-paper-extension"
+      ],
+      "labels": {
+        "lineage_role": "PAPER_CHAIN_BENCHMARK",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-drift-paper-benchmark",
+      "repository_identity": "c108671bb36aca24f48a4ec08261555d4ae773601c5ea6335b5488443d530d81",
+      "task_family": "drift-planner-ablation-benchmark"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "GENERATED_INSTANCE_A",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-drift-cli-scaffold",
+      "repository_identity": "dce61be98cecc3ca9db607f580c68d0e7bd1d8185dfad8d2d89d41a63df39b1c",
+      "task_family": "drift-cli-scaffolding"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "GENERATED_INSTANCE_B",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-drift-cli-generator",
+      "repository_identity": "a6ed781035ae1c8dfa607c872dff2fcda8d527faedbcc343fb95cc160a58c781",
+      "task_family": "drift-cli-scaffolding"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "STANDALONE",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-drift-infra-terraform",
+      "repository_identity": "2f21f6a3d44cb9509eec728ebca2f916e355a6247f99c2014f33e34ab6643704",
+      "task_family": "drift-infrastructure-drift-repair"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "STANDALONE",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-drift-docs-site",
+      "repository_identity": "9af03379a42d4c5116c1716e1548c62495ae48925b19efdd2bb936b0f1aa3c94",
+      "task_family": "drift-documentation-site-build"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "STANDALONE",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-drift-notebook-analysis",
+      "repository_identity": "7f538ce5e5243a8bed526249898f9995683a35638243d3994e7813979fde6088",
+      "task_family": "drift-notebook-analysis-port"
+    }
+  ],
+  "suite_version": "v1"
+}

@@ -51,7 +51,7 @@ Claude sessions remain opt-in and are not required for local development.
 <img src="../assets/operator-ui-map.svg" alt="Implemented Accretion operator frontend routes and their authoritative FastAPI snapshot, React Query, and resumable event flow" width="100%" />
 
 The UI is complete for the P0–P7 and v0.3 M6 administration scope. It renders
-API-backed evidence across seventeen routes; it does not own run state or
+API-backed evidence across eighteen routes; it does not own run state or
 acceptance. The v0.3 clean-checkout and accessibility evidence is recorded in the
 [release audit](../releases/v0.3/audit.md) and
 [browser and accessibility evidence](../releases/v0.3/browser-a11y-evidence.md).
@@ -85,6 +85,7 @@ curl http://localhost:8000/api/v1/runs/<run-id>/trace
 | Operator UI | `apps/ui/src/` | generated API contract + component tests + production build |
 | Benchmark | `src/accretion/*_benchmark.py` + `evals/` | fixture hashes + deterministic ACR-ARCH/P5/P6/P7 replay metrics |
 | Verified experience | `src/accretion/experience/` | compatibility, redaction, retrieval, replay, and PostgreSQL tests |
+| Configuration routing | `src/accretion/routing/` | registry-snapshot digests + deterministic compatibility rules + replay tests |
 
 ## 6. Preserve the authority boundary
 

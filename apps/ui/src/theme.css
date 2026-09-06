@@ -1,0 +1,669 @@
+/* Accretion design tokens, the Tailwind entry point, and the app's visual system.
+ *
+ * This file began as a companion to `styles.css` - 309 lines of hand-minified CSS carrying
+ * the whole v0.3 surface - so that PR1 could introduce Tailwind while leaving that sheet
+ * byte-identical. From M9 PR5a it was also the destination, and as of PR5c it is the only
+ * one that matters: `styles.css` is deleted.
+ *
+ * The port moved rules into `@layer components` at the foot of this file, byte-verbatim, a
+ * slice per PR. PR5a took the shell, the primitives, the runtime and dashboard cards, the
+ * registry and the trace; PR5b the planning review, the task studio, the four benchmark
+ * screens and the P6/P7 planner rules; PR5c the run page - the pills, the section heading,
+ * the page and inspector stacks, the execution, loop and verification chrome, the gate and
+ * dynamic-workflow inspectors, and the `.candidate-*`, `.experience-lineage/-capture` and
+ * M6 badge and revision families. 405 of the 441 rules are here.
+ *
+ * THE OTHER 36 ARE IN `react-flow.css`, UNLAYERED, and that is not an oversight. They style
+ * elements inside the React Flow canvas and compete with `@xyflow/react/dist/style.css`,
+ * which is itself unlayered; from inside this layer they would lose to it at any
+ * specificity. `RunExecution.tsx` imports that file on the statement immediately after the
+ * xyflow one, and `react-flow.css`'s own header sets out the argument in full. Do not move a
+ * rule from there to here - `apps/ui/e2e/cssPort.test.ts` fails on it, and it is a rendering
+ * change even though every check that reads one rule at a time would pass.
+ *
+ * ---------------------------------------------------------------------------
+ * PREFLIGHT IS DELIBERATELY OMITTED.
+ *
+ * `@import "tailwindcss"` expands to four lines, one of which is
+ * `@import "tailwindcss/preflight.css" layer(base)` - an opinionated reset of headings,
+ * lists, borders and form controls. Importing it here would restyle every page at once. In
+ * PR1 that would have happened before the Playwright + axe gate existed to measure the
+ * damage, invalidating the accessibility evidence that discharges issue #52. Both gates now
+ * exist, and preflight is still omitted for a second reason: it would restyle every page in
+ * the same change as a rule move, and the computed-style diff could no longer tell which
+ * of the two caused a difference. PR5d turns it on with nothing else in the commit.
+ *
+ * So the import is written out explicitly, minus preflight. The `base` layer is still
+ * DECLARED, so that turning preflight on later slots it into the right place in the
+ * cascade rather than reordering everything. That happens in PR5d. As of PR5c the
+ * precondition is met - `styles.css` is deleted and the app has no reset of its own beyond
+ * the handful of bare element rules at the head of `@layer components` below, which PR5d
+ * moves into `base` when it reasons about the whole reset at once.
+ *
+ * ---------------------------------------------------------------------------
+ * HOW THIS FILE AND `react-flow.css` SHARE THE CASCADE. (Restated by M9 PR5c.)
+ *
+ * Before PR5a this header said that "no utility defined here can currently win against"
+ * `styles.css`. PR5a corrected it once, because rules had started moving. PR5c restates it
+ * again, because the sheet it named no longer exists and the invariant now has a different
+ * subject.
+ *
+ * The built cascade is: `@xyflow/react/dist/style.css` (unlayered), then `react-flow.css`
+ * (unlayered), then this file's layers - `theme`, `base`, `components`, `utilities`, in the
+ * order the statement below declares. An unlayered normal declaration beats every layered
+ * one regardless of specificity, so:
+ *
+ *  - A rule in `react-flow.css` beats anything this file says about the same property on
+ *    the same element. That is the point of it, and it is why nothing may be declared in
+ *    both files.
+ *  - A utility generated from a class in the markup beats a ported rule here, because
+ *    `utilities` comes after `components`. That is the migration's whole intent, and it is
+ *    what "no utility can win" stopped being true about.
+ *  - Neither can be reasoned about by reading one file, which is why
+ *    `apps/ui/e2e/cssPort.test.ts` asserts the partition in both directions, the import
+ *    adjacency in `RunExecution.tsx`, and union-equality against the pinned pre-migration
+ *    copy of `styles.css` (`apps/ui/e2e/fixtures/styles.pre-pr5.css`, which stays forever).
+ *    The vitest suite cannot see CSS at all - `vite.config.ts` sets no `css`, so Vitest
+ *    stubs stylesheets to empty modules - and the browser gate can only measure what the
+ *    seed and the fixtures render.
+ */
+
+/* The web fonts every rule in this project references, moved here from `styles.css:1` by
+ * M9 PR5a so that the sheet it came from can eventually be deleted without taking the
+ * typography with it.
+ *
+ * IT MUST STAY FIRST. `@import` is dropped by the CSS parser unless it precedes every rule
+ * other than `@charset` and `@layer` STATEMENTS - the `@layer` line below is a statement and
+ * is therefore allowed to follow it, but a single rule above this line would silently make
+ * the whole app render in the fallback stack with nothing failing. Two gates hold it there:
+ * `cssPort.test.ts` checks the source text, and `style-diff.spec.ts` checks that the BUILT
+ * stylesheet still exposes a `CSSImportRule` at index 0 in a real browser. The computed-
+ * style diff cannot: `font-family` reads back the declared stack whether or not a face ever
+ * loaded. */
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700&display=swap");
+
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities) source(none);
+
+/* Scope class detection to the app's own source.
+ *
+ * Tailwind v4 auto-detects content by walking up from this file to the git root, which
+ * here is the whole Accretion repository - Python, Markdown, the 9,766-line generated
+ * `schema.d.ts`. It duly emitted `.collapse`, `.invisible`, `.static` and `.container`
+ * from bare words in files that have nothing to do with the UI. `source(none)` turns that
+ * off. Scoped to `.tsx` because `src/` also holds the 9,766-line generated
+ * `schema.d.ts`, whose prose alone was enough to conjure four utilities. Class names live
+ * in components; when a `.ts` module needs one, widen this deliberately.
+ *
+ * Specs are excluded because they never ship: `container` was being generated from
+ * `const { container } = render(...)`. The scanner matches bare identifiers, not just
+ * class strings, so the production stylesheet should depend only on production code. One
+ * inert utility still survives this (`.static`, from the word appearing in App.tsx) - it
+ * is harmless, since nothing carries that class and a layered utility loses to
+ * `styles.css` regardless. */
+@source "./**/*.tsx";
+@source not "./**/*.test.tsx";
+
+/* The cosmic palette. Named under Tailwind's `--color-*` namespace so each token also
+ * generates its utilities (`--color-void` gives `bg-void`, `text-void`, `border-void`).
+ * These are additive: Tailwind's default palette is not cleared, because clearing it is
+ * a migration decision, not a token decision. */
+/* `static` forces every variable below into `:root` whether or not a utility references
+ * it. Without it Tailwind tree-shakes unused theme variables, and since nothing uses the
+ * palette yet, NONE of these reached the build - the tokens existed in source and were
+ * absent from the stylesheet. They have to be real CSS custom properties now, because
+ * hand-written rules in `styles.css` will reference them during the migration long before
+ * any utility does. */
+@theme static {
+  /* Ground. Darkest first; `void` is the page behind everything. */
+  --color-void: #05060a;
+  --color-deep-space: #090c14;
+  --color-orbital-surface: #0f1420;
+
+  /* Ink. */
+  --color-starlight: #f4f7ff;
+  --color-moon-dust: #8d98ad;
+
+  /* Accents. Used sparingly - most surfaces stay dark and quiet. */
+  --color-ion-violet: #7857ff;
+  --color-plasma-cyan: #39d9ff;
+  --color-accretion-gold: #ffb45b;
+
+  /* Status. */
+  --color-spectral-green: #43e7a2;
+  --color-solar-amber: #ffc857;
+  --color-red-shift: #ff5573;
+
+  /* Metadata ink, carried over from `styles.css` unchanged.
+   *
+   * These three are not palette choices - they are MEASURED values. Each clears WCAG AA
+   * 4.5:1 on every surface the app paints, and the ratios are recorded in
+   * docs/releases/v0.3/browser-a11y-evidence.md. They are duplicated here rather than
+   * moved so that `styles.css` stays byte-identical in this change; the duplication
+   * resolves when that file is deleted. Do not "tidy" these to nearby round numbers. */
+  --color-ink-dim: #828e86;
+  --color-ink-muted: #8d998f;
+  --color-ink-amber: #c2a468;
+
+  /* ---------------------------------------------------------------------------
+   * M9 PR5a: the palette, fonts and breakpoints the app ACTUALLY renders today.
+   *
+   * Every value below is copied verbatim from a `styles.css` rule and NOTHING CONSUMES
+   * ANY OF THEM YET. They are declared now for the same reason `LAZY_ONLY_MODULES` in
+   * `budget/budget.ts` is documented as vacuous until PR7: a token negotiated after the
+   * rules that would use it have already been rewritten is a token negotiated against
+   * whatever those rewrites happened to produce.
+   *
+   * Substituting them is a later PR, one rule at a time, proven by the same computed-style
+   * diff - which is also why nothing is substituted in PR5a to PR5c: `var(--color-line)`
+   * and `#29322c` are the same pixels but not the same bytes, and "byte-verbatim" is what
+   * makes the port reviewable as a diff.
+   *
+   * These are NOT the cosmic palette above. The cosmic values land on screen in PR7/PR9;
+   * these are what the operator sees today. */
+
+  /* The two families `styles.css` names, as `font: 9px "DM Mono"` and
+   * `font-family: Manrope, sans-serif`. Consumed by PR5d, which turns the shorthand `font:`
+   * declarations into longhands when Preflight lands. */
+  --font-manrope: Manrope, sans-serif;
+  --font-dm-mono: "DM Mono", monospace;
+
+  /* The four breakpoints, named for what each one does rather than for its width.
+   *
+   * Consumed by the token-substitution PR that follows PR5c, and by nothing before it.
+   * Two facts a future reader needs before reaching for them:
+   *
+   * 1. Tailwind cannot expand a `--breakpoint-*` token inside a hand-written
+   *    `@media (max-width: ...)` prelude. These generate the `dense:`/`max-dense:` VARIANTS
+   *    and are useful only once a rule is expressed as utilities.
+   * 2. `max-dense:` compiles to `(width < 1100px)`, while `@media (max-width: 1100px)` is
+   *    `<= 1100px`. Converting a rule to the variant moves its boundary by one pixel, so
+   *    each conversion is a change the style diff must be re-run over. */
+  --breakpoint-dense: 1100px;   /* Multi-column grids halve: task form, scores, loop metrics. */
+  --breakpoint-stacked: 900px;  /* The nav wraps and the two-pane workspace becomes one column. */
+  --breakpoint-narrow: 720px;   /* The replan control stops being side-by-side. */
+  --breakpoint-handset: 620px;  /* Single column everywhere; the F1 overflow width. */
+
+  /* The six values `styles.css` repeats most, named by the role they play rather than by
+   * their hue. Consumed by the token-substitution PR; declared here so that PR's diff is
+   * a substitution and not also a naming argument. */
+  --color-line: #29322c;          /* Panel and section borders. The most repeated hex in the sheet. */
+  --color-line-alt: #2d3931;      /* The lighter inner border: cards, details, score cells. */
+  --color-surface: #101612;       /* Inset surfaces: inputs, registry cards, benchmark detail. */
+  --color-field-border: #354039;  /* Form control borders and the projection dashed outline. */
+  --color-accent: #75db91;        /* The primary green: focus rings, buttons, active edges. */
+  --color-accent-bright: #9be4ae; /* Its hover/emphasis pair. */
+}
+
+/* ---------------------------------------------------------------------------
+ * The port. Rules moved out of `styles.css`, byte-verbatim.
+ *
+ * Every block below is the SAME TEXT that used to sit unlayered in `styles.css`: the same
+ * selector list, the same declarations, in the same order, with the same line breaks. It is
+ * not re-indented and not reformatted, so `git diff` shows each line leaving one file and
+ * arriving in the other unchanged, and a reviewer can check the move by reading rather than
+ * by trusting.
+ *
+ * Nothing is rewritten as a utility and no value is replaced by one of the tokens declared
+ * above. Both of those are later PRs. This one changes WHERE a rule lives in the cascade and
+ * nothing else, which is the only claim `apps/ui/e2e/style-diff.spec.ts` can prove.
+ *
+ * ## Why `components` and not `base` or `utilities`
+ *
+ * These are component rules by content - `.runtime-card`, `.pill`, `.nav-links a` - and the
+ * layer order declared above puts them after `base` and before `utilities`, so a utility
+ * added later wins against them without `!important`. The handful of bare element rules
+ * that move with them (`body`, `button`, `a`, `label`, `h1`) belong in `base` by content and
+ * are NOT put there: `base` sits before `components`, and moving them across a layer
+ * boundary would change which rule wins where they collide with a class rule that used to
+ * follow them in source order. They go to `base` in PR5d, when Preflight arrives and the
+ * whole reset is reasoned about at once.
+ *
+ * ## The one thing to check when adding to this block
+ *
+ * A selector must not exist in both files. While a rule is here and a rule for the same
+ * selector is still in `styles.css`, the unlayered one wins whatever its specificity, which
+ * is a silent inversion. `apps/ui/e2e/cssPort.test.ts` fails on it. */
+@layer components {
+:root {
+  font-family: Manrope, sans-serif;
+  color: #e8ece7;
+  background: #0c100d;
+  font-synthesis: none;
+  /* Metadata ink. Both clear WCAG AA 4.5:1 on every surface the app paints
+     (#0c100d body through the #181e1a panel gradient); the two tiers keep the
+     hierarchy the older, failing values expressed. See
+     docs/releases/v0.3/browser-a11y-evidence.md for the measured ratios. */
+  --ink-dim: #828e86;
+  --ink-muted: #8d998f;
+  --ink-amber: #c2a468;
+}
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 320px; min-height: 100vh; background: radial-gradient(circle at 72% 0%, #1b2a20 0, transparent 30rem), #0c100d; }
+button { font: inherit; }
+a { color: inherit; text-decoration: none; }
+input,textarea,select { font: inherit; color:inherit; background:#101612; border:1px solid #354039; border-radius:0; padding:10px 11px; width:100%; }
+input:focus,textarea:focus,select:focus { outline:1px solid #75db91; border-color:#75db91; }
+textarea { resize:vertical; }
+label { color:#9aa59d; font-size:11px; display:grid; gap:7px; }
+label small { color:var(--ink-dim); font:9px "DM Mono"; }
+nav { height: 72px; padding: 0 4vw; border-bottom: 1px solid #2b332d; display: flex; align-items: center; gap: 12px; background: rgba(12,16,13,.82); backdrop-filter: blur(18px); position: sticky; top: 0; z-index: 3; }
+.brand-mark { width: 34px; height: 34px; border: 1px solid #8ee5a8; display: grid; place-items: center; color: #8ee5a8; font-family: "DM Mono"; transform: rotate(45deg); }
+.brand-mark::first-letter { transform: rotate(-45deg); }
+nav strong { display:block; font-size: 14px; letter-spacing:.04em; } nav span { color:#89938b; font-size:11px; }
+.brand-link { display:flex;align-items:center;gap:12px;min-width:max-content; }.brand-link small{display:block;color:#89938b;font-size:11px;margin-top:2px}
+.nav-links { display:flex;align-items:center;gap:3px;margin-left:24px;overflow:auto; }.nav-links a{padding:9px 10px;color:#7e8981;font:9px "DM Mono";text-transform:uppercase;white-space:nowrap;border:1px solid transparent}.nav-links a:hover,.nav-links a.active{color:#a5e4b6;border-color:#34443a;background:#162019}
+.nav-status { margin-left:auto; font: 11px "DM Mono"; text-transform:uppercase; color:#aab3ac; display:flex; align-items:center; gap:8px; }
+.nav-status i,.connection i { width:7px;height:7px;border-radius:50%;background:#72dd91;box-shadow:0 0 12px #72dd91; }
+.shell { width:min(1440px,92vw); margin:0 auto; padding:64px 0 80px; }
+/* M9 PR5b: the planning review and task studio, the benchmark screens, and the P6/P7
+   planner rules. Same contract as the block above - byte-verbatim, in the pinned
+   sheet's own order, with each selector's @media entries moving no later than its
+   base rule. `styles.css:35`: the two panels the task studio and the planning
+   review share, which is why the list is comma-joined and moves whole. */
+.task-studio,.planning-review { border:1px solid #29322c;background:linear-gradient(145deg,rgba(25,31,27,.96),rgba(15,20,16,.96));margin-bottom:20px; }
+/* M9 PR5c: the run page, its inspectors, and everything else `styles.css` still held.
+   Same contract as the two blocks above - byte-verbatim, in the pinned sheet's own order.
+   The rules that style elements INSIDE the React Flow canvas are the one exception in the
+   whole port: they are unlayered in `src/react-flow.css`, beside the xyflow import, for the
+   reason that file's header sets out at length.
+
+   `styles.css:36-37`: the page-panel section heading, its two heading levels, the run
+   duration line beside them and the plain `<span>` metadata slot that is not a pill. It
+   renders on every route that uses `.page-panel`, not only the run page, and it belongs to
+   no slice in the plan's PR5a or PR5b tables - it was simply never listed, and PR5c is where
+   the union check stops being satisfiable without it. Recorded rather than quietly folded
+   in, because "the remainder is the run page" is otherwise a claim this block disproves. */
+.section-heading { min-height:86px;padding:22px 24px;border-bottom:1px solid #29322c;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px 12px}
+.section-heading h1,.section-heading h2 { margin:0;font-size:24px;font-weight:500; }.run-duration{margin:6px 0 0;font:10px "DM Mono";color:var(--ink-dim);letter-spacing:.06em}.section-heading>span:not(.pill){font:10px "DM Mono";color:var(--ink-dim)}
+.project-form { display:grid;grid-template-columns:1fr 2fr auto;gap:12px;padding:18px 24px;border-bottom:1px solid #29322c;align-items:end; }
+.task-form { display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:24px; }
+.task-form .field-wide { grid-column:span 2; }.form-actions{display:flex;align-items:center;gap:16px}
+.primary-button,.secondary-button { border:1px solid #75db91;padding:10px 15px;cursor:pointer;white-space:nowrap; }
+.primary-button { color:#0d1510;background:#7cdf98;font-weight:700; }.primary-button:hover:not(:disabled){background:#9be4ae}
+.secondary-button { color:#9be4ae;background:#17241b; }.secondary-button:hover{background:#203126}
+.form-status { color:#94a198;font:10px "DM Mono";margin:0;line-height:1.5; }
+/* `styles.css:45-50`: the planning review's own chrome - the score strip, the unknown-
+   feature notice, the decision grid, the evidence disclosure and the override/run
+   controls at the foot of it. The bare `details` and `summary` rules at :49 move with
+   them rather than to `@layer base`, for the reason the block header gives: every rule
+   that outranks them (`.verification-card>summary`, `.router-decision summary`,
+   `.search-plan-tree > summary`) does so on specificity and keeps doing so, but moving
+   an element rule across a layer boundary is a cascade decision and PR5d makes all of
+   them at once. */
+.planning-review .panel-header { height:auto }.planning-content{padding:24px}
+.score-grid { display:grid;grid-template-columns:repeat(8,1fr);gap:8px;margin-bottom:20px}.score{border:1px solid #2d3931;padding:13px;min-width:0}.score span{font:17px "DM Mono";color:#9be4ae}.score p{font:8px "DM Mono";color:var(--ink-dim);text-transform:uppercase;margin:8px 0 0;overflow:hidden;text-overflow:ellipsis}
+.notice{border-left:2px solid #d5aa60;background:#2a2215;padding:12px 15px;margin:0 0 20px}.notice strong{font-size:11px;color:#e8c47f}.notice p{font:10px "DM Mono";margin:6px 0 0;color:#aa9670}
+.decision-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr;border:1px solid #2d3931;margin-bottom:16px}.decision-grid>div{padding:18px;border-right:1px solid #2d3931}.decision-grid>div:last-child{border:0}.decision-grid h3{font:15px "DM Mono";margin:0 0 10px;color:#9be4ae}.decision-grid p:not(.eyebrow){color:#89958c;font-size:11px;line-height:1.6;margin:0}
+details{border:1px solid #2d3931;margin-bottom:16px}summary{padding:13px 15px;font:10px "DM Mono";cursor:pointer;color:#94a198}.evidence-list{display:grid;grid-template-columns:repeat(2,1fr);border-top:1px solid #2d3931}.evidence-list article{padding:14px;border-right:1px solid #29322c;border-bottom:1px solid #29322c}.evidence-list strong{font-size:11px}.evidence-list span{float:right;font:9px "DM Mono";color:#80ca94;max-width:50%;overflow:hidden;text-overflow:ellipsis}.evidence-list p{font-size:10px;color:var(--ink-muted);line-height:1.5;margin:7px 0 0}
+.planning-actions{display:grid;grid-template-columns:1.4fr 1fr;gap:12px}.override-form,.run-control{border:1px solid #2d3931;padding:15px;display:flex;gap:12px;align-items:end}.override-form .reason-field{flex:1}.run-control p{color:var(--ink-amber);font-size:9px;line-height:1.4;margin:0;max-width:220px}.planning-content>.form-status{margin-top:14px}
+.hero { display:flex; justify-content:space-between; align-items:end; margin-bottom:48px; }
+.dashboard-stats{display:flex;gap:28px}
+.eyebrow { color:#7f8b82; text-transform:uppercase; letter-spacing:.18em; font:500 10px "DM Mono"; margin:0 0 12px; }
+h1 { font-size:clamp(36px,5vw,70px); letter-spacing:-.055em; line-height:.96; margin:0; font-weight:500; }
+h1 em { color:#89d9a0; font-style:normal; }
+.stat { border-left:1px solid #39443c; padding-left:28px; min-width:145px; }.stat span { font:48px "DM Mono"; }.stat p { color:#879189; margin:3px 0; font-size:12px; }
+.runtime-grid { display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px; }
+.runtime-card,.runs-panel,.event-panel,.execution-panel { border:1px solid #29322c;background:linear-gradient(145deg,rgba(25,31,27,.96),rgba(15,20,16,.96)); }
+.page-panel{border:1px solid #29322c;background:linear-gradient(145deg,rgba(25,31,27,.96),rgba(15,20,16,.96));margin-bottom:20px}
+/* The rest of `styles.css:59`. PR5a took `.page-panel` from the head of that line and left
+   the two `.page-stack` rules for the run page; they sit here rather than lower down because
+   a rule's position inside the pinned line is part of the order this port preserves. */
+.page-stack{margin-bottom:20px}.page-stack>.section-heading{border:1px solid #29322c;background:#111713}
+.page-panel>.runs-panel{border:0}.page-panel .secondary-button,.page-panel .primary-button{display:inline-block;font-size:10px}
+.runtime-card { padding:22px; min-height:180px; position:relative; overflow:hidden; }
+.runtime-card header h2{font-size:1.17em;font-weight:700;margin:1em 0}
+.runtime-card::after { content:"";position:absolute;width:100px;height:100px;border:1px solid #29392e;right:-50px;top:-50px;transform:rotate(45deg); }
+.runtime-title{display:flex;align-items:center;gap:10px}.runtime-title>span,.provider-dot{display:grid;place-items:center;width:28px;height:28px;border:1px solid #405447;color:#87d89e;font:12px "DM Mono"}.runtime-title h1,.runtime-title h2,.panel-header h1,.panel-header h2{font-size:16px;margin:0;}
+.runtime-card>.pill { position:absolute;right:18px;top:20px; }
+.runtime-card dl { display:grid;grid-template-columns:1.5fr 1fr .5fr;gap:8px;margin:36px 0 0; }.runtime-card dl div{min-width:0}.runtime-card dt{font:9px "DM Mono";color:var(--ink-dim);text-transform:uppercase;margin-bottom:6px}.runtime-card dd{margin:0;font:11px "DM Mono";white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#c2c9c3}
+.pill { display:inline-block;width:max-content;border:1px solid #3b493f;padding:4px 7px;font:500 8px "DM Mono";letter-spacing:.05em;color:#9eaaa1;text-transform:uppercase;white-space:nowrap; }
+/* `styles.css:68`: the 25 pill state variants, which had to follow `.pill` above and so
+   waited for the slice that could carry them both. Four comma-joined lists, one per colour
+   family; each names states from several different domains (run status, verifier verdict,
+   runtime health, workflow mode) because the colour is the vocabulary, not the domain. 27
+   more states are used in markup and defined nowhere, and they STAY undefined - completing
+   them is a visible change and this port makes none.
+
+   `.pill-succeeded` is one of the two selectors named by finding F2 in
+   docs/releases/v0.3/browser-a11y-evidence.md. Its contrast is not touched here: a value
+   substitution is not a move, and the whole guarantee of this file is that nothing moved
+   changed. */
+.pill-ready,.pill-succeeded,.pill-direct,.pill-pass,.pill-completed { color:#8fe1a6;border-color:#3e6849;background:#183120}.pill-failed,.pill-unavailable,.pill-auth_required,.pill-fail,.pill-stopped { color:#f2a8a0;border-color:#6c3d38;background:#301b19}.pill-running,.pill-starting,.pill-busy,.pill-verifying,.pill-repairing,.pill-acting,.pill-observing{color:#f2d48f;border-color:#695b35;background:#2b2617}.pill-degraded,.pill-paused,.pill-requires_human,.pill-loop,.pill-graph,.pill-hybrid,.pill-inconclusive,.pill-waiting,.pill-pending{color:#e8ba77;border-color:#654c2c;background:#2b2115}
+.workspace-grid{display:grid;grid-template-columns:minmax(380px,.82fr) minmax(480px,1.18fr);gap:12px;min-height:480px}.panel-header{min-height:76px;padding:18px 20px;border-bottom:1px solid #29322c;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px 12px}.panel-header .eyebrow{margin-bottom:7px}.panel-header>span:not(.pill){font:11px "DM Mono";color:var(--ink-muted)}
+/* `styles.css:70-71`: the run page's right-hand column and the `min-width:0` that keeps
+   both stacks from being widened past their track by a long monospace string. That second
+   rule is one of the two things standing between the run page and finding F1, so it is
+   quoted here rather than left as an anonymous line: a grid item's default `min-width:auto`
+   is what makes overflow escape a fixed track. */
+.inspector-stack{display:grid;gap:12px;min-width:0;align-content:start}
+.inspector-stack>*,.page-stack>*{min-width:0}
+.registry-card{overflow-x:auto}
+/* These scroll horizontally when their content is wider than the viewport, so they are
+   keyboard-reachable (axe: scrollable-region-focusable). A tab stop nobody can see is
+   worse than no tab stop, hence the ring - matching .event-list and .revision-timeline. */
+.registry-card:focus-visible,.benchmark-table-wrap:focus-visible{outline:2px solid #75db91;outline-offset:-2px}
+.registry-card>.benchmark-table{min-width:max-content}
+/* `styles.css:79-92`, minus the four lines that went to `react-flow.css`.
+
+   The run page's execution column: the empty and unavailable states, the loop summary with
+   its five-across metric strip and its detail grid, the projection card's own frame and
+   heading, the iteration badge, the two lists that sit BESIDE the canvas
+   (`.projection-node-summary` and `.projection-routes` - siblings of `.projection-flow`
+   inside `.projection-card`, not descendants of it), the verification disclosure and the
+   finding list.
+
+   `.projection-flow` itself (`:78` and `:85`) and the node, handle, content and edge rules
+   (`:86-88`) are NOT here; they are in `react-flow.css`. The split runs exactly along the
+   canvas boundary in `RunExecution.tsx`'s JSX, and `cssPort.test.ts` asserts it in both
+   directions rather than trusting the reading. */
+.execution-content{display:grid;gap:12px;padding:12px}.execution-panel>.empty{min-height:160px}.projection-unavailable{padding:22px;border:1px dashed #354039;background:#101612}.projection-unavailable strong{font-size:12px}.projection-unavailable p{color:var(--ink-muted);font-size:10px;line-height:1.6;margin:7px 0 0}
+.loop-summary,.projection-card,.verification-panel{border:1px solid #2d3931;background:rgba(12,16,13,.46)}
+.loop-summary>header,.projection-heading,.verification-panel>header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px 17px;border-bottom:1px solid #29322c}.loop-summary h3,.projection-heading h3,.verification-panel h3{font-size:13px;margin:0}.loop-summary .eyebrow,.projection-heading .eyebrow,.verification-panel .eyebrow{margin-bottom:6px}
+.loop-metrics{display:grid;grid-template-columns:repeat(5,1fr);border-bottom:1px solid #29322c}.loop-metrics>div{padding:13px 14px;border-right:1px solid #29322c;min-width:0}.loop-metrics>div:last-child{border:0}.loop-metrics span{display:block;font:14px "DM Mono";color:#a2dfb2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.loop-metrics small{display:block;margin-top:6px;color:var(--ink-dim);font:8px "DM Mono";text-transform:uppercase}
+.loop-details{display:grid;grid-template-columns:repeat(2,1fr);margin:0}.loop-details>div{display:grid;grid-template-columns:minmax(90px,.6fr) 1fr;gap:8px;padding:10px 14px;border-right:1px solid #29322c;border-bottom:1px solid #29322c}.loop-details>div:nth-child(2n){border-right:0}.loop-details>div:nth-last-child(-n+2){border-bottom:0}.loop-details dt{font:8px "DM Mono";color:var(--ink-dim);text-transform:uppercase}.loop-details dd{margin:0;font:9px "DM Mono";color:#aab3ac;overflow-wrap:anywhere}
+.projection-meta{display:flex;align-items:center;gap:9px;color:var(--ink-dim);font:9px "DM Mono"}.iteration-badge{display:inline-block;color:#f2d48f;background:#2b2617;border:1px solid #695b35;padding:4px 7px;font:8px "DM Mono";white-space:nowrap}
+.projection-node-summary,.projection-routes{list-style:none;margin:0;padding:0}.projection-node-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));border-top:1px solid #29322c}.projection-node-summary li{display:flex;align-items:center;justify-content:space-between;gap:7px;padding:8px 10px;border-right:1px solid #29322c;border-bottom:1px solid #29322c;font-size:9px;min-width:0}.projection-node-summary li>span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.projection-routes{display:flex;gap:7px;flex-wrap:wrap;padding:10px 12px}.projection-routes li{display:flex;align-items:center;gap:7px;padding:6px 8px;border:1px solid #303a33;color:#879189;font:8px "DM Mono"}.projection-routes li strong{color:#94a198;font-size:7px}.projection-routes li small{color:var(--ink-dim);font-size:7px}.projection-routes .loop-route{border-color:#695b35;background:#241f14}.projection-routes .loop-route strong{color:#e1bd73}
+.verification-panel>header>.quiet{font:9px "DM Mono"}.verification-card{margin:0;border:0;border-bottom:1px solid #29322c}.verification-card:last-child{border-bottom:0}.verification-card>summary{display:flex;align-items:center;justify-content:space-between;padding:12px 15px;color:#cbd2cc}.verification-card>summary>span:first-child{display:grid;gap:4px}.verification-card>summary strong{font-size:10px}.verification-card>summary small{font:8px "DM Mono";color:var(--ink-dim)}.verification-body{padding:0 15px 15px}.verification-body>dl{display:grid;grid-template-columns:repeat(3,1fr);margin:0 0 13px;border:1px solid #29322c}.verification-body>dl>div{padding:9px;border-right:1px solid #29322c}.verification-body>dl>div:last-child{border:0}.verification-body dt{font:7px "DM Mono";color:var(--ink-dim);text-transform:uppercase}.verification-body dd{margin:5px 0 0;font:8px "DM Mono";overflow-wrap:anywhere}.verification-columns{display:grid;grid-template-columns:1.5fr 1fr;gap:12px}.verification-columns>div{border:1px solid #29322c;padding:11px}.verification-columns h4{margin:0 0 9px;font:8px "DM Mono";color:var(--ink-muted);text-transform:uppercase}
+.finding-list,.evidence-refs{list-style:none;padding:0;margin:0;display:grid;gap:7px}.finding-list li{display:grid;grid-template-columns:auto 1fr;gap:8px}.finding-list li>span{height:max-content;border:1px solid #465149;padding:3px 5px;color:#919c94;font:7px "DM Mono"}.finding-list li.finding-error>span{color:#f2a8a0;border-color:#6c3d38}.finding-list li.finding-warning>span{color:#f2d48f;border-color:#695b35}.finding-list strong{font-size:9px}.finding-list p{margin:3px 0;color:#8a958d;font-size:9px;line-height:1.45}.finding-list small{color:var(--ink-dim);font:8px "DM Mono"}.evidence-refs code{display:block;padding:6px 7px;background:#101612;color:#8ccf9e;font:8px "DM Mono";overflow-wrap:anywhere}.quiet{color:var(--ink-dim);font-size:9px}.empty.compact{padding:22px;margin:0}
+.run-list,.event-list{max-height:560px;overflow:auto}
+.event-list:focus-visible{outline:2px solid #75db91;outline-offset:2px}.run{border:0;border-bottom:1px solid #252d28;background:transparent;color:inherit;width:100%;padding:15px 18px;display:grid;grid-template-columns:32px 1fr auto;align-items:center;gap:12px;text-align:left;cursor:pointer}.run:hover,.run.selected{background:#1b241d}.run.selected{box-shadow:inset 2px 0 #75db91}.run strong{display:block;font:11px "DM Mono"}.run small{display:block;color:var(--ink-dim);font-size:10px;margin-top:5px}.event{display:grid;grid-template-columns:42px 1fr auto;gap:14px;padding:15px 20px;border-bottom:1px solid #252d28;align-items:start}.sequence{font:10px "DM Mono";color:var(--ink-dim);padding-top:2px}.event strong{font-size:11px;font-weight:600}.event p{font:9px "DM Mono";color:var(--ink-muted);margin:6px 0 0}.event time{font:9px "DM Mono";color:var(--ink-dim)}.connection{display:flex;align-items:center;gap:7px;font:9px "DM Mono";text-transform:uppercase;color:#7e8981}.connection-reconnecting i{background:#e1b968;box-shadow:0 0 12px #e1b968}.connection-complete i,.connection-idle i{background:#6d776f;box-shadow:none}.empty,.error{padding:36px;color:var(--ink-dim);font-size:12px;text-align:center}.error{color:#dc8e86}
+.registry-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;padding:18px}.registry-card{border:1px solid #2d3931;background:#101612;padding:18px}.registry-card>header{display:flex;align-items:center;justify-content:space-between}.registry-card h2,.registry-card h3{margin:0 0 14px;font-size:14px}.registry-card>p{color:var(--ink-muted);font:9px "DM Mono"}.registry-list{list-style:none;padding:0;margin:0;display:grid}.registry-list li{display:grid;gap:5px;padding:11px 0;border-bottom:1px solid #29322c}.registry-list li:last-child{border-bottom:0}.registry-list strong{font:9px "DM Mono";overflow-wrap:anywhere}.registry-list span{color:var(--ink-dim);font-size:9px;overflow-wrap:anywhere}.history-grid{display:grid;grid-template-columns:minmax(280px,.75fr) minmax(360px,1.25fr);gap:18px;padding:18px}.audit-chain{border:1px solid #2d3931;padding:20px;background:#101612}.audit-chain h2,.audit-chain h3{margin-top:0}.audit-chain ol{display:grid;gap:10px;color:var(--ink-muted);font-size:11px}.audit-chain strong{color:#bbd8c2;font-family:"DM Mono"}.audit-chain p{color:var(--ink-dim);font:9px "DM Mono"}.page-panel>.registry-list{padding:18px}.page-panel>.registry-list .approval-request{padding:15px;border-bottom:1px solid #29322c}
+/* `styles.css:96`: every benchmark screen's furniture in one line - the four-up summary
+   strip, the filter row, the replay status line, the scrolling table and the detail
+   card. The `.benchmark-table*` rules also style the four admin pages' tables, which is
+   why the seeded sweep sees them and why the control that changed `td` padding by one
+   pixel was reported on `/admin/identity` as well as on all four `/benchmarks/*`. */
+.benchmark-summary{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #29322c}.benchmark-summary>div{display:grid;gap:6px;padding:16px 20px;border-right:1px solid #29322c}.benchmark-summary>div:last-child{border:0}.benchmark-summary strong{font:18px "DM Mono";color:#9be4ae}.benchmark-summary span{font:8px "DM Mono";color:var(--ink-dim);text-transform:uppercase}.benchmark-filters{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;padding:16px 20px;border-bottom:1px solid #29322c}.benchmark-status{padding:12px 20px;border-bottom:1px solid #29322c}.benchmark-table-wrap{overflow:auto}.benchmark-table{width:100%;border-collapse:collapse;font:9px "DM Mono"}.benchmark-table th{text-align:left;color:var(--ink-dim);text-transform:uppercase;font-size:8px;padding:10px;border-bottom:1px solid #354039}.benchmark-table td{padding:10px;border-bottom:1px solid #252d28;white-space:nowrap}.benchmark-table td button{border:0;background:transparent;color:#8fe1a6;font:inherit;cursor:pointer;padding:0}.benchmark-table tbody tr:hover{background:#151d17}.benchmark-detail{margin:18px;padding:18px;border:1px solid #405447;background:#101612;display:grid;grid-template-columns:1fr auto;gap:8px}.benchmark-detail h3{margin:0}.benchmark-detail>p,.benchmark-detail>ul{grid-column:1/-1;color:var(--ink-muted);font:9px "DM Mono";line-height:1.6}.benchmark-detail .eyebrow{margin-bottom:6px}
+/* The three `.loop-metrics` entries of `styles.css:97`, appended to the block PR5a opened
+   here. They come after the three entries already inside it in the pinned sheet, so the
+   block is now that line in full and the two halves never had to be reconciled. */
+@media(max-width:1100px){.task-form{grid-template-columns:repeat(2,1fr)}.score-grid{grid-template-columns:repeat(4,1fr)}.planning-actions{grid-template-columns:1fr}.loop-metrics{grid-template-columns:repeat(3,1fr)}.loop-metrics>div{border-bottom:1px solid #29322c}.loop-metrics>div:nth-child(3n){border-right:0}}
+@media(max-width:900px){nav{height:auto;min-height:72px;flex-wrap:wrap;padding-block:12px}.nav-links{order:3;width:100%;margin-left:0}.nav-status{display:none}.runtime-grid{grid-template-columns:1fr}.workspace-grid,.history-grid{grid-template-columns:1fr}.benchmark-filters{grid-template-columns:repeat(2,1fr)}.hero{align-items:start}.dashboard-stats{display:none}.stat{display:none}.shell{padding-top:38px}.project-form{grid-template-columns:1fr}.decision-grid{grid-template-columns:1fr}.decision-grid>div{border-right:0;border-bottom:1px solid #2d3931}}
+/* The remaining twenty-two entries of `styles.css:99`, which is the sheet's longest line
+   and the only `@media` block whose entries had to be inserted on BOTH SIDES of what was
+   already here. The pinned order is: the two `.experience-capture` entries and the
+   `min-width:0` triple, then the seven task-studio and benchmark entries PR5b moved, then
+   the run page's execution, projection, loop-metric, loop-detail and verification-body
+   entries. Restoring that order means three entries go in front of PR5b's and thirteen
+   behind them, and the block is that line whole again.
+
+   Its twenty-third entry, `.projection-flow{height:300px}`, is the one that could not come:
+   its base rule is unlayered in `react-flow.css`, so the entry had to follow it there or
+   lose to it at 390px. `react-flow.css` carries it in a `@media` block of its own. */
+@media(max-width:620px){.experience-capture{grid-template-columns:1fr}.experience-capture>button{justify-self:start;white-space:normal;text-align:left}.execution-content>*,.execution-panel>*,.projection-card>*{min-width:0}.task-form{grid-template-columns:1fr}.task-form .field-wide{grid-column:span 1}.score-grid{grid-template-columns:repeat(2,1fr)}.benchmark-summary{grid-template-columns:repeat(2,1fr)}.benchmark-filters{grid-template-columns:1fr}.override-form,.run-control{align-items:stretch;flex-direction:column}.evidence-list{grid-template-columns:1fr}.execution-content{padding:8px}.projection-heading,.loop-summary>header,.verification-panel>header{align-items:flex-start}.projection-meta{align-items:flex-end;flex-direction:column}.loop-metrics{grid-template-columns:repeat(2,1fr)}.loop-metrics>div:nth-child(3n){border-right:1px solid #29322c}.loop-metrics>div:nth-child(2n){border-right:0}.loop-details,.verification-columns{grid-template-columns:1fr}.loop-details>div,.loop-details>div:nth-child(2n),.loop-details>div:nth-last-child(-n+2){border-right:0;border-bottom:1px solid #29322c}.loop-details>div:last-child{border-bottom:0}.verification-body>dl{grid-template-columns:1fr}.verification-body>dl>div{border-right:0;border-bottom:1px solid #29322c}.verification-body>dl>div:last-child{border-bottom:0}}
+
+/* `styles.css:121-180`: the P3 approval gate and the M5 dynamic-workflow inspectors.
+
+   The gate hint that renders inside a waiting GATE node, the approval panel and its
+   request/actions rows, the dynamic proposal preview and inspector, the metric chips, the
+   revision timeline, the graph-diff summary, the router decision disclosure, and the replan
+   control with its 720px block - the only rule in the sheet that uses that breakpoint, which
+   is why the block moves whole and alone.
+
+   `.gate-waiting-hint` renders INSIDE a React Flow node and is nevertheless here. That is
+   the partition working as intended: what forces a rule to stay unlayered is competing with
+   an unlayered xyflow rule, and xyflow declares nothing about a span of ours. Only the rules
+   that set a property xyflow also sets on the same element went to `react-flow.css`. */
+/* P3: graph node kinds, subflow groups, and approval gates */
+
+.gate-waiting-hint {
+  color: #d8a648;
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+}
+
+.approval-panel {
+  border: 1px solid #d8a648;
+  border-radius: 12px;
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.approval-panel header h3 {
+  margin: 0;
+}
+
+.approval-request {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.approval-request small {
+  display: block;
+  color: #8b978f;
+}
+
+.approval-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.dynamic-proposal-preview,
+.dynamic-inspector {
+  border: 1px solid #315d40;
+  border-radius: 18px;
+  background: linear-gradient(145deg, rgba(20, 43, 29, 0.92), rgba(12, 24, 17, 0.96));
+  padding: 1rem;
+}
+.dynamic-proposal-preview { display: grid; grid-template-columns: 1fr auto; gap: .5rem 1rem; margin-top: 1rem; }
+.dynamic-proposal-preview p, .dynamic-proposal-preview small { grid-column: 1 / -1; }
+.dynamic-inspector > header, .router-decision summary, .revision-timeline article,
+.graph-diff-summary, .dynamic-metrics { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.proposal-inspector { margin-top: 1rem; padding: 1rem; border: 1px solid rgba(117, 219, 145, .2); border-radius: 14px; background: rgba(4, 12, 8, .34); }
+.dynamic-metrics { justify-content: flex-start; flex-wrap: wrap; color: #aab9af; font-size: .78rem; }
+.dynamic-metrics span { padding: .35rem .55rem; border-radius: 999px; background: rgba(117, 219, 145, .08); }
+.revision-timeline { display: grid; gap: .45rem; margin-top: 1rem; }
+.revision-timeline article { justify-content: flex-start; padding: .65rem .75rem; border-left: 3px solid #75db91; background: rgba(2, 10, 6, .38); }
+.revision-timeline article > span { color: #75db91; font-weight: 800; }
+.revision-timeline article > small { margin-left: auto; }
+.graph-diff-summary { flex-wrap: wrap; margin-top: .75rem; padding: .7rem; border: 1px dashed #587563; border-radius: 10px; font-size: .8rem; }
+.router-decision { margin-top: .75rem; padding: .75rem; border-radius: 10px; background: rgba(2, 10, 6, .38); }
+.router-decision summary { cursor: pointer; }
+.router-decision ul { display: grid; gap: .35rem; padding: 0; list-style: none; }
+.router-decision li { display: flex; justify-content: space-between; gap: 1rem; }
+.replan-control { display: grid; grid-template-columns: minmax(240px, 1fr) auto; align-items: end; gap: .75rem; margin-top: 1rem; }
+@media (max-width: 720px) { .replan-control { grid-template-columns: 1fr; } }
+/* `styles.css:183-188`: the P6 bounded-search plan form on the planning review. The
+   `.search-plan-tree`, `.search-inspector` and `.candidate-*` rules that follow it in
+   the pinned sheet belong to the run page and stay behind for PR5c; this form is the
+   planner's half of P6 and moves here with the rest of the planning review. Its two
+   `@media` entries, at pinned :275 and :276, follow at the foot of this block. */
+.search-plan-form { margin-top: 1rem; padding: 1rem; border: 1px solid #49664f; background: rgba(10, 24, 15, .78); display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: .75rem; }
+.search-plan-heading { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; }
+.search-plan-heading h3 { margin: 0; }
+.search-plan-form .search-directives { grid-column: 1 / -1; }
+.search-plan-form > button { align-self: end; }
+.search-plan-form > .quiet { grid-column: span 3; align-self: center; margin: 0; }
+/* `styles.css:189-220`: the run page's half of P6 - the bounded-search inspector, the plan
+   tree disclosures, the plan metadata strip and the whole `.candidate-*` family with its
+   two `::before` connector pseudo-elements, its FRESH/REPLAY source chips and its selected-
+   candidate ring. PR5b took the planner's half (`.search-plan-form*`, immediately above)
+   and left these; nothing in the pinned sheet lies between the two groups, so the join is
+   exactly where the slice line was drawn. */
+/* P6: bounded search planning, candidate lineage, and frozen research curve */
+.search-inspector { border: 1px solid #41694b; background: rgba(8, 20, 12, .7); }
+.search-inspector > header { padding: 15px 17px; border-bottom: 1px solid #29322c; display: flex; align-items: center; justify-content: space-between; }
+.search-inspector h3 { margin: 0; font-size: 13px; }
+.search-inspector > header > span { font: 9px "DM Mono"; color: #779080; }
+.search-plan-tree { margin: 0; border: 0; border-bottom: 1px solid #29322c; }
+.search-plan-tree:last-child { border-bottom: 0; }
+.search-plan-tree > summary { display: flex; align-items: center; justify-content: space-between; }
+.search-plan-tree > summary > span:first-child { display: grid; gap: 5px; }
+.search-plan-tree > summary small { color: var(--ink-dim); font: 8px "DM Mono"; }
+.search-plan-meta { padding: 10px 14px; border-block: 1px solid #29322c; display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.search-plan-meta > span { padding: 5px 7px; border: 1px solid #304038; color: #89998e; font: 8px "DM Mono"; }
+.search-plan-meta > button { margin-left: auto; }
+.candidate-tree { position: relative; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; padding: 20px; }
+.candidate-tree::before { content: ""; position: absolute; left: 20px; right: 20px; top: 10px; border-top: 1px solid #3b5342; }
+.candidate-card { position: relative; z-index: 1; border: 1px solid #334239; background: #101713; padding: 13px; min-width: 0; }
+.candidate-card::before { content: ""; position: absolute; left: 50%; top: -11px; height: 11px; border-left: 1px solid #3b5342; }
+.candidate-card.candidate-selected { border-color: #75db91; box-shadow: 0 0 0 1px rgba(117, 219, 145, .18); }
+.candidate-card > header { display: flex; justify-content: space-between; gap: 8px; }
+.candidate-card > header > div { display: grid; gap: 4px; }
+.candidate-card > header span:first-child { color: var(--ink-dim); font: 7px "DM Mono"; text-transform: uppercase; }
+.candidate-card > header strong { font: 11px "DM Mono"; }
+.candidate-runtime,.candidate-reviewer { color: var(--ink-muted); font: 8px "DM Mono"; overflow-wrap: anywhere; }
+.candidate-reviewer { color: #bfab73; }
+.candidate-source { width: fit-content; margin: 7px 0; padding: 4px 6px; border: 1px solid #39473e; color: #829087; font: 7px "DM Mono"; text-transform: uppercase; }
+.candidate-source-replay { border-color: #7b6740; color: #d1b675; background: rgba(90, 68, 24, .16); }
+.candidate-replay-state { color: #ae955e; font: 8px "DM Mono"; }
+.candidate-card dl { display: grid; grid-template-columns: repeat(2, 1fr); margin: 12px 0; border: 1px solid #29322c; }
+.candidate-card dl div { padding: 8px; border-right: 1px solid #29322c; border-bottom: 1px solid #29322c; }
+.candidate-card dt { color: var(--ink-dim); font: 7px "DM Mono"; text-transform: uppercase; }
+.candidate-card dd { margin: 4px 0 0; font: 9px "DM Mono"; }
+.candidate-reason { min-height: 34px; color: #859188; font-size: 9px; line-height: 1.5; }
+.candidate-card > small { display: block; color: var(--ink-dim); font: 7px "DM Mono"; overflow-wrap: anywhere; }
+/* `styles.css:221-236`: the P7 verified-experience planner and its match cards.
+
+   Eight of these sixteen rules name a run-page `.experience-lineage*` selector in the
+   same comma-joined list as a planner selector (:222, :223, :226, :227, :228, :231,
+   :232, :236). A comma list is one rule, not two, so splitting it to leave the lineage
+   half behind for PR5c would rewrite the text this port promises to move verbatim -
+   and `cssPort.test.ts` would report it as one rule dropped and two invented. They
+   move whole, in the earlier PR, which is the rule the plan sets for every mixed list.
+
+   That makes the `!important` at :236 load-bearing here rather than in PR5c. It exists
+   to beat `.experience-match > p,.experience-lineage-grid p` at :231, which is more
+   specific and comes earlier; both are in this block, so their relative order and the
+   importance that settles them are unchanged. Deleting the `!important` was run as a
+   control: the mocked planning pass reports the colour and union-equality fails. */
+.experience-planner { border: 1px solid #685d3e; background: rgba(28, 23, 11, .58); padding: 17px; display: grid; gap: 12px; }
+.experience-planner > header,.experience-lineage > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.experience-planner h3,.experience-lineage h4 { margin: 0; }
+.experience-planner > p { margin: 0; color: #8f998f; font-size: 10px; }
+.experience-actions { display: flex; gap: 8px; }
+.experience-match-grid,.experience-lineage-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 10px; }
+.experience-match,.experience-lineage-grid > article { border: 1px solid #3b4239; background: #111611; padding: 12px; min-width: 0; }
+.experience-match > header,.experience-lineage-grid > article > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.experience-match label { color: #c8d0c9; font: 9px "DM Mono"; }
+.experience-match input { margin-right: 7px; accent-color: #75db91; }
+.experience-match > p,.experience-lineage-grid p { color: #818c83; font-size: 8px; overflow-wrap: anywhere; }
+.experience-match > small,.experience-lineage-grid small { color: #ae955e; font: 7px "DM Mono"; overflow-wrap: anywhere; }
+.experience-rejected { opacity: .65; }
+.experience-score-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.experience-score-row span { border: 1px solid #374039; padding: 4px 6px; color: #9eaa9f; font: 7px "DM Mono"; }
+.experience-reasons,.experience-revalidations { color: #9c8656 !important; }
+/* `styles.css:237-244`: the run page's half of P7 - the verified-experience lineage panel
+   and the capture form beneath it.
+
+   Eight of the rules PR5b moved (immediately above) name an `.experience-lineage*` selector
+   in the same comma-joined list as a planner selector, so those halves already live here;
+   these are the eight rules that name only the run page's own selectors. The `!important`
+   on the line above is what settles `.experience-revalidations` against
+   `.experience-lineage-grid p`, and both are now in this block, in the pinned sheet's order,
+   with the importance unchanged. */
+.experience-lineage { padding: 14px; border-bottom: 1px solid #29322c; background: rgba(39, 32, 14, .23); }
+.experience-lineage > header > span { color: var(--ink-amber); font: 8px "DM Mono"; }
+.experience-lineage-grid { margin-top: 12px; }
+.experience-lineage-grid ul { padding-left: 18px; color: #a7b0a9; font-size: 8px; line-height: 1.6; }
+.experience-capture { border: 1px solid #685d3e; background: rgba(30, 24, 10, .52); padding: 15px 17px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 9px 16px; }
+.experience-capture h3,.experience-capture p { margin: 0; }
+.experience-capture > div > p:last-child { margin-top: 7px; color: #8b958d; font-size: 9px; }
+.experience-capture > small,.experience-capture > .form-status { grid-column: 1 / -1; }
+/* `styles.css:245-274`: the benchmark-owned half of the P6/P7 research evidence - the
+   two-column research grid, the SVG quality curve and its axis/grid/line/label classes,
+   the gate grids, the frozen-evidence columns, the provider comparison cards, and the
+   null-result row highlight at :274. None of these appears anywhere except the four
+   `/benchmarks/*` screens, which is why `e2e/fixtures/benchmarks.ts` and the four
+   mocked passes in `style-diff.spec.ts` land in the same PR as this block. */
+.search-research-grid { display: grid; grid-template-columns: 1.35fr .65fr; gap: 16px; padding: 18px; }
+.search-curve,.provider-comparison { margin: 0; border: 1px solid #2d3931; background: #101612; padding: 16px; }
+.search-curve figcaption { display: grid; gap: 5px; }
+.search-curve figcaption span { color: var(--ink-muted); font-size: 9px; }
+.search-curve svg { width: 100%; margin-top: 8px; overflow: visible; }
+.search-curve .curve-axis { fill: none; stroke: #536159; stroke-width: 1.5; }
+.search-curve .curve-grid { fill: none; stroke: #263129; stroke-width: 1; }
+.search-curve .curve-line { fill: none; stroke: #75db91; stroke-width: 3; }
+.search-curve circle { fill: #101612; stroke: #9be4ae; stroke-width: 3; }
+.search-curve text { fill: #637068; font: 9px "DM Mono"; text-anchor: middle; }
+.search-curve .curve-value { fill: #b8dec2; font-size: 10px; }
+.search-curve .curve-label { fill: #8c9a90; }
+.experience-gate-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 18px; }
+.experience-gate-grid article { border: 1px solid #34433a; background: #101612; padding: 13px; display: grid; gap: 7px; }
+.experience-gate-grid strong { font: 10px "DM Mono"; }
+.experience-gate-grid span:last-child { color: #849087; font-size: 8px; }
+.experience-benchmark-evidence { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 18px; }
+.experience-benchmark-evidence > div { border: 1px solid #2d3931; background: #101612; padding: 15px; min-width: 0; }
+.experience-benchmark-evidence h3 { margin-top: 0; }
+.experience-benchmark-evidence li { margin: 8px 0; color: #9ba69e; font-size: 9px; }
+.experience-benchmark-evidence code { display: block; margin: 7px 0; color: var(--ink-muted); font-size: 7px; overflow-wrap: anywhere; }
+.provider-comparison { display: grid; gap: 10px; align-content: start; }
+.provider-comparison h3 { margin: 0; font-size: 13px; }
+.provider-comparison article { border: 1px solid #304038; padding: 11px; display: grid; gap: 7px; }
+.provider-comparison article > div { display: flex; justify-content: space-between; }
+.provider-comparison article > span { color: #9be4ae; font: 20px "DM Mono"; }
+.provider-comparison article small,.provider-comparison > p { color: var(--ink-dim); font-size: 8px; }
+.provider-comparison code { color: #75a984; font: 7px "DM Mono"; overflow-wrap: anywhere; }
+.provider-rate { color: #9be4ae; font: 8px "DM Mono"; }
+.benchmark-table tr.null-result { background: rgba(171, 126, 57, .1); }
+/* `styles.css:275`, whole. Every entry in this block belongs to the slice above - the
+   P6 plan form, the research grid, the frozen-evidence columns and the P7 gate grid -
+   so the block moves entire rather than being split across two PRs. It is a second
+   `@media (max-width: 900px)` container beside the one further up; the pinned sheet
+   writes the same breakpoint both ways and the two share no selector, so keeping them
+   apart preserves source order exactly. Merging them is the token-substitution PR's
+   business, not this one's. */
+@media (max-width: 900px) { .search-plan-form { grid-template-columns: repeat(2, 1fr); } .search-research-grid,.experience-benchmark-evidence { grid-template-columns: 1fr; } .experience-gate-grid { grid-template-columns: repeat(2, 1fr); } }
+/* The two `.search-plan-form` entries of `styles.css:276`. Its third entry,
+   `.candidate-tree`, styles the run page's candidate inspector and stays behind with
+   the rest of the `.candidate-*` family for PR5c - so this is the one place in the
+   slice where a `@media` block is split, and it is split between SELECTORS rather than
+   inside a selector list, which is what the rule against splitting forbids. */
+/* `styles.css:276`, whole again. PR5b moved its two `.search-plan-form` entries and left
+   `.candidate-tree` behind, which cost a second `@media` wrapper in each sheet for one PR;
+   that is the split the PR5b budget note predicted would close here, and it does. */
+@media (max-width: 620px) { .search-plan-form { grid-template-columns: 1fr; } .search-plan-form > .quiet { grid-column: 1; } .candidate-tree { grid-template-columns: 1fr; } }
+
+/* `styles.css:283-309` (M6: read-only capability badges, diff identities, and router
+   evidence), minus the four badge rules at `:279-282` that went to `react-flow.css`.
+
+   These arrive here in the same pass as `:89` above rather than in PR5c's last bucket,
+   because `.projection-node-summary li` is declared TWICE in the pinned sheet - once at
+   `:89` with the list's layout and again here with `flex-wrap`, after the badges gave it a
+   second line to wrap onto. Moving only the first left the second unlayered in `styles.css`,
+   beating it, and `cssPort.test.ts` reported it the moment the pass ran:
+
+     styled from more than one live sheet:
+      || .projection-node-summary li  (in styles.css and theme.css)
+
+   Rendering was not affected - the leftover was the LATER of the two, so it won under source
+   order as well - but the property the port promises is that no selector is ever settled by
+   layering rather than by order, and this is the shape that breaks it.
+
+   The rest of the block is the graph-diff identity table, the router evidence columns and
+   fallback chain, the proposal inspector's lists, and the revision timeline with its
+   `[aria-pressed]` attribute selector - the one attribute selector in the whole sheet. */
+.projection-node-summary li { flex-wrap: wrap; }
+.graph-diff-identities { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .5rem; margin: .6rem 0 0; padding: .7rem; border: 1px solid #354039; background: rgba(2, 10, 6, .38); }
+.graph-diff-identities > div { display: grid; gap: .35rem; min-width: 0; }
+.graph-diff-identities dt { font: 8px "DM Mono"; text-transform: uppercase; color: #9aa69d; }
+.graph-diff-identities dd { margin: 0; }
+.graph-diff-identities ul { display: grid; gap: .25rem; margin: 0; padding: 0; list-style: none; }
+.graph-diff-identities code { font: 8px "DM Mono"; color: #b6c3ba; overflow-wrap: anywhere; }
+.router-evidence { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: .75rem; margin-top: .65rem; }
+.router-evidence h4 { margin: 0 0 .35rem; font: 8px "DM Mono"; text-transform: uppercase; color: #9aa69d; }
+.router-fallback { display: grid; gap: .3rem; margin: 0; padding: 0; list-style: none; }
+.router-fallback li { display: flex; gap: .5rem; align-items: center; font: 9px "DM Mono"; color: #b6c3ba; }
+.router-fallback li > span { color: #9be4ae; }
+.router-features { display: grid; gap: .3rem; margin: 0; }
+.router-features > div { display: flex; justify-content: space-between; gap: .75rem; font: 9px "DM Mono"; color: #b6c3ba; }
+.router-features dt { color: #9aa69d; }
+.router-features dd { margin: 0; overflow-wrap: anywhere; }
+.proposal-authority { margin: .5rem 0 0; color: #cfe4d5; font-size: 9px; }
+.proposal-inspector h5 { margin: .7rem 0 .25rem; font: 8px "DM Mono"; text-transform: uppercase; color: #9aa69d; }
+.proposal-assumptions, .proposal-capabilities { list-style: none; padding: 0; margin: 0; display: grid; gap: .3rem; font-size: 9px; color: #cfe4d5; }
+.proposal-capabilities code { color: #8ccf9e; font: 8px "DM Mono"; overflow-wrap: anywhere; }
+.proposal-validation { margin-top: .7rem; display: grid; gap: .4rem; justify-items: start; }
+.revision-timeline:focus-visible { outline: 2px solid #75db91; outline-offset: 2px; }
+.revision-select { border: 1px solid #354039; background: rgba(2, 10, 6, .5); color: #75db91; font-weight: 800; padding: .2rem .45rem; border-radius: 6px; cursor: pointer; }
+.revision-select[aria-pressed="true"] { border-color: #75db91; background: rgba(117, 219, 145, .16); }
+.revision-detail { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; margin-top: .5rem; padding: .55rem .7rem; border: 1px solid #354039; background: rgba(2, 10, 6, .38); }
+.revision-detail code { color: #8ccf9e; font: 8px "DM Mono"; overflow-wrap: anywhere; min-width: 0; }
+.revision-detail span { color: #cfe4d5; font-size: 9px; }
+}

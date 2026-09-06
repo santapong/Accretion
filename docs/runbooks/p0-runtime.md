@@ -20,6 +20,18 @@ so user hooks, plugins, and project customization cannot silently change the
 provider protocol; Accretion's explicit MCP configuration remains authoritative.
 `SessionConfig.model` is passed through when the caller pins a compatible model.
 
+**Health probes are cached for thirty seconds.** Each of those checks is a child
+process — `opencode --version` alone takes about two seconds on a developer
+machine — and the operator UI polls `/api/v1/runtimes` every five seconds while
+also asking for one session list per runtime card, so an uncached probe storm made
+`/runtimes` unusable and pushed the probes past their own five-second deadline,
+reporting `UNAVAILABLE` for a CLI that was merely slow. `probe_result` in
+`src/accretion/runtimes/common.py` memoizes each command behind a single-flight
+lock; `PROBE_CACHE_SECONDS` is the window and `clear_probe_cache()` forgets it.
+The consequence to know while debugging: after signing a CLI in or out, the status
+pill can take up to half a minute to change. The runtime's own `active_runs` and
+`active_sessions` counters are NOT cached and stay live.
+
 ## Egress posture, and where the adapters differ
 
 The three live adapters deny network egress by different means, and the

@@ -24,12 +24,15 @@ from accretion.contracts import (
     TemplateStatus,
     WorkspaceMembership,
 )
+from accretion.contracts.routing import RouterModelVersion
 from accretion.orchestration.models import (
     PlannerRuntime,
     ReplanReason,
     SearchBudgetEnvelope,
     SearchMode,
 )
+from accretion.routing.calibration import CalibrationMethod
+from accretion.routing.split import SplitFractions
 
 
 class MeResponse(BaseModel):
@@ -239,6 +242,75 @@ class PluginInstallRequest(BaseModel):
 
 class PluginWorkspaceRequest(BaseModel):
     workspace_id: str
+
+
+class RouterTrainCandidateCreate(BaseModel):
+    """Ask for one offline training run over a window of a workspace's evidence (SDD §11.3).
+
+    ``window_start`` and ``window_end`` are the half-open bounds the training snapshot is cut
+    on, and ``seed`` fixes the project split — both are the caller's, not the server's,
+    because a candidate whose window or split depended on when the request arrived could not
+    be rebuilt afterwards.
+
+    ``split_fractions`` is the sealed :class:`~accretion.routing.split.SplitFractions`, whose
+    validator refuses fractions that do not sum to one or that would retire one of the five
+    required splits. Omitting it takes the protocol default.
+    """
+
+    workspace_id: str
+    window_start: datetime
+    window_end: datetime
+    seed: int = Field(default=0, ge=0)
+    split_fractions: SplitFractions | None = None
+    parent_version_id: str | None = None
+
+
+class RouterCalibrationSummary(BaseModel):
+    """The calibration report's headline numbers, without its bins.
+
+    The bins are the evidence and stay in the stored artefact the version pins; this is the
+    summary a caller needs to decide whether to look at them.
+    """
+
+    method: CalibrationMethod
+    alpha: float
+    conformal_quantile: float
+    ece_10bin: float
+    brier: float
+    holdout_coverage: float
+    bin_count: int
+    digest: str
+
+
+class RouterHoldoutSummary(BaseModel):
+    """What the candidate scored on projects it was never fitted or calibrated on.
+
+    ``digest`` is the ``holdout_eval_digest`` the version carries and the artefact store
+    holds the document under, so a caller can fetch and recompute rather than trust this.
+    ``ranking_gain`` is ``None`` when the holdout held no comparable pair — an honest "not
+    measurable here" rather than a zero.
+    """
+
+    digest: str
+    n_rows: int
+    project_ids: list[str]
+    observed_verified_success_rate: float
+    verified_success_lcb: float
+    ece_10bin: float
+    brier: float
+    false_acceptance_rate: float
+    ranking_concordance: float | None = None
+    baseline_ranking_concordance: float | None = None
+    ranking_gain: float | None = None
+
+
+class RouterCandidateTrained(BaseModel):
+    """One training run's result: the version, the evidence it cites, and its two scores."""
+
+    version: RouterModelVersion
+    training_snapshot_id: str
+    calibration: RouterCalibrationSummary
+    holdout: RouterHoldoutSummary
 
 
 class ErrorEnvelope(BaseModel):

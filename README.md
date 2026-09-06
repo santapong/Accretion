@@ -67,7 +67,7 @@ fixtures, examples, and operational documentation in one workspace.
 
 | I want to… | Use | Release position |
 |---|---|---|
-| Evaluate the current release | Clone the `v0.3.0` tag, read the [release notes](docs/releases/v0.3/notes.md) and [audit](docs/releases/v0.3/audit.md), and follow [Quick start](#quick-start) | Released and immutable |
+| Evaluate the current release | Clone the `v0.3.0` tag, check the [frozen baseline](docs/releases/v0.3/baseline.md), read the [release notes](docs/releases/v0.3/notes.md) and [audit](docs/releases/v0.3/audit.md), and follow [Quick start](#quick-start) | Released and immutable |
 | Follow ongoing development | Check out `develop` | Post-v0.3 work toward v0.4 |
 | Reproduce the static control | Clone `v0.1.0` and read the [frozen baseline](docs/releases/v0.1/baseline.md) | Preserved v0.1 evidence |
 | Understand the safety model | Read [Architecture](#architecture), the [trust boundary](docs/assets/trust-boundary.svg), and [SECURITY.md](SECURITY.md) | Applies across releases |
@@ -117,7 +117,8 @@ operator can answer five questions before and during every run:
 ## Frontend status
 
 Yes—the frontend is implemented for the P0–P7 scope plus the v0.3 M6
-administration pages, seventeen routes in all.
+administration pages and the v0.4 router administration page, eighteen routes
+in all.
 It is not a mock dashboard: it calls the generated API contract, starts from
 authoritative snapshots, follows active runs through resumable server-sent
 events, and exposes the decision and verifier evidence needed to explain a run.
@@ -133,7 +134,7 @@ events, and exposes the decision and verifier evidence needed to explain a run.
 | User-facing scope | Dashboard, New Task/Planning, Live Run, Runtimes, History, Approvals, Capabilities, ACR-ARCH, P5 Dynamic, P6 Search, P7 Experience, and the v0.3 administration pages (Plugins, Connections, MCP Servers, Capability Inspector, Identity) |
 | API safety | Generated OpenAPI TypeScript schema; backend remains the authority for policy and transitions |
 | Live behavior | Snapshot-first state, monotonic SSE, reconnect and sequence-gap recovery |
-| Verification | 97 component tests, ESLint, TypeScript, OpenAPI idempotence, and production build pass; axe-core 4.10.2 reports zero violations across all seventeen routes, discharging the v0.2 exception in [issue #52](https://github.com/santapong/Accretion/issues/52) — see [browser and accessibility evidence](docs/releases/v0.3/browser-a11y-evidence.md) |
+| Verification | The component test suite, ESLint, TypeScript, OpenAPI idempotence, and production build all pass; axe-core 4.10.2 reports zero violations across all seventeen routes, discharging the v0.2 exception in [issue #52](https://github.com/santapong/Accretion/issues/52) — see [browser and accessibility evidence](docs/releases/v0.3/browser-a11y-evidence.md) |
 
 See the [operator frontend guide](docs/guides/frontend.md) for every route, the
 operator journey, data flow, P5–P7 coverage, source map, and frontend commands.

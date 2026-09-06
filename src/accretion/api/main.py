@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
@@ -21,6 +22,10 @@ from accretion.api.auth import (
     is_exempt,
 )
 from accretion.api.auth import principal as current_principal
+from accretion.api.benchmarks_router import router as router_benchmark_router
+from accretion.api.feedback import router as feedback_router
+from accretion.api.router_admin import router as router_admin_router
+from accretion.api.routing import router as routing_router
 from accretion.api.schemas import (
     ApprovalDecisionCreate,
     AuthorizationStart,
@@ -42,6 +47,10 @@ from accretion.api.schemas import (
     ProjectCreate,
     ProjectFeatureUpdate,
     ReplanCreate,
+    RouterCalibrationSummary,
+    RouterCandidateTrained,
+    RouterHoldoutSummary,
+    RouterTrainCandidateCreate,
     RunCreate,
     SearchCreate,
     StrategyOverrideCreate,
@@ -49,6 +58,7 @@ from accretion.api.schemas import (
     WorkflowProposeCreate,
     WorkflowTemplateSummary,
 )
+from accretion.api.shadow import router as shadow_router
 from accretion.benchmark import (
     AcrArchRunner,
     acr_arch_summary,
@@ -87,6 +97,7 @@ from accretion.contracts import (
     MetaSkill,
     PluginAuditEvent,
     PluginInstallation,
+    PrincipalRef,
     Project,
     Provider,
     ResolvedCapability,
@@ -104,6 +115,8 @@ from accretion.contracts import (
     WorkspaceEntity,
     WorkspaceRole,
 )
+from accretion.contracts.canonical import canonical_json
+from accretion.contracts.routing import RouterModelVersion
 from accretion.dynamic_benchmark import (
     DynamicWorkflowBenchmarkRunner,
     DynamicWorkflowBenchmarkSummary,
@@ -131,6 +144,8 @@ from accretion.experience_benchmark import (
     ExperienceBenchmarkRunner,
     ExperienceBenchmarkSummary,
 )
+from accretion.feedback.bootstrap import build_feedback_pipeline
+from accretion.feedback.service import as_feedback_pipeline
 from accretion.governance import (
     CapabilityExecutor,
     CapabilityGateway,
@@ -191,6 +206,22 @@ from accretion.plugins.registration import PluginDetail
 from accretion.plugins.trust import PluginTrustVerifier, load_trusted_keys
 from accretion.research.transforms import default_transform_registry
 from accretion.resolver import CapabilityResolver
+from accretion.routing.artifacts import ArtifactStore
+from accretion.routing.bootstrap import build_node_routing
+from accretion.routing.calibration import CalibrationReport
+from accretion.routing.errors import RoutingError
+from accretion.routing.promotion import build_promotion_service
+from accretion.routing.shadow import ShadowEvaluator
+from accretion.routing.train import (
+    IDEMPOTENCY_LABEL,
+    HoldoutEvaluation,
+    LearnedPredictorLoader,
+    RouterNotEvaluatedError,
+    RouterTrainingError,
+    RouterTrainingService,
+    SnapshotConflictError,
+    TrainingDataError,
+)
 from accretion.runtimes import ClaudeRuntime, CodexRuntime, FakeRuntime, OpencodeRuntime
 from accretion.search_benchmark import SearchBenchmarkRunner, SearchBenchmarkSummary
 from accretion.secrets_store import EnvelopeSecretStore
@@ -222,6 +253,16 @@ class ExecutionModeMismatchError(RuntimeError):
         super().__init__(
             f"Run {run.run_id} uses {mode}/{template}; this endpoint requires LOOP/feedback-loop-v1"
         )
+
+
+class IdempotencyKeyRequiredError(RuntimeError):
+    """A mutating v0.4 endpoint was called without an ``Idempotency-Key`` header.
+
+    SDD §11 requires idempotency of every mutating endpoint, and training a router candidate
+    is expensive and durable: a retried request that trained a second time would leave two
+    versions where the caller believes there is one. Refusing the request is the only answer
+    that cannot silently do the work twice.
+    """
 
 
 @asynccontextmanager
@@ -327,6 +368,13 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     )
     app.state.engine = engine
     app.state.manager = manager
+    app.state.node_routing = None
+    if settings.enable_node_routing:
+        node_routing = build_node_routing(manager, policy_id=settings.capability_policy_id,
+                                         granted_permissions=set(settings.granted_permissions),
+                                         mode=settings.node_routing_mode)
+        manager.routing_service = node_routing
+        app.state.node_routing = node_routing
     # The section 27 exit seam, wired for the API process. Without this the scheduler
     # holds a `capability_invoker` of `None` in production and a real one only in
     # tests --- the same asymmetry the verifier registry above had until M5. The
@@ -359,6 +407,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         operator_identity=settings.operator_identity,
     )
     app.state.experience = experience
+    manager.feedback_pipeline = as_feedback_pipeline(build_feedback_pipeline(manager, experience))
     search_service = SearchService(
         manager,
         globally_enabled=settings.enable_candidate_search,
@@ -366,6 +415,24 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         experience_service=experience,
     )
     app.state.candidate_search = search_service
+    # v0.4 M4. Offline and store-backed: the service holds no run state, so it is built here
+    # rather than hung off the run manager, and its artefact root comes from the setting so a
+    # deployment can put the trained bytes on shared storage without touching code.
+    app.state.router_training = RouterTrainingService(
+        store,
+        ArtifactStore(settings.router_artifact_dir),
+        clock=lambda: datetime.now(UTC),
+    )
+    app.state.router_admin = build_promotion_service(
+        store,
+        ArtifactStore(settings.router_artifact_dir),
+        operator_identity=settings.operator_identity,
+    )
+    # v0.4 M6. Same three collaborators and the same reason they are built here: shadow
+    # registration is offline and store-backed, and it reads the artefacts the trainer wrote.
+    app.state.shadow = ShadowEvaluator(
+        store, ArtifactStore(settings.router_artifact_dir), lambda: datetime.now(UTC)
+    )
     app.state.auth = build_auth_runtime(store, settings, enterprise_auth=enterprise_auth)
     await seed_templates(store)
     await seed_governance(store)
@@ -386,6 +453,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Accretion API", version=__version__, lifespan=lifespan)
+app.include_router(routing_router)
+app.include_router(router_admin_router)
+app.include_router(feedback_router)
+app.include_router(shadow_router)
+app.include_router(router_benchmark_router)
 settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
@@ -439,6 +511,13 @@ def plugins(request: Request) -> PluginManager:
     return cast(PluginManager, service)
 
 
+def router_training(request: Request) -> RouterTrainingService:
+    service = getattr(request.app.state, "router_training", None)
+    if service is None:
+        raise ValueError("router training service is unavailable")
+    return cast(RouterTrainingService, service)
+
+
 def enterprise_auth(request: Request) -> EnterpriseAuthManager | None:
     """The enterprise authorization manager, or ``None`` when it was not built.
 
@@ -457,6 +536,11 @@ def enterprise_auth(request: Request) -> EnterpriseAuthManager | None:
 @app.exception_handler(KeyError)
 async def key_error_handler(request: Request, exc: KeyError) -> JSONResponse:
     return _error(404, "NOT_FOUND", f"Resource {exc.args[0]} was not found")
+
+
+@app.exception_handler(RoutingError)
+async def routing_error_handler(request: Request, exc: RoutingError) -> JSONResponse:
+    return _error(exc.status_code, exc.code, exc.message)
 
 
 @app.exception_handler(PermissionError)
@@ -644,6 +728,43 @@ async def experience_conflict_handler(
     request: Request, exc: ExperienceConflictError
 ) -> JSONResponse:
     return _error(409, "EXPERIENCE_CONFLICT", str(exc))
+
+
+@app.exception_handler(IdempotencyKeyRequiredError)
+async def idempotency_key_required_handler(
+    request: Request, exc: IdempotencyKeyRequiredError
+) -> JSONResponse:
+    return _error(400, "IDEMPOTENCY_KEY_REQUIRED", str(exc))
+
+
+@app.exception_handler(TrainingDataError)
+async def training_data_handler(request: Request, exc: TrainingDataError) -> JSONResponse:
+    return _error(409, "ROUTER_TRAINING_DATA_INSUFFICIENT", str(exc))
+
+
+@app.exception_handler(SnapshotConflictError)
+async def snapshot_conflict_handler(
+    request: Request, exc: SnapshotConflictError
+) -> JSONResponse:
+    return _error(409, "ROUTER_SNAPSHOT_CONFLICT", str(exc))
+
+
+@app.exception_handler(RouterNotEvaluatedError)
+async def router_not_evaluated_handler(
+    request: Request, exc: RouterNotEvaluatedError
+) -> JSONResponse:
+    # AC4-M4-016 reaching the wire. A version with no holdout evaluation on record is not a
+    # bad request and not a missing one: it is a refusal to route on something unevaluated.
+    return _error(409, "ROUTER_NOT_EVALUATED", str(exc))
+
+
+# Registered last on purpose: the three specific refusals above keep their own codes, and
+# only what none of them matched falls through to this one.
+@app.exception_handler(RouterTrainingError)
+async def router_training_error_handler(
+    request: Request, exc: RouterTrainingError
+) -> JSONResponse:
+    return _error(409, "ROUTER_TRAINING_REJECTED", str(exc))
 
 
 def _error(status: int, code: str, message: str, retryable: bool = False) -> JSONResponse:
@@ -2020,6 +2141,125 @@ async def run_experience_benchmark(
     if payload.execution_source is not BenchmarkExecutionSource.REPLAY:
         raise ValueError("live experience calibration requires the explicit local release gate")
     return ExperienceBenchmarkRunner().run()
+
+
+def _calibration_summary(report: CalibrationReport) -> RouterCalibrationSummary:
+    return RouterCalibrationSummary(
+        method=report.method,
+        alpha=report.alpha,
+        conformal_quantile=report.conformal_quantile,
+        ece_10bin=report.ece_10bin,
+        brier=report.brier,
+        holdout_coverage=report.holdout_coverage,
+        bin_count=len(report.bins),
+        digest=hashlib.sha256(canonical_json(report)).hexdigest(),
+    )
+
+
+def _holdout_summary(holdout: HoldoutEvaluation) -> RouterHoldoutSummary:
+    return RouterHoldoutSummary(
+        digest=holdout.digest(),
+        n_rows=holdout.n_rows,
+        project_ids=list(holdout.project_ids),
+        observed_verified_success_rate=holdout.observed_verified_success_rate,
+        verified_success_lcb=holdout.verified_success_lcb,
+        ece_10bin=holdout.ece_10bin,
+        brier=holdout.brier,
+        false_acceptance_rate=holdout.false_acceptance_rate,
+        ranking_concordance=holdout.ranking_concordance,
+        baseline_ranking_concordance=holdout.baseline_ranking_concordance,
+        ranking_gain=holdout.ranking_gain,
+    )
+
+
+@app.post(
+    "/api/v1/router-models/train-candidate",
+    response_model=RouterCandidateTrained,
+    status_code=201,
+)
+async def train_router_candidate(
+    payload: RouterTrainCandidateCreate,
+    request: Request,
+    idempotency_key: str | None = Header(default=None, alias="Idempotency-Key"),
+) -> RouterCandidateTrained:
+    """Train one CANDIDATE router version over a window of the workspace's evidence.
+
+    SDD §11.3. Administering the workspace is required rather than membership: a training run
+    reads every eligible experience record in the workspace, and its output is a policy
+    artefact the workspace will later be asked to promote.
+
+    Idempotency is enforced against the *key*, not against the evidence. A repeated key
+    returns the version the first call produced, so a retry after a timeout cannot leave two
+    candidates behind; a different key over identical evidence is a deliberate second run and
+    produces a second version, because the key is what says the caller meant it.
+
+    The response carries the version, the snapshot it cites and the two evaluation summaries.
+    The full documents stay in the artefact store under the digests the version pins, so a
+    reader can recompute every number here instead of trusting it.
+    """
+
+    await _require_workspace_access(request, payload.workspace_id, administer=True)
+    if not idempotency_key:
+        raise IdempotencyKeyRequiredError(
+            "POST /api/v1/router-models/train-candidate requires an Idempotency-Key header"
+        )
+    service = router_training(request)
+    loader = LearnedPredictorLoader(service.store, service.artifacts)
+
+    for version in await service.store.list_router_model_versions(
+        workspace_id=payload.workspace_id
+    ):
+        if version.labels.get(IDEMPOTENCY_LABEL) == idempotency_key:
+            return RouterCandidateTrained(
+                version=version,
+                training_snapshot_id=version.training_snapshot_id,
+                calibration=_calibration_summary(loader.read_calibration_report(version)),
+                holdout=_holdout_summary(loader.read_holdout(version)),
+            )
+
+    who = current_principal(request)
+    trained = await service.train_candidate(
+        workspace_id=payload.workspace_id,
+        window=(payload.window_start, payload.window_end),
+        seed=payload.seed,
+        created_by=PrincipalRef(
+            principal_id=who.principal_id,
+            display_name=who.display_name,
+            status=who.status,
+        ),
+        split_fractions=payload.split_fractions,
+        parent_version_id=payload.parent_version_id,
+        idempotency_key=idempotency_key,
+    )
+    return RouterCandidateTrained(
+        version=trained.version,
+        training_snapshot_id=trained.snapshot.contract_id,
+        calibration=_calibration_summary(trained.calibration),
+        holdout=_holdout_summary(trained.holdout),
+    )
+
+
+@app.get("/api/v1/router-models", response_model=list[RouterModelVersion])
+async def list_router_models(
+    request: Request,
+    workspace_id: str,
+    project_id: str | None = None,
+) -> list[RouterModelVersion]:
+    """List a workspace's router versions with their lineage (SDD §11.3).
+
+    Every version carries what it descends from and what it was made of — the parent version,
+    the training snapshot, the artefact and calibration digests, the feature schema and the
+    labels holding the evaluation digests — so a reader can walk a promotion's ancestry
+    without a second call per hop.
+
+    ``workspace_id`` is required and checked against the caller's memberships. Ordering is
+    ``(created_at, contract_id)`` in both store backends, so two responses can be diffed.
+    """
+
+    await _require_workspace_access(request, workspace_id)
+    return await router_training(request).store.list_router_model_versions(
+        workspace_id=workspace_id, project_id=project_id
+    )
 
 
 @app.get("/api/v1/runs/{run_id}/events")

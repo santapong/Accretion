@@ -1,0 +1,16 @@
+{
+  "candidate_id": "ccd_1YWV9H9QDV4D7S8EQ2J7M91K2Z",
+  "content_hash": "ba86b1b19441c4a2cc1ce67f3f8b45bce46dc7f8203749491871683b343a0afd",
+  "contract_id": "rov_8F8D7PY3E21ZEG1XTT0P2TW7X3",
+  "created_at": "2026-03-01T09:00:00Z",
+  "document_type": "accretion.internal.routing-override-record/0",
+  "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "reason": "Testing a compatible lower-cost runtime.",
+  "reason_code": "EXPERIMENTAL_COMPARISON",
+  "receipt_id": "rcp_1YWV9H9QDV4D7S8EQ2J7M91K1Y",
+  "schema_version": "1.0.0",
+  "supersedes_contract_id": null,
+  "superseding_receipt_id": null,
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

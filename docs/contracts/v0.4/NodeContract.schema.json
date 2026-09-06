@@ -1,0 +1,716 @@
+{
+  "$defs": {
+    "CapabilityRef": {
+      "additionalProperties": false,
+      "description": "A capability at one schema version.\n\nRegistry \u00a74 asks for \"canonical capability ID and schema version\".\n\nThe version field is spelled ``capability_version``, the spelling\n``CapabilityRequest.capability_version`` already uses, and not ``schema_version``: every\npersisted aggregate in this repository opens with a ``schema_version`` describing *its\nown* contract, and a reference whose ``schema_version`` described something else would\nbe a trap for every reader and every hash. The value is the version of the capability's\ndeclared input/output schema \u2014 what ``Capability.version`` carries \u2014 so the repository\nkeeps two spellings of one value (``version`` on the aggregate, ``capability_version`` on\nanything that points at it) rather than three.",
+      "properties": {
+        "capability_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Capability Id",
+          "type": "string"
+        },
+        "capability_version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Capability Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "capability_id",
+        "capability_version"
+      ],
+      "title": "CapabilityRef",
+      "type": "object"
+    },
+    "CapabilityRequirement": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.2 ``required_capabilities`` reconciled with registry \u00a77.2's ``[CapabilityRef]``.\n\nThe registry requires a typed :class:`~accretion.contracts.refs.CapabilityRef`; the SDD\nadditionally carries a ``version_range`` and a ``required_scope``, neither of which the\nreference can express because a reference names one exact thing and a requirement names\nan acceptable set. Both survive: the reference is the canonical identity, the range is\nwhat the resolver may substitute within, and the scope is the authority the capability\nmust be granted before it may be bound.",
+      "properties": {
+        "capability": {
+          "$ref": "#/$defs/CapabilityRef"
+        },
+        "required_scope": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Required Scope",
+          "type": "string"
+        },
+        "version_range": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version Range",
+          "type": "string"
+        }
+      },
+      "required": [
+        "capability",
+        "version_range",
+        "required_scope"
+      ],
+      "title": "CapabilityRequirement",
+      "type": "object"
+    },
+    "EnvironmentConstraint": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.2 ``environment_constraints``; registry \u00a77.2 leaves it as ``object``.\n\nA constraint is an ``attribute``/``operator``/``value`` triple rather than a free-form\nexpression, for the reason :class:`MetricOperator` gives: an expression language inside\na frozen contract is an interpreter inside a frozen contract. The operator vocabulary is\nreused from the metric thresholds instead of being duplicated under another name.",
+      "properties": {
+        "attribute": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Attribute",
+          "type": "string"
+        },
+        "constraint_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Constraint Id",
+          "type": "string"
+        },
+        "operator": {
+          "$ref": "#/$defs/MetricOperator"
+        },
+        "rationale": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "value": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Value",
+          "type": "string"
+        }
+      },
+      "required": [
+        "constraint_id",
+        "attribute",
+        "operator",
+        "value",
+        "rationale"
+      ],
+      "title": "EnvironmentConstraint",
+      "type": "object"
+    },
+    "EvidenceClass": {
+      "description": "How the world was observed. Names are pinned by the v0.4 cross-release registry.",
+      "enum": [
+        "DIGITAL",
+        "SIMULATION",
+        "PHYSICAL",
+        "HUMAN_ATTESTATION",
+        "EXTERNAL_SOURCE"
+      ],
+      "title": "EvidenceClass",
+      "type": "string"
+    },
+    "EvidenceRequirement": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.2 ``evidence_requirements``. Named there, never given a shape; defined here.\n\n``evidence_class`` reuses :class:`~accretion.contracts.EvidenceClass` (registry \u00a75.2 and\nthe v0.3 M5 enum are already the same set, ADR-054 e), which is what makes the field\nload-bearing: registry \u00a719 requires simulation and physical evidence to stay\ntype-distinct, so a node that requires ``PHYSICAL`` evidence cannot be satisfied by a\n``SIMULATION`` artifact no matter how many of them are produced.",
+      "properties": {
+        "description": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "evidence_class": {
+          "$ref": "#/$defs/EvidenceClass"
+        },
+        "minimum_count": {
+          "minimum": 1,
+          "title": "Minimum Count",
+          "type": "integer"
+        },
+        "requirement_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Requirement Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "requirement_id",
+        "evidence_class",
+        "minimum_count",
+        "description"
+      ],
+      "title": "EvidenceRequirement",
+      "type": "object"
+    },
+    "GraphNodeKind": {
+      "enum": [
+        "TASK",
+        "AGENT",
+        "TOOL",
+        "VERIFIER",
+        "GATE",
+        "LOOP",
+        "JOIN",
+        "HUMAN",
+        "TERMINAL"
+      ],
+      "title": "GraphNodeKind",
+      "type": "string"
+    },
+    "MetricOperator": {
+      "description": "SDD \u00a77.3. How a metric threshold is compared.\n\n``CUSTOM`` names a comparison the evaluator contract implements, and it exists because\nthe alternative \u2014 inventing an expression language inside a frozen schema \u2014 would put\nan interpreter in a contract. A ``CUSTOM`` metric without an ``evaluator_contract`` is\ntherefore rejected by :class:`MetricThreshold`.",
+      "enum": [
+        "GTE",
+        "LTE",
+        "EQ",
+        "CUSTOM"
+      ],
+      "title": "MetricOperator",
+      "type": "string"
+    },
+    "ObjectiveContractRef": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.1. The exact objective revision a node was authorised against.\n\nThis is the type of the registry \u00a73 optional header field ``objective_contract_ref``,\nwhich is why it is defined before every other contract in this module and why\n:class:`~accretion.contracts.canonical.CanonicalContract` is rebuilt immediately below\nit.\n\n**Field coverage (SDD \u00a77.1 \u2192 here).** ``project_id`` \u2192 the header's ``project_id``.\n``objective_contract_id`` \u2192 ``objective_contract_id``. ``version`` \u2192 ``revision``, the\nregistry \u00a77.1 spelling, which is also what the ``ObjectiveContract`` aggregate calls its\nown counter. ``content_hash`` \u2192 ``objective_contract_hash``. ``verified_success_floor``,\n``utility_profile_id``, ``approved_at`` \u2192 unchanged. ``risk_policy_id`` \u2192 ``risk_policy``,\na typed :class:`~accretion.contracts.refs.PolicyRef` (registry \u00a73.1 requires policies to\nuse immutable typed references, and an authority decision audited against \"policy v3\" is\naudited against a label). ``approved_by`` \u2192 a typed\n:class:`~accretion.contracts.PrincipalRef` for the same reason.\n\n**Why the target's identity is qualified.** Registry \u00a73 describes the header field as\n``{contract_id, revision, content_hash}``, but inside a :class:`CanonicalContract` those\ntwo unqualified names already mean *this reference's own* id and digest. The target's\nare therefore spelled ``objective_contract_id`` and ``objective_contract_hash``. Nothing\nis lost and the ambiguity that would otherwise sit in every receipt is.\n\n``ID_KIND`` is ``None``: ADR-055 mints no prefix for a reference, because a reference is\ncreated and owned by the contract that embeds it and has no id space to collide in.\n``verified_success_floor`` is copied onto the reference rather than dereferenced because\n\u00a78.3 requires routing to run against an exact snapshot \u2014 a router that re-read the floor\nfrom the live objective would be routing against a number the receipt cannot prove.",
+      "properties": {
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.objective-contract-ref",
+          "default": "accretion.objective-contract-ref",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "objective_contract_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Objective Contract Hash",
+          "type": "string"
+        },
+        "objective_contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Objective Contract Id",
+          "type": "string"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "risk_policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "utility_profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Utility Profile Id",
+          "type": "string"
+        },
+        "verified_success_floor": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Verified Success Floor",
+          "type": "number"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "objective_contract_id",
+        "revision",
+        "objective_contract_hash",
+        "verified_success_floor",
+        "utility_profile_id",
+        "risk_policy",
+        "approved_by",
+        "approved_at"
+      ],
+      "title": "ObjectiveContractRef",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "description": "A policy by id, version and content digest (registry \u00a74).\n\nAuthority decisions are audited against the exact policy text that produced them, so the\ncontent digest is required: \"policy v3\" is a label, and labels are editable.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "policy_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version",
+        "content_digest"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "PrincipalRef": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "principal_id": {
+          "title": "Principal Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PrincipalStatus"
+        }
+      },
+      "required": [
+        "principal_id",
+        "status"
+      ],
+      "title": "PrincipalRef",
+      "type": "object"
+    },
+    "PrincipalStatus": {
+      "enum": [
+        "ACTIVE",
+        "DISABLED"
+      ],
+      "title": "PrincipalStatus",
+      "type": "string"
+    },
+    "ResourceBudget": {
+      "additionalProperties": false,
+      "description": "Registry \u00a77.1 ``resource_budget`` and \u00a77.2 ``resource_cap``; SDD \u00a77.2 ``budget``.\n\n``maximum_cost`` is a :class:`~decimal.Decimal` and not a float. Money is the one\nquantity in this family where binary rounding is a defect rather than a nuisance, and\n:func:`~accretion.contracts.canonical.content_hash` serialises a decimal as its exact\ndigit string, so ``0.10`` stays ``0.10`` in the digest as well as in the arithmetic.",
+      "properties": {
+        "maximum_attempts": {
+          "minimum": 1,
+          "title": "Maximum Attempts",
+          "type": "integer"
+        },
+        "maximum_cost": {
+          "anyOf": [
+            {
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+              "type": "string"
+            }
+          ],
+          "title": "Maximum Cost"
+        },
+        "maximum_latency_ms": {
+          "minimum": 0,
+          "title": "Maximum Latency Ms",
+          "type": "integer"
+        },
+        "maximum_tool_calls": {
+          "minimum": 0,
+          "title": "Maximum Tool Calls",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "maximum_cost",
+        "maximum_latency_ms",
+        "maximum_attempts",
+        "maximum_tool_calls"
+      ],
+      "title": "ResourceBudget",
+      "type": "object"
+    },
+    "RiskClass": {
+      "description": "Registry \u00a75.3. The routing risk vocabulary, beside v0.1's ``RiskLevel``.\n\n``RiskLevel`` (``LOW | MEDIUM | HIGH | CRITICAL``) is the human-approval ladder used by\nplanning and governance and it stays exactly as it is (ADR-054 d). ``RiskClass`` answers\na different question \u2014 not \"how much authority does this need\" but \"what kind of world\ndoes this act on\" \u2014 which is why ``SIMULATION`` and ``PHYSICAL_HIGH`` are values here\nand could never be values there. The two are joined by the total mapping\n:func:`risk_level_for`.\n\nProject policy may make a class stricter. It may not reduce ``PHYSICAL_HIGH`` through a\nplugin, a learned policy or a runtime request; ``PROHIBITED`` is not a level at all but\na refusal, and it maps to no approval ladder because nothing approves it.",
+      "enum": [
+        "LOW_DIGITAL",
+        "MEDIUM_DIGITAL",
+        "HIGH_DIGITAL",
+        "SIMULATION",
+        "PHYSICAL_HIGH",
+        "PROHIBITED"
+      ],
+      "title": "RiskClass",
+      "type": "string"
+    },
+    "SchemaRef": {
+      "additionalProperties": false,
+      "description": "Registry \u00a77.2 ``input_contracts``/``output_contracts``: a schema by id and digest.\n\nRegistry \u00a77.2 asks for ``[schema-ref]`` where SDD \u00a77.2 wrote an inline ``json_schema``\nbody. The reference wins for the reason registry \u00a73.1 gives generally \u2014 a reference\npins, a copy drifts \u2014 and specifically because two nodes exchanging a payload must be\nable to prove they meant the *same* schema, which comparing two embedded copies cannot\ndo once either is reformatted. ``version`` is the human-facing label and\n``content_digest`` is what actually changed.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "schema_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Schema Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "schema_id",
+        "version",
+        "content_digest"
+      ],
+      "title": "SchemaRef",
+      "type": "object"
+    },
+    "VerificationSpecRef": {
+      "additionalProperties": false,
+      "description": "Registry \u00a77.2 ``verification_spec_ref``: ``{id, hash}``.\n\nIts ``content_hash`` is the referenced spec's header digest, and it is deliberately\n*inside* whatever hashes this reference: :func:`~accretion.contracts.canonical.content_hash`\nexcludes only the top-level field, so a node contract's digest changes when the spec it\npoints at changes. That is the property ADR-044 needs \u2014 verification semantics frozen\nbefore routing \u2014 expressed as arithmetic rather than as a rule someone has to remember.",
+      "properties": {
+        "content_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "verification_spec_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Verification Spec Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "verification_spec_id",
+        "content_hash"
+      ],
+      "title": "VerificationSpecRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "SDD \u00a77.2 and registry \u00a77.2. One routable graph-node execution, fully specified.\n\nADR-041 makes one graph-node execution instance one routable action, and this contract\nis that action's requirements *before* any configuration is chosen. Everything a router\nmay consider is here; nothing a router decides is.\n\n**Field coverage (SDD \u00a77.2 \u2192 here).** ``schema_version`` \u2192 the header's semver\n``schema_version`` (the SDD's ``accretion.node-contract/v1`` string is replaced by\n``contract_type`` plus a semver, per registry \u00a73). ``node_contract_id`` \u2192 the header's\n``contract_id``. ``project_id`` \u2192 header. ``run_graph_id``, ``graph_revision``,\n``node_id``, ``execution_instance_id``, ``objective``, ``evidence_requirements``,\n``environment_constraints``, ``immutable_hash``, ``created_at`` \u2192 unchanged.\n``objective_contract_ref`` \u2192 the header's field, and required here by a validator.\n``node_type`` \u2192 ``node_kind`` (registry \u00a77.2), typed as the v0.1\n:class:`~accretion.contracts.GraphNodeKind`. ``input_schema``/``output_schema`` \u2192\n``input_contracts``/``output_contracts`` as ``[SchemaRef]`` (registry \u00a77.2).\n``required_capabilities`` \u2192 ``[CapabilityRequirement]``, which carries the registry's\n``CapabilityRef`` plus the SDD's version range and scope. ``risk_class`` \u2192\n``allowed_risk_class`` as a :class:`RiskClass` (registry \u00a77.2 and \u00a75.3; the SDD's\n``LOW|MEDIUM|HIGH|PHYSICAL`` is superseded). ``budget`` \u2192 ``resource_cap`` (registry\n\u00a77.2). ``verification_spec`` \u2192 ``verification_spec_ref`` (registry \u00a77.2): the spec is a\ncontract with its own id and digest, and embedding a copy of it inside every node would\ncreate the second source of truth registry \u00a721 forbids. ``failure_policy_ref`` is a\nregistry \u00a77.2 minimum with no SDD counterpart and is present.\n\n**How a graph revision is spelled.** Registry \u00a77.2 asks for ``graph_revision_id: uuid``.\nThis repository does not have one: v0.2 represents a revision as a monotonic integer\n(``RunGraph.graph_revision``, ``run_graph_revisions.revision``, both ``ge=1``) scoped by\n``run_graph_id``, and the unique constraint that makes a revision identifiable is the\npair. So the pair is what this contract carries. Minting a synthetic revision *id* here\nwould have created an identifier with no row behind it, which registry \u00a718's \"adapt the\nlayout, keep the semantics\" allowance exists precisely to avoid.\n\n**The two digests.** ``immutable_hash`` is computed over the whole contract excluding\nboth digests; the header's ``content_hash`` is then computed over everything including\n``immutable_hash``. They are not redundant. ``immutable_hash`` is the value other\ncontracts pin \u2014 a receipt's ``node_contract_hash``, an experience signature \u2014 and it must\nstay stable under the registry's future header additions, while ``content_hash`` is the\n\u00a73 header digest of this document as stored. Sealing them in that order means tampering\nwith either one is detected by the other.",
+  "properties": {
+    "allowed_risk_class": {
+      "$ref": "#/$defs/RiskClass"
+    },
+    "content_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "contract_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "accretion.node-contract",
+      "default": "accretion.node-contract",
+      "title": "Contract Type",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/PrincipalRef"
+    },
+    "environment_constraints": {
+      "items": {
+        "$ref": "#/$defs/EnvironmentConstraint"
+      },
+      "maxItems": 32,
+      "title": "Environment Constraints",
+      "type": "array"
+    },
+    "evidence_requirements": {
+      "items": {
+        "$ref": "#/$defs/EvidenceRequirement"
+      },
+      "maxItems": 32,
+      "title": "Evidence Requirements",
+      "type": "array"
+    },
+    "execution_instance_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Execution Instance Id",
+      "type": "string"
+    },
+    "failure_policy_ref": {
+      "$ref": "#/$defs/PolicyRef"
+    },
+    "graph_revision": {
+      "minimum": 1,
+      "title": "Graph Revision",
+      "type": "integer"
+    },
+    "immutable_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Immutable Hash",
+      "type": "string"
+    },
+    "input_contracts": {
+      "items": {
+        "$ref": "#/$defs/SchemaRef"
+      },
+      "maxItems": 32,
+      "title": "Input Contracts",
+      "type": "array"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "node_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Node Id",
+      "type": "string"
+    },
+    "node_kind": {
+      "$ref": "#/$defs/GraphNodeKind"
+    },
+    "objective": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "title": "Objective",
+      "type": "string"
+    },
+    "objective_contract_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectiveContractRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "output_contracts": {
+      "items": {
+        "$ref": "#/$defs/SchemaRef"
+      },
+      "maxItems": 32,
+      "title": "Output Contracts",
+      "type": "array"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "required_capabilities": {
+      "items": {
+        "$ref": "#/$defs/CapabilityRequirement"
+      },
+      "maxItems": 64,
+      "title": "Required Capabilities",
+      "type": "array"
+    },
+    "resource_cap": {
+      "$ref": "#/$defs/ResourceBudget"
+    },
+    "retention_class": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention Class"
+    },
+    "run_graph_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Run Graph Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "supersedes_contract_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Contract Id"
+    },
+    "verification_spec_ref": {
+      "$ref": "#/$defs/VerificationSpecRef"
+    },
+    "workspace_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_id",
+    "created_by",
+    "workspace_id",
+    "node_id",
+    "run_graph_id",
+    "graph_revision",
+    "execution_instance_id",
+    "objective",
+    "node_kind",
+    "allowed_risk_class",
+    "resource_cap",
+    "verification_spec_ref",
+    "failure_policy_ref"
+  ],
+  "title": "NodeContract",
+  "type": "object"
+}

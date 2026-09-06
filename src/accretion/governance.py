@@ -44,9 +44,13 @@ from accretion.contracts import (
     MetaPlugin,
     MetaSkill,
     PrincipalStatus,
+    Provider,
     RiskLevel,
     Task,
 )
+from accretion.contracts.canonical import canonical_json, content_hash
+from accretion.contracts.routing import ToolBinding
+from accretion.digests import legacy_json_digest
 from accretion.ids import new_id
 from accretion.persistence.side_effects import SideEffectLedger, SideEffectStatus
 from accretion.persistence.store import StateStore
@@ -153,9 +157,11 @@ class CapabilityPolicyEngine:
                 AuthorizationOutcome.DENY,
                 "side-effecting capability request requires an idempotency key",
             )
-        protected = bool(capability.side_effects) or (
-            RISK_RANK[capability.risk] >= RISK_RANK[policy.require_approval_at_risk]
-        ) or RISK_RANK[task.envelope.risk_level] >= RISK_RANK[policy.require_approval_at_risk]
+        protected = (
+            bool(capability.side_effects)
+            or (RISK_RANK[capability.risk] >= RISK_RANK[policy.require_approval_at_risk])
+            or RISK_RANK[task.envelope.risk_level] >= RISK_RANK[policy.require_approval_at_risk]
+        )
         if not protected:
             return decision(AuthorizationOutcome.ALLOW, "explicitly allowed low-risk capability")
         if approval is None or approval.status is ApprovalStatus.PENDING:
@@ -181,9 +187,7 @@ class CapabilityExecutor:
         if capability.backend is CapabilityBackend.PYTHON:
             handler = self.handlers.get(capability.capability_id)
             if handler is None:
-                raise RuntimeError(
-                    f"no allowlisted Python handler for {capability.capability_id}"
-                )
+                raise RuntimeError(f"no allowlisted Python handler for {capability.capability_id}")
             return await handler(arguments, credentials)
         if capability.backend is CapabilityBackend.CLI:
             return await self._execute_cli(capability, arguments, credentials)
@@ -199,8 +203,10 @@ class CapabilityExecutor:
     ) -> dict[str, Any]:
         execution = capability.provider_projections.get("accretion", {})
         command = execution.get("command") if isinstance(execution, dict) else None
-        if not isinstance(command, list) or not command or not all(
-            isinstance(part, str) and part for part in command
+        if (
+            not isinstance(command, list)
+            or not command
+            or not all(isinstance(part, str) and part for part in command)
         ):
             raise RuntimeError("CLI capability does not declare a fixed argv command")
         credential_env = execution.get("credential_env", {})
@@ -267,10 +273,11 @@ def approval_binding(request: CapabilityRequest) -> str:
         "arguments": request.arguments,
         "idempotency_key": request.idempotency_key,
     }
-    digest = hashlib.sha256(
-        json.dumps(bound, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
-    return f"capability:{digest}"
+    # Byte-frozen, not converged (M8). ``arguments`` is arbitrary caller-supplied JSON,
+    # and this digest is persisted as an approval's ``native_request_id``: hashing a
+    # non-ASCII argument as itself rather than as ``\uXXXX`` would orphan every approval
+    # an earlier release recorded. See :mod:`accretion.digests`.
+    return f"capability:{legacy_json_digest(bound)}"
 
 
 class CapabilityGateway:
@@ -373,7 +380,15 @@ class CapabilityGateway:
         request: CapabilityRequest,
         connection: ConnectionRef | None = None,
         binding: CapabilityBinding | None = None,
+        *,
+        executing_provider: Provider | None = None,
     ) -> CapabilityExecutionResult:
+        # Who gets named in the authorization terminals and the audit events. The run
+        # carries the *requested* provider; the provider that actually executed the
+        # node is a property of that node's session, which only the scheduler knows.
+        # Callers that hold no session -- the MCP gateway, the API, search, experience
+        # -- pass nothing and keep naming ``run.provider``, which is what every one of
+        # them named before this parameter existed.
         # The resolved connection and binding say which backend actually served the
         # call. They were previously read for credentials and then dropped, which
         # left the stored result unable to name its own connector.
@@ -387,6 +402,7 @@ class CapabilityGateway:
         run = await self.store.get_run(request.run_id)
         if run is None:
             raise KeyError(request.run_id)
+        provider = executing_provider if executing_provider is not None else run.provider
         task = await self.store.get_task(run.task_id)
         if task is None:
             raise KeyError(run.task_id)
@@ -396,9 +412,7 @@ class CapabilityGateway:
         if run.principal_id:
             owner = await self.store.get_principal(run.principal_id)
             if owner is None or owner.status is PrincipalStatus.DISABLED:
-                raise PermissionError(
-                    f"principal {run.principal_id} may not invoke capabilities"
-                )
+                raise PermissionError(f"principal {run.principal_id} may not invoke capabilities")
         capability = await self.store.get_capability(
             request.capability_id, request.capability_version
         )
@@ -413,7 +427,7 @@ class CapabilityGateway:
                 reason="unknown or unversioned capability",
             )
             return await self._terminal(
-                run.provider,
+                provider,
                 request,
                 authorization,
                 CapabilityExecutionStatus.DENIED,
@@ -436,7 +450,7 @@ class CapabilityGateway:
             approval=approval,
         )
         await self._event(
-            run.provider,
+            provider,
             request,
             EventType.TOOL_REQUESTED,
             "accretion/capability-requested",
@@ -444,7 +458,7 @@ class CapabilityGateway:
         )
         if authorization.outcome is AuthorizationOutcome.DENY:
             return await self._terminal(
-                run.provider,
+                provider,
                 request,
                 authorization,
                 CapabilityExecutionStatus.DENIED,
@@ -467,7 +481,7 @@ class CapabilityGateway:
             await self.store.save_capability_result(result)
             if not await self._approval_event_exists(request.run_id, approval.approval_id):
                 await self._event(
-                    run.provider,
+                    provider,
                     request,
                     EventType.APPROVAL_REQUIRED,
                     "accretion/capability-approval-required",
@@ -483,9 +497,7 @@ class CapabilityGateway:
             # AC3-SEC-03: connector-backed capabilities take their credential from the
             # broker, never from the resolver, the request, or the agent.
             try:
-                connection_credentials = await self._connection_credentials(
-                    connection, capability
-                )
+                connection_credentials = await self._connection_credentials(connection, capability)
             except CredentialUnavailableError:
                 if (
                     capability.backend is CapabilityBackend.MCP
@@ -509,7 +521,7 @@ class CapabilityGateway:
             operation_id = operation.operation_id
             if not created:
                 return await self._duplicate_result(
-                    run.provider,
+                    provider,
                     request,
                     authorization,
                     operation,
@@ -528,7 +540,7 @@ class CapabilityGateway:
         )
         await self.store.save_capability_result(executing)
         await self._event(
-            run.provider,
+            provider,
             request,
             EventType.TOOL_STARTED,
             "accretion/capability-started",
@@ -553,9 +565,7 @@ class CapabilityGateway:
                     correlation_id=request.request_id,
                 )
             else:
-                raw_output = await self.executor.execute(
-                    capability, arguments, credentials
-                )
+                raw_output = await self.executor.execute(capability, arguments, credentials)
             # The output transform runs *before* the scrub / redact / validate chain,
             # and that chain's order is unchanged: the transform only decides what the
             # chain is handed. Normalized output is still redacted, still scrubbed of
@@ -576,7 +586,7 @@ class CapabilityGateway:
                     request.idempotency_key, succeeded=True, result=output
                 )
             return await self._terminal(
-                run.provider,
+                provider,
                 request,
                 authorization,
                 CapabilityExecutionStatus.SUCCEEDED,
@@ -600,7 +610,7 @@ class CapabilityGateway:
                     result={"error": error.model_dump(mode="json")},
                 )
             return await self._terminal(
-                run.provider,
+                provider,
                 request,
                 authorization,
                 CapabilityExecutionStatus.FAILED,
@@ -707,9 +717,7 @@ class CapabilityGateway:
     async def _approval_for(self, request: CapabilityRequest) -> ApprovalRecord | None:
         native_request_id = approval_binding(request)
         records = await self.store.list_approvals(request.run_id)
-        return next(
-            (item for item in records if item.native_request_id == native_request_id), None
-        )
+        return next((item for item in records if item.native_request_id == native_request_id), None)
 
     async def _ensure_approval(self, request: CapabilityRequest) -> ApprovalRecord:
         return await self.store.save_approval(
@@ -893,6 +901,73 @@ class GatewayCapabilityInvoker:
     workspace_id: str | None = None
     declared_reason: str = "workflow capability reference"
 
+    async def invoke_selected(
+        self,
+        *,
+        run_id: str,
+        node_id: str,
+        selected: ToolBinding,
+        workspace_id: str,
+        arguments: dict[str, Any],
+        executing_provider: Provider | None = None,
+    ) -> CapabilityExecutionResult:
+        """Execute only the exact receipt-pinned implementation, never substitute.
+
+        Unlike optional legacy capability enrichment, routed execution must fail
+        if resolution drifted or the gateway did not complete the invocation.
+        The checked binding is passed directly into the existing policy gateway.
+        """
+        run = await self.gateway.store.get_run(run_id)
+        if run is None or not run.principal_id:
+            raise PermissionError("ROUTED_TOOL_UNAUTHORIZED: execution owner unavailable")
+        memberships = await self.gateway.store.list_workspace_memberships(
+            workspace_id=workspace_id, principal_id=run.principal_id
+        )
+        if not memberships:
+            raise PermissionError("ROUTED_TOOL_UNAUTHORIZED: workspace access unavailable")
+        resolved = await self.resolver.resolve(
+            selected.capability.capability_id,
+            principal_id=run.principal_id,
+            workspace_id=workspace_id,
+        )
+        if (
+            resolved is None
+            or resolved.outcome
+            not in {
+                CapabilityResolutionOutcome.OK,
+                CapabilityResolutionOutcome.NO_CONNECTOR_REQUIRED,
+            }
+            or resolved.binding is None
+            or not resolved.binding.enabled
+            or resolved.capability.capability_id != selected.capability.capability_id
+            or resolved.capability.version != selected.capability.capability_version
+            or resolved.binding.binding_id != selected.binding_id
+            or resolved.binding.schema_version != selected.binding_version
+            or resolved.binding.backend.tool_name != selected.tool.tool_id
+            or content_hash(
+                {"capability": resolved.capability, "binding": resolved.binding}, exclude=()
+            )
+            != selected.tool.implementation_digest
+        ):
+            raise RuntimeError("ROUTED_TOOL_BINDING_DRIFT: selected implementation unavailable")
+        result = await self.gateway.execute(
+            CapabilityRequest(
+                request_id=new_id("capability_request"),
+                run_id=run_id,
+                node_id=node_id,
+                capability_id=selected.capability.capability_id,
+                capability_version=selected.capability.capability_version,
+                arguments=arguments,
+                declared_reason=self.declared_reason,
+            ),
+            resolved.connection,
+            resolved.binding,
+            executing_provider=executing_provider,
+        )
+        if result.status is not CapabilityExecutionStatus.SUCCEEDED:
+            raise RuntimeError("ROUTED_TOOL_FAILED: selected invocation did not succeed")
+        return result
+
     async def __call__(
         self,
         *,
@@ -900,6 +975,7 @@ class GatewayCapabilityInvoker:
         node_id: str,
         capability_id: str,
         arguments: dict[str, Any],
+        executing_provider: Provider | None = None,
     ) -> CapabilityExecutionResult | None:
         resolved = await self.resolver.resolve(
             capability_id,
@@ -925,6 +1001,7 @@ class GatewayCapabilityInvoker:
             ),
             resolved.connection,
             resolved.binding,
+            executing_provider=executing_provider,
         )
 
 
@@ -1019,9 +1096,14 @@ async def seed_governance(store: StateStore) -> None:
         "capabilities": [item.capability_id for item in capabilities],
         "skills": [skill.skill_id],
     }
-    checksum = hashlib.sha256(
-        json.dumps(plugin_payload, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
+    # Converged onto ADR-056 canonical JSON in M8. The payload is four code literals, so
+    # its domain is closed and entirely ASCII and the digest is the same constant either
+    # way --- which had to be *proved* rather than assumed, because ``upsert_plugin``
+    # refuses any drift for an existing ``(plugin_id, version)`` and a moved checksum
+    # would fail every deployment that already seeded this row. ``canonical_json`` and not
+    # ``content_hash``: the latter drops a top-level ``content_hash`` key, and this digest
+    # must commit to every key it is given.
+    checksum = hashlib.sha256(canonical_json(plugin_payload)).hexdigest()
     await store.upsert_plugin(
         MetaPlugin(
             plugin_id="accretion-core-governance",

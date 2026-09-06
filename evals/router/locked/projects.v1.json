@@ -1,0 +1,143 @@
+{
+  "projects": [
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "FORK_PAIR_A_UPSTREAM",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H1"
+      },
+      "project_id": "prj-router-locked-web-api",
+      "repository_identity": "a6ce978250eee52755d59878809b2040c85bcdf1ee552004eafa7c12b103dc97",
+      "task_family": "locked-web-api-refactor"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "FORK_PAIR_A_FORK",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-locked-web-api-fork",
+      "repository_identity": "a6ce978250eee52755d59878809b2040c85bcdf1ee552004eafa7c12b103dc97",
+      "task_family": "locked-web-api-hardening"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "FORK_PAIR_B_UPSTREAM",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H1"
+      },
+      "project_id": "prj-router-locked-etl-batch",
+      "repository_identity": "7e8d5017b832dfdbdf8b7d7406fea6e75ba7cf726923e6cd09dfdeeca6a5f4d5",
+      "task_family": "locked-etl-pipeline-hardening"
+    },
+    {
+      "ancestors": [
+        "prj-router-locked-etl-batch"
+      ],
+      "labels": {
+        "lineage_role": "FORK_PAIR_B_FORK",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-locked-etl-batch-fork",
+      "repository_identity": "7e8d5017b832dfdbdf8b7d7406fea6e75ba7cf726923e6cd09dfdeeca6a5f4d5",
+      "task_family": "locked-etl-pipeline-hardening"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "PAPER_CHAIN_ROOT",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H1"
+      },
+      "project_id": "prj-router-locked-paper-baseline",
+      "repository_identity": "f5e53d8cf12ec0a571cbaea1621b25cf1fcf35ad2cb754bdb63c494e36c8ebe4",
+      "task_family": "locked-planner-ablation-baseline"
+    },
+    {
+      "ancestors": [
+        "prj-router-locked-paper-baseline"
+      ],
+      "labels": {
+        "lineage_role": "PAPER_CHAIN_EXTENSION",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H1"
+      },
+      "project_id": "prj-router-locked-paper-extension",
+      "repository_identity": "8f9a021667ddbaeddf15b49c0fe6a46057dbf12e8a3550a59a2eedc1f79b983b",
+      "task_family": "locked-planner-ablation-extension"
+    },
+    {
+      "ancestors": [
+        "prj-router-locked-paper-extension"
+      ],
+      "labels": {
+        "lineage_role": "PAPER_CHAIN_BENCHMARK",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-locked-paper-benchmark",
+      "repository_identity": "67630d144276e830f12e43364f37fd987ed1559969ac40e94ae390eacd91ecbf",
+      "task_family": "locked-planner-ablation-benchmark"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "GENERATED_INSTANCE_A",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H1"
+      },
+      "project_id": "prj-router-locked-cli-scaffold",
+      "repository_identity": "12f81d05a71bb69636d8ab291a60988131626f384fd3d0a361fb2b1cac456280",
+      "task_family": "locked-cli-scaffolding"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "GENERATED_INSTANCE_B",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-locked-cli-generator",
+      "repository_identity": "dbc1b8ea8f7121b9db4c9c6e27f631026b200da232c452febb193ebc78a66851",
+      "task_family": "locked-cli-scaffolding"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "STANDALONE",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H1"
+      },
+      "project_id": "prj-router-locked-infra-terraform",
+      "repository_identity": "0f4057531d5b717510af7746475cce30178934fbc40e6f34f803ab6018013d28",
+      "task_family": "locked-infrastructure-drift-repair"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "STANDALONE",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-locked-docs-site",
+      "repository_identity": "5ebaf00463d5dbe6d624150d5e7d57f24210e2f41373b898d75b9f80162dad66",
+      "task_family": "locked-documentation-site-build"
+    },
+    {
+      "ancestors": [],
+      "labels": {
+        "lineage_role": "STANDALONE",
+        "origin": "SYNTHETIC",
+        "provider_era": "2026-H2"
+      },
+      "project_id": "prj-router-locked-notebook-analysis",
+      "repository_identity": "25e92bb6541b9087b6298f53de0b7ac6eebd4067f8ff7eb3f37e89a7b78d4151",
+      "task_family": "locked-notebook-analysis-port"
+    }
+  ],
+  "suite_version": "v1"
+}

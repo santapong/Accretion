@@ -1,9 +1,20 @@
 {
+  // `composite` forbids `noEmit`, so `tsc -b` must emit somewhere. Left at the default it
+  // wrote `vite.config.js` next to `vite.config.ts` - and Vite resolves the `.js` FIRST,
+  // so a stale emit silently shadowed edits to the real config until `tsc -b` reran. In
+  // CI that never bit (`build` is `tsc -b && vite build`, always fresh), but locally it
+  // looks exactly like a plugin failing to load. Emit out of the way instead.
   "compilerOptions": {
+    "outDir": "./node_modules/.tmp/tsconfig-node",
     "composite": true,
     "skipLibCheck": true,
     "module": "ESNext",
     "moduleResolution": "Bundler"
   },
-  "include": ["vite.config.ts", "eslint.config.js"]
+  // `budget/` is Node-side gate code that lives outside `src/` on purpose: a file under
+  // `src/` is typechecked against the browser lib by `tsconfig.app.json`, which has no
+  // `@types/node`, so `import { gzipSync } from "node:zlib"` would not resolve. Outside
+  // `src/` and outside this list it would be typechecked by NOTHING - ESLint would still
+  // lint it, and `tsc -b` would never look at it.
+  "include": ["vite.config.ts", "eslint.config.js", "budget"]
 }

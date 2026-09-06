@@ -25,15 +25,18 @@ folder root stays uncluttered.
 | Operate the token broker | [Token broker runbook](runbooks/v03-token-broker.md) | [SDD v0.3](sdd/Accretion_SDD_v0.3.md), [v0.3 backlog](releases/v0.3/backlog.md) |
 | Install and govern plugins | [Plugins runbook](runbooks/v03-plugins.md) | [SDD v0.3](sdd/Accretion_SDD_v0.3.md) |
 | Administer connections, MCP and identity | [Frontend and administration runbook](runbooks/v03-frontend-admin.md) | [Capability inspector](releases/v0.3/acceptance-baseline.md) |
+| Add or move an operator UI screen | [Operator UI source tree runbook](runbooks/v03-operator-ui.md) | [Frontend guide](guides/frontend.md) |
 | Use the research capability set | [Research runbook](runbooks/v03-research.md) | [Experiments and results](research/README.md) |
 | Enable enterprise-managed authorization | [Enterprise authorization runbook](runbooks/v03-enterprise-auth.md) | [SDD v0.3 §24.9](sdd/Accretion_SDD_v0.3.md) |
 | Check acceptance criteria | [Acceptance baseline](releases/v0.3/acceptance-baseline.md) | [verification policy](acceptance/criteria.toml) |
 | Review or reproduce experiments | [Experiments and results](research/README.md) | [ACR-ARCH](research/acr-arch-v0.1.md), [P5](research/p5/benchmark.md), [P6](research/p6/acceptance.md), [P7](research/p7/acceptance.md) |
 | Review security | [Security policy](../SECURITY.md) | [Trust-boundary diagram](assets/trust-boundary.svg) |
-| Review the current release | [v0.3 release notes](releases/v0.3/notes.md) | [release audit](releases/v0.3/audit.md), [acceptance baseline](releases/v0.3/acceptance-baseline.md), [browser and accessibility evidence](releases/v0.3/browser-a11y-evidence.md) |
+| Review the current release | [v0.3 release notes](releases/v0.3/notes.md) | [frozen v0.3 baseline](releases/v0.3/baseline.md), [release audit](releases/v0.3/audit.md), [acceptance baseline](releases/v0.3/acceptance-baseline.md), [browser and accessibility evidence](releases/v0.3/browser-a11y-evidence.md) |
 | Reproduce the release gate | [Release-hardening runbook](runbooks/v03-release-hardening.md) | [SDD v0.3 §24.8](sdd/Accretion_SDD_v0.3.md), [`scripts/release_gate.py`](../scripts/release_gate.py) |
 | Review the previous release | [Frozen v0.2 baseline](releases/v0.2/baseline.md) | [release audit](releases/v0.2/audit.md), [release notes](releases/v0.2/notes.md), [delivery plan](releases/v0.2/plan.md) |
 | Plan post-v0.3 work | [v0.3 backlog](releases/v0.3/backlog.md) | [v0.3 SDD](sdd/Accretion_SDD_v0.3.md) |
+| Build v0.4 (evidence-aware node configuration routing) | [v0.4 milestone index](releases/v0.4/README.md) | [SDD v0.4](sdd/Accretion_SDD_v0.4.md), [M0 plan](releases/v0.4/m0-plan.md), [v0.4 backlog](releases/v0.4/backlog.md), [forward package](sdd/future/v0.4-v1.0/00_READ_ME_FIRST.md) |
+| Review the v0.4 release preparation | [v0.4 release notes (draft)](releases/v0.4/notes.md) | [release audit (draft)](releases/v0.4/audit.md), [v0.4 milestone index](releases/v0.4/README.md), [router pre-registration](research/v0.4/preregistration.md) |
 
 ## Folder map
 
@@ -44,7 +47,7 @@ folder root stays uncluttered.
 | [`research/`](research/) | Experiment design, frozen results, acceptance evidence, and decisions |
 | [`releases/`](releases/) | Versioned plans, audits, notes, and released baselines |
 | [`governance/`](governance/) | Branch workflow and documentation maintenance rules |
-| [`sdd/`](sdd/) | Normative versioned system designs and the locked forward-design package |
+| [`sdd/`](sdd/) | Normative versioned system designs (v0.1-v0.4) and the forward-design package for v0.5-v1.0 |
 | [`assets/`](assets/) | Accessible repository-native diagrams and illustrative images |
 
 See [documentation maintenance](governance/documentation.md) for ownership,
@@ -92,8 +95,10 @@ bitmap in the showcase is illustrative and never defines behavior.
 ## Frontend completion
 
 The React frontend is implemented for every P0–P7 release surface plus the v0.3
-M6 administration pages — seventeen routes in all. The deterministic checks cover
-97 component tests, generated OpenAPI, ESLint, TypeScript, and production build.
+M6 administration pages and the v0.4 M9 router administration page — eighteen routes
+in all. The deterministic checks cover
+the component test suite, generated OpenAPI, ESLint, TypeScript, and production
+build.
 For v0.3.0 rendered browser and accessibility evidence **was** collected: axe-core
 4.10.2 reports zero violations across all seventeen routes, which discharges the
 v0.2 release exception tracked in

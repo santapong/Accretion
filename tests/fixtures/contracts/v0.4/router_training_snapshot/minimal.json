@@ -1,0 +1,45 @@
+{
+  "content_hash": "51cd4e14f4abec9896bb14554312b6e0b57abd77002499b93048d092c74ce0fc",
+  "contract_id": "rts_3NV9QRRG90G3YNM4C3KGAGP23T",
+  "contradiction_treatment": "OPEN contradictions excluded; RESOLVED kept with their adjudication.",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "deduplication_rule": "One record per (configuration_hash, source_node_execution_id).",
+  "included_experience_ids": [
+    "exp_9GGR1WTFAY2TCVCVC0NK0E24MR",
+    "exp_93SGC60S7RXSRE3NTNHNW5EWXZ"
+  ],
+  "permission_proof": {
+    "granted_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "justification": "Shared under the workspace evidence-sharing policy.",
+    "policy": {
+      "content_digest": "b941fb5563b0aabec00a46d9150fff0d85e017346a26e12467ecdb80ffa458fd",
+      "policy_id": "workspace-risk-policy",
+      "version": "3.1.0"
+    },
+    "scope": "TEAM_WORKSPACE"
+  },
+  "split": {
+    "holdout_project_ids": [
+      "prj_FHYW7NW5TND9QGZTYTXBP73EME"
+    ],
+    "training_project_ids": [
+      "prj_V5VTWCEPYWB9XC521RTV7WWBRX",
+      "prj_6TZDSQP0SSP630CXEKYZ4ZWN20"
+    ],
+    "validation_project_ids": [
+      "prj_ZVMK204GF0C7ZHRB2C80B7R3PG"
+    ]
+  },
+  "window_end": "2026-03-01T00:00:00Z",
+  "window_start": "2026-01-01T00:00:00Z",
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

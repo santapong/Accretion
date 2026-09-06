@@ -12,7 +12,7 @@ and Identity pages.
 
 > [!IMPORTANT]
 > The frontend is feature-complete for the v0.3 release. Its generated
-> contract, lint, TypeScript, 97 component tests, and production build pass.
+> contract, lint, TypeScript, component tests, and production build pass.
 > Rendered browser and accessibility evidence **is** claimed for v0.3.0: axe-core
 > 4.10.2 reports zero violations across all seventeen routes, no route scrolls
 > horizontally at 390 px, and no measured text falls below WCAG AA. See
@@ -65,6 +65,34 @@ The UI is intentionally a projection, not an execution authority:
 - FastAPI responses are the typed snapshot source of truth.
 - `openapi-typescript` generates `apps/ui/src/api/schema.d.ts`; handwritten UI
   types alias that generated contract.
+- The stylesheet port is complete. `apps/ui/src/styles.css` no longer exists:
+  M9 PR5c moved the last of it and deleted the file, so every one of the 441
+  pre-migration rules now lives in one of two places, byte-verbatim.
+  `apps/ui/src/theme.css` holds the design tokens, the Tailwind v4 layers, the
+  Google Fonts `@import` and — inside `@layer components` — 405 of those rules, in
+  the pre-migration sheet's own order. `apps/ui/src/react-flow.css` holds the other
+  36, **unlayered**, and is imported from `RunExecution.tsx` on the line
+  immediately after `@xyflow/react/dist/style.css`.
+- **The cascade invariant, in one sentence:** xyflow's unlayered stylesheet, then
+  our unlayered overrides beside it, then everything else in `@layer components`.
+  React Flow's own sheet is unlayered and declares no `@layer` and no `!important`,
+  so a rule of ours that styles an element inside the canvas would lose to it from
+  inside a layer whatever its specificity — and several of those rules only beat it
+  by coming later at equal specificity, which is why the two imports are adjacent.
+  A rule that competes with nothing in xyflow's sheet belongs in the layer even when
+  it renders inside a node: `.iteration-badge`, `.gate-waiting-hint`, `.pill` and the
+  `.pill-*` states all do, and all are layered. `apps/ui/e2e/cssPort.test.ts` asserts
+  the partition in both directions and the import adjacency in the source text;
+  `apps/ui/e2e/style-diff.spec.ts` asserts the resulting order in the built
+  stylesheet in a real browser. **New rules go in `theme.css`; only a rule that
+  competes with xyflow goes in `react-flow.css`.**
+  Tailwind's Preflight reset is not imported yet.
+- Two rules follow from that split, and both are enforced. A rule is **deleted and
+  re-added in one edit**, never duplicated: a selector defined in both files
+  resolves to the unlayered copy regardless of source order, which is a silent
+  cascade inversion. And a selector's base rule moves **no later** than its own
+  `@media` entries, for the same reason in reverse.
+  `apps/ui/e2e/cssPort.test.ts` fails on either.
 - React Query keys cache entries by durable resource identity and polls active
   projections where needed.
 - Live runs load an authoritative audit snapshot first, then subscribe to
@@ -114,11 +142,118 @@ npm run test
 npm run build
 ```
 
+Accessibility is gated separately, in a real browser, because jsdom cannot decide it. With
+Postgres up and migrated:
+
+```bash
+npm run build --workspace @accretion/ui
+cd apps/ui && npx playwright install chromium && npx playwright test
+```
+
+The gate starts its own API and preview server, seeds a deterministic run through
+`examples/showcase.py`, then sweeps all eighteen routes: axe-core with its **full default
+ruleset**, one `h1` per route, no horizontal overflow at 390 px and no element overflowing
+without a scrollable ancestor, and WCAG AA on every text node. Waivers live in
+`apps/ui/e2e/allowlist.ts` and expire.
+
+### Run the style diff
+
+The Tailwind port is proved by comparing COMPUTED STYLES between this branch and the
+merge-base with `develop`, because a port changes the stylesheet's text by design and the
+sha256 comparison that guarded PR3 and PR4 cannot survive that. The gate needs two builds,
+so it is skipped locally unless you build the second one:
+
+```bash
+make style-diff-base                       # worktree of the merge-base, built to .style-diff-base-dist
+export STYLE_DIFF_BASE_DIST=/absolute/path/printed/by/the/target
+cd apps/ui && npx playwright test e2e/style-diff.spec.ts
+```
+
+The branch build is served on :4173 and the base on :4174 from one backend and one seed, so
+the only variable between the two pages is the CSS. Every route is measured at 1440, 1000,
+800, 660 and 390 px — one width inside each interval the four breakpoints carve — then again
+with every focusable element focused and a pointer held over one instance of every selector
+the pre-migration sheet gives a `:hover` rule, then again on
+`/runs/:runId` and `/tasks/new` with `apps/ui/e2e/fixtures/` served in place of the backend,
+which is the only way the gate, loop, candidate-search and experience-transfer rules render
+at all. A difference prints as `route @ width: #index tag property base → branch` and fails
+the run; a structural mismatch retries, a style difference never does.
+
+That hover list (`HOVER_SELECTORS` in `apps/ui/e2e/audit.ts`) is not hand-kept:
+`e2e/cssPort.test.ts` re-derives the set of hover targets from
+`e2e/fixtures/styles.pre-pr5.css` and fails if the two differ in either direction, so a
+`:hover` rule cannot be left silently untriggered while the pass reports zero differences
+over it. Targets no route happens to render are skipped and named in the pass's log line.
+
+In CI the `browser` job builds the base itself and the spec **fails** if
+`STYLE_DIFF_BASE_DIST` is missing, because a required check that silently measures nothing
+is worse than no check.
+
+Two guards keep "zero differences" from being a statement about nothing, and both fail
+before any style is compared:
+
+- **Each origin is bound to the build it is named after.** The spec reads the hashed
+  `assets/index-*.css` filename out of `dist/index.html` and out of
+  `$STYLE_DIFF_BASE_DIST/index.html`, fetches `/` from both ports, and requires each served
+  page to reference its own build's stylesheet. Without it a stale or foreign
+  `vite preview` holding :4174 — which `reuseExistingServer` accepts, and which a second
+  concurrent run produces by itself — makes the gate compare the branch with itself and
+  report zero. The preview servers are started with `--strictPort` for the same reason:
+  Vite otherwise auto-increments off a taken port and moves the branch build onto :4174.
+- **Each route must render at least a floor of elements.** `ROUTE_ELEMENT_FLOOR` in the
+  spec carries a measured per-route count, because two equally empty pages diff clean: when
+  Postgres died mid-suite during PR5a, sixteen of the seventeen routes reported green over
+  error placeholders. `openRoute` asserts the route's own `h1` text for the other half of
+  the same problem — a shell renders a level-1 heading whatever the backend did. Four
+  routes (`/`, `/runtimes`, `/tasks/new`, `/history`) list rows the additive seeder grows,
+  so their floors are set under the single-seeding count CI measures; the other thirteen
+  are pinned to their measurement. A new route in `e2e/routes.ts` with no floor fails
+  rather than being exempt.
+
+Two things this gate cannot see, stated so nobody assumes otherwise. A dropped fonts
+`@import` is invisible to computed styles — `font-family` reads back the declared stack
+whether or not a face loaded — so the spec asserts a `CSSImportRule` at index 0 of the built
+sheet instead, and `cssPort.test.ts` asserts the declaration in source. And rules the seed
+and the fixtures never render are covered by `cssPort.test.ts` alone, which is why that test
+is the primary evidence and this one is the stronger.
+
+Bundle size is gated by the build itself. `npm run build` prints a budget table -
+every chunk's raw and gzip size, the initial-load totals, and a PASS/FAIL line per
+rule - and exits non-zero if any rule fails, so the `frontend`, `clean-checkout`
+and `browser` CI jobs all enforce it without a step of their own. Four of the
+table's rows, with the numbers and the content hash elided - run the build for the
+real ones:
+
+```
+  initial JS  <raw> B raw / <gzip> B gzip   initial CSS  <raw> B raw / <gzip> B gzip
+
+  PASS  per-chunk-raw:assets/vendor-react-<hash>.js       <measured> B <= <cap> B cap (raw)
+  PASS  initial-js-raw                                    <measured> B <= <cap> B cap (raw)
+  PASS  chunk-of:node_modules[\\/]react-dom[\\/]          all 1 matching module(s) in chunk "vendor-react"
+  PASS  lazy-only                                         no matching modules (vacuous until PR7)
+```
+
+The elisions are deliberate. A byte count pasted into a guide is a number nothing
+re-measures: the content hash moves on the next dependency bump and every total
+moves with it, and no test, gate or CI job can see the page go stale. Measured
+numbers live in one place only - every constant in `apps/ui/budget/budget.ts`
+carries a comment naming the PR that set it and quoting the measurement behind it,
+and `budget/evaluate.test.ts` re-states them so a re-measurement cannot land
+without the comment being rewritten in the same edit.
+
+Five rules: no chunk over 500,000 B raw; initial JS and initial CSS under their
+raw and gzip caps; `react-dom` and `@xyflow/react` in their named vendor chunks;
+and modules matching `LAZY_ONLY_MODULES` reachable only through a dynamic import.
+The four initial caps are `ceil(measured x 1.05)` against the M9 PR3 build.
+
+**If the build fails on the budget, raise the cap in the same commit as the change
+that needs it and quote the new measured number.** A cap raised in a separate
+"fix CI" commit is a number with no justification attached, which is the thing the
+file exists to prevent.
+
 The v0.3 release gate records 97 component tests plus successful ESLint,
 TypeScript, generated-contract, and production-build checks, and the
-accessibility evidence above. The build currently
-reports a non-blocking bundle-size advisory; it is visible technical debt, not a
-failed correctness gate.
+accessibility evidence above.
 
 When changing an API response, regenerate the OpenAPI client and commit the
 schema diff with the backend change. When changing a surface, add a component
@@ -129,14 +264,37 @@ assistive technology.
 
 | Path | Responsibility |
 |---|---|
-| `apps/ui/src/App.tsx` | Shell, routing, dashboard, task/planning, governance, runtime, history, and benchmark pages |
+| `apps/ui/src/App.tsx` | The root: `BrowserRouter` around the shell, plus the two stylesheet imports. Thirteen lines |
+| `apps/ui/src/OperatorShell.tsx` | Navigation bar and router outlet, both derived from `ROUTES`; `end` derived at the call site |
+| `apps/ui/src/routes.tsx` | `RouteEntry` and `ROUTES`: the eighteen rows the nav and the router both read |
+| `apps/ui/src/pages/*Page.tsx` | One screen per file, named export, with its private sub-components — the M6 convention |
+| `apps/ui/src/pages/formLines.ts` | Textarea-to-list parsing shared by the task form and the planning review |
 | `apps/ui/src/RunExecution.tsx` | Live graph, controls, approvals, verifiers, P6 candidate tree, P7 experience lineage, and materialization |
+| `apps/ui/src/EventStream.tsx` | Resumable normalized event trace: audit snapshot, SSE, and gap recovery |
+| `apps/ui/src/StatePill.tsx` | The single state badge every screen reuses |
+| `apps/ui/src/runState.ts` | `terminal`, `shortId`, and the `useNow` clock that ticks only while a run is live |
 | `apps/ui/src/api.ts` | Typed HTTP client and resumable event URL construction |
 | `apps/ui/src/api/schema.d.ts` | Generated OpenAPI TypeScript contract; do not hand-edit |
 | `apps/ui/src/types.ts` | Small aliases over generated schemas |
 | `apps/ui/src/graphLayout.ts` | Deterministic layout for read-only execution projections |
-| `apps/ui/src/styles.css` | Responsive visual system and state styling |
+| `apps/ui/src/react-flow.css` | The React Flow overrides, unlayered on purpose, imported from `RunExecution.tsx` on the line after xyflow's own sheet |
+| `apps/ui/src/theme.css` | Tailwind layers, the fonts `@import`, the cosmic and current-palette tokens, and `@layer components` — where every other rule lives |
+| `apps/ui/e2e/cssPort.test.ts` | Union-equality against the pinned pre-migration stylesheet: every rule survives once, in order, in exactly one file |
+| `apps/ui/e2e/styleDiff.ts` | Fingerprint, alignment, diff and retry decisions for the computed-style gate; no I/O, unit-tested on a mutation table |
+| `apps/ui/e2e/style-diff.spec.ts` | The gate itself: 17 routes x 5 widths x 2 builds, plus focus/hover and the fixture-mocked run, planning and four benchmark pages |
+| `apps/ui/e2e/fixtures/` | The pinned pre-migration stylesheet, and the run/planning/benchmark fixtures that render what the seed cannot: gate and loop state, the planning review, and the two benchmark regions behind an interaction |
 | `apps/ui/src/*.test.tsx` | Component, event recovery, lineage, benchmark, and layout evidence |
+| `apps/ui/budget/budget.ts` | The committed size caps, the lazy-only pattern, and the grouping expectations |
+| `apps/ui/budget/evaluate.ts` | Pure budget rules over a bundle graph; no I/O, unit-tested on synthetic bundles |
+| `apps/ui/budget/plugin.ts` | The Vite plugin: measures the real bundle, prints the table, fails the build |
+| `apps/ui/budget/groups.ts` | The vendor chunk groups and the CSS skip that keeps the stylesheet cascade in one order |
+| `apps/ui/budget/groups.test.ts` | Holds the chunk groups to the CSS skip: no group may capture a stylesheet id, and priority, not array order, decides placement |
+| `apps/ui/budget/wiring.test.ts` | Loads the real config and asserts the gate, the groups and their CSS skip are the ones actually wired |
+| `apps/ui/vite.config.ts` | Dev/preview proxying, vitest config, and the wiring of the groups and the gate |
+
+Where a new declaration belongs, why the nav and the router read one array, and the two
+traps the layout sets are in the
+[operator UI source tree runbook](../runbooks/v03-operator-ui.md).
 
 For end-to-end system behavior, continue with the [developer showcase](showcase.md).
 For release status, see the [v0.2 release audit](../releases/v0.2/audit.md) and

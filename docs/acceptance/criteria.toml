@@ -36,9 +36,23 @@
 # --- Proven by the frontend suite -------------------------------------------
 # This gate reads pytest markers, so a criterion whose proof lives in vitest is
 # recorded with a pointer. `npm run test` runs these in CI on every pull request.
-V01-P4-004 = { verification = "frontend", evidence = "apps/ui/src/App.test.tsx:132 navigates to the required operator screens + apps/ui/src/EventStream.test.tsx:61 recovers a missed SSE sequence from the authoritative audit snapshot + apps/ui/src/RunExecution.test.tsx:131 renders the persisted loop projection, budgets, and curved loop-back route" }
+V01-P4-004 = { verification = "frontend", evidence = "apps/ui/src/App.test.tsx:136 navigates to the required operator screens + apps/ui/src/EventStream.test.tsx:61 recovers a missed SSE sequence from the authoritative audit snapshot + apps/ui/src/RunExecution.test.tsx:131 renders the persisted loop projection, budgets, and curved loop-back route" }
 V02-P6-008 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:490 renders P6 candidate lineage, provenance, scores, spend, and selection reason" }
 V02-P7-007 = { verification = "frontend", evidence = "apps/ui/src/RunExecution.test.tsx:549 renders P7 experience provenance, compatibility, transfer risk, and reused segments" }
+
+# The two v0.4 M9 criteria the Experiment Studio proves in the browser suite. Neither
+# has a pytest claim and neither should: `-040` is about what a panel RENDERS from a
+# receipt, and `-043` is about what the canvas does NOT do, which is a statement about
+# the client and nothing else.
+#
+# `-043` carries two pointers because the claim has two halves that fail differently. The
+# structural one reads the package's own source and fails if a module under
+# `src/projection/` ever imports the API client, react-query, `fetch` or `EventSource`;
+# the behavioural one drives the rendered canvas - zoom controls, wheel, nodes, badges -
+# and fails if a request is issued or a badge exposes an interactive role. A canvas that
+# rendered nothing would satisfy the second alone.
+AC4-M9-040 = { verification = "frontend", evidence = "apps/ui/src/RoutingPanel.test.tsx:120 node panel shows selected configuration, uncertainty, alternatives and rejection reasons" }
+AC4-M9-043 = { verification = "frontend", evidence = "apps/ui/src/projection/projection.test.ts:97 no module in the projection package can reach the API, react-query, fetch or an event stream + apps/ui/src/projection/projection.test.ts:244 driving the canvas issues no request and exposes no control inside a badge" }
 
 # --- Proven by a recorded live-provider run ---------------------------------
 # These three name real vendor CLIs. CI never sets ACCRETION_LIVE_PROVIDERS=1, so
@@ -98,8 +112,8 @@ AC3-UI-05 = { verification = "test", frontend_evidence = "apps/ui/src/RunExecuti
 # says so outright and offers no enterprise action, and that the enabled one offers an
 # action which POSTs enterprise-authorize and re-reads the state it changed --- is proven
 # by vitest and named here as checked pointers.
-AC3-EMA-01 = { verification = "test", frontend_evidence = "apps/ui/src/pages/IdentityPage.test.tsx:211 a disabled profile is stated as disabled rather than rendered as an empty panel + apps/ui/src/pages/McpServersPage.test.tsx:313 only the EMA server offers the enterprise action, and it is disabled while the profile is off" }
-AC3-EMA-02 = { verification = "test", frontend_evidence = "apps/ui/src/pages/IdentityPage.test.tsx:187 the enterprise authorization panel reports an enabled profile with its audiences + apps/ui/src/pages/IdentityPage.test.tsx:234 an enabled profile with no live assertion is distinguished from one that holds one + apps/ui/src/pages/McpServersPage.test.tsx:340 with the profile enabled the action POSTs enterprise-authorize and re-reads the servers" }
+AC3-EMA-01 = { verification = "test", frontend_evidence = "apps/ui/src/pages/IdentityPage.test.tsx:211 a disabled profile is stated as disabled rather than rendered as an empty panel + apps/ui/src/pages/McpServersPage.test.tsx:319 only the EMA server offers the enterprise action, and it is disabled while the profile is off" }
+AC3-EMA-02 = { verification = "test", frontend_evidence = "apps/ui/src/pages/IdentityPage.test.tsx:187 the enterprise authorization panel reports an enabled profile with its audiences + apps/ui/src/pages/IdentityPage.test.tsx:234 an enabled profile with no live assertion is distinguished from one that holds one + apps/ui/src/pages/McpServersPage.test.tsx:346 with the profile enabled the action POSTs enterprise-authorize and re-reads the servers" }
 
 # The inherited v0.2 run-page criteria. Their pytest claims in
 # tests/test_v03_m6_run_inspectors.py exercise the real planner, the real replan path and
@@ -131,3 +145,16 @@ AC3-UI-03 = { verification = "test", frontend_evidence = "apps/ui/src/pages/McpS
 
 # AC3-MCP-01 is local stdio MCP, delivered pre-v0.3 by the capability gateway, so it
 # is due now even though section 27 files the rest of MCP under M3.
+
+# --- v0.4 (Evidence-Aware Node Configuration Routing) ------------------------
+# SDD v0.4 §20 (unlocked 2026-09-05, ADR-051/052). Every row starts `not_yet_due`
+# under the milestone that owns it; a milestone flips its rows to `test` when its
+# claiming tests land, the way v0.3 milestones did. M0 (contract freeze) owns no
+# criterion; the first flips arrive with M1. M1's four rows (005-008) are deleted rather
+# than set to `test`: `test` is the default for a criterion with no policy row, and a row
+# that restated the default would be one more place to keep in step with the SDD.
+#
+# The section is now empty, and that is what "M10 closed the program" means here: every
+# one of the fifty v0.4 rows has a claiming test, so none of them needs a policy row. The
+# heading stays so that a future v0.4 patch adding a criterion has the place to put it,
+# and so that the empty section is visibly empty rather than missing.

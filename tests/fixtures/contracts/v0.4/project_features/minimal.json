@@ -1,0 +1,14 @@
+{
+  "content_hash": "82b7466b1e3d9e2654f83a7ea81858c2b9da9dd04248b0b087bac09206a35f8a",
+  "contract_id": "project-features-minimal",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "feature_window_days": 90,
+  "observed_task_count": 214,
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

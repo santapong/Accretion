@@ -1,0 +1,63 @@
+{
+  "available_runtime_snapshot_id": "mcp_QF1HMTBMNB36GQHWT8JHYDEGP6",
+  "capability_registry_snapshot_id": "mcp_SMCJYH1VRSCC2HHMXFHYPXNP90",
+  "connection_availability_snapshot_id": "mcp_VXPW2590C7M84VNRYE2XTBX3HB",
+  "content_hash": "e87acbf48c1b10c207249a7d3df8effde7454db273aa19677a8c5eaae24c413e",
+  "contract_id": "rrq_MMVBSSHWNGSA9RK2H5XFVBW8D1",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "graph_features": {
+    "child_node_types": [
+      "VERIFIER"
+    ],
+    "critical_path": true,
+    "depth": 3,
+    "parent_node_types": [
+      "TASK",
+      "AGENT"
+    ],
+    "retry_number": 1
+  },
+  "node_contract_ref": {
+    "immutable_hash": "432d52336d47b46491433a0186a7b62e9e382134874f526483d0e592aef92c4a",
+    "node_contract_id": "nct_2GZRP05TEP5C4WPV6JFRTWFZNP"
+  },
+  "policy_snapshot_id": "pol_SHHZA9CFZ1EWF7Y7R6HDRH9K66",
+  "project_features": {
+    "contract_id": "project-features-nested-minimal",
+    "created_at": "2026-03-01T09:00:00Z",
+    "created_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "feature_window_days": 90,
+    "observed_task_count": 214,
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "requested_at": "2026-03-01T08:59:30Z",
+  "task_features": {
+    "contract_id": "task-features-nested-minimal",
+    "created_at": "2026-03-01T09:00:00Z",
+    "created_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "expected_horizon": "MEDIUM",
+    "irreversible_actions": false,
+    "profile_confidence": 0.78,
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "risk": "MEDIUM",
+    "source_profile_id": "prf_060BKJW56KVJ0VGEPVFN37HCKZ",
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C",
+  "workspace_router_version": "rmv_D0Q67B7EW89E1W1KJJFEC3XVN5"
+}

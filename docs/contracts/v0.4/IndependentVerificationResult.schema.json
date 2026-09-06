@@ -1,0 +1,555 @@
+{
+  "$defs": {
+    "ClaimResult": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.9 ``claim_results``: one verifier verdict about one claim.\n\n``coverage`` and ``confidence`` are separate quantities: coverage says how much of the\nclaim was actually examined, confidence says how sure the verifier is about what it\nexamined. A model reviewer with high confidence over 10% coverage and a deterministic\ncheck with total coverage are both useful and are not the same evidence.\n``limitations`` is required to be sayable and allowed to be empty, because \"nothing\nlimited this verdict\" is a claim worth being able to make explicitly.",
+      "properties": {
+        "claim_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "coverage": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Coverage",
+          "type": "number"
+        },
+        "evidence_refs": {
+          "items": {
+            "$ref": "#/$defs/EvidenceRef"
+          },
+          "maxItems": 64,
+          "title": "Evidence Refs",
+          "type": "array"
+        },
+        "limitations": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 32,
+          "title": "Limitations",
+          "type": "array"
+        },
+        "status": {
+          "$ref": "#/$defs/VerificationState"
+        }
+      },
+      "required": [
+        "claim_id",
+        "status",
+        "coverage"
+      ],
+      "title": "ClaimResult",
+      "type": "object"
+    },
+    "EvidenceClass": {
+      "description": "How the world was observed. Names are pinned by the v0.4 cross-release registry.",
+      "enum": [
+        "DIGITAL",
+        "SIMULATION",
+        "PHYSICAL",
+        "HUMAN_ATTESTATION",
+        "EXTERNAL_SOURCE"
+      ],
+      "title": "EvidenceClass",
+      "type": "string"
+    },
+    "EvidenceRef": {
+      "additionalProperties": false,
+      "description": "A piece of evidence by id, class and content digest (registry \u00a74).\n\n``evidence_class`` reuses the existing :class:`~accretion.contracts.EvidenceClass` enum\n(ADR-054 e): the v0.3 M5 taxonomy already equals registry \u00a75.2, so there is exactly one\ndefinition of what ``SIMULATION`` means. The class is carried *in the reference* rather\nthan looked up behind it because registry \u00a719 requires simulation and physical evidence to\nstay type-distinct at every boundary \u2014 a consumer holding this reference can refuse to\ntreat simulated evidence as physical without dereferencing anything.\n\nThe class is required and has no default. The stored ``EvidenceRecord`` defaults to\n``EXTERNAL_SOURCE`` for candidates arriving from a connector; a reference is written by\nsomething that already knows, and defaulting here would let an unstated class quietly\nbecome the weakest one.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "evidence_class": {
+          "$ref": "#/$defs/EvidenceClass"
+        },
+        "evidence_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Evidence Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "evidence_class",
+        "content_digest"
+      ],
+      "title": "EvidenceRef",
+      "type": "object"
+    },
+    "ObjectiveContractRef": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.1. The exact objective revision a node was authorised against.\n\nThis is the type of the registry \u00a73 optional header field ``objective_contract_ref``,\nwhich is why it is defined before every other contract in this module and why\n:class:`~accretion.contracts.canonical.CanonicalContract` is rebuilt immediately below\nit.\n\n**Field coverage (SDD \u00a77.1 \u2192 here).** ``project_id`` \u2192 the header's ``project_id``.\n``objective_contract_id`` \u2192 ``objective_contract_id``. ``version`` \u2192 ``revision``, the\nregistry \u00a77.1 spelling, which is also what the ``ObjectiveContract`` aggregate calls its\nown counter. ``content_hash`` \u2192 ``objective_contract_hash``. ``verified_success_floor``,\n``utility_profile_id``, ``approved_at`` \u2192 unchanged. ``risk_policy_id`` \u2192 ``risk_policy``,\na typed :class:`~accretion.contracts.refs.PolicyRef` (registry \u00a73.1 requires policies to\nuse immutable typed references, and an authority decision audited against \"policy v3\" is\naudited against a label). ``approved_by`` \u2192 a typed\n:class:`~accretion.contracts.PrincipalRef` for the same reason.\n\n**Why the target's identity is qualified.** Registry \u00a73 describes the header field as\n``{contract_id, revision, content_hash}``, but inside a :class:`CanonicalContract` those\ntwo unqualified names already mean *this reference's own* id and digest. The target's\nare therefore spelled ``objective_contract_id`` and ``objective_contract_hash``. Nothing\nis lost and the ambiguity that would otherwise sit in every receipt is.\n\n``ID_KIND`` is ``None``: ADR-055 mints no prefix for a reference, because a reference is\ncreated and owned by the contract that embeds it and has no id space to collide in.\n``verified_success_floor`` is copied onto the reference rather than dereferenced because\n\u00a78.3 requires routing to run against an exact snapshot \u2014 a router that re-read the floor\nfrom the live objective would be routing against a number the receipt cannot prove.",
+      "properties": {
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.objective-contract-ref",
+          "default": "accretion.objective-contract-ref",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "objective_contract_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Objective Contract Hash",
+          "type": "string"
+        },
+        "objective_contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Objective Contract Id",
+          "type": "string"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "risk_policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "utility_profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Utility Profile Id",
+          "type": "string"
+        },
+        "verified_success_floor": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Verified Success Floor",
+          "type": "number"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "objective_contract_id",
+        "revision",
+        "objective_contract_hash",
+        "verified_success_floor",
+        "utility_profile_id",
+        "risk_policy",
+        "approved_by",
+        "approved_at"
+      ],
+      "title": "ObjectiveContractRef",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "description": "A policy by id, version and content digest (registry \u00a74).\n\nAuthority decisions are audited against the exact policy text that produced them, so the\ncontent digest is required: \"policy v3\" is a label, and labels are editable.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "policy_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version",
+        "content_digest"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "PrincipalRef": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "principal_id": {
+          "title": "Principal Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PrincipalStatus"
+        }
+      },
+      "required": [
+        "principal_id",
+        "status"
+      ],
+      "title": "PrincipalRef",
+      "type": "object"
+    },
+    "PrincipalStatus": {
+      "enum": [
+        "ACTIVE",
+        "DISABLED"
+      ],
+      "title": "PrincipalStatus",
+      "type": "string"
+    },
+    "VerificationState": {
+      "description": "Registry \u00a75.1. The v0.4 verification vocabulary, beside v0.1's ``VerificationStatus``.\n\n``VerificationStatus`` (``PASS | FAIL | INCONCLUSIVE``) is API-exposed on the v0.1-v0.3\nrun and iteration paths and keeps its name and its three values (ADR-054 a). This enum\nis not a rename of it: it adds the three states an *independent* verifier needs and the\nolder one cannot express.\n\n* ``PENDING`` \u2014 the verifier has been dispatched and has not answered. v0.1 had nowhere\n  to put this because its verification rows were written only at the end.\n* ``ERROR`` \u2014 the verifier itself failed. Registry \u00a75.1 is explicit that ``ERROR`` is\n  not ``INCONCLUSIVE`` and neither is ``PASS``: an inconclusive verdict is a *judgement*\n  about the evidence, an error is the absence of a judgement, and collapsing them would\n  let a broken verifier read as a cautious one.\n* ``QUARANTINED`` \u2014 append-only governance state applied after a material concern. It is\n  set by a human or a policy, never by a verifier, and it never converts back to a\n  verdict; registry \u00a73.2 forbids any migration that turns ``FAIL`` or ``INCONCLUSIVE``\n  into ``PASS``, and quarantine is the state that survives that rule.\n\nA required verifier answering ``FAIL``, ``ERROR``, or an unresolved ``INCONCLUSIVE``\nblocks acceptance.",
+      "enum": [
+        "PENDING",
+        "PASS",
+        "FAIL",
+        "INCONCLUSIVE",
+        "ERROR",
+        "QUARANTINED"
+      ],
+      "title": "VerificationState",
+      "type": "string"
+    },
+    "VerifierRef": {
+      "additionalProperties": false,
+      "description": "A verifier's contract plus the digest of the implementation that produced a result.\n\n``verifier_contract_id`` names the verifier *contract* \u2014 what is checked and what\ncounts as passing \u2014 and not a single v0.1 verification run. Registry \u00a719 requires that\nverification stay reproducible, which needs both halves: the contract explains what the\nverdict claimed, the implementation digest explains what code made the claim.",
+      "properties": {
+        "implementation_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Implementation Digest",
+          "type": "string"
+        },
+        "verifier_contract_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Verifier Contract Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "verifier_contract_id",
+        "implementation_digest"
+      ],
+      "title": "VerifierRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "SDD \u00a77.9's ``VerificationResult``, under the code name ADR-054 (a) assigns it.\n\nv0.1 already owns ``VerificationResult``: it is the run/iteration verifier outcome,\nstored in the ``verifications`` table and exposed through the API, and renaming it would\nbe a registry \u00a73.2 Major change to a schema with live readers. So the v0.4 contract \u2014\na *node-scoped, independent* verification tied to a spec hash and its evidence \u2014 takes\nthe explicit name, and the two live side by side with ``source_verification_id`` as the\nlink between them.\n\n**Field coverage (SDD \u00a77.9 \u2192 here).** ``verification_result_id`` \u2192 the header's\n``contract_id`` (``ivr``). ``execution_instance_id``, ``verification_spec_hash``,\n``claim_results``, ``conflict_refs``, ``signed_at`` \u2192 unchanged. ``status`` \u2192\n:class:`VerificationState` (registry \u00a75.1, per the \u00a77.9 code-name note), which is what\nlets an independent verifier report ``ERROR`` or ``QUARANTINED`` at all.\n``verifier_implementation_id`` \u2192 ``verifier``, a typed\n:class:`~accretion.contracts.refs.VerifierRef` carrying the contract id *and* the\nimplementation digest registry \u00a74 requires; ``verifier_version`` \u2192 unchanged beside it,\nbecause the digest says what ran and the version says what it was called.\n``deterministic_evidence_refs`` and ``model_review_refs`` \u2192 ``[EvidenceRef]``, typed.\n\n``source_verification_id`` is added by ADR-054 (a) and is nullable: an independent\nverification may be produced from a v0.1 result, or it may be the first verdict on a\nnode that no v0.1 path ever touched.\n\n``deterministic_evidence_refs`` and ``model_review_refs`` are two fields rather than one\nlist with a flag because \u00a714.3's reward-hacking controls treat them differently: a model\nreview is an opinion and a deterministic check is a measurement, and a verdict that\ncould not say which kind it rested on would let the weaker one masquerade as the\nstronger.",
+  "properties": {
+    "claim_results": {
+      "items": {
+        "$ref": "#/$defs/ClaimResult"
+      },
+      "maxItems": 64,
+      "title": "Claim Results",
+      "type": "array"
+    },
+    "conflict_refs": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "title": "Conflict Refs",
+      "type": "array"
+    },
+    "content_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "contract_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "accretion.independent-verification-result",
+      "default": "accretion.independent-verification-result",
+      "title": "Contract Type",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/PrincipalRef"
+    },
+    "deterministic_evidence_refs": {
+      "items": {
+        "$ref": "#/$defs/EvidenceRef"
+      },
+      "maxItems": 64,
+      "title": "Deterministic Evidence Refs",
+      "type": "array"
+    },
+    "execution_instance_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Execution Instance Id",
+      "type": "string"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "model_review_refs": {
+      "items": {
+        "$ref": "#/$defs/EvidenceRef"
+      },
+      "maxItems": 64,
+      "title": "Model Review Refs",
+      "type": "array"
+    },
+    "objective_contract_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectiveContractRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "retention_class": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention Class"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signed_at": {
+      "format": "date-time",
+      "title": "Signed At",
+      "type": "string"
+    },
+    "source_verification_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Source Verification Id"
+    },
+    "status": {
+      "$ref": "#/$defs/VerificationState"
+    },
+    "supersedes_contract_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Contract Id"
+    },
+    "verification_spec_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Verification Spec Hash",
+      "type": "string"
+    },
+    "verifier": {
+      "$ref": "#/$defs/VerifierRef"
+    },
+    "verifier_version": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Verifier Version",
+      "type": "string"
+    },
+    "workspace_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_id",
+    "created_by",
+    "workspace_id",
+    "execution_instance_id",
+    "verification_spec_hash",
+    "verifier",
+    "verifier_version",
+    "status",
+    "signed_at"
+  ],
+  "title": "IndependentVerificationResult",
+  "type": "object"
+}

@@ -1,0 +1,534 @@
+{
+  "$defs": {
+    "Claim": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.3 ``claims``: one thing a verifier must decide, and how much it matters.\n\n``required_evidence_types`` is typed as a list of :class:`~accretion.contracts.EvidenceClass`\nrather than the SDD's ``[string]``. The SDD wrote strings because it had not yet fixed a\nvocabulary; registry \u00a75.2 has, the repository already implements it, and leaving the\nfield stringly would have let ``\"physical\"``, ``\"PHYSICAL\"`` and ``\"phys\"`` all mean the\nsame requirement to a human and three different things to a hash.",
+      "properties": {
+        "claim_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "criticality": {
+          "$ref": "#/$defs/Criticality"
+        },
+        "description": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "required_evidence_types": {
+          "items": {
+            "$ref": "#/$defs/EvidenceClass"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Required Evidence Types",
+          "type": "array"
+        }
+      },
+      "required": [
+        "claim_id",
+        "description",
+        "criticality",
+        "required_evidence_types"
+      ],
+      "title": "Claim",
+      "type": "object"
+    },
+    "Criticality": {
+      "description": "SDD \u00a77.3. Whether a verification claim is required for acceptance or merely supports it.\n\nDistinct from v0.1's ``FindingSeverity`` (``INFO``/``WARNING``/``ERROR``), which grades\nan observation a verifier made; this grades the *claim* the spec asked about. A\n``SUPPORTING`` claim that fails is evidence; a ``REQUIRED`` claim that fails blocks.",
+      "enum": [
+        "REQUIRED",
+        "SUPPORTING"
+      ],
+      "title": "Criticality",
+      "type": "string"
+    },
+    "EvidenceClass": {
+      "description": "How the world was observed. Names are pinned by the v0.4 cross-release registry.",
+      "enum": [
+        "DIGITAL",
+        "SIMULATION",
+        "PHYSICAL",
+        "HUMAN_ATTESTATION",
+        "EXTERNAL_SOURCE"
+      ],
+      "title": "EvidenceClass",
+      "type": "string"
+    },
+    "IndependenceRequirements": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.3 ``independence``; OQ-418 decided at M0 design.\n\nTwo of the three flags are :class:`~typing.Literal` ``True`` and not ``bool``. That is\nthe whole point of the type. OQ-418 settles that a separate context is *mandatory* and a\ndistinct runtime is *preferred*, and a boolean would have made the mandatory half\nnegotiable by a writer \u2014 a spec could be persisted with\n``producer_cannot_self_accept: false`` and every downstream check would read it as a\nlegitimate configuration rather than as a forgery. Typing it ``Literal[True]`` moves the\nrefusal to parse time, where a stored document that says otherwise cannot be loaded at\nall. Relaxing either flag to ``bool`` is a registry \u00a73.2 Major change to verification\nsemantics, not a tweak.\n\n``distinct_runtime_preferred`` is a real ``bool``, defaulting to ``True``: a preference\na caller may decline is exactly what OQ-418 says it is.",
+      "properties": {
+        "distinct_runtime_preferred": {
+          "default": true,
+          "title": "Distinct Runtime Preferred",
+          "type": "boolean"
+        },
+        "producer_cannot_self_accept": {
+          "const": true,
+          "default": true,
+          "title": "Producer Cannot Self Accept",
+          "type": "boolean"
+        },
+        "separate_context_required": {
+          "const": true,
+          "default": true,
+          "title": "Separate Context Required",
+          "type": "boolean"
+        }
+      },
+      "title": "IndependenceRequirements",
+      "type": "object"
+    },
+    "MetricOperator": {
+      "description": "SDD \u00a77.3. How a metric threshold is compared.\n\n``CUSTOM`` names a comparison the evaluator contract implements, and it exists because\nthe alternative \u2014 inventing an expression language inside a frozen schema \u2014 would put\nan interpreter in a contract. A ``CUSTOM`` metric without an ``evaluator_contract`` is\ntherefore rejected by :class:`MetricThreshold`.",
+      "enum": [
+        "GTE",
+        "LTE",
+        "EQ",
+        "CUSTOM"
+      ],
+      "title": "MetricOperator",
+      "type": "string"
+    },
+    "MetricThreshold": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.3 ``metrics``: a numeric or symbolic acceptance threshold.\n\n``threshold`` is ``float | str`` exactly as the SDD writes it, because a ``CUSTOM``\ncomparison may be against a label rather than a number. The union is safe to hash \u2014 both\narms are canonical JSON primitives, and ``1.0`` and ``\"1.0\"`` hash differently, which is\ncorrect: they are different thresholds.",
+      "properties": {
+        "evaluator_contract": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evaluator Contract"
+        },
+        "metric_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "operator": {
+          "$ref": "#/$defs/MetricOperator"
+        },
+        "threshold": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Threshold"
+        }
+      },
+      "required": [
+        "metric_id",
+        "operator",
+        "threshold"
+      ],
+      "title": "MetricThreshold",
+      "type": "object"
+    },
+    "ObjectiveContractRef": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.1. The exact objective revision a node was authorised against.\n\nThis is the type of the registry \u00a73 optional header field ``objective_contract_ref``,\nwhich is why it is defined before every other contract in this module and why\n:class:`~accretion.contracts.canonical.CanonicalContract` is rebuilt immediately below\nit.\n\n**Field coverage (SDD \u00a77.1 \u2192 here).** ``project_id`` \u2192 the header's ``project_id``.\n``objective_contract_id`` \u2192 ``objective_contract_id``. ``version`` \u2192 ``revision``, the\nregistry \u00a77.1 spelling, which is also what the ``ObjectiveContract`` aggregate calls its\nown counter. ``content_hash`` \u2192 ``objective_contract_hash``. ``verified_success_floor``,\n``utility_profile_id``, ``approved_at`` \u2192 unchanged. ``risk_policy_id`` \u2192 ``risk_policy``,\na typed :class:`~accretion.contracts.refs.PolicyRef` (registry \u00a73.1 requires policies to\nuse immutable typed references, and an authority decision audited against \"policy v3\" is\naudited against a label). ``approved_by`` \u2192 a typed\n:class:`~accretion.contracts.PrincipalRef` for the same reason.\n\n**Why the target's identity is qualified.** Registry \u00a73 describes the header field as\n``{contract_id, revision, content_hash}``, but inside a :class:`CanonicalContract` those\ntwo unqualified names already mean *this reference's own* id and digest. The target's\nare therefore spelled ``objective_contract_id`` and ``objective_contract_hash``. Nothing\nis lost and the ambiguity that would otherwise sit in every receipt is.\n\n``ID_KIND`` is ``None``: ADR-055 mints no prefix for a reference, because a reference is\ncreated and owned by the contract that embeds it and has no id space to collide in.\n``verified_success_floor`` is copied onto the reference rather than dereferenced because\n\u00a78.3 requires routing to run against an exact snapshot \u2014 a router that re-read the floor\nfrom the live objective would be routing against a number the receipt cannot prove.",
+      "properties": {
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.objective-contract-ref",
+          "default": "accretion.objective-contract-ref",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "objective_contract_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Objective Contract Hash",
+          "type": "string"
+        },
+        "objective_contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Objective Contract Id",
+          "type": "string"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "risk_policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "utility_profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Utility Profile Id",
+          "type": "string"
+        },
+        "verified_success_floor": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Verified Success Floor",
+          "type": "number"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "objective_contract_id",
+        "revision",
+        "objective_contract_hash",
+        "verified_success_floor",
+        "utility_profile_id",
+        "risk_policy",
+        "approved_by",
+        "approved_at"
+      ],
+      "title": "ObjectiveContractRef",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "description": "A policy by id, version and content digest (registry \u00a74).\n\nAuthority decisions are audited against the exact policy text that produced them, so the\ncontent digest is required: \"policy v3\" is a label, and labels are editable.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "policy_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version",
+        "content_digest"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "PrincipalRef": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "principal_id": {
+          "title": "Principal Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PrincipalStatus"
+        }
+      },
+      "required": [
+        "principal_id",
+        "status"
+      ],
+      "title": "PrincipalRef",
+      "type": "object"
+    },
+    "PrincipalStatus": {
+      "enum": [
+        "ACTIVE",
+        "DISABLED"
+      ],
+      "title": "PrincipalStatus",
+      "type": "string"
+    },
+    "VerificationState": {
+      "description": "Registry \u00a75.1. The v0.4 verification vocabulary, beside v0.1's ``VerificationStatus``.\n\n``VerificationStatus`` (``PASS | FAIL | INCONCLUSIVE``) is API-exposed on the v0.1-v0.3\nrun and iteration paths and keeps its name and its three values (ADR-054 a). This enum\nis not a rename of it: it adds the three states an *independent* verifier needs and the\nolder one cannot express.\n\n* ``PENDING`` \u2014 the verifier has been dispatched and has not answered. v0.1 had nowhere\n  to put this because its verification rows were written only at the end.\n* ``ERROR`` \u2014 the verifier itself failed. Registry \u00a75.1 is explicit that ``ERROR`` is\n  not ``INCONCLUSIVE`` and neither is ``PASS``: an inconclusive verdict is a *judgement*\n  about the evidence, an error is the absence of a judgement, and collapsing them would\n  let a broken verifier read as a cautious one.\n* ``QUARANTINED`` \u2014 append-only governance state applied after a material concern. It is\n  set by a human or a policy, never by a verifier, and it never converts back to a\n  verdict; registry \u00a73.2 forbids any migration that turns ``FAIL`` or ``INCONCLUSIVE``\n  into ``PASS``, and quarantine is the state that survives that rule.\n\nA required verifier answering ``FAIL``, ``ERROR``, or an unresolved ``INCONCLUSIVE``\nblocks acceptance.",
+      "enum": [
+        "PENDING",
+        "PASS",
+        "FAIL",
+        "INCONCLUSIVE",
+        "ERROR",
+        "QUARANTINED"
+      ],
+      "title": "VerificationState",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "SDD \u00a77.3. What must be verified, by whom, and what counts as accepted.\n\nADR-044 freezes verification semantics *before* routing, which is why this is a contract\nwith its own identity and digest rather than a block inside :class:`NodeContract`: a\nnode pins the spec by hash, and a spec that changed would change the node's hash rather\nthan quietly re-defining what its verdict meant.\n\n**Field coverage (SDD \u00a77.3 \u2192 here).** ``spec_id`` \u2192 the header's ``contract_id``, which\ncarries the ADR-055 ``vsp`` prefix. ``version`` \u2192 ``revision``, matching the counter\nspelling used by ``ObjectiveContract`` and the v0.2 graph revisions rather than adding a\nthird word for the same idea. ``claims``, ``metrics``, ``independence``,\n``accepted_outcomes`` \u2192 unchanged, with the claim and metric shapes typed as\n:class:`Claim` and :class:`MetricThreshold`. ``content_hash`` \u2192 the header's\n``content_hash``: \u00a77.3's field and registry \u00a73's field are the same digest of the same\ndocument, and carrying two would invite them to disagree.\n\n``accepted_outcomes`` is constrained to the three terminal verdicts. A spec that\npre-accepted ``ERROR`` would be a spec that accepts its own verifier crashing, and one\nthat pre-accepted ``PENDING`` would accept never having asked.",
+  "properties": {
+    "accepted_outcomes": {
+      "items": {
+        "$ref": "#/$defs/VerificationState"
+      },
+      "maxItems": 3,
+      "minItems": 1,
+      "title": "Accepted Outcomes",
+      "type": "array"
+    },
+    "claims": {
+      "items": {
+        "$ref": "#/$defs/Claim"
+      },
+      "maxItems": 64,
+      "minItems": 1,
+      "title": "Claims",
+      "type": "array"
+    },
+    "content_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "contract_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "accretion.verification-spec",
+      "default": "accretion.verification-spec",
+      "title": "Contract Type",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/PrincipalRef"
+    },
+    "independence": {
+      "$ref": "#/$defs/IndependenceRequirements"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "metrics": {
+      "items": {
+        "$ref": "#/$defs/MetricThreshold"
+      },
+      "maxItems": 64,
+      "title": "Metrics",
+      "type": "array"
+    },
+    "objective_contract_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectiveContractRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "retention_class": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention Class"
+    },
+    "revision": {
+      "minimum": 1,
+      "title": "Revision",
+      "type": "integer"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "supersedes_contract_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Contract Id"
+    },
+    "workspace_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_id",
+    "created_by",
+    "workspace_id",
+    "revision",
+    "claims",
+    "accepted_outcomes"
+  ],
+  "title": "VerificationSpec",
+  "type": "object"
+}
