@@ -46,6 +46,43 @@ The M9 ladder is parked after its stylesheet port; the entries below it are v0.4
 - Changed `src/accretion/routing/bootstrap.py`: the two M6 stages are registered together, in the
   same branch that builds the learned scorer, so a deployment runs the whole shadow stage or none
   of it. Under `BASELINE_ONLY` neither hook exists (#TBD).
+### v0.4 — M8.2 the promotion gate, and routing on the ledger head
+
+- Added `src/accretion/routing/ope.py` and `evals/router/promotion.v1.json`: R4's
+  Logarithmic-Smoothing estimator (`ls_estimate`, λ fixed at `1/sqrt(n)` by `lambda_rule`, costs
+  in `[-1, 0]` refused outside that range rather than clipped), the SNIPS/DR/ESS/clip-mass
+  diagnostics that inform a reader and may not decide a release, and `sup_t_band` — a
+  simultaneous band over the acceptance-threshold grid that takes the thresholds' correlation
+  from the bootstrap rather than paying a Bonferroni factor for ten nearly-identical policies.
+  `PromotionConfig` loads the registered constants from their own file, separate from
+  `config.v1.json` because `RouterBenchmarkConfig` forbids extras (ADR4-M8-003) (#TBD).
+- Added `PromotionEvaluator` in `src/accretion/routing/promotion.py`: R3's calibrated
+  safe-improvement test over a project-disjoint holdout. It refuses outright when any record the
+  holdout *names* comes from a project the candidate was fitted on — the check beyond
+  `SnapshotSplit`'s declared-list validator, which a leaking snapshot can satisfy
+  (`AC4-M8-036`) — chooses the acceptance threshold on a disjoint tune half, reads the
+  simultaneous band at it on the evaluation half, folds in §10.2's three sealed gates, M6.1's
+  shadow gate and M8.1's rollback drill, and rejects on a failed critical cohort whatever the
+  mean did (`AC4-M8-037`). A regression, an unverifiable artefact and an undrillable rollback
+  target are findings inside the sealed report; only leakage writes nothing (#TBD).
+- Changed `src/accretion/routing/bootstrap.py` and `src/accretion/routing/activation.py`:
+  node routing now resolves the active workspace router and project adapter from the activation
+  ledger's head instead of `router_model_versions.status`. Promotion and rollback both append
+  `ACTIVE` rows and never retire the original, so the two answers diverge from the moment a
+  withdrawal lands; a request routed after a rollback now pins the restored version while every
+  receipt written before it is byte-identical (`AC4-M8-039`). `LedgerActiveVersionResolver.resolve`
+  returns `routing.stages.ActiveVersions`, and M8.1's local mirror of it is gone (#TBD).
+- Added three routes to `src/accretion/api/router_admin.py`: `POST /api/v1/router-promotions`
+  (workspace admin, `Idempotency-Key` required, and under a key the report id is derived so a
+  retry returns the first verdict rather than sealing a second), `GET
+  /api/v1/router-promotions/{report_id}` and `GET /api/v1/router-models/{version_id}/lineage` —
+  the parent-version chain, the family's activation history in ledger order, the reports that
+  authorised those acts, and the head's rollback target (`AC4-M8-042`). Both reads stop at
+  workspace membership: §10.3 makes the *act* an administrator's, and the audit of it belongs to
+  everyone the router routes for (#TBD).
+- Changed `docs/acceptance/criteria.toml`: `AC4-M8-035`, `-036`, `-037`, `-038`, `-039` and
+  `-042` are in scope and proven, closing M8. The harness reports
+  `in scope: 140   proven: 134   unmet MUST: 0` (#TBD).
 
 ### v0.4 — M5 cold start, the project adapter, and the routing stage collaborators
 

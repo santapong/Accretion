@@ -11,6 +11,7 @@ from accretion.contracts.refs import EnvironmentRef
 from accretion.contracts.routing import EnvironmentBinding
 from accretion.feedback.evidence import StoreEvidenceRetriever
 from accretion.resolver import CapabilityResolver
+from accretion.routing.activation import LedgerActiveVersionResolver
 from accretion.routing.artifacts import ArtifactStore
 from accretion.routing.catalog import ConfigurationCatalog, ConfigurationCatalogFactory
 from accretion.routing.coldstart import ColdStartScorer
@@ -23,7 +24,6 @@ from accretion.routing.stages import (
     DeterministicBehavior,
     PostNodeHook,
     PostRouteHook,
-    StatusActiveVersionResolver,
 )
 from accretion.routing.train import LearnedPredictorLoader
 from accretion.services.run_manager import RunManager
@@ -128,7 +128,12 @@ def build_node_routing(
         catalog_factory=catalog,
         runtimes=manager.runtimes,
         granted_permissions=granted_permissions,
-        active_versions=StatusActiveVersionResolver(manager.store),
+        # ADR-061: "active" is the head of the activation ledger and no longer a status on
+        # the version rows. ``StatusActiveVersionResolver`` reads the column M0 could never
+        # retire a row from, so after a rollback it would keep naming the withdrawn version
+        # while the ledger named the restored one, and the receipts would attribute new
+        # decisions to a router that had been taken out of service (AC4-M8-039).
+        active_versions=LedgerActiveVersionResolver(manager.store),
         evidence=StoreEvidenceRetriever(manager.store),
         scorer=scorer,
         behavior=DeterministicBehavior(),

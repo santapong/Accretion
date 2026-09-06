@@ -374,6 +374,61 @@ session boundary carried capability ids rather than exact bindings. The executin
 landed with that milestone's later PRs and the golden-trace test pins the flag-off path
 byte-for-byte; M3's dispatch path reaches the runtime through the same seam and adds no
 provider constraint of its own.
+## Recorded during M8
+
+Five decisions taken while building the activation ledger and the promotion gate. Each answers a
+question the SDD asks and does not settle, so each is recorded here rather than in the SDD.
+
+**ADR4-M8-001 (OQ-411, promotion approval) — the approver is on *every* ledger entry, rollbacks
+included, and is also the entry's `created_by`.** The default was "workspace admin or research
+owner, recorded on the report", and the report does record one. The entry does too, and that is
+the addition: §10.3 makes activation a human act, and a withdrawal during an incident is the
+activation an audit reads first. `ActivationLedger.activate` therefore takes `approved_by` for
+both fields rather than attributing the row's creation to the service identity — two different
+answers to "who did this" in one record is worse than either answer alone. The service identity
+survives where it belongs, as `created_by` on the `RouterModelVersion` rows the deployment mints.
+
+**ADR4-M8-002 (OQ-412 cadence, OQ-413 critical cohorts) — the gate is CSPI-MT over the
+Logarithmic-Smoothing estimator, and the five cohorts are a registered list rather than a
+constant.** OQ-412's default cadence is manual batch and stays that way: `PromotionEvaluator`
+runs when an administrator asks, and nothing schedules it. OQ-413's five cohorts —
+correctness, policy, secrets, high risk, verifier conflict — live in `promotion.v1.json` and
+reach the report through `CohortResult.critical`, so "a critical regression blocks" survives a
+sixth cohort being registered. Three of the five are derived from an experience record's typed
+fields and `correctness` from whether its verifier reached a judgement; `secrets` has nothing in
+the projection to key on and is declared through the `accretion.evaluation-cohort` label, which
+is honest about the gap rather than proxying it with something that would be wrong invisibly.
+The declared γ is 0.05, the non-inferiority margin is −0.02 and the primary pessimistic
+estimator is LS with λ = 1/√n (R4); SNIPS and DR are computed as diagnostics and are not
+permitted to decide a release, because R4's finite-sample bound does not cover them.
+
+**ADR4-M8-003 (where the gate's constants live) — a second registered file, not
+`config.v1.json`.** `RouterBenchmarkConfig` is a `StrictModel` with `extra="forbid"`, so the
+promotion constants could only join the benchmark corpus by widening a frozen model, and M10c
+edits `config.v1.json` for unrelated reasons. `evals/router/promotion.v1.json` keeps the two
+freezes independent: the benchmark's constants move when the corpus is regenerated and the
+gate's move when the gate is re-registered, and those are not the same event.
+
+**ADR4-M8-004 (promotion events need a run context) — no event without a stored run, and no
+synthesised run id.** `AgentEvent` requires a `run_id` and the event store is run-scoped end to
+end, while promotion, rollback and evaluation are all reachable from an admin route with no run
+in sight. Minting a run id there would attach the most consequential events in this milestone to
+an execution that never happened. So `ROUTER_PROMOTION_EVALUATED`, `ROUTER_VERSION_PROMOTED` and
+`ROUTER_VERSION_ROLLED_BACK` are emitted only when a caller names a run that exists, and the
+durable record in every case is the ledger entry or the sealed report, which is the stronger one
+anyway. A run-free promotion is fully auditable and simply has no event stream; giving §12 a
+non-run-scoped channel is the real fix and is deferred to a milestone that owns the event store.
+
+**ADR4-M8-005 (ledger contiguity is guarded in both stores, in duplicate) — deliberately not
+shared.** `sequence = head + 1` and "`sequence == 1` if and only if `previous_version_id is
+None`" are enforced by `_guard_activation_contiguity` in `MemoryStore` and again in
+`PostgresStore`, with identical message text, and again optimistically by `ActivationLedger`
+before it writes. That is three copies of one rule, and each is load-bearing: the ledger's copy
+computes the values, the store's copies enforce them inside the transaction where a concurrent
+promotion is visible, and PostgreSQL's `uq_router_activations_sequence` catches the race the
+guard cannot. Factoring the two store copies into one helper would put the check outside the
+session it has to run in. What should be shared is the *message*, and the parity test that
+compares the two texts is what keeps it so.
 
 ## Parked beside v0.4
 
