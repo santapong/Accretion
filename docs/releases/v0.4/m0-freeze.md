@@ -216,6 +216,11 @@ compose with what M0 froze, and freeze-surface changes travel together or not at
    whose head is the active version. **The two partial indexes above are untouched by this
    delta**; M8.1's migration 0019 retires them, so a database between 0018 and 0019
    satisfies both rules at once and each migration is independently reversible.
+   *Addendum, M8.1:* both indexes were **retired by 0019 (M8.1)** and are no longer
+   declared on `RouterModelVersionRow`, so the two rows in the §13.1 table above now read
+   "enforced by `uq_router_activations_sequence` over
+   `(workspace_id, scope, family_key, sequence)`, mirrored in both stores by
+   `_guard_activation_contiguity`". Nothing else in this freeze record changed.
 3. **`ObjectiveContract` had no exploration budget** (OQ-410, ADR-062). M7's safety
    inequality needs an α and absolute caps that the objective's approver set, not that the
    router chose for itself. `exploration_policy` is additive, optional and defaulted to

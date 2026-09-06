@@ -13,8 +13,9 @@ things do not follow from that and are proved here:
   sequence number, which is exactly the moment a promotion is happening;
 * the two backends refuse a conflicting re-put with the **same exception text**, which is
   what makes ``MemoryStore`` a usable stand-in rather than a near-miss; and
-* the delta touched none of 0017's constraints: the two partial unique indexes on
-  ``router_model_versions`` are still there, still partial, still saying what they said.
+* the delta touched none of 0017's constraints on ``router_model_versions`` — asserted now
+  as the *absence* of the two partial unique indexes, which M8.1's migration 0019 retired
+  and 0018 never had anything to do with.
 
 Every id is uuid-suffixed, so the file is re-runnable against a database it has already
 written to, and no test asserts on a global row count. Nothing here carries an acceptance
@@ -160,13 +161,18 @@ async def test_the_database_itself_refuses_a_second_activation_at_one_sequence()
         await engine.dispose()
 
 
-async def test_the_delta_left_the_two_m0_partial_indexes_exactly_as_they_were() -> None:
-    """M8.1's migration 0019 retires them; 0018 must not have touched them.
+async def test_the_two_m0_partial_indexes_are_absent_from_a_database_at_head() -> None:
+    """0019 retired them, and 0018 never touched ``router_model_versions`` at all.
 
-    A database sitting between the two revisions has to satisfy the old rule and the new
-    one at once, which is the only ordering under which each migration is independently
-    reversible — and the only reason it is safe to add the ledger before removing what it
-    replaces.
+    Two claims in one query. The first is M8.1's: at head neither partial unique index
+    exists, so nothing outside the ledger is deciding which version is active, and
+    ``activate_router_version`` can write a second ``ACTIVE`` row. The second is the freeze
+    delta's, unchanged: ``router_model_versions`` is not one of the tables 0018 creates, so
+    the delta could not have been what removed them.
+
+    Asserted against the live catalogue rather than against ``Base.metadata`` because
+    metadata is what 0017 builds from — an index the model stopped declaring would vanish
+    from both at once, and only a database can say which of the two migrations acted.
     """
 
     assert POSTGRES_URL is not None
@@ -187,13 +193,11 @@ async def test_the_delta_left_the_two_m0_partial_indexes_exactly_as_they_were() 
     finally:
         await engine.dispose()
 
-    workspace = found["uq_router_versions_active_workspace"]
-    assert "UNIQUE INDEX" in workspace
-    assert "WHERE" in workspace and "ACTIVE" in workspace and "TEAM_WORKSPACE" in workspace
-
-    adapter = found["uq_router_versions_active_project_adapter"]
-    assert "UNIQUE INDEX" in adapter
-    assert "WHERE" in adapter and "ACTIVE" in adapter and "PROJECT_ADAPTER" in adapter
+    assert "uq_router_versions_active_workspace" not in found
+    assert "uq_router_versions_active_project_adapter" not in found
+    # The table itself is still there with the indexes 0019 did not touch.
+    assert "ix_router_versions_workspace_created" in found
+    assert not any("WHERE" in definition for definition in found.values())
 
     assert RouterModelVersionRow.__tablename__ not in V04_FREEZE_DELTA_TABLES
 

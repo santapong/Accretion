@@ -8,11 +8,11 @@ between the drop and the restore, and a module of their own removes the ordering
 instead of documenting it.
 
 What 0018 has to prove beyond "it runs" is that it is **narrow**. It creates two tables and
-must leave 0017's fifteen — and, specifically, the two partial unique indexes M8.1's
-migration 0019 will retire — untouched, because a database sitting between 0018 and 0019
-has to satisfy the old "one ACTIVE router" rule and the new ledger rule at once. That is
-the property that makes each of the two migrations independently reversible, and it is the
-one an ``upgrade``/``downgrade`` smoke test would not notice going wrong.
+must leave 0017's fifteen — and, specifically, the index set on ``router_model_versions`` —
+untouched in both directions. That is the property that made each of 0018 and M8.1's 0019
+independently reversible, and it is the one an ``upgrade``/``downgrade`` smoke test would
+not notice going wrong. Since 0019 shipped, the two partial unique indexes it retired are
+absent at head, and this module asserts that absence rather than their presence.
 
 Every id is uuid-suffixed, so the file is re-runnable against a database it has already
 written to. Nothing here carries an acceptance marker: the freeze delta claims no criterion
@@ -58,7 +58,10 @@ MIGRATION_PATH = (
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "contracts" / "v0.4"
 # Two tables created by 0017: the delta's downgrade must not touch either.
 INHERITED_TABLES = ("router_model_versions", "shadow_decisions")
-PARTIAL_INDEXES = (
+# Retired by 0019 (M8.1), which is why this file asserts they are *absent* at head. The
+# narrowness claim below is unchanged: 0018's down and up directions must leave the index
+# set on ``router_model_versions`` exactly as they found it, whatever that set is.
+RETIRED_PARTIAL_INDEXES = (
     "uq_router_versions_active_workspace",
     "uq_router_versions_active_project_adapter",
 )
@@ -173,12 +176,17 @@ async def test_migration_0018_survives_an_up_down_up_cycle_and_drops_only_its_ow
         await engine.dispose()
 
 
-async def test_migration_0018_leaves_the_two_partial_indexes_0019_will_retire() -> None:
-    """The narrowness claim, stated against the objects M8.1 is going to remove.
+async def test_migration_0018_leaves_the_index_set_on_router_model_versions_alone() -> None:
+    """The narrowness claim, and the record that 0019 is what retired the two indexes.
 
-    If 0018 ever started dropping them, the suite would stay green — nothing else asserts
-    their presence across a downgrade — and M8.1's 0019 would then be a migration whose
-    down direction could not restore what it claimed to.
+    Both directions of 0018 must leave ``router_model_versions``' indexes exactly as they
+    found them. If 0018 ever started dropping or creating one, the suite would stay green —
+    nothing else asserts that set across a downgrade — and 0019's down direction would then
+    be restoring indexes another migration was also touching.
+
+    The two partial indexes are asserted *absent* because 0019 has retired them: they are no
+    longer declared on the model, so 0017 no longer creates them, and a database at head has
+    neither. Asserting their presence was the pre-M8.1 form of this test.
     """
 
     assert POSTGRES_URL is not None
@@ -192,8 +200,8 @@ async def test_migration_0018_leaves_the_two_partial_indexes_0019_will_retire() 
             await connection.run_sync(run_direction, migration.upgrade)
             after = await connection.run_sync(index_names, "router_model_versions")
 
-        for name in PARTIAL_INDEXES:
-            assert name in before
+        for name in RETIRED_PARTIAL_INDEXES:
+            assert name not in before
         assert during == before
         assert after == before
     finally:
