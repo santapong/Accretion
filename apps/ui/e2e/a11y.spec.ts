@@ -17,7 +17,7 @@ import { SEED_FILE, type Seed } from "./global-setup";
  * would be measuring the stub and a contrast assertion would be measuring nothing.
  *
  * Everything here needs a real browser. It re-measures F1 and F2, runs axe over all
- * seventeen routes rather than the ten jsdom reaches, and checks the one thing the vitest
+ * eighteen routes rather than the ten jsdom reaches, and checks the one thing the vitest
  * suite explicitly declines to assert - that focus actually lands on the trace region.
  */
 
@@ -27,7 +27,7 @@ const seed = JSON.parse(readFileSync(SEED_FILE, "utf8")) as Seed;
  * Navigate and wait for the route to stop moving.
  *
  * The body of this function now lives in `navigate.ts`, unchanged, because
- * `style-diff.spec.ts` sweeps the same seventeen routes and needs the same barrier against
+ * `style-diff.spec.ts` sweeps the same eighteen routes and needs the same barrier against
  * the app's 2.5 s and 5 s polls and its open SSE stream. Two copies of a settle rule drift,
  * and the copy nobody maintains is the one that makes a gate look flaky.
  *
@@ -68,7 +68,7 @@ test.describe("accessibility", () => {
   });
 
   test("every route renders exactly one h1", async ({ page }) => {
-    // The evidence asserts one h1 on all seventeen routes; jsdom reaches ten. The five
+    // The evidence asserts one h1 on all eighteen routes; jsdom reaches ten. The five
     // /admin/* pages, /runs/:runId, and uniqueness on the 404 have had no such assertion
     // anywhere until now.
     for (const route of ROUTES) {

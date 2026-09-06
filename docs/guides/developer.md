@@ -51,7 +51,7 @@ Claude sessions remain opt-in and are not required for local development.
 <img src="../assets/operator-ui-map.svg" alt="Implemented Accretion operator frontend routes and their authoritative FastAPI snapshot, React Query, and resumable event flow" width="100%" />
 
 The UI is complete for the P0–P7 and v0.3 M6 administration scope. It renders
-API-backed evidence across seventeen routes; it does not own run state or
+API-backed evidence across eighteen routes; it does not own run state or
 acceptance. The v0.3 clean-checkout and accessibility evidence is recorded in the
 [release audit](../releases/v0.3/audit.md) and
 [browser and accessibility evidence](../releases/v0.3/browser-a11y-evidence.md).

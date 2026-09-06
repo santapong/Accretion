@@ -151,7 +151,7 @@ cd apps/ui && npx playwright install chromium && npx playwright test
 ```
 
 The gate starts its own API and preview server, seeds a deterministic run through
-`examples/showcase.py`, then sweeps all seventeen routes: axe-core with its **full default
+`examples/showcase.py`, then sweeps all eighteen routes: axe-core with its **full default
 ruleset**, one `h1` per route, no horizontal overflow at 390 px and no element overflowing
 without a scrollable ancestor, and WCAG AA on every text node. Waivers live in
 `apps/ui/e2e/allowlist.ts` and expire.
@@ -266,7 +266,7 @@ assistive technology.
 |---|---|
 | `apps/ui/src/App.tsx` | The root: `BrowserRouter` around the shell, plus the two stylesheet imports. Thirteen lines |
 | `apps/ui/src/OperatorShell.tsx` | Navigation bar and router outlet, both derived from `ROUTES`; `end` derived at the call site |
-| `apps/ui/src/routes.tsx` | `RouteEntry` and `ROUTES`: the seventeen rows the nav and the router both read |
+| `apps/ui/src/routes.tsx` | `RouteEntry` and `ROUTES`: the eighteen rows the nav and the router both read |
 | `apps/ui/src/pages/*Page.tsx` | One screen per file, named export, with its private sub-components — the M6 convention |
 | `apps/ui/src/pages/formLines.ts` | Textarea-to-list parsing shared by the task form and the planning review |
 | `apps/ui/src/RunExecution.tsx` | Live graph, controls, approvals, verifiers, P6 candidate tree, P7 experience lineage, and materialization |

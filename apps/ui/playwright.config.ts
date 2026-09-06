@@ -28,7 +28,7 @@ const STYLE_DIFF_BASE_DIST = process.env.STYLE_DIFF_BASE_DIST;
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "**/*.spec.ts",
-  // The sweep walks seventeen routes running two full-page audits on each.
+  // The sweep walks eighteen routes running two full-page audits on each.
   timeout: 120_000,
   expect: { timeout: 15_000 },
   // A flaky accessibility gate would be ignored within a week, so failures must be real:

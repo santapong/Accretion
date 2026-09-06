@@ -84,7 +84,7 @@ The dashboard exposes:
 
 <img src="../assets/operator-ui-map.svg" alt="Operator UI route map showing where a developer creates a task, opens a live run, inspects governance, and reproduces the ACR-ARCH and P5 through P7 research views" width="100%" />
 
-The [frontend guide](frontend.md) lists all seventeen implemented routes. The
+The [frontend guide](frontend.md) lists all eighteen implemented routes. The
 most useful path for this showcase is **Dashboard → New task → Live run →
 History**; the four benchmark pages reproduce frozen evidence independently of
 this example run.
