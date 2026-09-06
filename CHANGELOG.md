@@ -9,6 +9,44 @@ the three milestone PRs that merged before this file was updated.
 
 The M9 ladder is parked after its stylesheet port; the entries below it are v0.4 work.
 
+### v0.4 — M6 shadow evaluation by branched live rollout
+
+- Added `src/accretion/routing/rollout.py`: `ShadowRoutingHook` re-scores the executed slate under
+  the workspace's registered SHADOW version, persists the result as a routing receipt under its
+  **own** `routing_request_id` and records one `ShadowDecision` beside the executed decision. It
+  dispatches nothing, and it cannot: the shadow receipt names itself in `supersedes_contract_id`,
+  so it is excluded from every head set the service computes and `latest_receipt`, `route` and
+  `_assert_amendable` all refuse to treat it as the decision in force. `BranchedRolloutExecutor`
+  then scores that recommendation the way R7 and ADR-060 require — by **forking the run** rather
+  than replaying it: a fresh sandbox per arm from the run's base revision, a session per arm under
+  that arm's model id, SHADOW and CONTROL graded by the node's frozen verification spec under one
+  trial index and one recorded seed, and one `ShadowRolloutResult` written per arm. Forks are
+  taken only of `LOW_DIGITAL`, `WORKTREE`-isolated nodes, only inside a digest-sampled
+  `fork_fraction`, and only while the registered `ShadowBudget` has room for the policy's UTC day;
+  every refusal appends a `router.shadow.rollout-skipped` event naming its reason, and a fork that
+  raises never reaches the run. `AC4-M6-017` (shadow mode observes and never dispatches) is now
+  proven by two real runs of one graph that agree on every node dispatched, every node status, the
+  final `RunState` and every diff digest the run captured (#TBD).
+- Added `GET /api/v1/shadow-policies/{version_id}/report`: M6.1's `ShadowReport` unchanged as the
+  `response_model`, computed under a module-level `ShadowReportConfig` and the deterministic
+  selector's utility weights so that a dashboard and M8.2's promotion gate quote the same numbers,
+  and so that no caller can re-roll the bootstrap seed until the lower bound clears the floor.
+  Workspace membership is enough to read it; a version in another workspace is a 404 rather than a
+  403; and a policy nobody has shadowed yet returns the empty report with both gates present and
+  unmet instead of the arithmetic's deliberate refusal as a 500. `AC4-M6-041` (promotion evidence
+  is paired) is now proven: every recommendation is reported with its executed outcome *and* its
+  CONTROL arm, `paired_count` counts only trials that produced both, and `remaining_gates` names
+  each unmet gate with the number that decided it (#TBD).
+- Changed `src/accretion/services/run_manager.py`: graph execution now routes under
+  `routing_service.default_mode` instead of a pinned `BASELINE_ONLY`, so a deployment assembled
+  for `SHADOW` or `AUTO` reaches the mode it was assembled for, and dispatches the §9.4 post-node
+  stage after every routed AGENT or TOOL node through the new `_after_routed_node`. Hook failures
+  are logged and swallowed: the node has already reported its outcome, and a hook that could fail
+  it would turn an observation into a control action (#TBD).
+- Changed `src/accretion/routing/bootstrap.py`: the two M6 stages are registered together, in the
+  same branch that builds the learned scorer, so a deployment runs the whole shadow stage or none
+  of it. Under `BASELINE_ONLY` neither hook exists (#TBD).
+
 ### v0.4 — M5 cold start, the project adapter, and the routing stage collaborators
 
 - Added `src/accretion/routing/stages.py`: the five extension points SDD §9.4's routing stages

@@ -1,6 +1,6 @@
 # v0.4 — Evidence-Aware Node Configuration Routing
 
-Status: **M0, M1, M4, and M5 delivered; M2 locally verified, awaiting remote review (2026-09-06).**
+Status: **M0, M1, M4, M5, and M6 delivered; M2 locally verified, awaiting remote review (2026-09-06).**
 
 | Document | Purpose |
 |---|---|
@@ -12,6 +12,7 @@ Status: **M0, M1, M4, and M5 delivered; M2 locally verified, awaiting remote rev
 | [M2 runbook](m2-runbook.md) | Opt-in baseline routing, operator controls, and uncertain-dispatch recovery |
 | [M4 plan](m4-plan.md) | The offline ranker, the calibration report, and why nothing learned loads without a holdout evaluation |
 | [M5 plan](m5-plan.md) | Cold start, the capped cross-domain prior, and the five routing-stage collaborators M6-M8 plug into |
+| [M6 plan](m6-plan.md) | Shadow evaluation by branched live rollout: what a shadow decision is, why it is never a replay, and the gates a fork passes |
 | [Backlog](backlog.md) | Milestone order and the v0.3 deferrals carried into v0.4 |
 | [Forward package](../../sdd/future/v0.4-v1.0/00_READ_ME_FIRST.md) | Golden Direction, the cross-release contract registry, the research protocol, and the v0.5-v1.0 designs |
 
