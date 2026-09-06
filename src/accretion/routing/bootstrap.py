@@ -15,11 +15,15 @@ from accretion.routing.artifacts import ArtifactStore
 from accretion.routing.catalog import ConfigurationCatalog, ConfigurationCatalogFactory
 from accretion.routing.coldstart import ColdStartScorer
 from accretion.routing.protocols import FrozenNode, RoutingMode
+from accretion.routing.rollout import BranchedRolloutExecutor, ShadowRoutingHook
 from accretion.routing.service import DefaultNodeRoutingService
 from accretion.routing.snapshot import RegistrySnapshotBuilder, RoutingSnapshot
 from accretion.routing.stages import (
     CandidateScorer,
     DeterministicBehavior,
+    NoEvidence,
+    PostNodeHook,
+    PostRouteHook,
     StatusActiveVersionResolver,
 )
 from accretion.routing.train import LearnedPredictorLoader
@@ -96,12 +100,22 @@ def build_node_routing(
 
     artifact_store = artifacts or ArtifactStore.default()
     scorer: CandidateScorer | None = None
+    post_route: tuple[PostRouteHook, ...] = ()
+    post_node: tuple[PostNodeHook, ...] = ()
     if mode is not RoutingMode.BASELINE_ONLY:
         scorer = ColdStartScorer(
             LearnedPredictorLoader(manager.store, artifact_store),
             artifact_store,
             _utc_now,
         )
+        # M6.2's two stages, attached together and only here. They are a pair: the post-route
+        # hook records what the shadow version would have chosen and the post-node executor
+        # scores that recommendation by forking the run, so an assembly that attached one
+        # without the other would either write decisions nothing ever measures or look for a
+        # decision nothing ever wrote. Under BASELINE_ONLY neither exists, which is what makes
+        # "shadow evaluation is off" a structural fact rather than a branch inside a hook.
+        post_route = (ShadowRoutingHook(manager.store, artifact_store, mode=mode),)
+        post_node = (BranchedRolloutExecutor(manager),)
 
     return DefaultNodeRoutingService(
         store=manager.store,
@@ -119,5 +133,7 @@ def build_node_routing(
         evidence=StoreEvidenceRetriever(manager.store),
         scorer=scorer,
         behavior=DeterministicBehavior(),
+        post_route=post_route,
+        post_node=post_node,
         default_mode=mode,
     )

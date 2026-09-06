@@ -538,25 +538,35 @@ async def test_a_listing_never_returns_another_workspaces_rows() -> None:
     ) == [theirs]
 
 
-# ------------------------------------------------- §13.1 partial unique rules
+# --------------------------------------- §13.1's active-router rules, after M8.1
 
 
-async def test_a_workspace_may_hold_only_one_active_workspace_router() -> None:
-    """§13.1, mirroring ``uq_router_versions_active_workspace``."""
+async def test_a_workspace_may_hold_a_second_active_workspace_router() -> None:
+    """The rule M0 expressed as an index moved onto the ledger (ADR-061, migration 0019).
+
+    Until M8.1 this store refused the second ``ACTIVE`` row, mirroring
+    ``uq_router_versions_active_workspace``. That refusal made §10.3 unreachable: nothing in
+    this family has an ``update_``, so the first ``ACTIVE`` row could never be retired and a
+    workspace was activatable exactly once, forever. "One active router" is now a property
+    of ``router_activations`` — the head of the sequence — and the version table's job is to
+    keep every artefact that was ever promoted, including two that are both ``ACTIVE``
+    because one of them is a rollback target still described as it was when it served.
+
+    Asserting the *acceptance* here is what keeps the ledger honest: if this store started
+    refusing again, ``activate_router_version`` could not write a promotion at all and every
+    test below it would fail with a message about §13.1 rather than about promotion.
+    """
 
     store = await new_store()
-    active = router_version(status=RouterStatus.ACTIVE)
-    await store.put_router_model_version(active)
+    first = router_version(status=RouterStatus.ACTIVE)
+    second = router_version(status=RouterStatus.ACTIVE)
+    await store.put_router_model_version(first)
+    await store.put_router_model_version(second)
 
-    with pytest.raises(ValueError, match="already has an ACTIVE workspace router"):
-        await store.put_router_model_version(router_version(status=RouterStatus.ACTIVE))
-
-    assert [
+    assert sorted(
         item.contract_id
-        for item in await store.list_router_model_versions(
-            workspace_id=active.workspace_id
-        )
-    ] == [active.contract_id]
+        for item in await store.list_router_model_versions(workspace_id=first.workspace_id)
+    ) == sorted([first.contract_id, second.contract_id])
 
 
 async def test_a_second_workspace_may_hold_its_own_active_router() -> None:
@@ -576,8 +586,14 @@ async def test_a_second_workspace_may_hold_its_own_active_router() -> None:
     )
 
 
-async def test_non_active_router_versions_are_not_constrained_at_all() -> None:
-    """The whole point of a *partial* index: candidates and shadows may pile up."""
+async def test_router_versions_of_every_status_may_pile_up() -> None:
+    """Candidates, shadows, retired and rolled-back rows all coexist, and always did.
+
+    The pre-M8.1 form of this test said "the whole point of a *partial* index" and only
+    exercised the four non-``ACTIVE`` statuses. The index is gone and the property it was
+    illustrating is the one that matters: this table is an append-only record of every
+    artefact, and no status is privileged in it.
+    """
 
     store = await new_store()
     await store.put_router_model_version(router_version(status=RouterStatus.ACTIVE))
@@ -593,20 +609,17 @@ async def test_non_active_router_versions_are_not_constrained_at_all() -> None:
     assert len(await store.list_router_model_versions(workspace_id=FIXTURE_WORKSPACE_ID)) == 5
 
 
-async def test_a_project_may_hold_only_one_active_adapter_per_algorithm() -> None:
-    """§13.1, mirroring ``uq_router_versions_active_project_adapter``."""
+async def test_a_project_may_hold_a_second_active_adapter_for_one_algorithm() -> None:
+    """The adapter half of the same move, for the same reason (ADR-061).
+
+    ``uq_router_versions_active_project_adapter`` is retired too, and which adapter is
+    serving a project is the head of the ``f"{project_id}:{algorithm_id}"`` sequence in
+    ``router_activations``.
+    """
 
     store = await new_store()
     project_id = "prj_8W5DH3HW6DPAFFPBHQ47R21DK9"
-    await store.put_router_model_version(
-        router_version(
-            status=RouterStatus.ACTIVE,
-            scope=RouterScope.PROJECT_ADAPTER,
-            project_id=project_id,
-        )
-    )
-
-    with pytest.raises(ValueError, match="already has an ACTIVE"):
+    for _ in range(2):
         await store.put_router_model_version(
             router_version(
                 status=RouterStatus.ACTIVE,
@@ -615,7 +628,7 @@ async def test_a_project_may_hold_only_one_active_adapter_per_algorithm() -> Non
             )
         )
 
-    assert len(await store.list_router_model_versions(workspace_id=FIXTURE_WORKSPACE_ID)) == 1
+    assert len(await store.list_router_model_versions(workspace_id=FIXTURE_WORKSPACE_ID)) == 2
 
 
 async def test_two_algorithms_may_each_hold_an_active_adapter_for_one_project() -> None:
@@ -652,7 +665,7 @@ async def test_an_active_adapter_does_not_collide_with_the_active_workspace_rout
 
 
 async def test_re_putting_the_active_router_is_still_a_no_op() -> None:
-    """The uniqueness guard must not turn an idempotent retry into a conflict."""
+    """Immutability, not uniqueness: the same sealed row filed twice is one row."""
 
     store = await new_store()
     active = router_version(status=RouterStatus.ACTIVE)
@@ -1170,14 +1183,23 @@ def test_the_store_exposes_no_way_to_update_or_delete_a_v04_record() -> None:
             assert {f"put_{singular}", f"get_{singular}", f"list_{table}"} <= surface
 
 
-def test_the_v04_surface_is_exactly_put_get_list_plus_the_three_named_lookups() -> None:
-    """Three documented extras, and nothing else.
+def test_the_v04_surface_is_exactly_put_get_list_plus_the_five_named_extras() -> None:
+    """Five documented extras, and nothing else.
 
     §8.2's receipt-by-request-id lookup, and M3a's revision listing — the read that walks
     one experience's projections after migration 0020 gave them a shared ``experience_id``
     instead of a shared primary key. M2 adds the workspace-scoped graph receipt
-    reader so dispatch can resolve an operator-amended head. A fourth must be
-    documented here rather than silently widening the frozen store surface.
+    reader so dispatch can resolve an operator-amended head. M8.1 adds two:
+    ``head_router_activation``, the single-row read that turns "which version is active"
+    from a scan of ``status`` into a query on the ledger's partition key, and
+    ``activate_router_version``, the composite write that puts the version rows and the
+    ledger entry in one transaction because a database holding one without the other has no
+    readable answer to that question. A sixth must be documented here rather than silently
+    widening the frozen store surface.
+
+    ``"router_version" in name`` is in the matcher so that ``activate_router_version`` is
+    visible to it at all: it names no table, and without that clause a composite writer
+    could be added to all three implementations without this test noticing.
     """
 
     extra: set[str] = set()
@@ -1186,12 +1208,20 @@ def test_the_v04_surface_is_exactly_put_get_list_plus_the_three_named_lookups() 
             name
             for name in dir(implementation)
             if not name.startswith("_")
-            and any(name.endswith(table) or table[:-1] in name for table in V04_M0_ROUTING_TABLES)
+            and (
+                any(
+                    name.endswith(table) or table[:-1] in name
+                    for table in V04_M0_ROUTING_TABLES
+                )
+                or "router_version" in name
+            )
         }
         extra |= surface - v04_method_names()
 
     assert extra == {
+        "activate_router_version",
         "get_routing_receipt_for_request",
+        "head_router_activation",
         "list_experience_record_revisions",
         "list_routing_receipts_for_run_graph",
     }

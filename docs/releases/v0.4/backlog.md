@@ -219,6 +219,116 @@ worse model rather than as a mismatched one. Moving the vocabulary into `RankerA
 cleaner fix and is deferred: it changes an artefact digest, which is a §7.12 identity change and
 belongs to a milestone that owns retraining.
 
+## Recorded during M9
+
+Three decisions the operator-UI milestone had to make before it could add a single element to
+the run page. None changes the design; each records which of two readings the code took.
+
+**ADR4-M9-001 — a structural-change waiver for the computed-style diff, scoped to one route and
+one PR.** `e2e/style-diff.spec.ts` compares the branch build to the merge-base build by aligning
+two element captures **by index**, so ANY added element makes the two a different shape and the
+gate reports "the two builds rendered different DOM after 3 attempts". That is correct for a
+stylesheet port, which is what the gate was built for, and wrong for every PR after it: M9 exists
+to add screens. The three ways out were to delete the gate, to set `STYLE_DIFF_SKIP` on PRs that
+add markup, or to name the exemption. The first two are the same thing with different amounts of
+paperwork — a required check that reports green while measuring nothing.
+
+So `RouteUnderTest` gains an optional `structuralChange: { pr, reason }`, and
+`styleDiff.ts` gains `obligationsFor` and `compareCaptures`, which read **that route's** waiver
+and no other. A waived route skips `fingerprintsEqual` and `diffStyles` and nothing else: the
+element floor, the interaction pass's focus floor and the whole a11y gate still run on it, and
+the sweep's log line prints `STRUCTURAL CHANGE WAIVED by <pr>` so "0 differences" can never be
+read as "compared and identical". The floor is what makes this safe — with the structural
+comparison off it is the only remaining evidence that the branch rendered the page at all, so a
+waived route that 500s still fails.
+
+Two mutations in `e2e/styleDiff.test.ts` are the evidence that the exemption stops where it is
+supposed to, and both were run: a waiver held in module state instead of read per route fails
+"a waiver on one route does not silence a style difference on another", and
+`enforceFloor: !route.structuralChange` fails "a waived route still enforces the element floor".
+Neither failure is visible from a Playwright run, because a leaked waiver prints the same
+"0 differences" a healthy branch does.
+
+The waiver is deliberately not durable. It names the PR that earned it, so the next PR that
+touches the route deletes it and declares its own; that is the only thing that stops the busiest
+route in the app from acquiring a permanent exemption.
+
+**ADR4-M9-002 — the run page discovers routing receipts from the audit it already fetches; no
+"receipts of a run" route is added.** M2 serves a receipt and its candidates by receipt id and
+nothing that lists them, and the §17.1 panel needs the list. Adding `GET
+/api/v1/runs/{run_id}/routing-decisions` was the obvious answer and is not needed: the audit
+already carries the mapping twice over. `services/run_manager.py` stamps every
+`RUNTIME_CALL_STARTED` of a routed call with `payload.routing_receipt_id` and the projection's
+own `node_id`, so one event names a node AND a receipt; `routing/service.py` appends
+`ROUTING_DECISION_CREATED` with `payload.receipt_id` and `causation_id =
+receipt.contract_id`, which is how a decision that never dispatched — a `HUMAN_REVIEW_REQUIRED`
+waiting for a person, the receipt an operator most needs — is still discoverable.
+
+`apps/ui/src/routingIndex.ts` is that projection, pure and importing no API client, in the shape
+`runBadges.ts` established. The cost of the alternative is not the endpoint, it is the second
+source of truth: a list route would have its own ordering, its own pagination and its own
+authorization, and could disagree with the log the same page renders below it.
+
+**ADR4-M9-003 — new markup styles reuse the pinned sheet's class vocabulary; no rule is appended
+to `theme.css`.** The M9 PR5c plan says new styles go in `@layer components` in `theme.css`.
+`e2e/cssPort.test.ts` does not allow it, and this was measured rather than assumed: appending one
+rule fails three of its cases — "every pinned rule survives exactly once across the live
+stylesheets" (`invented`, plus the `liveKeys.length === pinnedKeys.length` equality), "theme.css
+reordered its rules", and "a rule in `@layer components` is not a byte-verbatim slice of the
+pinned sheet". That is not a bug in the test. With `styles.css` deleted, union equality against
+`fixtures/styles.pre-pr5.css` **is** the completeness proof of the whole port, and its strength
+comes precisely from admitting nothing that was not in the pre-migration sheet.
+
+M9a therefore builds the routing panel from classes the pinned sheet already declares —
+`.dynamic-inspector`, `.proposal-inspector`, `.router-evidence`, `.router-features`,
+`.router-fallback`, `.graph-diff-identities`, `.replan-control`, `.dynamic-metrics`, `.quiet`,
+`.form-status`, `.secondary-button` and the `.pill-*` states — which is also why it looks like
+the inspector it sits beside rather than like a new design. It costs nothing in the CSS budget
+and it is not a workaround for a check: it is the check being right.
+
+The follow-up is real and belongs to whichever M9 PR first needs a rule that does not exist yet.
+`cssPort.test.ts` needs a post-port additions ledger — a named list of rules that are new rather
+than ported, subtracted from `invented` and from the ordering pin, exactly as the waiver above is
+subtracted from the structural comparison — so that "every pinned rule survives exactly once"
+keeps its current strength while new rules stop being indistinguishable from edited ones. That is
+a change to a completeness proof and it is not something to do incidentally inside a feature PR.
+
+## Recorded during M6
+
+**ADR4-M6-001 (R7, ADR-060; how a shadow recommendation is scored) — branch the run, never replay
+it.** The cheap option was to replay the executed trajectory against the shadow configuration and
+read off what changed. It answers the wrong question. A trajectory is a record of what *one*
+configuration did, and a different configuration diverges from it at the second turn, so a replay
+measures how well the shadow imitates the executed run rather than how well it does the node's
+work — and it measures that most favourably for configurations most similar to the one already
+running, which is the one bias a promotion decision cannot afford. `BranchedRolloutExecutor`
+therefore forks the run: `WorktreeManager.acquire_candidate` gives each arm a fresh sandbox at the
+run's base revision, each arm opens its own session under its own model id, and both arms are
+graded by the frozen verification spec the node was routed against. The CONTROL arm is the
+executed configuration *re-run in a fork of its own* rather than the live node, because the live
+node started from a different workspace state and the difference would be attributed to the
+router. The price is real — a fork is a second execution and a recurring cost — so it is paid
+under three gates rather than accepted: `LOW_DIGITAL` risk only, `WORKTREE` isolation only, a
+digest-sampled `fork_fraction`, and the registered `ShadowBudget` charged per policy per UTC day.
+A refusal appends a `router.shadow.rollout-skipped` event naming its reason; a fork that raises is
+a log line and never a failed run.
+
+**ADR4-M6-002 (OQ-409, how much paired evidence a promotion needs) — an interim floor, stated as a
+constant, pending §21.** OQ-409 is open: the SDD does not fix the number of paired runs a
+promotion may be granted on, and it will not be fixed by a milestone that has never run the
+experiment. The interim rule this repository operates under is **at least nine complete paired
+runs per configuration per node class**, which is the smallest number at which the
+decision-clustered bootstrap is resampling clusters rather than describing its own resampling.
+It is not implemented as a per-cohort assertion, because M6 has no cohort vocabulary and inventing
+one would be the duplicate source of truth registry §21 forbids; it is implemented as
+`shadow.DEFAULT_MIN_PAIRED_RUNS = 30`, a workspace-wide floor on *complete* pairs that a
+three-configuration, one-node-class stage clears at exactly the interim rate.
+`ShadowReportConfig.min_paired_runs` carries it so that a report and the promotion it supports
+state the bar they applied, and `shadow_gate` refuses a report below the count *before* consulting
+its interval — a lower bound computed from four pairs can clear any floor, and reporting it as a
+pass would make the count gate decorative. The real number is a power analysis over the first
+stage's variance and belongs to whichever milestone closes OQ-409; until then the constant is the
+place to change it, and both consumers read it from there.
 ## Recorded during M3
 
 Four decisions M3 had to make that the SDD does not settle, and one earlier decision this

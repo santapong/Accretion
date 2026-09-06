@@ -1,0 +1,78 @@
+[
+  {
+    "adapter_version": "routing/1",
+    "causation_id": "rcp_RXG4QHXAH6CV4SA907AQV988VW",
+    "correlation_id": "run_routing_fixture",
+    "event_id": "evt_review_created",
+    "native_type": "accretion/routing/created",
+    "node_id": null,
+    "normalized_type": "ROUTING_DECISION_CREATED",
+    "payload": {
+      "action": "created",
+      "receipt_id": "rcp_RXG4QHXAH6CV4SA907AQV988VW",
+      "node_contract_hash": "432d52336d47b46491433a0186a7b62e9e382134874f526483d0e592aef92c4a"
+    },
+    "provider": "FAKE",
+    "run_id": "run_routing_fixture",
+    "sequence": 1,
+    "session_id": "run_routing_fixture",
+    "timestamp": "2026-03-01T09:00:00Z"
+  },
+  {
+    "adapter_version": "routing/1",
+    "causation_id": "rcp_ZV1DZZBTPY9GD9V6NVWWXX40ZS",
+    "correlation_id": "run_routing_fixture",
+    "event_id": "evt_act_created",
+    "native_type": "accretion/routing/created",
+    "node_id": null,
+    "normalized_type": "ROUTING_DECISION_CREATED",
+    "payload": {
+      "action": "created",
+      "receipt_id": "rcp_ZV1DZZBTPY9GD9V6NVWWXX40ZS",
+      "node_contract_hash": "432d52336d47b46491433a0186a7b62e9e382134874f526483d0e592aef92c4a"
+    },
+    "provider": "FAKE",
+    "run_id": "run_routing_fixture",
+    "sequence": 2,
+    "session_id": "run_routing_fixture",
+    "timestamp": "2026-03-01T09:00:00Z"
+  },
+  {
+    "adapter_version": "routing/1",
+    "causation_id": null,
+    "correlation_id": "run_routing_fixture",
+    "event_id": "evt_act_call_started",
+    "native_type": "runtime/call.started",
+    "node_id": "n:act",
+    "normalized_type": "RUNTIME_CALL_STARTED",
+    "payload": {
+      "runtime_call_id": "rtc_fixture_1",
+      "routing_receipt_id": "rcp_ZV1DZZBTPY9GD9V6NVWWXX40ZS",
+      "node_contract_hash": "432d52336d47b46491433a0186a7b62e9e382134874f526483d0e592aef92c4a"
+    },
+    "provider": "FAKE",
+    "run_id": "run_routing_fixture",
+    "sequence": 3,
+    "session_id": "run_routing_fixture",
+    "timestamp": "2026-03-01T09:00:00Z"
+  },
+  {
+    "adapter_version": "routing/1",
+    "causation_id": null,
+    "correlation_id": "run_routing_fixture",
+    "event_id": "evt_act_call_progress",
+    "native_type": "runtime/call.started",
+    "node_id": "n:act",
+    "normalized_type": "RUNTIME_CALL_STARTED",
+    "payload": {
+      "runtime_call_id": "rtc_fixture_1",
+      "routing_receipt_id": "rcp_ZV1DZZBTPY9GD9V6NVWWXX40ZS",
+      "node_contract_hash": "432d52336d47b46491433a0186a7b62e9e382134874f526483d0e592aef92c4a"
+    },
+    "provider": "FAKE",
+    "run_id": "run_routing_fixture",
+    "sequence": 4,
+    "session_id": "run_routing_fixture",
+    "timestamp": "2026-03-01T09:00:00Z"
+  }
+]

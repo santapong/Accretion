@@ -111,7 +111,6 @@ from accretion.routing.protocols import (
     FeedbackPipeline,
     FrozenNode,
     NodeRoutingService,
-    RoutingMode,
 )
 from accretion.runtimes.common import make_event
 from accretion.templates import (
@@ -1219,6 +1218,7 @@ class RunManager:
                 cursor=cursor,
                 graph_revision=graph.graph_revision,
             )
+            await self._after_routed_node(run, node, lease, cursor)
             if outcome is NodeOutcome.PAUSED:
                 await self._pause_graph(run)
                 return
@@ -1502,6 +1502,64 @@ class RunManager:
             )
         raise RuntimeError(f"unsupported graph node kind {node.kind.value}")
 
+    async def _after_routed_node(
+        self, run: Run, node: RunNode, lease: WorkspaceLease, cursor: _GraphCursor
+    ) -> None:
+        """Tell the routing service's post-node hooks that a routed node has finished.
+
+        The scheduler owns this call because it is the only party that knows a node has
+        *finished*: the router sees a decision and no outcome, and a hook attached anywhere
+        else would have to reconstruct which decision the outcome belonged to.  ADR-048 makes
+        this the one point at which an experience may be projected, and M6.2 hangs its branched
+        rollouts here for the same reason.
+
+        Only AGENT and TOOL nodes, and only ones that were actually routed and dispatched.  A
+        VERIFIER node is a grader rather than a producer, so a rollout of it would measure the
+        verifier twice; a node with no entry in ``cursor.configurations`` never dispatched
+        anything for a hook to be about.
+
+        ``post_node`` is read with ``getattr`` for the reason ``configuration_for`` is read that
+        way in ``_prepare_routed_node``: ``NodeRoutingService`` is the frozen M1 seam and does
+        not declare the stage sequences, and reaching for an attribute that may be absent is
+        preferable to editing a protocol whose digest is recorded in the M1 plan.  Exceptions
+        are logged and swallowed -- the node has already reported its outcome, and a hook that
+        could fail it would turn an observation into a control action.
+        """
+
+        if self.routing_service is None or node.kind not in {
+            GraphNodeKind.AGENT,
+            GraphNodeKind.TOOL,
+        }:
+            return
+        frozen = cursor.frozen.get(node.key)
+        receipt = cursor.receipts.get(node.key)
+        configuration = cursor.configurations.get(node.key)
+        if frozen is None or receipt is None or configuration is None:
+            return
+        for hook in getattr(self.routing_service, "post_node", ()):
+            try:
+                await hook.after_node(
+                    run=run,
+                    node=node,
+                    frozen=frozen,
+                    receipt=receipt,
+                    configuration=configuration,
+                    outcome=None,
+                    lease=lease,
+                )
+            except Exception:
+                # Imported here rather than at module scope: this module has no logger, and
+                # adding one would be a third edit to a file another lane is changing in the
+                # same window.  Function-local imports have precedent in this repository
+                # (`ids.derived_id`, `api/shadow.py`) and the cost is one lookup per failure.
+                import logging
+
+                logging.getLogger(__name__).exception(
+                    "post-node hook %s failed for receipt %s",
+                    type(hook).__name__,
+                    receipt.contract_id,
+                )
+
     async def _prepare_routed_node(
         self,
         *,
@@ -1544,7 +1602,7 @@ class RunManager:
             receipt = await self.routing_service.route(
                 frozen=frozen,
                 snapshot=snapshot,
-                mode=RoutingMode.BASELINE_ONLY,
+                mode=self.routing_service.default_mode,
                 run=run,
                 excluded_configuration_hashes=cursor.attempted_hashes.get(node.key, ()),
             )
