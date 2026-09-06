@@ -159,6 +159,13 @@ async def test_route_is_restored_or_created_then_claimed_before_session_creation
             return session_row()
 
     class RoutingSpy:
+        # The mode the scheduler routes under is now read off the service rather than pinned
+        # at the call site (M6.2), so a stand-in for the service has to declare one. It is
+        # ``BASELINE_ONLY`` here for the same reason the assertion below expects it: this test
+        # is about the *order* of restore, route and claim, under a deployment that has not
+        # earned a learned mode.
+        default_mode = RoutingMode.BASELINE_ONLY
+
         async def latest_receipt(self, **kwargs):  # type: ignore[no-untyped-def]
             calls.append("latest")
             return None

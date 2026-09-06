@@ -293,6 +293,43 @@ subtracted from the structural comparison — so that "every pinned rule survive
 keeps its current strength while new rules stop being indistinguishable from edited ones. That is
 a change to a completeness proof and it is not something to do incidentally inside a feature PR.
 
+## Recorded during M6
+
+**ADR4-M6-001 (R7, ADR-060; how a shadow recommendation is scored) — branch the run, never replay
+it.** The cheap option was to replay the executed trajectory against the shadow configuration and
+read off what changed. It answers the wrong question. A trajectory is a record of what *one*
+configuration did, and a different configuration diverges from it at the second turn, so a replay
+measures how well the shadow imitates the executed run rather than how well it does the node's
+work — and it measures that most favourably for configurations most similar to the one already
+running, which is the one bias a promotion decision cannot afford. `BranchedRolloutExecutor`
+therefore forks the run: `WorktreeManager.acquire_candidate` gives each arm a fresh sandbox at the
+run's base revision, each arm opens its own session under its own model id, and both arms are
+graded by the frozen verification spec the node was routed against. The CONTROL arm is the
+executed configuration *re-run in a fork of its own* rather than the live node, because the live
+node started from a different workspace state and the difference would be attributed to the
+router. The price is real — a fork is a second execution and a recurring cost — so it is paid
+under three gates rather than accepted: `LOW_DIGITAL` risk only, `WORKTREE` isolation only, a
+digest-sampled `fork_fraction`, and the registered `ShadowBudget` charged per policy per UTC day.
+A refusal appends a `router.shadow.rollout-skipped` event naming its reason; a fork that raises is
+a log line and never a failed run.
+
+**ADR4-M6-002 (OQ-409, how much paired evidence a promotion needs) — an interim floor, stated as a
+constant, pending §21.** OQ-409 is open: the SDD does not fix the number of paired runs a
+promotion may be granted on, and it will not be fixed by a milestone that has never run the
+experiment. The interim rule this repository operates under is **at least nine complete paired
+runs per configuration per node class**, which is the smallest number at which the
+decision-clustered bootstrap is resampling clusters rather than describing its own resampling.
+It is not implemented as a per-cohort assertion, because M6 has no cohort vocabulary and inventing
+one would be the duplicate source of truth registry §21 forbids; it is implemented as
+`shadow.DEFAULT_MIN_PAIRED_RUNS = 30`, a workspace-wide floor on *complete* pairs that a
+three-configuration, one-node-class stage clears at exactly the interim rate.
+`ShadowReportConfig.min_paired_runs` carries it so that a report and the promotion it supports
+state the bar they applied, and `shadow_gate` refuses a report below the count *before* consulting
+its interval — a lower bound computed from four pairs can clear any floor, and reporting it as a
+pass would make the count gate decorative. The real number is a power analysis over the first
+stage's variance and belongs to whichever milestone closes OQ-409; until then the constant is the
+place to change it, and both consumers read it from there.
+
 ## Parked beside v0.4
 
 The v0.3.1 operator-UI redesign (M9 of the v0.3 ladder) is parked after its stylesheet port
