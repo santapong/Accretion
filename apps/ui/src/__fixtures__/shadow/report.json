@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "version_id": "rmv_7CJEP8EAB33CNS3R0N4CRPN18G",
+  "paired_count": 2,
+  "agreement_rate": 0.666667,
+  "mean_delta": 0.0085,
+  "delta_lcb": -0.012,
+  "non_inferior": false,
+  "pairs": [
+    {
+      "schema_version": "1.0",
+      "executed_receipt_id": "rcp_ZV1DZZBTPY9GD9V6NVWWXX40ZS",
+      "shadow_receipt_id": "rcp_FQ639X9EJVHQ0BQDB279RN8DXX",
+      "agreement": true,
+      "projected_utility_delta": 0.018,
+      "control_result_id": "shr_HE3HFKSK2JTP5FKXT8KBZMDJ6D",
+      "shadow_result_id": "shr_QQVHPQ7K845NPCB99YQ51M3Q7A",
+      "observed_delta": 0.021
+    },
+    {
+      "schema_version": "1.0",
+      "executed_receipt_id": "rcp_YPW2A7XZVADFSDVJS4DGZHEK47",
+      "shadow_receipt_id": "rcp_9BM7WKQZ4TDPXC0R2VHJE6SNF5",
+      "agreement": false,
+      "projected_utility_delta": 0.042,
+      "control_result_id": null,
+      "shadow_result_id": null,
+      "observed_delta": null
+    },
+    {
+      "schema_version": "1.0",
+      "executed_receipt_id": "rcp_3KFQ7DZV1M8XR0PB5NWHTJ2C6A",
+      "shadow_receipt_id": "rcp_HX5T2QBM9VNZ0C4KDWJ7RP63SE",
+      "agreement": true,
+      "projected_utility_delta": -0.007,
+      "control_result_id": "shr_W4JD6NQV2XHPB8ZK0T5RCMS39A",
+      "shadow_result_id": "shr_5CNKX9PB3JVW7ZQD2M6HRT08FA",
+      "observed_delta": -0.004
+    }
+  ],
+  "remaining_gates": [
+    {
+      "schema_version": "1.0",
+      "gate": "paired_runs",
+      "met": false,
+      "evidence": "2 complete pairs of the 30 required (3 shadow decisions recorded)"
+    },
+    {
+      "schema_version": "1.0",
+      "gate": "non_inferiority",
+      "met": false,
+      "evidence": "delta_lcb -0.012 against a floor of 0.0 (mean 0.0085 over 2 pairs, seed 940517, B=2000)"
+    }
+  ]
+}

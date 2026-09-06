@@ -43,8 +43,10 @@ import type {
   ReplanOutcome,
   ReplanRequest,
   ConfigurationCandidate,
+  RouterModelVersion,
   RoutingDecisionReceipt,
   RoutingOverrideCreate,
+  ShadowReport,
   Run,
   RunAudit,
   RunCreate,
@@ -239,6 +241,14 @@ export const api = {
     ),
   cancelRoutingDecision: (receiptId: string) =>
     postJson<RoutingDecisionReceipt>(`/api/v1/routing-decisions/${receiptId}/cancel`, {}),
+  // v0.4 M6 — the §17.2 shadow comparison. The version list carries every router version of
+  // the workspace and no status filter, so SHADOW is selected client-side; the report is the
+  // M6.2 read M8.2's promotion gate is defined over, asked for by the version's own id so
+  // that a workspace with no shadow stage never requests one.
+  routerModels: (workspaceId: string) =>
+    getJson<RouterModelVersion[]>(`/api/v1/router-models?workspace_id=${workspaceId}`),
+  shadowPolicyReport: (versionId: string) =>
+    getJson<ShadowReport>(`/api/v1/shadow-policies/${versionId}/report`),
   // v0.4 M8 — the §17.3 router administration surface. Every call names the workspace
   // because the server does: the two reads require membership of it, the two writes require
   // administering it, and a resource belonging to another workspace is a 404 rather than a
@@ -247,8 +257,6 @@ export const api = {
   // `POST /api/v1/router-promotions` (evaluate) is deliberately absent. Producing a sealed
   // report is what a later promotion accepts as its authorisation, and in v0.4 that act
   // stays API-only; the page promotes reports that already exist and never mints one.
-  routerModels: (workspaceId: string) =>
-    getJson<RouterModelVersion[]>(`/api/v1/router-models?workspace_id=${workspaceId}`),
   routerLineage: (versionId: string, workspaceId: string) =>
     getJson<RouterLineage>(
       `/api/v1/router-models/${versionId}/lineage?workspace_id=${workspaceId}`,

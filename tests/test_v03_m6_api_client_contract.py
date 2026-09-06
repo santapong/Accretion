@@ -73,13 +73,18 @@ M6_CLIENT_FUNCTIONS: dict[str, tuple[str, str]] = {
     "routingCandidates": ("get", "ConfigurationCandidate[]"),
     "overrideRoutingDecision": ("post", "RoutingDecisionReceipt"),
     "cancelRoutingDecision": ("post", "RoutingDecisionReceipt"),
+    # v0.4 M9b — the §17.2 shadow comparison. Both are reads whose paths are template
+    # literals: one carries the workspace as a query parameter and one a router version id
+    # as a path segment, and neither `tsc` nor the generated schema can tell whether the
+    # route on the other end exists or still returns what the client names.
+    "routerModels": ("get", "RouterModelVersion[]"),
+    "shadowPolicyReport": ("get", "ShadowReport"),
     # v0.4 M9c — the §17.3 router administration page. Two reads and two writes, all four
     # naming their workspace in a query string this test erases before comparing shapes, so
     # what is checked is the route: `/api/v1/router-models/*/lineage` and
     # `/api/v1/router-promotions/*` exist and return the contracts the client names, and the
     # two mutating paths are the ones `router_admin.py` serves rather than near misses that
     # `tsc` would have accepted.
-    "routerModels": ("get", "RouterModelVersion[]"),
     "routerLineage": ("get", "RouterLineage"),
     "routerPromotion": ("get", "RouterPromotionReport"),
     "promoteRouter": ("post", "RouterActivation"),
