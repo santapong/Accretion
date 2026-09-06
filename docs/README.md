@@ -35,7 +35,8 @@ folder root stays uncluttered.
 | Reproduce the release gate | [Release-hardening runbook](runbooks/v03-release-hardening.md) | [SDD v0.3 §24.8](sdd/Accretion_SDD_v0.3.md), [`scripts/release_gate.py`](../scripts/release_gate.py) |
 | Review the previous release | [Frozen v0.2 baseline](releases/v0.2/baseline.md) | [release audit](releases/v0.2/audit.md), [release notes](releases/v0.2/notes.md), [delivery plan](releases/v0.2/plan.md) |
 | Plan post-v0.3 work | [v0.3 backlog](releases/v0.3/backlog.md) | [v0.3 SDD](sdd/Accretion_SDD_v0.3.md) |
-| Build v0.4 (evidence-aware node configuration routing) | [v0.4 M0 plan](releases/v0.4/m0-plan.md) | [SDD v0.4](sdd/Accretion_SDD_v0.4.md), [v0.4 backlog](releases/v0.4/backlog.md), [forward package](sdd/future/v0.4-v1.0/00_READ_ME_FIRST.md) |
+| Build v0.4 (evidence-aware node configuration routing) | [v0.4 milestone index](releases/v0.4/README.md) | [SDD v0.4](sdd/Accretion_SDD_v0.4.md), [M0 plan](releases/v0.4/m0-plan.md), [v0.4 backlog](releases/v0.4/backlog.md), [forward package](sdd/future/v0.4-v1.0/00_READ_ME_FIRST.md) |
+| Review the v0.4 release preparation | [v0.4 release notes (draft)](releases/v0.4/notes.md) | [release audit (draft)](releases/v0.4/audit.md), [v0.4 milestone index](releases/v0.4/README.md), [router pre-registration](research/v0.4/preregistration.md) |
 
 ## Folder map
 
@@ -94,7 +95,8 @@ bitmap in the showcase is illustrative and never defines behavior.
 ## Frontend completion
 
 The React frontend is implemented for every P0–P7 release surface plus the v0.3
-M6 administration pages — seventeen routes in all. The deterministic checks cover
+M6 administration pages and the v0.4 M9 router administration page — eighteen routes
+in all. The deterministic checks cover
 the component test suite, generated OpenAPI, ESLint, TypeScript, and production
 build.
 For v0.3.0 rendered browser and accessibility evidence **was** collected: axe-core
