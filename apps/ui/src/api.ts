@@ -38,8 +38,10 @@ import type {
   ReplanOutcome,
   ReplanRequest,
   ConfigurationCandidate,
+  RouterModelVersion,
   RoutingDecisionReceipt,
   RoutingOverrideCreate,
+  ShadowReport,
   Run,
   RunAudit,
   RunCreate,
@@ -218,6 +220,14 @@ export const api = {
     ),
   cancelRoutingDecision: (receiptId: string) =>
     postJson<RoutingDecisionReceipt>(`/api/v1/routing-decisions/${receiptId}/cancel`, {}),
+  // v0.4 M6 — the §17.2 shadow comparison. The version list carries every router version of
+  // the workspace and no status filter, so SHADOW is selected client-side; the report is the
+  // M6.2 read M8.2's promotion gate is defined over, asked for by the version's own id so
+  // that a workspace with no shadow stage never requests one.
+  routerModels: (workspaceId: string) =>
+    getJson<RouterModelVersion[]>(`/api/v1/router-models?workspace_id=${workspaceId}`),
+  shadowPolicyReport: (versionId: string) =>
+    getJson<ShadowReport>(`/api/v1/shadow-policies/${versionId}/report`),
   createSearch: (runId: string, payload: SearchCreate) =>
     postJson<SearchRecord>(`/api/v2/runs/${runId}/search`, payload),
   searches: (runId: string) =>

@@ -106,3 +106,11 @@ export type StructuredExplanation = components["schemas"]["StructuredExplanation
 export type PredictedOutcomes = components["schemas"]["PredictedOutcomes"];
 export type DistributionEstimate = components["schemas"]["DistributionEstimate"];
 export type RoutingOverrideCreate = components["schemas"]["RoutingOverrideCreate"];
+
+// v0.4 M6 — shadow evaluation (SDD §17.2). The report is what one shadow stage has shown so
+// far: every executed/shadow pair behind its aggregate, and the gates a promotion still owes.
+// The router version list is what says which stages exist, and which of them are in SHADOW.
+export type RouterModelVersion = components["schemas"]["RouterModelVersion"];
+export type ShadowReport = components["schemas"]["ShadowReport"];
+export type ShadowPair = components["schemas"]["ShadowPair"];
+export type GateStatus = components["schemas"]["GateStatus"];

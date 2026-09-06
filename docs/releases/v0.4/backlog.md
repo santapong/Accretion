@@ -221,7 +221,7 @@ belongs to a milestone that owns retraining.
 
 ## Recorded during M9
 
-Three decisions the operator-UI milestone had to make before it could add a single element to
+Four decisions the operator-UI milestone had to make before it could add a single element to
 the run page. None changes the design; each records which of two readings the code took.
 
 **ADR4-M9-001 — a structural-change waiver for the computed-style diff, scoped to one route and
@@ -292,6 +292,43 @@ than ported, subtracted from `invented` and from the ordering pin, exactly as th
 subtracted from the structural comparison — so that "every pinned rule survives exactly once"
 keeps its current strength while new rules stop being indistinguishable from edited ones. That is
 a change to a completeness proof and it is not something to do incidentally inside a feature PR.
+
+**ADR4-M9-004 — the §17.2 comparison joins a workspace-wide shadow report to one run in the
+browser; no run-scoped shadow route is added, and the aggregate is never recomputed per run.**
+`GET /api/v1/shadow-policies/{version_id}/report` is a report about one *policy*, over every
+decision the stage scored, and the run page needs one run's slice of it. Two answers were
+available. The first was a new route — a `run_id` filter on the report, or
+`GET /api/v1/runs/{run_id}/shadow-pairs` — which would have to recompute `mean_delta` and
+`delta_lcb` over the filtered rows to stay coherent, and that is the trap: a bootstrap interval
+over one run's two or three pairs clears or misses any floor at random, and it would sit on the
+same screen as, and disagree with, the interval M8.2 gates the promotion on. `shadow_report`
+refuses an empty decision list for exactly this reason, and a per-run route would have had to
+un-refuse it.
+
+So the join is done in the client, over reads that already exist: `routingIndex.ts` gives the
+run's receipt ids from the audit the page already fetches (ADR4-M9-002), and `ShadowPair` carries
+`executed_receipt_id` and `shadow_receipt_id` — which is why `routing/shadow.py` lists incomplete
+decisions rather than filtering them, and says so in its own docstring. `ShadowComparison.tsx`
+keeps a pair when either half names one of this run's receipts, renders those pairs, and renders
+the five aggregate numbers **unchanged and labelled as the stage's**, beside a line saying how
+many of the stage's pairs came from here. One number, computed once, in the one place it is
+defined.
+
+Two costs are accepted with it. The stage list is `GET /api/v1/router-models` filtered in the
+browser to `SHADOW` and to versions whose `project_id` is this run's or null, because that route
+offers a `project_id` parameter and no status one — and passing `project_id` would also drop the
+workspace-scoped stages, which score every project's runs.
+
+The second cost is a genuine gap, recorded rather than worked around. The workspace comes from
+`api.me().memberships[0]`, which is the shell's own rule and is a guess: **no read exposes a
+run's workspace.** `GET /api/v1/runs/{run_id}` returns `Run`, which carries `project_id` and no
+`workspace_id`, and `GET /api/v1/projects/{project_id}` returns `Project`, which carries
+`project_id`, `name` and `repository_path` and no `workspace_id` either. For an operator with one
+membership — every current deployment — the guess is right. For an operator in two workspaces
+whose run belongs to the second, the panel lists the first workspace's stages and shows an empty
+comparison, which is the safe failure but still a wrong one. Adding `workspace_id` to `Project`
+is the small fix; adding it to `Run` is the direct one. Either is a contract change and belongs
+to the milestone that owns those contracts, not to a UI PR.
 
 ## Recorded during M6
 

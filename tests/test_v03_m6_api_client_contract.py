@@ -73,6 +73,12 @@ M6_CLIENT_FUNCTIONS: dict[str, tuple[str, str]] = {
     "routingCandidates": ("get", "ConfigurationCandidate[]"),
     "overrideRoutingDecision": ("post", "RoutingDecisionReceipt"),
     "cancelRoutingDecision": ("post", "RoutingDecisionReceipt"),
+    # v0.4 M9b — the §17.2 shadow comparison. Both are reads whose paths are template
+    # literals: one carries the workspace as a query parameter and one a router version id
+    # as a path segment, and neither `tsc` nor the generated schema can tell whether the
+    # route on the other end exists or still returns what the client names.
+    "routerModels": ("get", "RouterModelVersion[]"),
+    "shadowPolicyReport": ("get", "ShadowReport"),
 }
 
 _ENTRY = re.compile(
