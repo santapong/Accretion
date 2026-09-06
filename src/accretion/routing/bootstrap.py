@@ -13,13 +13,16 @@ from accretion.feedback.evidence import StoreEvidenceRetriever
 from accretion.resolver import CapabilityResolver
 from accretion.routing.activation import LedgerActiveVersionResolver
 from accretion.routing.artifacts import ArtifactStore
+from accretion.routing.bandit import GuardedBandit, LedgerRegistry
 from accretion.routing.catalog import ConfigurationCatalog, ConfigurationCatalogFactory
 from accretion.routing.coldstart import ColdStartScorer
 from accretion.routing.protocols import FrozenNode, RoutingMode
 from accretion.routing.rollout import BranchedRolloutExecutor, ShadowRoutingHook
 from accretion.routing.service import DefaultNodeRoutingService
+from accretion.routing.settlement import ExplorationSettlement
 from accretion.routing.snapshot import RegistrySnapshotBuilder, RoutingSnapshot
 from accretion.routing.stages import (
+    BehaviorPolicy,
     CandidateScorer,
     DeterministicBehavior,
     PostNodeHook,
@@ -99,6 +102,7 @@ def build_node_routing(
 
     artifact_store = artifacts or ArtifactStore.default()
     scorer: CandidateScorer | None = None
+    behavior: BehaviorPolicy = DeterministicBehavior()
     post_route: tuple[PostRouteHook, ...] = ()
     post_node: tuple[PostNodeHook, ...] = ()
     if mode is not RoutingMode.BASELINE_ONLY:
@@ -115,6 +119,20 @@ def build_node_routing(
         # "shadow evaluation is off" a structural fact rather than a branch inside a hook.
         post_route = (ShadowRoutingHook(manager.store, artifact_store, mode=mode),)
         post_node = (BranchedRolloutExecutor(manager),)
+    if mode is RoutingMode.AUTO:
+        # M7's two stages, attached together and only under AUTO, for the same reason M6's
+        # pair is: the bandit charges an exploration at its upper bound and the settlement
+        # hook is the only thing that ever replaces that bound with the measurement, so an
+        # assembly with one and not the other would either hold a budget nobody could release
+        # or release a budget nobody had taken. They share one `LedgerRegistry` because two
+        # registries over one store would each rebuild the same ledger from the same receipts
+        # and only one of them would ever see a settlement. Under SHADOW the learned router
+        # selects and the *baseline* executes (§11.1), so exploring there would be a decision
+        # nothing acts on and a cost nothing incurs — which is why this is `is AUTO` and not
+        # `is not BASELINE_ONLY`.
+        ledgers = LedgerRegistry(manager.store)
+        behavior = GuardedBandit(manager.store, artifact_store, ledgers=ledgers)
+        post_node = (*post_node, ExplorationSettlement(manager.store, ledgers))
 
     return DefaultNodeRoutingService(
         store=manager.store,
@@ -136,7 +154,7 @@ def build_node_routing(
         active_versions=LedgerActiveVersionResolver(manager.store),
         evidence=StoreEvidenceRetriever(manager.store),
         scorer=scorer,
-        behavior=DeterministicBehavior(),
+        behavior=behavior,
         post_route=post_route,
         post_node=post_node,
         default_mode=mode,

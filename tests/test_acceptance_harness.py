@@ -595,6 +595,7 @@ def test_the_fifty_v04_rows_load_from_the_sdd_under_their_owner_stages() -> None
     }
     delivered |= {f"AC4-M2-{number:03d}" for number in owners["M2"]}
     delivered |= {f"AC4-M3-{number:03d}" for number in owners["M3"]}
+    delivered |= {f"AC4-M7-{number:03d}" for number in owners["M7"]}
     delivered |= {f"AC4-M8-{number:03d}" for number in owners["M8"]}
     delivered |= {f"AC4-M9-{number:03d}" for number in owners["M9"]}
     assert {name for name, c in v04.items() if c.in_scope} == delivered
