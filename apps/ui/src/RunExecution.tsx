@@ -17,7 +17,9 @@ import "./react-flow.css";
 import { api } from "./api";
 import { layoutProjection } from "./graphLayout";
 import { RoutingPanel } from "./RoutingPanel";
+import { routingIndex } from "./routingIndex";
 import { badgeParts, nodeBadges, type NodeBadge, type NodeBadgeIndex } from "./runBadges";
+import { ShadowComparison } from "./ShadowComparison";
 import type {
   ApprovalRecord,
   CandidateScore,
@@ -954,6 +956,15 @@ export function RunExecution({ run }: { run: Run | undefined }) {
     refetchInterval,
   });
 
+  // Every routing receipt this run's audit named, dispatched or not. The §17.2 comparison
+  // narrows a workspace-wide shadow report to this run with them, and a run that named none
+  // asks the shadow routes for nothing — the same audit, and the same discipline, as the
+  // §17.1 panel beside it.
+  const routedReceipts = useMemo(() => {
+    const index = routingIndex(auditQuery.data);
+    return [...new Set([...[...index.byNode.values()].flat(), ...index.unassigned])];
+  }, [auditQuery.data]);
+
   if (!run) return <section className="execution-panel empty">Select a run to inspect its orchestration state.</section>;
 
   const projection = isGraphProjection(graphQuery.data) ? graphQuery.data : undefined;
@@ -970,6 +981,7 @@ export function RunExecution({ run }: { run: Run | undefined }) {
         <ExperienceCapture run={run} />
         <DynamicWorkflowInspector run={run} />
         <RoutingPanel run={run} audit={auditQuery.data} projection={projection} />
+        <ShadowComparison run={run} receipts={routedReceipts} />
         <SearchTree run={run} />
         <PendingApprovals runId={run.run_id} />
         {loopQuery.data ? <BudgetSummary loop={loopQuery.data} /> : null}

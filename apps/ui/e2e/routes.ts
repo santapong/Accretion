@@ -51,10 +51,10 @@ export const ROUTES: readonly RouteUnderTest[] = [
     heading: /…/,
     settle: "run-events",
     structuralChange: {
-      pr: "M9a",
+      pr: "M9b",
       reason:
-        "the §17.1 node routing panel is mounted in .execution-content beside the dynamic " +
-        "workflow inspector, so the run page renders more elements than the merge-base",
+        "the §17.2 shadow comparison is mounted in .execution-content beside the §17.1 " +
+        "routing panel, so the run page renders more elements than the merge-base",
     },
   },
   { path: "/runtimes", heading: "Runtime monitor" },
