@@ -9,6 +9,43 @@ the three milestone PRs that merged before this file was updated.
 
 The M9 ladder is parked after its stylesheet port; the entries below it are v0.4 work.
 
+### v0.4 — M5 cold start, the project adapter, and the routing stage collaborators
+
+- Added `src/accretion/routing/stages.py`: the five extension points SDD §9.4's routing stages
+  are assembled from — `ActiveVersionResolver`, `EvidenceRetriever`, `CandidateScorer`,
+  `BehaviorPolicy` and the two hooks `PostRouteHook`/`PostNodeHook` — with the three inert
+  defaults (`StatusActiveVersionResolver`, `NoEvidence`, `DeterministicBehavior`) that reproduce
+  M2's behaviour exactly, §15.1's availability ladder as a single `degraded` label with a stated
+  precedence, and §7.10's retrieval key as `node_signature`. This replaces the two seam comments
+  M2 left in `routing/service.py`, so M6, M7 and M8 each add a module and one constructor
+  argument instead of editing one method (#TBD).
+- Added `src/accretion/routing/coldstart.py`: `ColdStartScorer` consults M4's learned predictor
+  from routing for the first time, in `AUTO` mode only and only through
+  `LearnedPredictorLoader`. A project adapter shifts the predicted mean **and** the lower
+  confidence bound by the same logit delta (OQ-406), and out-of-domain evidence may pull the
+  mean toward the rate observed out of domain by at most 0.15 with the bound left untouched
+  (OQ-408) — `AC4-M5-021` (cross-domain evidence cannot directly enable live routing) is now
+  proven by a seeded 500-draw property test. Every §15.1 loss — no loadable prior, a mismatched
+  training-snapshot vocabulary digest, an unavailable adapter, a retrieval failure — degrades to
+  a weaker answer and is recorded on the receipt rather than raised (#TBD).
+- Changed `src/accretion/routing/service.py`: `route` is rewritten in §9.4 order around the
+  injected collaborators and now emits the four §12 lifecycle events M2 declared and left
+  unemitted — `ROUTING_REQUESTED`, `ROUTING_CANDIDATES_BUILT` and, by decision type,
+  `ROUTING_FALLBACK_SELECTED` or `ROUTING_HUMAN_REVIEW_REQUIRED` — inside the routing
+  transaction, with payloads restricted to ids, digests, counts and enum values. Receipts now
+  carry a real `selection_propensity`, the scorer's `calibration_version`, `experience_refs`
+  from retrieved evidence, and a `workspace_router_version` that attributes the decision to
+  whoever actually made it. A replay stays a lookup: it appends no event and runs no hook.
+  `route` gains `excluded_configuration_hashes` (SDD §9.7), refused during candidate
+  construction as `ATTEMPTED_WITHOUT_NEW_EVIDENCE` at `CONSTRUCT_TUPLE` so an excluded
+  configuration is not a candidate at all (#TBD).
+- Changed `src/accretion/api/routing.py`: the hard `BASELINE_ONLY` reject is removed. Which of
+  §11.1's modes a process can honour depends on whether a learned scorer was injected, which a
+  route handler cannot see, so the service answers once — with `ROUTING_MODE_UNAVAILABLE`, 422 —
+  for HTTP and run-manager callers alike. Added the `ACCRETION_NODE_ROUTING_MODE` setting,
+  defaulting to `BASELINE_ONLY`; `routing/bootstrap.py` builds the cold-start scorer only when it
+  is set to something else. Graph execution continues to route `BASELINE_ONLY` (#TBD).
+
 ### v0.4 — M4 offline ranker and candidate gate
 
 - Added `src/accretion/routing/train.py` and `routing/artifacts.py`: `RouterTrainingService`

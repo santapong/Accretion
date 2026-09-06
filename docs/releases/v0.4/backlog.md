@@ -174,6 +174,51 @@ trained across a material serving change is visible as two boundaries rather tha
 drift. M4 does not yet *detect* materiality; it makes the evidence for that detection recordable,
 and M6's branched rollouts are the first consumer.
 
+## Recorded during M5
+
+Three open questions closed while building the cold-start scorer. Each is recorded here rather
+than in the SDD, because the SDD states the question and these are the answers this release gave.
+
+**ADR4-M5-001 (OQ-406, project-adapter form) — the residual corrects the prior's *logit*, and the
+same delta moves the mean and the lower bound.** The default was "regularised residual or
+calibration layer", and the residual won for the reason `routing/adapter.py` opens with: a
+project-scoped model fitted on a project's first handful of runs is a model fitted on noise, and
+it is at its most confident exactly when it knows least. Parameterising the adapter as a two-number
+affine residual on the prior's logit makes the failure mode benign — at zero coefficients it is the
+identity function. What M5.2 adds is the serving rule: `ColdStartScorer._adapt` applies the fitted
+delta to `DistributionEstimate.mean` **and** to `lower_bound`, not to the mean alone. Shifting only
+the mean would let a project's own history raise a candidate's expected value while leaving the
+number §9.5's safe set is defined on untouched, which is a way of passing the gate by not being
+measured by it. `n_project` is the project's in-domain count at serving time (`n_same_signature`)
+and is deliberately not `artifact.n_fit`: an adapter fitted last week on forty outcomes must not
+claim the authority of the ninety the project has now, nor keep the authority of forty if the
+eligible evidence has since shrunk.
+
+**ADR4-M5-002 (OQ-408, cross-domain prior cap) — 0.15, on the mean only, with the bound outside the
+function's signature.** The default was "a small fixed cap, tuned only on validation, with a
+property test proving the cap alone cannot lift an LCB over τ". The cap is fixed at 0.15 and is
+*not* tuned: a cap that moved with the data would be a cap the data could raise, and §9.4's
+sentence is a bound rather than a hyperparameter. It is reached through a shrinkage weight
+`min(0.15, n_cross / (n_cross + 20))`, so the first out-of-domain record does not weigh as much as
+the hundredth, and `k` can only change how fast the weight climbs *toward* the cap. The load-bearing
+part is structural rather than numeric: `coldstart.cross_domain_prior` takes the mean and does not
+take the bound, so no amount of cross-domain evidence can reach the quantity the §9.5 gate reads.
+The property test is `AC4-M5-021`'s, and it pins 0.15 as a literal rather than importing the module
+constant — importing it would make raising the cap invisible to the test that exists to catch it.
+
+**ADR4-M5-003 (vocabulary pinning) — the scorer refuses a prior fitted under another token table.**
+Not an SDD open question but a gap M4 left: `RankerArtifact` records `feature_schema_version` and
+`n_features` but no vocabulary, while `features.Vocabulary` decides which column index a model id
+or an adapter version lands in. Two models with the same schema version and different vocabularies
+therefore mean different things by the same two columns, and nothing in the artefact can tell them
+apart. The only written record is the training snapshot's `vocab_digest` label, so
+`ColdStartScorer` reads it and degrades to the deterministic baseline under
+`degraded=VOCABULARY_MISMATCH` when it does not match the table the scorer featurizes under. The
+alternative — predicting anyway — is silent at every other layer and would present as a merely
+worse model rather than as a mismatched one. Moving the vocabulary into `RankerArtifact` is the
+cleaner fix and is deferred: it changes an artefact digest, which is a §7.12 identity change and
+belongs to a milestone that owns retraining.
+
 ## Parked beside v0.4
 
 The v0.3.1 operator-UI redesign (M9 of the v0.3 ladder) is parked after its stylesheet port

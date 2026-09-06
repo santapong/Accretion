@@ -1,11 +1,39 @@
-"""Receipt-first baseline routing and append-only operator decisions (v0.4 M2)."""
+"""Receipt-first routing over injectable §9.4 stages, and append-only operator decisions.
+
+M2 built this service as one method with two seam comments in it. M5 replaces the comments
+with the collaborators in :mod:`accretion.routing.stages`: who is routing
+(:class:`~accretion.routing.stages.ActiveVersionResolver`), what history there is
+(:class:`~accretion.routing.stages.EvidenceRetriever`), what the candidates are worth
+(:class:`~accretion.routing.stages.CandidateScorer`), which of them is actually taken
+(:class:`~accretion.routing.stages.BehaviorPolicy`) and who is told afterwards
+(:class:`~accretion.routing.stages.PostRouteHook`). The defaults reproduce M2 exactly, so
+this milestone changes no stored receipt for a workspace that has promoted nothing.
+
+**Why the mode gate moved out of the API and into here.** M2 rejected any mode but
+``BASELINE_ONLY`` at the HTTP boundary, which was right while there was nothing else to run.
+It is wrong now: whether ``AUTO`` is available is a property of how the service was
+*assembled* — a scorer was injected or it was not — and a route handler cannot see that. The
+gate is therefore one question asked in one place, and the answer is the same whether the
+caller arrived over HTTP or through the run manager.
+
+**Why the four §12 events are emitted here and not by the caller.** ``ROUTING_REQUESTED``,
+``ROUTING_CANDIDATES_BUILT``, ``ROUTING_FALLBACK_SELECTED`` and
+``ROUTING_HUMAN_REVIEW_REQUIRED`` are all statements about steps that happen *inside* the
+routing transaction, and three of them are about outcomes the caller cannot observe without
+re-deriving them from the receipt. Emitting them here also puts them inside the same
+transaction as the receipt, so a run's event log cannot claim a decision the store does not
+hold. Their payloads are ids and counts only: an objective can carry anything a user typed,
+including a credential, and §17's event log is read by more eyes than the contract store is.
+"""
 
 from __future__ import annotations
 
+import logging
 import re
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import replace
 from datetime import UTC, datetime
+from typing import Any
 
 from accretion.contracts import (
     AcceptancePolicy,
@@ -28,7 +56,10 @@ from accretion.contracts.routing import (
     ConfigurationCandidate,
     DecisionType,
     ExecutionConfiguration,
+    ExperienceRecord,
+    NodeContract,
     NodeContractRef,
+    ObjectiveContract,
     ProjectFeatures,
     RoutingContext,
     RoutingDecisionReceipt,
@@ -48,10 +79,67 @@ from accretion.routing.gates import PolicyGate
 from accretion.routing.graph_features import graph_features
 from accretion.routing.identity import principal_ref_for_run, routing_request_id, workspace_for_run
 from accretion.routing.protocols import FrozenNode, RoutingMode
-from accretion.routing.selector import DeterministicSelector
+from accretion.routing.selector import (
+    COLD_START_PRIOR_METHOD,
+    DETERMINISTIC_PROPENSITY,
+    DeterministicSelector,
+    SelectionResult,
+)
 from accretion.routing.snapshot import RegistrySnapshotBuilder, RoutingSnapshot
+from accretion.routing.stages import (
+    ADAPTER_UNAVAILABLE,
+    DEGRADED_LABEL,
+    EVIDENCE_UNAVAILABLE,
+    VOCABULARY_MISMATCH,
+    WORKSPACE_MODEL_UNAVAILABLE,
+    ActiveVersionResolver,
+    ActiveVersions,
+    BehaviorPolicy,
+    CandidateScorer,
+    DeterministicBehavior,
+    EvidenceRetriever,
+    NoEvidence,
+    PostNodeHook,
+    PostRouteHook,
+    ScoredSlate,
+    StatusActiveVersionResolver,
+    node_signature,
+    worst_degradation,
+)
 
 CatalogFactory = Callable[[FrozenNode, RoutingSnapshot, Run, Task], Awaitable[ConfigurationCatalog]]
+
+_LOGGER = logging.getLogger(__name__)
+
+_DECISION_EVENTS: Mapping[DecisionType, tuple[str, EventType]] = {
+    DecisionType.FALLBACK: ("fallback", EventType.ROUTING_FALLBACK_SELECTED),
+    DecisionType.HUMAN_REVIEW_REQUIRED: (
+        "human-review",
+        EventType.ROUTING_HUMAN_REVIEW_REQUIRED,
+    ),
+}
+"""The two §12 outcome events, keyed by the decision that causes them.
+
+A mapping and not two ``if``s, because these are the two decision types that mean "no
+learned or ranked choice was made" and a third one added later must be a *decision* to leave
+it unannounced rather than an omission nobody notices. ``EXPLOIT``, ``EXPLORE`` and the two
+human decisions are already covered by ``ROUTING_DECISION_CREATED`` and
+``ROUTING_OVERRIDE_RECORDED``.
+"""
+
+
+DETERMINISTIC_VERSIONS = ActiveVersions(
+    router_version_id=None,
+    adapter_version_id=None,
+    router_label=WORKSPACE_ROUTER_VERSION,
+    adapter_label=None,
+)
+"""The audited deterministic router, named, as the answer to "who decided this".
+
+A constant rather than four literals at three call sites, because these labels go into
+:func:`~accretion.routing.identity.routing_request_id` and a fifth spelling of the same
+thing would silently mint a second family of request ids for the same decisions.
+"""
 
 
 def _error(code: str, message: str, status: int = 409) -> RoutingError:
@@ -68,6 +156,13 @@ class DefaultNodeRoutingService:
         runtimes: Mapping[Provider, AgentRuntime],
         granted_permissions: set[str] | None = None,
         clock: Callable[[], datetime] | None = None,
+        active_versions: ActiveVersionResolver | None = None,
+        evidence: EvidenceRetriever | None = None,
+        scorer: CandidateScorer | None = None,
+        behavior: BehaviorPolicy | None = None,
+        post_route: Sequence[PostRouteHook] = (),
+        post_node: Sequence[PostNodeHook] = (),
+        default_mode: RoutingMode = RoutingMode.BASELINE_ONLY,
     ) -> None:
         self.store = store
         self.snapshots = snapshots
@@ -75,6 +170,28 @@ class DefaultNodeRoutingService:
         self.runtimes = runtimes
         self.granted_permissions = granted_permissions or set()
         self.clock = clock or (lambda: datetime.now(UTC))
+        self.active_versions = active_versions or StatusActiveVersionResolver(store)
+        self.evidence = evidence or NoEvidence()
+        # The one collaborator with no inert default. `None` here is not "score with the
+        # prior", it is "this deployment has no learned scorer", and that is the fact the
+        # mode gate reads: a service that silently substituted a stand-in would accept AUTO
+        # and route deterministically under a receipt claiming otherwise.
+        self.scorer = scorer
+        self.behavior = behavior or DeterministicBehavior()
+        self.post_route = tuple(post_route)
+        self.post_node = tuple(post_node)
+        self._default_mode = default_mode
+
+    @property
+    def default_mode(self) -> RoutingMode:
+        """The mode a caller that expresses no preference is routed under (§11.1).
+
+        Read-only, because §11.1 makes the mode a workspace's earned position in a
+        progression and a caller that could reassign it at run time could put a workspace
+        into ``AUTO`` without the shadow evaluation that is the only way to reach it.
+        """
+
+        return self._default_mode
 
     async def freeze(
         self,
@@ -142,6 +259,9 @@ class DefaultNodeRoutingService:
         snapshot: RoutingSnapshot,
         run: Run,
         request_id: str,
+        *,
+        versions: ActiveVersions,
+        observed_task_count: int,
     ) -> RoutingContext:
         prior = await store.get_routing_request(request_id)
         if prior is not None:
@@ -183,9 +303,13 @@ class DefaultNodeRoutingService:
             contract_id=request_id + "-project",
             **header,
             feature_window_days=30,
-            observed_task_count=0,
+            observed_task_count=observed_task_count,
         )
-        # Project history is deliberately absent until M3; absent is never success evidence.
+        # `observed_task_count` is a count of retrieved records and every other project
+        # aggregate stays absent. That asymmetry is deliberate: a count of observations is a
+        # fact the retriever established, while a mean over them would be an aggregate this
+        # layer computed without the eligibility rules §10.1 puts around one. Absent is
+        # never success evidence, and zero would be a claim.
         structural_features = graph_features(
             graph, node.node_id, int(node.labels.get("attempt", "1"))
         )
@@ -203,12 +327,70 @@ class DefaultNodeRoutingService:
                 capability_registry_snapshot_id=snapshot.capability_registry_snapshot_id,
                 connection_availability_snapshot_id=snapshot.connection_availability_snapshot_id,
                 policy_snapshot_id=snapshot.policy_snapshot_id,
-                workspace_router_version=WORKSPACE_ROUTER_VERSION,
-                project_adapter_version=None,
+                workspace_router_version=versions.router_label,
+                project_adapter_version=versions.adapter_label,
                 requested_at=at,
                 labels={"run_id": run.run_id, "fallback_digest": snapshot.fallback_bundle_digest},
             )
         )
+
+    def _assert_mode_available(self, mode: RoutingMode) -> None:
+        """§11.1: a learned mode is available exactly when a learned scorer was injected.
+
+        Asked as one question in one place so that the HTTP route, the run manager and a
+        direct caller cannot disagree about which modes this process supports. The refusal
+        names the mode rather than the missing collaborator: a client has no business
+        knowing how the service was assembled, only that the regime it asked for is not one
+        this deployment can honour.
+        """
+
+        if mode is not RoutingMode.BASELINE_ONLY and self.scorer is None:
+            raise _error(
+                "ROUTING_MODE_UNAVAILABLE",
+                f"routing mode {mode.value} requires a learned scorer that is not configured",
+                422,
+            )
+
+    async def _versions(
+        self, mode: RoutingMode, *, workspace_id: str, project_id: str
+    ) -> ActiveVersions:
+        """Who §11.1 permits to decide under ``mode``, which is what the request id pins.
+
+        Outside ``AUTO`` nothing learned is consulted, so the answer is the audited
+        deterministic router and the resolver is not asked at all. That is not an
+        optimisation. The request id derives from these labels, so consulting the resolver
+        here would make *promoting a model* change every future request id — and therefore
+        stop every stored receipt from replaying — for a workspace that had not turned
+        learned routing on.
+        """
+
+        if mode is not RoutingMode.AUTO:
+            return DETERMINISTIC_VERSIONS
+        return await self.active_versions.resolve(
+            workspace_id=workspace_id, project_id=project_id
+        )
+
+    @staticmethod
+    def _attributed(versions: ActiveVersions, degraded: str | None) -> ActiveVersions:
+        """Who actually decided, which under §15.1 is not always who was in force.
+
+        A receipt's ``workspace_router_version`` is an attribution: it is the answer to
+        "which model do I hold responsible for this decision", and §10.2's evaluation reads
+        it as one. A prior that could not be loaded, or one whose vocabulary did not match,
+        decided nothing — so naming it would attribute a deterministic fallback's outcomes
+        to a model that never ran, which is the one way an offline evaluation can be wrong
+        without being detectably wrong.
+
+        The routing *context* keeps the in-force versions unchanged, because §8.3 makes it
+        the snapshot of the inputs and what was in force is an input. The receipt records
+        the outcome. The two differing is the record of a degradation, not a contradiction.
+        """
+
+        if degraded in (WORKSPACE_MODEL_UNAVAILABLE, VOCABULARY_MISMATCH):
+            return DETERMINISTIC_VERSIONS
+        if degraded == ADAPTER_UNAVAILABLE:
+            return replace(versions, adapter_version_id=None, adapter_label=None)
+        return versions
 
     async def route(
         self,
@@ -217,10 +399,10 @@ class DefaultNodeRoutingService:
         snapshot: RoutingSnapshot,
         mode: RoutingMode,
         run: Run,
+        excluded_configuration_hashes: Sequence[str] = (),
         _catalog: ConfigurationCatalog | None = None,
     ) -> RoutingDecisionReceipt:
-        if mode != RoutingMode.BASELINE_ONLY:
-            raise _error("ROUTING_MODE_UNAVAILABLE", "Only BASELINE_ONLY is enabled", 422)
+        self._assert_mode_available(mode)
         task = await self.store.get_task(run.task_id)
         if task is None:
             raise _error("ROUTING_INPUT_MISSING", "Task not found", 404)
@@ -245,9 +427,19 @@ class DefaultNodeRoutingService:
         await self._authorize(frozen.node_contract.workspace_id, principal_ref_for_run(run))
         catalog = _catalog or await self.catalog_factory(frozen, snapshot, run, task)
         snapshot = replace(snapshot, fallback_bundle_digest=catalog.fallback_bundle.digest)
-        request_id = routing_request_id(
-            frozen.node_contract.immutable_hash, snapshot, WORKSPACE_ROUTER_VERSION, None, mode
+        versions = await self._versions(
+            mode,
+            workspace_id=frozen.node_contract.workspace_id,
+            project_id=run.project_id,
         )
+        request_id = routing_request_id(
+            frozen.node_contract.immutable_hash,
+            snapshot,
+            versions.router_label,
+            versions.adapter_label,
+            mode,
+        )
+        committed: tuple[RoutingDecisionReceipt, RoutingContext, ScoredSlate] | None = None
         try:
             async with self.store.routing_transaction(run.run_id) as store:
                 await self._authorize(
@@ -274,7 +466,29 @@ class DefaultNodeRoutingService:
                 predecessor = heads[0] if heads else None
                 if predecessor:
                     await self._assert_amendable(store, predecessor, run)
-                context = await self._context(store, frozen, snapshot, run, request_id)
+                await self._event(
+                    store,
+                    run,
+                    "requested",
+                    EventType.ROUTING_REQUESTED,
+                    causation_id=request_id,
+                    payload={
+                        "routing_request_id": request_id,
+                        "node_contract_hash": frozen.node_contract.immutable_hash,
+                        "mode": mode.value,
+                        "workspace_router_version": versions.router_label,
+                    },
+                )
+                records, evidence_degraded = await self._retrieve(frozen, run)
+                context = await self._context(
+                    store,
+                    frozen,
+                    snapshot,
+                    run,
+                    request_id,
+                    versions=versions,
+                    observed_task_count=len(records),
+                )
                 who = frozen.node_contract.created_by
                 builder = CandidateBuilder(
                     gate=PolicyGate(
@@ -296,15 +510,36 @@ class DefaultNodeRoutingService:
                     workspace_id=frozen.node_contract.workspace_id,
                     project_id=run.project_id,
                     clock=lambda: context.requested_at,
+                    excluded_configuration_hashes=excluded_configuration_hashes,
+                )
+                await self._event(
+                    store,
+                    run,
+                    "candidates-built",
+                    EventType.ROUTING_CANDIDATES_BUILT,
+                    causation_id=request_id,
+                    payload={
+                        "routing_request_id": request_id,
+                        "candidate_count": len(built.candidates),
+                        "rejected_count": len(built.rejected),
+                    },
                 )
                 objective = await store.get_objective_contract(
                     frozen.objective_ref.objective_contract_id
                 )
                 if objective is None:
                     raise _error("ROUTING_INPUT_MISSING", "Frozen objective not found", 422)
-                # stage-9-gate / stage-11-behavior: later milestones replace the baseline.
-                selection = DeterministicSelector().select(
-                    built.candidates,
+                slate = await self._score(
+                    mode,
+                    context=context,
+                    candidates=built.candidates,
+                    node=frozen.node_contract,
+                    objective=objective,
+                    versions=versions,
+                    records=records,
+                )
+                baseline = DeterministicSelector().select(
+                    slate.candidates,
                     built.rejected,
                     verified_success_floor=objective.verified_success_floor,
                     utility_weights=objective.utility_weights,
@@ -313,11 +548,28 @@ class DefaultNodeRoutingService:
                     workspace_id=context.workspace_id,
                     project_id=context.project_id,
                 )
+                selection, propensity, behavior_labels = await self._behave(
+                    mode,
+                    context=context,
+                    slate=slate,
+                    baseline=baseline,
+                    node=frozen.node_contract,
+                    objective=objective,
+                    snapshot=snapshot,
+                )
                 for decision in built.compatibility_decisions:
                     await store.put_compatibility_decision(decision)
                 for candidate in selection.candidates:
                     await store.put_configuration_candidate(candidate)
                 selected = selection.selected
+                labels = self._receipt_labels(
+                    run=run,
+                    predecessor=predecessor,
+                    slate=slate,
+                    behavior_labels=behavior_labels,
+                    evidence_degraded=evidence_degraded,
+                )
+                attributed = self._attributed(versions, labels.get(DEGRADED_LABEL))
                 receipt = RoutingDecisionReceipt(  # type: ignore[call-arg]
                     contract_id=derived_id("routing_receipt", request_id),
                     supersedes_contract_id=predecessor.contract_id if predecessor else None,
@@ -335,19 +587,20 @@ class DefaultNodeRoutingService:
                     if selected
                     else None,
                     decision_type=selection.decision_type,
-                    selection_propensity=1.0,
+                    selection_propensity=propensity,
                     predicted_outcomes=selected.predicted if selected else None,
                     uncertainty=UncertaintySummary(
                         epistemic_uncertainty=selected.uncertainty_score if selected else 1,
                         lower_confidence_success=selected.lower_confidence_success
                         if selected
                         else 0,
-                        calibration_version="cold-start-prior/1",
+                        calibration_version=slate.calibration_version,
                     ),
                     candidate_summary_refs=[c.contract_id for c in selection.candidates],
                     rejected_candidate_reasons=list(built.rejected),
-                    workspace_router_version=WORKSPACE_ROUTER_VERSION,
-                    project_adapter_version=None,
+                    experience_refs=list(slate.evidence_ids),
+                    workspace_router_version=attributed.router_label,
+                    project_adapter_version=attributed.adapter_label,
                     objective_contract_version=frozen.objective_ref.revision,
                     capability_registry_snapshot_id=snapshot.capability_registry_snapshot_id,
                     policy_snapshot_id=snapshot.policy_snapshot_id,
@@ -360,26 +613,185 @@ class DefaultNodeRoutingService:
                         None,
                     ),
                     explanation=selection.explanation,
-                    labels={
-                        "run_id": run.run_id,
-                        "decision_version": str(
-                            int(predecessor.labels.get("decision_version", "1")) + 1
-                        )
-                        if predecessor
-                        else "1",
-                        "routing_status": "READY",
-                    },
+                    labels=labels,
                 )
                 receipt = await store.put_routing_receipt(receipt)
-                await self._event(
+                await self._receipt_event(
                     store, run, receipt, "created", EventType.ROUTING_DECISION_CREATED
                 )
-                # post-route-shadow / active-version: intentionally inert until M6/M8.
-                return receipt
+                outcome_event = _DECISION_EVENTS.get(selection.decision_type)
+                if outcome_event is not None:
+                    await self._receipt_event(store, run, receipt, *outcome_event)
+                committed = (receipt, context, slate)
         except ValueError as exc:
             raise _error("RECEIPT_VERSION_CONFLICT", "Routing records conflict") from exc
+        if committed is None:
+            # Only reachable when the transaction body returned the replayed receipt, which
+            # it does by returning directly; keeping the fallthrough typed rather than
+            # asserting means a future edit that stops assigning `committed` degrades to
+            # "no hooks ran" instead of to an AttributeError inside a committed decision.
+            raise _error("ROUTING_RECORD_INVALID", "Routing decision was not committed")
+        receipt, context, slate = committed
+        for hook in self.post_route:
+            try:
+                await hook.after_receipt(
+                    run=run,
+                    frozen=frozen,
+                    snapshot=snapshot,
+                    context=context,
+                    receipt=receipt,
+                    slate=slate,
+                )
+            except Exception:
+                # The receipt is committed and has been promised to the caller. A shadow
+                # recorder that failed must not turn a durable decision into an error the
+                # caller would retry — the retry would replay to this very receipt.
+                _LOGGER.exception(
+                    "post-route hook %s failed for receipt %s",
+                    type(hook).__name__,
+                    receipt.contract_id,
+                )
+        return receipt
 
-    async def _event(
+    async def _retrieve(
+        self, frozen: FrozenNode, run: Run
+    ) -> tuple[list[ExperienceRecord], str | None]:
+        """SDD §9.4 stage 3, and §15.1's answer when it fails: nothing, said out loud.
+
+        Returns the records and the degradation to record, so that "there was no history"
+        and "there may have been history and we could not read it" reach the receipt as
+        different statements. Fabricating the second as the first is exactly what §15.1
+        forbids, and it is the failure a caller cannot detect afterwards.
+        """
+
+        try:
+            records = await self.evidence.retrieve(
+                workspace_id=frozen.node_contract.workspace_id,
+                project_id=run.project_id,
+                signature=node_signature(
+                    frozen.node_contract,
+                    objective_digest=frozen.objective_ref.objective_contract_hash,
+                ),
+                principal=principal_ref_for_run(run),
+                as_of=self.clock(),
+            )
+        except Exception:
+            _LOGGER.exception(
+                "experience retrieval failed for node %s; routing without history",
+                frozen.node_contract.contract_id,
+            )
+            return [], EVIDENCE_UNAVAILABLE
+        return list(records), None
+
+    async def _score(
+        self,
+        mode: RoutingMode,
+        *,
+        context: RoutingContext,
+        candidates: Sequence[ConfigurationCandidate],
+        node: NodeContract,
+        objective: ObjectiveContract,
+        versions: ActiveVersions,
+        records: Sequence[ExperienceRecord],
+    ) -> ScoredSlate:
+        """§9.3 outcome estimation, consulted in ``AUTO`` only.
+
+        ``SHADOW`` deliberately does *not* score here. A shadow decision is recorded by a
+        :class:`~accretion.routing.stages.PostRouteHook` alongside the baseline that actually
+        executed (M6), so scoring in the main path would make the shadow router's choice the
+        one the receipt attributes the run to — which is the one thing §11.1 says a shadow
+        must never be.
+        """
+
+        if mode is not RoutingMode.AUTO or self.scorer is None:
+            return ScoredSlate(
+                candidates=tuple(candidates),
+                calibration_version=COLD_START_PRIOR_METHOD,
+                evidence_ids=(),
+                labels={},
+            )
+        return await self.scorer.score(
+            context=context,
+            candidates=candidates,
+            node=node,
+            objective=objective,
+            versions=versions,
+            # Every candidate is scored against the whole retrieved body rather than
+            # against the records that name its own hash: §7.10 makes the *signature* the
+            # retrieval key, so the evidence that matters to a candidate includes runs of
+            # sibling configurations under the same signature, and a per-hash split would
+            # hide all of it.
+            evidence_by_hash={
+                candidate.configuration.configuration_hash: records
+                for candidate in candidates
+            },
+        )
+
+    async def _behave(
+        self,
+        mode: RoutingMode,
+        *,
+        context: RoutingContext,
+        slate: ScoredSlate,
+        baseline: SelectionResult,
+        node: NodeContract,
+        objective: ObjectiveContract,
+        snapshot: RoutingSnapshot,
+    ) -> tuple[SelectionResult, float, Mapping[str, str]]:
+        """§9.1 stage 11. Outside ``AUTO`` the deterministic choice is the taken action.
+
+        The propensity returned outside ``AUTO`` is 1.0 and is a measurement rather than a
+        default: the policy that acted had one admissible action and took it.
+        """
+
+        if mode is not RoutingMode.AUTO:
+            return baseline, DETERMINISTIC_PROPENSITY, {}
+        decision = await self.behavior.select(
+            context=context,
+            slate=slate,
+            baseline=baseline,
+            node=node,
+            objective=objective,
+            snapshot=snapshot,
+        )
+        return decision.selection, decision.propensity, decision.labels
+
+    @staticmethod
+    def _receipt_labels(
+        *,
+        run: Run,
+        predecessor: RoutingDecisionReceipt | None,
+        slate: ScoredSlate,
+        behavior_labels: Mapping[str, str],
+        evidence_degraded: str | None,
+    ) -> dict[str, str]:
+        """M2's three labels, plus whatever the stages had to say, with one ``degraded`` key.
+
+        The stage labels are merged *under* the three the service owns, so no collaborator
+        can rewrite ``run_id``, ``decision_version`` or ``routing_status`` — those three are
+        how the amendment chain and the dispatch gate find this receipt, and a scorer that
+        could set them could detach a decision from its own history.
+        """
+
+        degraded = worst_degradation(
+            slate.labels.get(DEGRADED_LABEL),
+            behavior_labels.get(DEGRADED_LABEL),
+            evidence_degraded,
+        )
+        labels = {**dict(slate.labels), **dict(behavior_labels)}
+        labels.pop(DEGRADED_LABEL, None)
+        if degraded is not None:
+            labels[DEGRADED_LABEL] = degraded
+        labels.update(
+            run_id=run.run_id,
+            decision_version=str(int(predecessor.labels.get("decision_version", "1")) + 1)
+            if predecessor
+            else "1",
+            routing_status="READY",
+        )
+        return labels
+
+    async def _receipt_event(
         self,
         store: StateStore,
         run: Run,
@@ -387,23 +799,55 @@ class DefaultNodeRoutingService:
         action: str,
         event_type: EventType,
     ) -> None:
+        """One §12 event *about a receipt*, keyed and caused by that receipt's id.
+
+        ``node_contract_hash`` is in the payload because :meth:`_assert_amendable` reads it
+        back off the ``dispatch`` event to decide whether a decision has been claimed. That
+        is a load-bearing payload key, not a convenience.
+        """
+
+        await self._event(
+            store,
+            run,
+            action,
+            event_type,
+            causation_id=receipt.contract_id,
+            payload={
+                "receipt_id": receipt.contract_id,
+                "node_contract_hash": receipt.node_contract_hash,
+            },
+        )
+
+    async def _event(
+        self,
+        store: StateStore,
+        run: Run,
+        action: str,
+        event_type: EventType,
+        *,
+        causation_id: str,
+        payload: Mapping[str, Any],
+    ) -> None:
+        """Append one routing event, derived from ``causation_id`` so a replay cannot double it.
+
+        ``payload`` carries ids, digests, counts and enum values only. An objective is user
+        text and can contain a credential; §17's event log is the widest-read surface in the
+        system, and a router that echoed its inputs into it would make the log the leak.
+        """
+
         await store.append_event(
             AgentEvent(
-                event_id=derived_id("event", receipt.contract_id, action),
+                event_id=derived_id("event", causation_id, action),
                 run_id=run.run_id,
                 session_id=run.session_id or run.run_id,
                 provider=run.provider,
                 native_type="accretion/routing/" + action,
                 normalized_type=event_type,
                 correlation_id=run.run_id,
-                causation_id=receipt.contract_id,
+                causation_id=causation_id,
                 adapter_version="routing/1",
                 timestamp=self.clock(),
-                payload={
-                    "receipt_id": receipt.contract_id,
-                    "node_contract_hash": receipt.node_contract_hash,
-                    "action": action,
-                },
+                payload={**dict(payload), "action": action},
             )
         )
 
@@ -542,7 +986,9 @@ class DefaultNodeRoutingService:
                 receipt.workspace_id, principal_ref_for_run(run), mutate=True, store=store
             )
             await self._assert_amendable(store, receipt, run)
-            await self._event(store, run, receipt, "dispatch", EventType.ROUTING_DECISION_CREATED)
+            await self._receipt_event(
+                store, run, receipt, "dispatch", EventType.ROUTING_DECISION_CREATED
+            )
         return configuration
 
     async def override(
@@ -686,7 +1132,7 @@ class DefaultNodeRoutingService:
                         created_at=at,
                     )
                 await store.put_routing_receipt(amended)
-                await self._event(
+                await self._receipt_event(
                     store,
                     run,
                     amended,
@@ -719,8 +1165,7 @@ class DefaultNodeRoutingService:
         await self._authorize(node.workspace_id, principal)
         if node.immutable_hash != expected_node_contract_hash:
             raise _error("RECEIPT_VERSION_CONFLICT", "Node contract hash changed")
-        if mode != RoutingMode.BASELINE_ONLY:
-            raise _error("ROUTING_MODE_UNAVAILABLE", "Only BASELINE_ONLY is enabled", 422)
+        self._assert_mode_available(mode)
         existing = await self.replay(routing_request_id)
         if existing is not None:
             if (
@@ -746,8 +1191,15 @@ class DefaultNodeRoutingService:
         snapshot = replace(snapshot, fallback_bundle_digest=catalog.fallback_bundle.digest)
         from accretion.routing.identity import routing_request_id as derive_request
 
+        versions = await self._versions(
+            mode, workspace_id=node.workspace_id, project_id=project_id
+        )
         expected = derive_request(
-            node.immutable_hash, snapshot, WORKSPACE_ROUTER_VERSION, None, mode
+            node.immutable_hash,
+            snapshot,
+            versions.router_label,
+            versions.adapter_label,
+            mode,
         )
         if (
             expected != routing_request_id

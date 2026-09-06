@@ -365,7 +365,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.node_routing = None
     if settings.enable_node_routing:
         node_routing = build_node_routing(manager, policy_id=settings.capability_policy_id,
-                                         granted_permissions=set(settings.granted_permissions))
+                                         granted_permissions=set(settings.granted_permissions),
+                                         mode=settings.node_routing_mode)
         manager.routing_service = node_routing
         app.state.node_routing = node_routing
     # The section 27 exit seam, wired for the API process. Without this the scheduler
