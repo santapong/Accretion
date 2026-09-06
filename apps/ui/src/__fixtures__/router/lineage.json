@@ -1,0 +1,119 @@
+{
+  "schema_version": "1.0",
+  "version_id": "rmv_7CJEP8EAB33CNS3R0N4CRPN18G",
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C",
+  "scope": "PROJECT_ADAPTER",
+  "family_key": "gradient-boosted-ranker",
+  "parent_chain": [
+    {
+      "schema_version": "1.0",
+      "version_id": "rmv_7CJEP8EAB33CNS3R0N4CRPN18G",
+      "parent_version_id": "rmv_2KPQMJ4VCETFFK2Z973NZSM3NV",
+      "status": "SHADOW",
+      "scope": "PROJECT_ADAPTER",
+      "algorithm_id": "gradient-boosted-ranker",
+      "training_snapshot_id": "rts_TR41NDVX8Q0KM7ZJ5HB2WCPY63",
+      "artifact_digest": "2a7c93e1b48fd50c6e19a3720b8d4f6152cc9807ae3b41d5f0629748bc31ea6d",
+      "created_at": "2026-03-05T08:15:00Z"
+    },
+    {
+      "schema_version": "1.0",
+      "version_id": "rmv_2KPQMJ4VCETFFK2Z973NZSM3NV",
+      "parent_version_id": "rmv_73BPF68NW342QGTDNRRFYDCH6B",
+      "status": "ACTIVE",
+      "scope": "PROJECT_ADAPTER",
+      "algorithm_id": "gradient-boosted-ranker",
+      "training_snapshot_id": "rts_EDB22B93VQVFFB77KJCXN83MCB",
+      "artifact_digest": "9f1b4d0e6c2a7385bb41d8f0925ce6a743d1c85fb0e27a4699cd3168f2b57e04",
+      "created_at": "2026-03-01T09:00:00Z"
+    },
+    {
+      "schema_version": "1.0",
+      "version_id": "rmv_73BPF68NW342QGTDNRRFYDCH6B",
+      "parent_version_id": null,
+      "status": "ACTIVE",
+      "scope": "PROJECT_ADAPTER",
+      "algorithm_id": "gradient-boosted-ranker",
+      "training_snapshot_id": "rts_EDB22B93VQVFFB77KJCXN83MCB",
+      "artifact_digest": "c30ae8a610457ec1599e9b3ee961dae19db1e94b162c58ab52c3dd66f353bce0",
+      "created_at": "2026-02-20T09:00:00Z"
+    }
+  ],
+  "activations": [
+    {
+      "approved_by": {
+        "display_name": "Priya Raman",
+        "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+        "status": "ACTIVE"
+      },
+      "cause": null,
+      "content_hash": "",
+      "contract_id": "rac_WGWCZ7B1CETEA87P08EKTKHEZZ",
+      "contract_type": "accretion.router-activation",
+      "created_at": "2026-03-01T09:05:00Z",
+      "created_by": {
+        "display_name": "Priya Raman",
+        "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+        "status": "ACTIVE"
+      },
+      "family_key": "gradient-boosted-ranker",
+      "kind": "PROMOTE",
+      "labels": {
+        "owner": "routing-platform",
+        "drill_digest": "48d2c6b0f7a19e35cd8240b6193fe75a0c4bb812d69f3ae570128c4d9b63af12"
+      },
+      "objective_contract_ref": null,
+      "previous_version_id": "rmv_73BPF68NW342QGTDNRRFYDCH6B",
+      "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+      "promotion_report_id": "rpr_P5ZJB9X8T0JM655SQFCBNJQ4T7",
+      "retention_class": "STANDARD",
+      "rollback_target_version_id": "rmv_73BPF68NW342QGTDNRRFYDCH6B",
+      "router_version_id": "rmv_2KPQMJ4VCETFFK2Z973NZSM3NV",
+      "schema_version": "1.0.0",
+      "scope": "PROJECT_ADAPTER",
+      "sequence": 3,
+      "supersedes_contract_id": null,
+      "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+    },
+    {
+      "approved_by": {
+        "display_name": "Priya Raman",
+        "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+        "status": "ACTIVE"
+      },
+      "cause": "Critical cohort regression on secrets handling; the workspace was withdrawn to the last version whose drill passed.",
+      "content_hash": "",
+      "contract_id": "rac_D45YP52QTXKAH9YCDD839E5VPG",
+      "contract_type": "accretion.router-activation",
+      "created_at": "2026-03-04T11:30:00Z",
+      "created_by": {
+        "display_name": "Priya Raman",
+        "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+        "status": "ACTIVE"
+      },
+      "family_key": "gradient-boosted-ranker",
+      "kind": "ROLLBACK",
+      "labels": {
+        "owner": "routing-platform",
+        "drill_digest": "1c93fa5e70b4d826af31059cbe7248d1930f6ac25be84713d05fc9a6b28e3417"
+      },
+      "objective_contract_ref": null,
+      "previous_version_id": "rmv_4WQ8ZC1TN5KDR7YJ2HMB03XVGA",
+      "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+      "promotion_report_id": null,
+      "retention_class": "STANDARD",
+      "rollback_target_version_id": "rmv_73BPF68NW342QGTDNRRFYDCH6B",
+      "router_version_id": "rmv_6HND5PVA2Y7KQ3XT9RJZ0CWMEB",
+      "schema_version": "1.0.0",
+      "scope": "PROJECT_ADAPTER",
+      "sequence": 4,
+      "supersedes_contract_id": null,
+      "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+    }
+  ],
+  "promotion_report_ids": [
+    "rpr_P5ZJB9X8T0JM655SQFCBNJQ4T7"
+  ],
+  "active_version_id": "rmv_6HND5PVA2Y7KQ3XT9RJZ0CWMEB",
+  "rollback_target_version_id": "rmv_73BPF68NW342QGTDNRRFYDCH6B"
+}

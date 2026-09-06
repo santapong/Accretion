@@ -417,8 +417,8 @@ test("one failing rule fails the report", () => {
  * measurement, which is the one worth reading before trusting a CSS number after a slice.
  */
 const MEASURED = {
-  initialJsRaw: 561_138,
-  initialJsGzip: 166_998,
+  initialJsRaw: 592_520,
+  initialJsGzip: 174_385,
   initialCssRaw: 51_491,
   initialCssGzip: 10_352,
 } as const;
