@@ -1,10 +1,11 @@
 # Accretion v0.4.0 release notes
 
-> **Draft.** Every number below is sourced from the repository at the head of `develop` on
-> 2026-09-06. The counts line, the release date, the tag and the commit SHAs are filled by the
-> release PR after M10d, and nothing here may be published until it has been.
+> Every number below is sourced from the repository at `develop`
+> `cea73eb1eeb6e1cdeb7513de5acff3b085c16542` (the #156 squash commit that closed M10) on
+> 2026-09-07. The release audit records the measurements; the tag `v0.4.0` is cut on `main`
+> after the release bridge and recorded in the audit's release procedure.
 
-Version: `v0.4.0` (pending). Theme: **Evidence-aware node configuration routing**.
+Version: `v0.4.0`. Theme: **Evidence-aware node configuration routing**.
 
 v0.4.0 turns the v0.3 integration platform into a control plane that *chooses* how each node
 runs and then has to defend the choice. A node is frozen into an immutable contract before it
