@@ -1,0 +1,47 @@
+{
+  "ablations_path": "evals/router/ablations.v1.json",
+  "configuration_version": "router-baselines-v1",
+  "deterministic_v01_table": {
+    "DIRECT": "cnf-codex-mini",
+    "GRAPH": "cnf-codex-standard",
+    "HYBRID": "cnf-claude-opus-full",
+    "LOOP": "cnf-claude-sonnet-lean"
+  },
+  "false_acceptance_ceiling": 0.05,
+  "invalid_action_penalty": 1.0,
+  "latency_budget_ms": 60000,
+  "oracle_candidate_subset": [
+    "cnf-claude-opus-full",
+    "cnf-claude-sonnet-lean",
+    "cnf-codex-mini",
+    "cnf-codex-standard",
+    "cnf-deterministic-scripted"
+  ],
+  "preregistration_sha256": "6b45998b3a9847298ba878a6414211ce38d64c775e5addd587509fdd70cf04ea",
+  "seed": 20260906,
+  "selection_split": {
+    "evaluation_project_ids": [
+      "prj-router-locked-docs-site",
+      "prj-router-locked-etl-batch",
+      "prj-router-locked-etl-batch-fork",
+      "prj-router-locked-notebook-analysis",
+      "prj-router-locked-web-api",
+      "prj-router-locked-web-api-fork"
+    ],
+    "selection_project_ids": [
+      "prj-router-locked-cli-generator",
+      "prj-router-locked-cli-scaffold",
+      "prj-router-locked-infra-terraform",
+      "prj-router-locked-paper-baseline",
+      "prj-router-locked-paper-benchmark",
+      "prj-router-locked-paper-extension"
+    ]
+  },
+  "suite_version": "v1",
+  "verified_success_floor": 0.7,
+  "weights": {
+    "cost": 0.3,
+    "latency": 0.15,
+    "quality": 1.0
+  }
+}

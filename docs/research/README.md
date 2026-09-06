@@ -15,11 +15,19 @@ as a research result.
 | [P5 dynamic workflows](p5/benchmark.md) | 12 tasks, 24 paired static/dynamic traces | Heterogeneous/uncertain utility uplift `+0.224631`; success `9/12 → 12/12`; predictable uplift `+0.009195`; static fallback and safety gates pass | PASS · POSITIVE |
 | [P6 bounded search](p6/acceptance.md#frozen-benchmark-result) | 12 held-out tasks at N=1, 2, and 4 | Verified accepts `8/12 → 12/12`; mean quality `0.472500 → 0.768333`; explicit null-gain result preserved | PASS |
 | [P7 verified experience](p7/acceptance.md#frozen-benchmark-result) | 20 tasks, 50 sources, 80 traces, four treatments | Replay quality uplift `+0.070500`; 20% fewer tool calls; 95% stale rejection (corpus-declared, see ADR3-M8-005); 3.33% negative transfer; false accepts do not increase | PASS |
-| [Router benchmark v0.4](v0.4/preregistration.md) | 12 projects in two lineage-disjoint halves, 36 tasks, 6 configurations, 432 replay traces | Pilot statistics recorded; all fifteen §21 fields frozen and the page's sha256 pinned in `evals/router/config.v1.json`; the locked test set is unread until M10d | FROZEN 2026-09-06 |
+| [Router benchmark v0.4](v0.4/results.md) | Locked corpus and provider-drift holdout, each 12 projects in two lineage-disjoint halves, 36 tasks, 6 configurations, 18 trials per cell, 3,888 replay traces; analysis [pre-registered](v0.4/preregistration.md) and its sha256 pinned in every corpus | Paired regret contrast M9 vs best fixed excludes zero — `[0.009603, 0.939517]` locked, `[0.039887, 0.320070]` drift; `g_learn` spans zero so no binary superiority is claimed and **no recovered fraction is quoted**; both safety gates fail for every policy at the frozen trial count (ADR4-M10-005); priced real-provider run **not run**. Read once, [2 access-log rows](v0.4/access-log.jsonl) | PASS · PARTIAL (paired only) |
 
 The P5–P7 values above are deterministic properties of versioned fixtures. They
 do not claim that a currently hosted model will reproduce those exact values.
 Negative and null results remain in the corpora and are part of each gate.
+
+The v0.4 row is the first one whose corpus was generated *after* its analysis was frozen. Its
+locked test set and drift holdout were read exactly once, through a runner that refuses unless
+the pre-registration on disk still hashes to the digest the corpus pinned and
+`ACCRETION_ROUTER_LOCKED_TEST=1` is set, and that read is recorded in
+[`v0.4/access-log.jsonl`](v0.4/access-log.jsonl) — two rows, one per corpus. The row is
+classified `PARTIAL` because one of the two endpoints cleared and the other did not, which is
+the state the page reports rather than the one it rounds to.
 
 ## Evidence classes
 
@@ -57,7 +65,20 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync pytest \
   -p pytest_asyncio.plugin \
   tests/test_p5_dynamic_benchmark.py \
   tests/test_p6_search_benchmark.py \
-  tests/test_p7_experience_benchmark.py
+  tests/test_p7_experience_benchmark.py \
+  tests/test_v04_m10_locked_test.py \
+  tests/test_v04_m10_locked_corpus.py
+```
+
+The v0.4 tests above regenerate every table in [`v0.4/results.md`](v0.4/results.md) from the
+committed corpora and fail on a one-digit difference; they write to a temporary access log and
+never to the committed one. Re-reading the locked test set for real is a deliberate act that
+appends to it:
+
+```bash
+ACCRETION_ROUTER_LOCKED_TEST=1 PYTHONPATH=src uv run --no-sync python \
+  scripts/router_locked_test.py --principal usr-accretion-release \
+  --reason "the v0.4.0 release's locked read (M10d)"
 ```
 
 For signed-in calibration, opt in explicitly and keep the output outside Git:

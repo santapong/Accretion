@@ -86,8 +86,8 @@ expose credentials, or erase durable execution history.
 | | Count |
 |---|---:|
 | Criteria across the four SDDs | 167 |
-| Proven by a passing claiming test | 161 |
-| Proven by the frontend suite | 3 |
+| Proven by a passing claiming test | 159 |
+| Proven by the frontend suite | 5 |
 | Proven by a recorded live-provider run | 3 |
 | Uncovered | 0 |
 | **Unmet MUST** | **0** |
@@ -95,18 +95,21 @@ expose credentials, or erase durable execution history.
 **This table is the target, not a measurement.** The release PR must confirm
 
 ```
-in scope: 167   proven: 161   unmet MUST: 0
+in scope: 167   proven: 159   unmet MUST: 0
 ```
 
 before this draft may be published. 167 is the 117 criteria of the v0.1–v0.3 SDDs plus the
-fifty `AC4-M<owner>-0NN` rows SDD v0.4 §20 adds; 161 is 167 less the three criteria proven by
-the vitest suite and the three proven by a recorded live-provider run. The line is derived
+fifty `AC4-M<owner>-0NN` rows SDD v0.4 §20 adds; 159 is 167 less the **five** criteria proven
+by the vitest suite and the three proven by a recorded live-provider run. The line is derived
 from [`docs/acceptance/criteria.toml`](../../acceptance/criteria.toml): each row still
-recorded `not_yet_due` subtracts one from *in scope* and one from *proven*. When this draft
-was written twelve rows were still `not_yet_due` and `make acceptance` reported
+recorded `not_yet_due` subtracts one from *in scope* and one from *proven*. Earlier drafts of
+this page quoted 161; that figure counted three `frontend` rows when the policy file carries
+five — `V01-P4-004`, `V02-P6-008`, `V02-P7-007`, `AC4-M9-040` and `AC4-M9-043` — and M9's two
+were double-counted as proven by pytest as well. When this draft was written twelve rows were
+still `not_yet_due` and `make acceptance` reported
 `in scope: 155   proven: 149   unmet MUST: 0`; M7 closed three of them the same day, leaving
-nine — `AC4-M9-040`, `-043`, `-044` and `AC4-M10-045`..`-050`. M9d flips the three M9 rows and
-M10d deletes the six M10 rows, which is exactly the `+3`, `+6` that closes the gap.
+nine — `AC4-M9-040`, `-043`, `-044` and `AC4-M10-045`..`-050`. M9d flipped the three M9 rows
+and M10d deleted the six M10 rows, and no v0.4 row is `not_yet_due` any more.
 
 The per-milestone figures quoted in the `CHANGELOG.md` entries are historical: each records
 what the harness reported on the day that milestone merged.
@@ -115,10 +118,24 @@ what the harness reported on the day that milestone merged.
 
 This release does not claim more than it proved.
 
-- **No priced real-provider routing run is recorded.** Every v0.4 measurement in this release
-  is a replay over the seeded synthetic development corpus in `evals/router/`. Until
-  `docs/research/v0.4/results.md` records a priced run against real providers — or records
-  that it was not run — no statement here should be read as evidence about hosted models.
+- **The priced real-provider routing run was not performed, and the results page says so.**
+  Every v0.4 measurement in this release is a replay: over the seeded synthetic development
+  corpus in `evals/router/` while the system was built, and over the locked corpus and drift
+  holdout in `evals/router/locked` and `evals/router/drift` for the numbers the release quotes.
+  [`docs/research/v0.4/results.md`](../../research/v0.4/results.md) records the priced run as
+  **not run**, so no statement here is evidence about hosted models.
+- **One superiority statement is made, and it is the paired one.** M9's project-clustered
+  paired regret contrast against the best fixed configuration excludes zero at the
+  multiplicity-adjusted level on the locked corpus, `[0.009603, 0.939517]`, and replicates on
+  the provider-drift holdout, `[0.039887, 0.320070]`. The binary endpoint does not: `g_learn`
+  spans zero, and no recovered fraction is quoted because the opportunity gap's lower limit is
+  not positive.
+- **Both safety gates fail for every policy on the locked corpora.** That is a property of the
+  corpus's conservative trial pooling at the pre-registered 18 trials per cell — verified means
+  verified on every trial, and one false acceptance among eighteen is a false acceptance — and
+  not of any router. It is recorded as `ADR4-M10-005` and reported rather than repaired,
+  because changing the pooling rule after seeing the rows is the post-hoc analysis change the
+  pre-registration exists to prevent.
 - **The ablations are replay-only.** `RouterBenchmarkRunner` refuses any source but `REPLAY`,
   at the route and again inside the runner. A replay is a reproducibility guarantee, not a new
   measurement.
@@ -128,13 +145,16 @@ This release does not claim more than it proved.
   certified oracle opportunity across four benchmarks. `estimands` therefore reports
   `recovered_fraction` only when the lower limit of the opportunity gap is positive: when the
   opportunity has not been shown to exist, the share of it that was recovered is not a number.
+  On the locked corpus it is not positive, so this release quotes no recovered fraction at all.
 - **OQ-419 is deferred.** SDD v0.4 §22 leaves the public benchmark name to protocol
   publication preparation. The router benchmark ships under its internal name only.
-- **The pre-registration is not frozen.** All fifteen SDD §21 fields in
-  [`docs/research/v0.4/preregistration.md`](../../research/v0.4/preregistration.md) carry
-  proposals and remain `TBD`; `docs/research/README.md` records the row as **PENDING FREEZE**.
-  Under ADR-064 the locked test set is readable once, after the pre-registration is frozen and
-  the development pilot has closed, and every read is recorded.
+- **The pre-registration is frozen, and the locked test set has been read.** All fifteen SDD
+  §21 fields in
+  [`docs/research/v0.4/preregistration.md`](../../research/v0.4/preregistration.md) were frozen
+  on 2026-09-06 and the page's sha256 is pinned in every corpus's `config.v1.json`; the runner
+  refuses to start if the file no longer hashes to it. Under ADR-064 the read is recorded:
+  [`docs/research/v0.4/access-log.jsonl`](../../research/v0.4/access-log.jsonl) holds two rows,
+  one for the locked corpus and one for the drift holdout, and any further row is a finding.
 - **The M7 exploration cost ledger is in-memory.** `routing/ledger.py` touches no store, no
   clock and no network; `CostLedger.snapshot()` hands a plain sorted dict to whoever wants to
   persist it, and nothing does yet. A restart forgets what a workspace has already spent, so
@@ -193,10 +213,12 @@ Every v0.4 feature is off by default. Enabling one is an explicit per-deployment
 | `ACCRETION_NODE_ROUTING_MODE` | `BASELINE_ONLY` | Which of SDD §11.1's three regimes a graph routes under. `SHADOW` and `AUTO` additionally require a learned scorer to have been assembled; a process that cannot honour the requested mode answers `ROUTING_MODE_UNAVAILABLE` with 422 rather than silently downgrading. |
 | `ACCRETION_ROUTER_ARTIFACT_DIR` | `.accretion/router-artifacts` | Where trained artefacts, calibrations and holdout evaluations live. Inside the gitignored data directory, because an artefact tree under version control would make every training run a diff. |
 
-One further setting is **planned, not shipped**: `ACCRETION_ROUTER_LOCKED_TEST` arrives with
-M10d as the second half of the locked-test guard, beside the check that the pre-registration's
-sha256 matches the one recorded in the benchmark configuration. It does not exist in this
-release, and the locked test set cannot be read without it.
+| `ACCRETION_ROUTER_LOCKED_TEST` | `false` | Releases `evals/router/locked` and `evals/router/drift` for one read. Nothing in normal operation reads them; the flag exists so that reading the corpora the release's numbers come from is an act an operator performs on purpose and leaves a record of. Every released read appends a row to `docs/research/v0.4/access-log.jsonl`. |
+
+`ACCRETION_ROUTER_LOCKED_TEST` is the second half of the locked-test guard. The first half is
+not a setting at all: the runner refuses unless
+`docs/research/v0.4/preregistration.md` still hashes to the `preregistration_sha256` recorded
+in the benchmark configuration, and it names both digests when it refuses.
 
 ## Links
 

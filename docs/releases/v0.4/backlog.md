@@ -17,7 +17,7 @@ its §19 orders the milestones and its §20 owns the criteria. This ledger recor
 | 8 | M7 guarded bandit | 018-020 | not started |
 | 9 | M8 promotion and rollback | 035-039, 042 | not started |
 | 10 | M9 Experiment Studio | 040, 043, 044 | not started |
-| 11 | M10 research benchmark integration | 045-050 | not started |
+| 11 | M10 research benchmark integration | 045-050 | delivered ([plan](m10-plan.md), [results](../../research/v0.4/results.md)) |
 
 No milestone may enable online exploration before the M0-M6 gates pass (SDD v0.4 §19).
 
@@ -561,6 +561,82 @@ conservative in the only direction a budget may be wrong in — an unsettled exp
 upper bound, so a fresh process holds a **tighter** budget than the measured one, never a looser.
 A durable ledger is worth revisiting when a deployment runs long enough for the difference to
 bind; it is not worth a table in v0.4.
+
+## Recorded during M10
+
+Six decisions the research milestone had to make before it could quote a number. The first four
+were forced by the shape of the contracts M0 froze; the last two are findings the locked read
+produced and this ledger records rather than repairs.
+
+**ADR4-M10-001 (the drift holdout is required, not optional) — a second locked corpus, entirely
+provider era `2026-H2`, reported beside the headline with the same estimator.** SDD §21 leaves
+the temporal/provider holdout as something a suite *may* have; `routing/split.py` already
+allocated a `DRIFT` quota by seeded root hash and said, in its own docstring, that no era key was
+consulted. The choice at M10d was to leave it that way — a fifth split with a name and no
+semantics — or to build a corpus the label actually describes. A holdout allocated by hash is a
+second sample, not a drift test: it answers "does the result replicate on data drawn the same
+way", which the locked corpus already answers by being a new seed. So `evals/router/drift` is a
+whole corpus whose lineages are all one era and whose runtimes are a minor version later, which
+moves both levels pre-registration item 8 names, and `results.md` reports it with the same
+functions that render the locked result. A holdout summarised more coarsely than the headline is
+a holdout nobody can check the headline against.
+
+**ADR4-M10-002 (OQ-419, the public benchmark name) — deferred to protocol publication.** SDD v0.4
+§22 leaves the external name of the router benchmark to the paper. Naming it here would have been
+free and would have been wrong in the one way names are expensive: a public identifier that
+appears in a release and then changes at publication is two names for one artefact in every
+citation that already exists. The benchmark ships under its internal name, `results.md` uses no
+other, and OQ-419 stays open.
+
+**ADR4-M10-003 (where the test-set access log lives) — a committed append-only JSONL, because
+`BenchmarkRun.suite` is a frozen literal.** The plan asked for the log to be persisted as a
+`BenchmarkRun` row under a `ROUTER-LOCKED-TEST` suite. It cannot be: `BenchmarkRun.suite` is
+`Literal["ACR-ARCH"]` and `src/accretion/contracts/**` was frozen at M0, so the row would have
+required a Major contract change in the milestone that is supposed to *measure* the release.
+`TestSetAccessLog` stays in memory and each released read appends one `to_rows()` row to
+`docs/research/v0.4/access-log.jsonl`. That is a weaker guarantee than an append-only table and a
+much stronger one than a process-local list: over-reading the locked set shows up in a diff a
+reviewer has to approve, and the release audit quotes the row count. A durable table is worth
+revisiting the next time the contract registry opens; it was not worth breaking the freeze.
+
+**ADR4-M10-004 (a locked corpus is a directory) — `evals/router/locked` and
+`evals/router/drift`, not `test.v1.json` and `drift.v1.json`.** The plan named two documents. A
+corpus is four documents plus the lineage registry its split is proved against, and
+`SelectionSplit` is `extra="forbid"` with exactly two lists, so there is nowhere in an existing
+document to put a second split. Two directories also make the property that matters checkable by
+construction: each carries its own `projects.v1.json`, so
+`RouterBenchmarkCorpus.project_registry()` proves a locked corpus's split against the registry
+beside it and the hand-authored development registry stays at twelve projects, which is what
+`tests/test_v04_m10_split.py` pins.
+
+**ADR4-M10-005 (the gates are degenerate at the frozen size) — recorded, not repaired.** Every
+policy fails both safety gates on both locked corpora, and it is a property of the corpus's
+pooling rule rather than of any router. `RouterBenchmarkCorpus.pooled_cells` reads a cell
+conservatively — *verified* means verified on **every** trial, a false acceptance on **any** trial
+is a false acceptance — and those two rules were chosen when a cell held two trials. At the
+eighteen pre-registration item 1 froze they are close to degenerate: on the locked corpus the
+per-trial verified rate is 0.5121 against a pooled 0.0870, and the per-trial false-acceptance rate
+is 0.0390 against a pooled 0.4348, while the registered floor (0.70) and ceiling (0.05) were set
+on the per-trial scale. Changing the pooling rule now would be a post-hoc analysis change made
+after seeing the rows, which is the single thing the pre-registration exists to prevent, and item
+1 is frozen. So the gates are reported as measured, the arithmetic behind them is stated in
+`results.md`, and the fix — pooling that is a *rate* over trials rather than a conjunction, with
+thresholds registered against it — is a protocol amendment for the next pre-registration, not an
+edit to this one. The episode is also the clearest argument this milestone produced for keeping
+the gates in a different table from utility: the two columns disagree, and the disagreement is
+readable only because neither can be computed from the other.
+
+**ADR4-M10-006 (a corpus root is not a fixed depth any more) — two resolutions in
+`router_benchmark.py` were counting parents.** Once a corpus can be `evals/router/locked` as well
+as `evals/router`, two pieces of code that assumed the shallower depth answer differently for the
+two: `RouterBenchmarkCorpus.ablations_path` resolved a relative `ablations_path` against
+`root.parents[1]`, which is the repository root only for the development corpus, and
+`_validate_split` read the project registry from the module-level shipped path, which knows
+nothing about a derived corpus's lineages. Both now go through a fixed point instead of a count —
+a `REPOSITORY_ROOT` derived from the package's own location, and a registry read from beside the
+corpus with the shipped one as the fallback. Neither changes a single byte of what the development
+corpus resolves to, which is why the shipped corpus's own tests are untouched; both were necessary
+before a nested corpus could be loaded at all.
 
 ## Parked beside v0.4
 
