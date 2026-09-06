@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 from itertools import islice, product
@@ -66,8 +66,18 @@ class CandidateBuilder:
         workspace_id: str,
         project_id: str | None,
         clock: Callable[[], datetime] | None = None,
+        excluded_configuration_hashes: Sequence[str] = (),
     ) -> CandidateBuildResult:
-        """Run stages 2--8; authority and compatibility always precede candidate scoring."""
+        """Run stages 2--8; authority and compatibility always precede candidate scoring.
+
+        ``excluded_configuration_hashes`` is SDD §9.7's "equivalent failed configurations
+        must not repeat without new evidence", enforced at stage 6 rather than at selection.
+        A configuration excluded here never becomes a candidate at all, so it cannot be
+        ranked, cannot be the fallback and cannot be reached by an operator override — which
+        is what "must not repeat" means. Excluding it later, by filtering the ranked slate,
+        would leave a rejected retry sitting in ``candidate_summary_refs`` as an eligible
+        choice.
+        """
 
         at = clock() if clock is not None else node_contract.created_at
         if node_contract.workspace_id != workspace_id or node_contract.project_id != project_id:
@@ -226,12 +236,26 @@ class CandidateBuilder:
             else frozenset()
         )
 
+        excluded = frozenset(excluded_configuration_hashes)
         eligible_candidates: list[ConfigurationCandidate] = []
         for configuration in deduplicated.values():
-            requirement_failure = self._requirement_failure(configuration, node_contract, task)
             candidate_id = derived_id(
                 "configuration_candidate", routing_request_id, configuration.configuration_hash
             )
+            if configuration.configuration_hash in excluded:
+                rejected.append(
+                    RejectedCandidate(
+                        candidate_id=candidate_id,
+                        stage=ConstructionStage.CONSTRUCT_TUPLE,
+                        reason_code="ATTEMPTED_WITHOUT_NEW_EVIDENCE",
+                        detail=(
+                            "An equivalent configuration signature already failed this node "
+                            "and no new evidence has been recorded since."
+                        ),
+                    )
+                )
+                continue
+            requirement_failure = self._requirement_failure(configuration, node_contract, task)
             if requirement_failure is not None:
                 rejected.append(
                     RejectedCandidate(

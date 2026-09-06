@@ -93,7 +93,7 @@ needs a hash: a signature that drifted between M1 and M2 would not fail here, it
 the integration PR as a type error in a file nobody touched.
 
 ```
-sha256(src/accretion/routing/protocols.py) = dc47c8022563df646cfbeac84d6a28cf0d21c5fae6b1933e7d4a0e5cfdd35d47
+sha256(src/accretion/routing/protocols.py) = dd169f70dbfb10c21dc2e9a7c6dc1f20beee457e423c18741d7e566b08a25c81
 ```
 
 A later PR that changes this file must update the digest in the same diff. `RecoveryDecision`

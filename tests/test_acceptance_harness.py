@@ -583,7 +583,14 @@ def test_the_fifty_v04_rows_load_from_the_sdd_under_their_owner_stages() -> None
         assert criterion.stage == "v0.4-" + name.split("-")[1], name
     assert {c.priority for c in v04.values()} == {"MUST"}
 
-    delivered = {"AC4-M1-005", "AC4-M1-006", "AC4-M1-007", "AC4-M1-008", "AC4-M4-016"}
+    delivered = {
+        "AC4-M1-005",
+        "AC4-M1-006",
+        "AC4-M1-007",
+        "AC4-M1-008",
+        "AC4-M4-016",
+        "AC4-M5-021",
+    }
     delivered |= {f"AC4-M2-{number:03d}" for number in owners["M2"]}
     assert {name for name, c in v04.items() if c.in_scope} == delivered
     for name, criterion in v04.items():

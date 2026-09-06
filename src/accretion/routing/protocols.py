@@ -200,6 +200,18 @@ class NodeRoutingService(Protocol):
         """Observe the registry, the runtimes, the connections and the policy, once."""
         ...
 
+    @property
+    def default_mode(self) -> RoutingMode:
+        """The mode this deployment routes under when the caller states no preference.
+
+        Read-only and a property rather than a ``route`` default, because §11.1 scopes the
+        mode to a workspace's earned position in a progression: a caller that could assign
+        it would be able to put a workspace into ``AUTO`` without the shadow evaluation that
+        is the only way to reach it. ``RunManager`` needs to *read* it — the mode it passes
+        for an unconfigured graph has to come from somewhere — and reading is all it needs.
+        """
+        ...
+
     async def route(
         self,
         *,
@@ -207,6 +219,7 @@ class NodeRoutingService(Protocol):
         snapshot: RoutingSnapshot,
         mode: RoutingMode,
         run: Run,
+        excluded_configuration_hashes: Sequence[str] = (),
     ) -> RoutingDecisionReceipt:
         """Select a complete configuration and persist the receipt that explains it.
 
@@ -214,6 +227,15 @@ class NodeRoutingService(Protocol):
         and a project adapter, both of which vary between the runs one service instance
         handles. A service that captured its mode at construction would route a
         ``BASELINE_ONLY`` workspace under whatever mode the process started with.
+
+        ``excluded_configuration_hashes`` is §9.7's "equivalent failed configurations must
+        not repeat without new evidence", carried as an argument rather than re-derived
+        here. The pipeline that classified the failures owns the list — it is the only party
+        that knows which attempts have since been answered by new evidence — and a router
+        that rebuilt it from the store would be re-litigating a recovery decision that has
+        already been made and recorded. Excluded configurations are refused during candidate
+        construction, so an excluded configuration is not a candidate at all: it cannot be
+        ranked, cannot become the fallback and cannot be reached by an operator override.
         """
         ...
 
