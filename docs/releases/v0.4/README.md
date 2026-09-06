@@ -1,6 +1,6 @@
 # v0.4 — Evidence-Aware Node Configuration Routing
 
-Status: **M0, M1, M4, M5, and M6 delivered; M2 locally verified, awaiting remote review (2026-09-06).**
+Status: **M0, M1, M3, M4, M5, and M6 delivered; M2 locally verified, awaiting remote review (2026-09-06).**
 
 | Document | Purpose |
 |---|---|
@@ -10,6 +10,8 @@ Status: **M0, M1, M4, M5, and M6 delivered; M2 locally verified, awaiting remote
 | [M2 implementation brief](m2-implementation-brief.md) | Work boundaries and the staged integration plan |
 | [M2 plan and evidence](m2-plan.md) | Acceptance witnesses, implementation decisions, and repeatable gates |
 | [M2 runbook](m2-runbook.md) | Opt-in baseline routing, operator controls, and uncertain-dispatch recovery |
+| [M3 plan and evidence](m3-plan.md) | The feedback pipeline's three run-manager hooks, the store-backed evidence retriever, and §11.2 |
+| [M3 feedback runbook](../../runbooks/v04-feedback.md) | Material conflicts, recovery authority, retrieval, and the §11.2 endpoints |
 | [M4 plan](m4-plan.md) | The offline ranker, the calibration report, and why nothing learned loads without a holdout evaluation |
 | [M5 plan](m5-plan.md) | Cold start, the capped cross-domain prior, and the five routing-stage collaborators M6-M8 plug into |
 | [M6 plan](m6-plan.md) | Shadow evaluation by branched live rollout: what a shadow decision is, why it is never a replay, and the gates a fork passes |

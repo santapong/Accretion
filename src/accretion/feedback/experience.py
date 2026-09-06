@@ -43,9 +43,11 @@ from decimal import Decimal
 from typing import Any, Protocol
 
 from accretion.contracts import PrincipalRef, Run
+from accretion.contracts.canonical import content_hash
 from accretion.contracts.refs import PolicyRef
 from accretion.contracts.routing import (
     AttributionSummary,
+    ContractSignature,
     ContradictionStatus,
     ExecutionConfiguration,
     ExperienceOutcomes,
@@ -61,7 +63,7 @@ from accretion.contracts.routing import (
 from accretion.experience.models import ExperienceDetail
 from accretion.ids import derived_id
 from accretion.persistence.store import StateStore
-from accretion.routing.identity import contract_signature_for
+from accretion.routing.stages import node_signature
 
 __all__ = [
     "EXPERIENCE_ID_LABEL",
@@ -74,6 +76,7 @@ __all__ = [
     "ContradictionDetector",
     "ExperienceMaterializer",
     "ExperienceProjector",
+    "record_signature_for",
 ]
 
 EXPERIENCE_ID_LABEL = "experience_id"
@@ -127,6 +130,40 @@ Ordered rather than compared for equality, so the refusal below can say *wider* 
 direction that leaks. Totality is what makes the lookup safe without a membership check: a third
 visibility would be a registry §3.2 change to a sealed enum and would raise a ``KeyError`` here,
 which is the correct answer to "share this at a scope this code has never heard of"."""
+
+
+def record_signature_for(node: NodeContract) -> ContractSignature:
+    """SDD §7.10's retrieval key for a projection, derived the way the *router* derives it.
+
+    A stored experience record is only ever read back through its signature, and the reader is
+    :class:`~accretion.routing.service.DefaultNodeRoutingService`, which asks its
+    :class:`~accretion.routing.stages.EvidenceRetriever` for
+    ``node_signature(node, objective_digest=frozen.objective_ref.objective_contract_hash)``.
+    So the projector writes under that same derivation and no other. A projection keyed on any
+    other digest of the same node is not a differently-keyed record, it is an *unreachable*
+    one: the comparison is an equality over a whole value object, a disagreement raises
+    nothing anywhere, and retrieval simply returns an empty list forever while every receipt
+    reads as a permanent cold start.
+
+    ``objective_digest`` is a parameter of
+    :func:`~accretion.routing.stages.node_signature` because ``objective_contract_ref`` is
+    nullable, and the router's caller holds a non-nullable copy. A projector does not: it is
+    handed the frozen node contract and nothing beside it. Hence the fallback — a digest of the
+    objective *text*, wrapped in a one-key mapping so the hash commits to which field was
+    hashed. A node whose objective revision was never pinned still gets a signature that is
+    stable across runs and distinct per objective; it simply cannot be retrieved *as* an
+    approved objective contract, which is the truth about it.
+    """
+
+    reference = node.objective_contract_ref
+    return node_signature(
+        node,
+        objective_digest=(
+            reference.objective_contract_hash
+            if reference is not None
+            else content_hash({"objective": node.objective}, exclude=())
+        ),
+    )
 
 
 class ExperienceMaterializer(Protocol):
@@ -536,7 +573,7 @@ class ExperienceProjector:
             "labels": labels,
             "visibility": visibility,
             "source_node_execution_id": node.execution_instance_id,
-            "contract_signature": contract_signature_for(node),
+            "contract_signature": record_signature_for(node),
             "configuration_hash": configuration_hash,
             "local_verification_status": local_status,
             "final_run_status": final_status,

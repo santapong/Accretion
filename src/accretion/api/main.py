@@ -22,6 +22,7 @@ from accretion.api.auth import (
     is_exempt,
 )
 from accretion.api.auth import principal as current_principal
+from accretion.api.feedback import router as feedback_router
 from accretion.api.router_admin import router as router_admin_router
 from accretion.api.routing import router as routing_router
 from accretion.api.schemas import (
@@ -142,6 +143,8 @@ from accretion.experience_benchmark import (
     ExperienceBenchmarkRunner,
     ExperienceBenchmarkSummary,
 )
+from accretion.feedback.bootstrap import build_feedback_pipeline
+from accretion.feedback.service import as_feedback_pipeline
 from accretion.governance import (
     CapabilityExecutor,
     CapabilityGateway,
@@ -403,6 +406,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         operator_identity=settings.operator_identity,
     )
     app.state.experience = experience
+    manager.feedback_pipeline = as_feedback_pipeline(build_feedback_pipeline(manager, experience))
     search_service = SearchService(
         manager,
         globally_enabled=settings.enable_candidate_search,
@@ -450,6 +454,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Accretion API", version=__version__, lifespan=lifespan)
 app.include_router(routing_router)
 app.include_router(router_admin_router)
+app.include_router(feedback_router)
 app.include_router(shadow_router)
 settings = get_settings()
 app.add_middleware(
