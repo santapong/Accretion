@@ -24,6 +24,7 @@ from accretion.routing.catalog import (
     ConfigurationCatalog,
     ToolCatalogEntry,
 )
+from accretion.routing.flags import FULL, RouterFeatureFlags
 from accretion.routing.gates import JointEvaluator, PolicyGate, gate_then_evaluate
 from accretion.routing.selector import cold_start_predictions
 from accretion.routing.snapshot import RoutingSnapshot
@@ -48,11 +49,17 @@ class CandidateBuilder:
         evaluator: JointEvaluator,
         catalog: ConfigurationCatalog,
         created_by: PrincipalRef,
+        flags: RouterFeatureFlags = FULL,
     ) -> None:
         self.gate = gate
         self.evaluator = evaluator
         self.catalog = catalog
         self.created_by = created_by
+        # Protocol §14's A1 and A2 both live in this class, because both are properties of
+        # how the slate is *built* rather than of how it is ranked. The default is FULL, so
+        # a deployment that never mentions flags builds the slate it built before this
+        # existed — asserted by the M2 and M5 suites, which pass none.
+        self.flags = flags
 
     def build(
         self,
@@ -223,13 +230,22 @@ class CandidateBuilder:
         # An audited fallback is an explicit complete configuration, not a reconstruction
         # from whichever partial entries happened to survive a beam.
         configurations.extend(self.catalog.fallback_bundle.configurations)
-        deduplicated = {
-            item.configuration_hash: item
-            for item in sorted(
-                configurations,
-                key=lambda value: (value.configuration_hash, value.contract_id),
-            )
-        }
+        ordered = sorted(
+            configurations,
+            key=lambda value: (value.configuration_hash, value.contract_id),
+        )
+        # §14 A1. Hierarchical construction is what makes two configurations assembled from
+        # different partial products *the same* configuration: the signature is a function of
+        # the chosen parts, so equal signatures are one action and are collapsed to one
+        # candidate. Removing it does not remove the factorized product — that is how the
+        # tuples are enumerated at all — it removes the claim that the factorization is
+        # semantically meaningful, so the duplicates it produces are carried through as
+        # separate candidates and compete for the beam like any other.
+        deduplicated: list[ExecutionConfiguration] = (
+            list({item.configuration_hash: item for item in ordered}.values())
+            if self.flags.hierarchical_construction
+            else ordered
+        )
         fallback_hashes = (
             self.catalog.fallback_bundle.configuration_hashes
             if snapshot.fallback_bundle_digest == self.catalog.fallback_bundle.digest
@@ -238,7 +254,7 @@ class CandidateBuilder:
 
         excluded = frozenset(excluded_configuration_hashes)
         eligible_candidates: list[ConfigurationCandidate] = []
-        for configuration in deduplicated.values():
+        for configuration in deduplicated:
             candidate_id = derived_id(
                 "configuration_candidate", routing_request_id, configuration.configuration_hash
             )
@@ -289,21 +305,30 @@ class CandidateBuilder:
                 for decision in evaluation.decisions()
             )
             decisions.extend(evaluation_decisions)
-            if not evaluation.eligible():
+            eligible = evaluation.eligible()
+            if not eligible:
                 refusal = next(
                     decision
                     for decision in evaluation.decisions()
                     if decision.status is not CompatibilityStatus.COMPATIBLE
                 )
-                rejected.append(
-                    RejectedCandidate(
-                        candidate_id=candidate_id,
-                        stage=ConstructionStage.JOINT_COMPATIBILITY,
-                        reason_code=refusal.reason_code,
-                        detail=f"Configuration was rejected by rule {refusal.rule_id}.",
+                # §14 A2. With typed pruning in place an incompatible configuration is a
+                # refusal and never becomes a candidate. With it removed the rule still
+                # *runs* — its decision is still recorded, because the ablation is about
+                # pruning and not about auditing — and the configuration is carried into the
+                # slate as a candidate that is not hard-eligible. That is the only reading
+                # that measures what A2 asks: the selector may now rank something the type
+                # system refused, and the invalid-action penalty is what it costs.
+                if self.flags.compatibility_pruning:
+                    rejected.append(
+                        RejectedCandidate(
+                            candidate_id=candidate_id,
+                            stage=ConstructionStage.JOINT_COMPATIBILITY,
+                            reason_code=refusal.reason_code,
+                            detail=f"Configuration was rejected by rule {refusal.rule_id}.",
+                        )
                     )
-                )
-                continue
+                    continue
             predictions = cold_start_predictions()
             eligible_candidates.append(
                 ConfigurationCandidate(  # type: ignore[call-arg]
@@ -317,11 +342,18 @@ class CandidateBuilder:
                     routing_request_id=routing_request_id,
                     configuration=configuration,
                     construction_stage=ConstructionStage.PREDICT_OUTCOME,
-                    hard_eligible=True,
+                    hard_eligible=eligible,
                     predicted=predictions,
                     uncertainty_score=0.5,
                     lower_confidence_success=predictions.node_verified_success.lower_bound,
-                    fallback_eligible=configuration.configuration_hash in fallback_hashes,
+                    # A candidate that is not hard-eligible is never the audited fallback,
+                    # which `ConfigurationCandidate` enforces and A2 must respect rather than
+                    # route around: removing typed *pruning* lets an incompatible
+                    # configuration be ranked, and it must not also promote one into the
+                    # fallback that exists precisely to be the safe choice.
+                    fallback_eligible=(
+                        eligible and configuration.configuration_hash in fallback_hashes
+                    ),
                     compatibility_decision_refs=[
                         decision.contract_id for decision in evaluation_decisions
                     ],

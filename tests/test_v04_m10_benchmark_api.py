@@ -216,18 +216,28 @@ async def test_the_stored_summary_belongs_to_one_application() -> None:
 
 
 async def test_every_protocol_baseline_stays_in_the_reported_table() -> None:
+    """All eleven §8.1 methods, in §8.1's order, each with the projection a reader quotes.
+
+    The route replays the registered table and takes no policy list from the caller, so since
+    M10c — which wired M7, M8 and M9 — there is no way to reach this endpoint and get an
+    unavailable row. That is the right shape for the route and it moves the unavailable-row
+    assertion to the two places that can still make one: the runner's own test, with an id
+    §8.1 does not name, and the pilot's. What is left here is the stronger half of §8.2's
+    rule, and it is the half a dashboard depends on: nothing is missing, nothing is
+    reordered, and no method is quietly reported without its gates.
+    """
+
     async with client() as caller:
         response = await caller.get(ROUTER_BENCHMARK_PATH)
 
     policies = response.json()["policies"]
     assert [policy["policy_id"] for policy in policies] == list(BASELINE_ORDER)
-    unbuilt = [policy for policy in policies if not policy["available"]]
-    assert [policy["policy_id"] for policy in unbuilt] == ["M7", "M8", "M9"]
-    for policy in unbuilt:
-        assert policy["reason_code"] == "NOT_AVAILABLE"
-        assert policy["gates"] is None
-        assert policy["estimands"] is None
-        assert policy["selections"] == 0
+    assert all(policy["available"] for policy in policies)
+    for policy in policies:
+        assert policy["reason_code"] is None
+        assert policy["gates"] is not None
+        assert policy["estimands"] is not None
+        assert policy["selections"] == 18
 
 
 async def test_the_summary_carries_the_gates_and_the_estimands_a_reader_would_quote() -> None:

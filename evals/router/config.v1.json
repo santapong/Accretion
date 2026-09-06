@@ -1,4 +1,5 @@
 {
+  "ablations_path": "evals/router/ablations.v1.json",
   "configuration_version": "router-baselines-v1",
   "deterministic_v01_table": {
     "DIRECT": "cnf-codex-mini",
