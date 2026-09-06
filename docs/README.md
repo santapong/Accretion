@@ -94,7 +94,8 @@ bitmap in the showcase is illustrative and never defines behavior.
 ## Frontend completion
 
 The React frontend is implemented for every P0–P7 release surface plus the v0.3
-M6 administration pages — seventeen routes in all. The deterministic checks cover
+M6 administration pages and the v0.4 M9 router administration page — eighteen routes
+in all. The deterministic checks cover
 the component test suite, generated OpenAPI, ESLint, TypeScript, and production
 build.
 For v0.3.0 rendered browser and accessibility evidence **was** collected: axe-core

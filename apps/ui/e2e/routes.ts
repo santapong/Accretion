@@ -3,8 +3,8 @@
  *
  * The authority is `ROUTES` in `src/routes.tsx`, which the shell turns into both the
  * navigation bar and the router. Seventeen declared paths plus the `*` fallback since M9c
- * added `/admin/router`; the "seventeen routes" the v0.3 release evidence claims was the
- * sixteen-plus-fallback this file swept before it.
+ * added `/admin/router` - eighteen routes swept; the "seventeen routes" the v0.3 release
+ * evidence claims was the sixteen-plus-fallback this file swept before it.
  *
  * This is a SUPERSET of `src/accessibility.test.tsx`'s ROUTES, which covers ten. The seven
  * it cannot reach - the five `/admin/*` pages, `/runs/:runId`, and `h1` *uniqueness* on the
@@ -63,10 +63,11 @@ export const ROUTES: readonly RouteUnderTest[] = [
     heading: /…/,
     settle: "run-events",
     structuralChange: {
-      pr: "M9b",
+      pr: "M9d",
       reason:
-        "the §17.2 shadow comparison is mounted in .execution-content beside the §17.1 " +
-        "routing panel, so the run page renders more elements than the merge-base",
+        "every routed node of the canvas gains a §17.1 routing badge - inside the React " +
+        "Flow node and again in the .projection-node-summary list that mirrors it - so the " +
+        "run page renders more elements than the merge-base build",
     },
   },
   { path: "/runtimes", heading: "Runtime monitor", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },

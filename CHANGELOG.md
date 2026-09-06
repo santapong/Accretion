@@ -9,6 +9,67 @@ the three milestone PRs that merged before this file was updated.
 
 The M9 ladder is parked after its stylesheet port; the entries below it are v0.4 work.
 
+### v0.4 — M9 Experiment Studio
+
+- Added `apps/ui/src/RoutingPanel.tsx` and `apps/ui/src/routingIndex.ts` (M9a): the SDD §17.1 node
+  routing panel on the run page. It shows the selected configuration, the receipt's uncertainty
+  summary, the alternatives that cleared every hard gate and the reasons the rest were rejected,
+  and it offers the two attributed controls §8.4 allows — an override restricted to
+  `hard_eligible` candidates and carrying the receipt's own `decision_version` as
+  `expected_receipt_version`, and a cancellation for a decision that selected nothing. Its receipt
+  ids come from the audit the page already fetches, so a run that was never routed asks for
+  nothing; no "receipts of a run" route was added (ADR4-M9-002). `AC4-M9-040` is now proven
+  (#TBD).
+- Added `apps/ui/src/ShadowComparison.tsx` (M9b): the §17.2 comparison beside the panel. Every
+  pair of `GET /api/v1/shadow-policies/{version_id}/report` that names one of this run's receipts,
+  executed against shadow, predicted delta beside observed delta and never collapsed into one
+  number, over the stage's own aggregate — rendered unchanged and labelled as the *stage's*,
+  because recomputing it per run would produce a second interval no promotion is gated on
+  (ADR4-M9-004) (#TBD).
+- Added `apps/ui/src/pages/RouterAdminPage.tsx` and the `/admin/router` route (M9c): the §17.3
+  administration page. Lineage as the parent chain, the activation ledger in order, the promotion
+  report that authorised the live version, and the **ledger head** as the answer to "what is
+  active" — the same read M8.2 made routing use, so the page and the router cannot disagree.
+  `AC4-M8-042` is rendered here (#TBD).
+- Added `apps/ui/src/projection/` (M9d): `ProjectionCanvas`, `ProjectionNodeLabel`, `NodeBadges`
+  and `LoopBackEdge` moved verbatim out of `RunExecution.tsx`, with the xyflow stylesheet import
+  and `../react-flow.css` travelling together onto the component that mounts the canvas. The
+  package boundary is the claim: no module under `src/projection/` may name `../api`,
+  `@tanstack/react-query`, `fetch(` or `EventSource(`, and driving the rendered canvas — controls,
+  wheel, nodes, badges — issues no request and exposes no interactive role inside a badge.
+  `AC4-M9-043` is now proven (#TBD).
+- Added `apps/ui/src/routingBadges.ts` (M9d): the §17.1 badges a node shows — routed, shadowed,
+  overridden, explore, fallback or human review, with the runtime, model, tool count, verification
+  state, receipt revision, predicted cost and predicted latency behind them. Pure, importing no
+  API client, derived from the receipts, slates and shadow pairs the panels already hold;
+  `RunExecution.tsx` observes those panels' query keys with react-query's `skipToken`, which reads
+  a cache entry and can never fetch one, so the canvas gains badges without gaining a request
+  (ADR4-M9-006). The markup reuses the pinned stylesheet's `.node-badge*` classes: no CSS rule was
+  added anywhere (ADR4-M9-003) (#TBD).
+- Added `apps/ui/src/contracts/canonical.ts` (M9d): a TypeScript twin of
+  `src/accretion/contracts/canonical.py` that replays all nineteen committed hash vectors from
+  `tests/fixtures/contracts/v0.4/hash_vectors.json` byte for byte, so a browser can verify a
+  `content_hash` instead of trusting the field beside it. Keys sort by Unicode **code point**
+  (RFC 8785's UTF-16 order would put `😀` before `ｽ`), an integral float still prints `1.0`, an
+  integer past 2^53 must be a `bigint`, decimals keep their trailing zeros, and a datetime without
+  an offset is refused. It verifies and never writes a digest (ADR4-M9-005) (#TBD).
+- Added `tests/test_v04_m9_correlation.py` (M9d): the §16.2 chain walked end to end by ids over
+  one real routed run — task, run, graph revision, node contract, routing request, receipt, the
+  `RUNTIME_CALL_STARTED` stamp and the `ROUTING_DECISION_CREATED` causation, verification result,
+  experience record, training-snapshot manifest, promotion report, and back to the run through the
+  `ROUTER_PROMOTION_EVALUATED` event. `AC4-M9-044` is now proven (#TBD).
+- Recorded a gap rather than working around it: `SnapshotBuilder` resolves an experience record by
+  its `contract_id`, which is an experience id only for records the M4/M8 fixtures build. The M3
+  pipeline derives a per-node id and files the record under the experience id separately, so **no
+  experience a live routed run produces can currently enter a training snapshot** — the builder
+  refuses the window as "nothing eligible". `test_the_snapshot_builder_cannot_yet_include_a_run_projected_record`
+  pins the behaviour and its cause; the repair belongs to the milestone owning
+  `routing/training_snapshot.py` and `feedback/experience.py` (#TBD).
+- Changed `apps/ui/e2e/cssPort.test.ts` (M9d): the xyflow-stylesheet importer scan walks `src/`
+  recursively and the adjacency assertion computes the expected specifier from the importer's own
+  directory, so the invariant stays "one component imports the sheet and imports ours on the next
+  line" rather than "that component sits at the root of `src`" (#TBD).
+
 ### v0.4 — M6 shadow evaluation by branched live rollout
 
 - Added `src/accretion/routing/rollout.py`: `ShadowRoutingHook` re-scores the executed slate under

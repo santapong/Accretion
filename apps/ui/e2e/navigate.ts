@@ -8,7 +8,7 @@ import type { Seed } from "./global-setup";
  *
  * Extracted verbatim from `a11y.spec.ts`'s `open()`, which is the only settle logic in the
  * repository that has been shown to work against this app. `style-diff.spec.ts` measures
- * computed styles on the same seventeen routes and needs exactly the same barrier, and two
+ * computed styles on the same eighteen routes and needs exactly the same barrier, and two
  * copies of a settle rule drift: the copy that is not maintained produces a gate that
  * fails intermittently, gets a retry bolted on, and stops being read.
  *
