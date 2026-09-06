@@ -1241,6 +1241,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shadow-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Register Shadow Policy
+         * @description Register one CANDIDATE router version for shadow evaluation.
+         *
+         *     Administering the workspace is required rather than membership, for the reason
+         *     ``POST /api/v1/router-models/train-candidate`` gives: a shadow policy spends the
+         *     workspace's budget branching its live runs, and the version it writes is the artefact the
+         *     workspace will later be asked to promote.
+         *
+         *     ``Idempotency-Key`` is required by SDD §11 and, here, is a *retry* token rather than part
+         *     of the policy's identity: the registered version's id is derived from the candidate and
+         *     the budget, so a replay under any key returns the same version instead of writing a second
+         *     one. Requiring the header anyway keeps every mutating v0.4 endpoint answering the same
+         *     question the same way.
+         *
+         *     A candidate in another workspace is a 404 and not a 403 — the tenancy convention of this
+         *     API, where a resource the caller may not see is absent rather than refused, so that an
+         *     error cannot confirm an id.
+         */
+        post: operations["register_shadow_policy_api_v1_shadow_policies_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/skills": {
         parameters: {
             query?: never;
@@ -6973,6 +7008,27 @@ export interface components {
             workspace: string;
         };
         /**
+         * ShadowPolicyCreate
+         * @description The candidate to shadow and the budget the workspace agrees to spend on it.
+         *
+         *     The budget is flattened into the body rather than nested, because ADR-060's two limits are
+         *     the whole of it and a one-field wrapper object would make every client build a document to
+         *     send two numbers. The service reassembles them into a :class:`ShadowBudget`, which is what
+         *     seals into the registered version's id.
+         */
+        ShadowPolicyCreate: {
+            /** Candidate Version Id */
+            candidate_version_id: string;
+            /** Daily Cost Cap */
+            daily_cost_cap: number;
+            /** Max Trials Per Day */
+            max_trials_per_day: number;
+            /** Run Id */
+            run_id?: string | null;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
          * SkillRef
          * @description A skill by id, version and package digest.
          *
@@ -9979,6 +10035,41 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SessionRef"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    register_shadow_policy_api_v1_shadow_policies_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ShadowPolicyCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouterModelVersion"];
                 };
             };
             /** @description Validation Error */

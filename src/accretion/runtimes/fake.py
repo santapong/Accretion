@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import inspect
 from collections import deque
-from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -64,6 +64,7 @@ class FakeRuntime:
         step_delay: float = 0.0,
         fail: bool = False,
         scripted_outcomes: Sequence[FakeCallOutcome] | None = None,
+        outcomes_by_model: Mapping[str, Sequence[FakeCallOutcome]] | None = None,
     ) -> None:
         self.step_delay = step_delay
         fallback_terminal = (
@@ -71,6 +72,16 @@ class FakeRuntime:
         )
         self.fallback_outcome = FakeCallOutcome(terminal=fallback_terminal)
         self.scripted_outcomes = deque(scripted_outcomes or ())
+        # Per-model scripts, for the one thing `scripted_outcomes` cannot express: two
+        # configurations of the same node behaving differently. A `RuntimeExecutionRequest`
+        # carries no configuration hash, but `SessionConfig.model` is the configuration's
+        # model id (`run_manager.py`'s `create_session` call), so the session is where the
+        # two arms of a paired rollout become distinguishable. Left empty this dict changes
+        # nothing: `submit` falls through to exactly the choice it made before.
+        self.outcomes_by_model: dict[str, deque[FakeCallOutcome]] = {
+            model: deque(outcomes) for model, outcomes in (outcomes_by_model or {}).items()
+        }
+        self.session_models: dict[str, str] = {}
         self.sessions: dict[str, SessionRef] = {}
         self.run_refs: dict[str, RunRef] = {}
         self.queues: dict[str, asyncio.Queue[AgentEvent | None]] = {}
@@ -107,6 +118,8 @@ class FakeRuntime:
             workspace=config.workspace,
         )
         self.sessions[session.session_id] = session
+        if config.model is not None:
+            self.session_models[session.session_id] = config.model
         return session
 
     async def submit(self, session: SessionRef, request: RuntimeSubmission) -> RunRef:
@@ -130,13 +143,29 @@ class FakeRuntime:
         self.queues[call_id] = asyncio.Queue()
         self.call_sessions[call_id] = session.session_id
         self.session_active_calls[session.session_id] = call_id
-        outcome = (
-            self.scripted_outcomes.popleft() if self.scripted_outcomes else self.fallback_outcome
-        )
+        outcome = self._next_outcome(session.session_id)
         self.tasks[call_id] = asyncio.create_task(
             self._execute(call_id, run, session, request, outcome)
         )
         return run
+
+    def _next_outcome(self, session_id: str) -> FakeCallOutcome:
+        """The outcome this call gets: the session's model script, then the flat script.
+
+        The model queue is consulted first and only while it has entries, so a runtime built
+        without ``outcomes_by_model`` — or one whose per-model script has run out — takes the
+        original two-branch choice unchanged. That is what keeps the FAKE golden trace
+        identical: this method is the whole of the behavioural difference.
+        """
+
+        model = self.session_models.get(session_id)
+        if model is not None:
+            queued = self.outcomes_by_model.get(model)
+            if queued:
+                return queued.popleft()
+        if self.scripted_outcomes:
+            return self.scripted_outcomes.popleft()
+        return self.fallback_outcome
 
     async def _execute(
         self,

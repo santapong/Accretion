@@ -171,8 +171,25 @@ async def test_override_is_compare_and_set_and_cancel_is_attributed() -> None:
 
 
 @pytest.mark.parametrize("mode", ["AUTO", "SHADOW"])
-async def test_m2_explicitly_rejects_unavailable_routing_modes(mode: str) -> None:
+async def test_an_unavailable_routing_mode_is_the_services_422_and_not_the_handlers(
+    mode: str,
+) -> None:
+    """The refusal moved from the handler to the service in M5; it is still a 422.
+
+    Which of §11.1's modes a process can honour depends on whether a learned scorer was
+    injected into the service, which this handler cannot see. So the two halves asserted
+    here are the two that remain the handler's job: the mode the caller asked for reaches
+    the service unedited, and the service's typed refusal reaches the caller unedited. A
+    handler that resumed deciding for itself would fail the first assertion; one that
+    swallowed or reshaped the refusal would fail the second.
+    """
+
     service = RecordingRoutingService()
+    service.failure = RoutingError(
+        "ROUTING_MODE_UNAVAILABLE",
+        f"routing mode {mode} requires a learned scorer that is not configured",
+        422,
+    )
     payload = _route_payload() | {"mode": mode}
     async with await _client(service) as client:
         response = await client.post(
@@ -181,8 +198,9 @@ async def test_m2_explicitly_rejects_unavailable_routing_modes(mode: str) -> Non
         )
 
     assert response.status_code == 422
-    assert response.json()["code"] == "ROUTING_MODE_UNSUPPORTED"
-    assert service.calls == []
+    assert response.json()["code"] == "ROUTING_MODE_UNAVAILABLE"
+    assert [call[0] for call in service.calls] == ["route_execution"]
+    assert service.calls[0][1]["mode"] is RoutingMode(mode)
 
 
 async def test_service_failures_preserve_typed_status_and_code() -> None:

@@ -56,6 +56,7 @@ from accretion.api.schemas import (
     WorkflowProposeCreate,
     WorkflowTemplateSummary,
 )
+from accretion.api.shadow import router as shadow_router
 from accretion.benchmark import (
     AcrArchRunner,
     acr_arch_summary,
@@ -206,6 +207,7 @@ from accretion.routing.bootstrap import build_node_routing
 from accretion.routing.calibration import CalibrationReport
 from accretion.routing.errors import RoutingError
 from accretion.routing.promotion import build_promotion_service
+from accretion.routing.shadow import ShadowEvaluator
 from accretion.routing.train import (
     IDEMPOTENCY_LABEL,
     HoldoutEvaluation,
@@ -365,7 +367,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     app.state.node_routing = None
     if settings.enable_node_routing:
         node_routing = build_node_routing(manager, policy_id=settings.capability_policy_id,
-                                         granted_permissions=set(settings.granted_permissions))
+                                         granted_permissions=set(settings.granted_permissions),
+                                         mode=settings.node_routing_mode)
         manager.routing_service = node_routing
         app.state.node_routing = node_routing
     # The section 27 exit seam, wired for the API process. Without this the scheduler
@@ -420,6 +423,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         ArtifactStore(settings.router_artifact_dir),
         operator_identity=settings.operator_identity,
     )
+    # v0.4 M6. Same three collaborators and the same reason they are built here: shadow
+    # registration is offline and store-backed, and it reads the artefacts the trainer wrote.
+    app.state.shadow = ShadowEvaluator(
+        store, ArtifactStore(settings.router_artifact_dir), lambda: datetime.now(UTC)
+    )
     app.state.auth = build_auth_runtime(store, settings, enterprise_auth=enterprise_auth)
     await seed_templates(store)
     await seed_governance(store)
@@ -442,6 +450,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="Accretion API", version=__version__, lifespan=lifespan)
 app.include_router(routing_router)
 app.include_router(router_admin_router)
+app.include_router(shadow_router)
 settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
