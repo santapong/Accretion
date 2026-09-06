@@ -1366,6 +1366,39 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/shadow-policies/{version_id}/report": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read Shadow Report
+         * @description What one shadow stage has shown so far, and what it still owes a promotion.
+         *
+         *     Membership is enough here, unlike registration: reading what a policy has measured spends
+         *     nothing and changes nothing, and an operator who cannot see the evidence cannot argue with
+         *     the promotion it will be used to justify.
+         *
+         *     A version in another workspace is a 404 and not a 403, and the refusal is produced by
+         *     turning the membership error into a ``KeyError`` rather than by letting it through: this is
+         *     the tenancy convention of the API, and a 403 here would confirm that the id names a real
+         *     router version in somebody else's workspace.
+         *
+         *     The rollout rows are listed for the version's whole workspace and filtered by
+         *     ``shadow_report`` itself, which ignores rows belonging to another stage. Filtering here as
+         *     well would put the join in two places, and the report is the party that defines it.
+         */
+        get: operations["read_shadow_report_api_v1_shadow_policies__version_id__report_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/skills": {
         parameters: {
             query?: never;
@@ -4437,6 +4470,29 @@ export interface components {
             summary: string;
         };
         /**
+         * GateStatus
+         * @description One promotion precondition, whether it is met, and the number that decided it.
+         *
+         *     ``evidence`` is a rendered string rather than a float because the three gates are not
+         *     measured in the same unit and a shared numeric field would need a second field saying
+         *     which unit it was in. The string is what an operator reads and what M8.2 quotes into a
+         *     promotion report's refusal.
+         */
+        GateStatus: {
+            /** Evidence */
+            evidence: string;
+            /** Gate */
+            gate: string;
+            /** Met */
+            met: boolean;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+        };
+        /**
          * GraphEdgeKind
          * @enum {string}
          */
@@ -7367,6 +7423,38 @@ export interface components {
             workspace: string;
         };
         /**
+         * ShadowPair
+         * @description One shadow decision as the report shows it, with its rollout pair when there is one.
+         *
+         *     There is one of these per ``(decision, trial)`` that produced a complete pair, and one
+         *     per decision that produced none — with ``observed_delta`` and both result ids ``None``.
+         *     Incomplete decisions are listed rather than filtered because the M9b UI narrows the report
+         *     to a single run, and a run whose shadow forks all failed must look different from a run
+         *     that was never shadowed at all.
+         */
+        ShadowPair: {
+            /** Agreement */
+            agreement: boolean;
+            /** Control Result Id */
+            control_result_id?: string | null;
+            /** Executed Receipt Id */
+            executed_receipt_id: string;
+            /** Observed Delta */
+            observed_delta?: number | null;
+            /** Projected Utility Delta */
+            projected_utility_delta: number;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Shadow Receipt Id */
+            shadow_receipt_id: string;
+            /** Shadow Result Id */
+            shadow_result_id?: string | null;
+        };
+        /**
          * ShadowPolicyCreate
          * @description The candidate to shadow and the budget the workspace agrees to spend on it.
          *
@@ -7388,23 +7476,43 @@ export interface components {
             workspace_id: string;
         };
         /**
-         * ShadowSummary
-         * @description SDD §7.13 ``shadow_result``: what shadow evaluation showed before promotion.
+         * ShadowReport
+         * @description What a shadow stage has shown so far, and what it still owes a promotion.
          *
-         *     ``sample_size`` sits beside ``agreement_rate`` because OQ-409 leaves the minimum shadow
-         *     evidence to a power analysis: a 100% agreement rate over four decisions and over four
-         *     thousand are the same number and different evidence, and a report that recorded only the
-         *     rate could not tell them apart afterwards.
+         *     M6.2 returns this unchanged as a route's ``response_model`` and M8.2 feeds it to
+         *     :func:`shadow_gate`, which is why it carries both the aggregate and every pair behind it:
+         *     a report that quoted only ``mean_delta`` would be a number an operator has to trust, and
+         *     ``pairs`` is what makes it a number they can recompute.
+         *
+         *     ``mean_delta`` is the unweighted mean over complete pairs and ``delta_lcb`` the lower end
+         *     of the decision-clustered bootstrap interval on that mean. With no complete pairs both are
+         *     ``0.0`` and ``non_inferior`` is ``False``: an empty sample is not a null result, and a
+         *     report that returned "non-inferior, mean 0.0" for zero measurements would be an assertion
+         *     made from nothing.
          */
-        ShadowSummary: {
+        ShadowReport: {
             /** Agreement Rate */
             agreement_rate: number;
-            /** Decision Count */
-            decision_count: number;
-            /** Projected Utility Delta */
-            projected_utility_delta: number;
-            /** Sample Size */
-            sample_size: number;
+            /** Delta Lcb */
+            delta_lcb: number;
+            /** Mean Delta */
+            mean_delta: number;
+            /** Non Inferior */
+            non_inferior: boolean;
+            /** Paired Count */
+            paired_count: number;
+            /** Pairs */
+            pairs?: components["schemas"]["ShadowPair"][];
+            /** Remaining Gates */
+            remaining_gates?: components["schemas"]["GateStatus"][];
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Version Id */
+            version_id: string;
         };
         /**
          * SkillRef
@@ -10551,6 +10659,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RouterModelVersion"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    read_shadow_report_api_v1_shadow_policies__version_id__report_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShadowReport"];
                 };
             };
             /** @description Validation Error */

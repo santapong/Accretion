@@ -16,6 +16,7 @@ import "@xyflow/react/dist/style.css";
 import "./react-flow.css";
 import { api } from "./api";
 import { layoutProjection } from "./graphLayout";
+import { RoutingPanel } from "./RoutingPanel";
 import { badgeParts, nodeBadges, type NodeBadge, type NodeBadgeIndex } from "./runBadges";
 import type {
   ApprovalRecord,
@@ -968,6 +969,7 @@ export function RunExecution({ run }: { run: Run | undefined }) {
       <div className="execution-content">
         <ExperienceCapture run={run} />
         <DynamicWorkflowInspector run={run} />
+        <RoutingPanel run={run} audit={auditQuery.data} projection={projection} />
         <SearchTree run={run} />
         <PendingApprovals runId={run.run_id} />
         {loopQuery.data ? <BudgetSummary loop={loopQuery.data} /> : null}

@@ -96,3 +96,13 @@ export type CapabilityResolutionOutcome = components["schemas"]["CapabilityResol
 export type EnterpriseAuthProfileResponse = components["schemas"]["EnterpriseAuthProfileResponse"];
 export type EnterpriseAuthGrant = components["schemas"]["EnterpriseAuthGrant"];
 export type EnterpriseAuthOutcome = components["schemas"]["EnterpriseAuthOutcome"];
+
+// v0.4 M2 — deterministic node routing (SDD §17.1). The receipt is the frozen record of one
+// node's configuration choice; the candidates are the slate it was chosen from.
+export type RoutingDecisionReceipt = components["schemas"]["RoutingDecisionReceipt"];
+export type ConfigurationCandidate = components["schemas"]["ConfigurationCandidate"];
+export type RejectedCandidate = components["schemas"]["RejectedCandidate"];
+export type StructuredExplanation = components["schemas"]["StructuredExplanation"];
+export type PredictedOutcomes = components["schemas"]["PredictedOutcomes"];
+export type DistributionEstimate = components["schemas"]["DistributionEstimate"];
+export type RoutingOverrideCreate = components["schemas"]["RoutingOverrideCreate"];

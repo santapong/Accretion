@@ -590,6 +590,8 @@ def test_the_fifty_v04_rows_load_from_the_sdd_under_their_owner_stages() -> None
         "AC4-M1-008",
         "AC4-M4-016",
         "AC4-M5-021",
+        "AC4-M6-017",
+        "AC4-M6-041",
     }
     delivered |= {f"AC4-M2-{number:03d}" for number in owners["M2"]}
     delivered |= {f"AC4-M8-{number:03d}" for number in owners["M8"]}

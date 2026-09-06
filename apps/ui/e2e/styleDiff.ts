@@ -192,6 +192,99 @@ export function diffStyles(
   return differences;
 }
 
+/* ------------------------------------------------------------------------------------- */
+/* The structural-change waiver.                                                           */
+/* ------------------------------------------------------------------------------------- */
+
+/** A named, PR-scoped licence to skip the structural comparison for one route. */
+export interface StructuralChangeWaiver {
+  /** The PR that added the markup. Present so a stale waiver is attributable on sight. */
+  readonly pr: string;
+  /** What was added, in one sentence, so a reader need not diff two builds to find out. */
+  readonly reason: string;
+}
+
+/** The part of a route this module needs: its path, and whether it carries a waiver. */
+export interface WaivableRoute {
+  readonly path: string;
+  readonly structuralChange?: StructuralChangeWaiver;
+}
+
+/**
+ * What the sweep still owes a route, given its waiver.
+ *
+ * Written as a returned record rather than an `if` inside the spec because the interesting
+ * mistake is not "the waiver did not apply" — that fails loudly on the next run — but "the
+ * waiver switched off more than it was supposed to". Naming each obligation makes that a
+ * value a unit test can read, and `styleDiff.test.ts` reads it.
+ */
+export interface RouteObligations {
+  /** `fingerprintsEqual` then `diffStyles`. The one thing a waiver suspends. */
+  readonly compareStructure: boolean;
+  /**
+   * The element floor. ALWAYS true, waiver or not.
+   *
+   * This is the assertion that makes a waiver safe. Without the structural comparison the
+   * only remaining evidence that the branch rendered the page at all is that it rendered
+   * enough elements, so a waiver that also relaxed the floor would turn "this route changed
+   * on purpose" into "this route is unmeasured" — and a route that 500s or renders an empty
+   * state would sail through the gate that exists to notice exactly that.
+   */
+  readonly enforceFloor: boolean;
+  /** The waiver that produced this, for the log line, or `null`. */
+  readonly waiver: StructuralChangeWaiver | null;
+}
+
+/**
+ * Read one route's obligations. Consults THAT route and no other.
+ *
+ * The scoping is the whole point and is pinned by "a waiver on one route does not silence a
+ * style difference on another": a waiver held in module state, or derived from "does any
+ * route declare one", would disable the comparator for the entire sweep the moment a single
+ * route needed an exemption — and would do it silently, because the sweep's output on a
+ * healthy branch is "0 differences" either way.
+ */
+export function obligationsFor(route: WaivableRoute): RouteObligations {
+  const waiver = route.structuralChange ?? null;
+  return { compareStructure: waiver === null, enforceFloor: true, waiver };
+}
+
+/** The verdict for one route/width: aligned or not, and every difference found. */
+export interface CaptureComparison {
+  /**
+   * Whether the two captures may be compared by index.
+   *
+   * True when the fingerprints match, and true on a waived route — where the question was
+   * not asked, so there is nothing to retry.
+   */
+  readonly aligned: boolean;
+  readonly differences: readonly StyleDifference[];
+  readonly waiver: StructuralChangeWaiver | null;
+}
+
+/**
+ * Compare one route's two captures, honouring its waiver.
+ *
+ * The single entry point the spec calls, so that "waived" cannot mean one thing in the
+ * width sweep and another in the interaction pass. On a waived route it returns no
+ * differences WITHOUT reading either capture's styles; on every other route it is exactly
+ * the fingerprint check followed by `diffStyles`, unchanged.
+ */
+export function compareCaptures(
+  route: WaivableRoute,
+  base: readonly ElementCapture[],
+  branch: readonly ElementCapture[],
+): CaptureComparison {
+  const obligations = obligationsFor(route);
+  if (!obligations.compareStructure) {
+    return { aligned: true, differences: [], waiver: obligations.waiver };
+  }
+  if (!fingerprintsEqual(base, branch)) {
+    return { aligned: false, differences: [], waiver: null };
+  }
+  return { aligned: true, differences: diffStyles(base, branch), waiver: null };
+}
+
 /**
  * How many times a route/width pair may be re-measured, and how long to wait first.
  *
