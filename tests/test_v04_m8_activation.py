@@ -48,11 +48,11 @@ from accretion.routing.activation import (
     WORKSPACE_FAMILY_KEY,
     ActivationLedger,
     LedgerActiveVersionResolver,
-    LedgerActiveVersions,
     adapter_family_key,
     family_key_for,
 )
 from accretion.routing.catalog import WORKSPACE_ROUTER_VERSION
+from accretion.routing.stages import ActiveVersions
 from accretion.routing.train import ALGORITHM_ID
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -539,7 +539,7 @@ async def test_a_workspace_with_no_promotion_resolves_to_the_deterministic_label
         workspace_id=workspace_id
     )
 
-    assert resolved == LedgerActiveVersions(
+    assert resolved == ActiveVersions(
         router_version_id=None,
         adapter_version_id=None,
         router_label=WORKSPACE_ROUTER_VERSION,
@@ -564,7 +564,7 @@ async def test_the_resolver_returns_both_heads_and_labels_them(tmp_path: Path) -
         workspace_id=workspace_id, project_id=project_id
     )
 
-    assert resolved == LedgerActiveVersions(
+    assert resolved == ActiveVersions(
         router_version_id=prior.contract_id,
         adapter_version_id=adapter.contract_id,
         router_label=prior.contract_id,

@@ -830,6 +830,36 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/router-models/{version_id}/lineage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Router Lineage
+         * @description The parent chain, the activation history and the reports behind them (AC4-M8-042).
+         *
+         *     The chain walks ``parent_version_id`` upwards from the named version and stops at the
+         *     first ancestor that is not stored, which is the honest end of a lineage rather than an
+         *     error: promotion mints a new row parented on the candidate, so a chain reaches back
+         *     through every promotion and rollback of the same artefact to the version that was fitted.
+         *     A cycle — which nothing can currently write — terminates the walk instead of hanging.
+         *
+         *     Activations are the whole family's, in ledger order, and not only the ones naming this
+         *     version: "what happened to this router" includes the promotion that displaced it, and a
+         *     history filtered to entries mentioning the version would omit exactly that.
+         */
+        get: operations["get_router_lineage_api_v1_router_models__version_id__lineage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/router-models/{version_id}/rollback": {
         parameters: {
             query?: never;
@@ -849,6 +879,66 @@ export interface paths {
          *     so a rollback never replaces a bad router with a dead one.
          */
         post: operations["rollback_router_version_api_v1_router_models__version_id__rollback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/router-promotions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Evaluate Router Promotion
+         * @description Run the CSPI-MT gate and seal the verdict, without activating anything (§10.2).
+         *
+         *     Evaluating is a separate act from promoting and requires the same authority, because the
+         *     report it writes is what a later ``POST .../promote`` will accept as authorisation: a
+         *     caller who could produce reports but not act on them could still choose which comparison
+         *     the workspace's next promotion would be judged by.
+         *
+         *     ``Idempotency-Key`` is what makes a retry a retry here rather than a second sealed claim.
+         *     Under a key the report's id is derived from the four inputs, so a replayed request finds
+         *     the sealed report and returns it; a request whose evidence has moved since gets the
+         *     conflict rather than a stale verdict.
+         *
+         *     A holdout that is not project-disjoint from the candidate's training evidence is refused
+         *     with its own code and nothing is written (AC4-M8-036); every other refusal — a regression,
+         *     an unreadable artefact, a rollback target that will not drill — is a *finding inside* the
+         *     report, because those are measurements an operator needs recorded.
+         */
+        post: operations["evaluate_router_promotion_api_v1_router_promotions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/router-promotions/{report_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Router Promotion
+         * @description The sealed evaluation that authorises — or refuses — one promotion (AC4-M8-042).
+         *
+         *     Membership and not administration: reading why a router was promoted is something every
+         *     member of the workspace it routes for is entitled to do, and §10.3's human act is the
+         *     ``POST`` beside this, not the ``GET``. A report belonging to another workspace raises a
+         *     bare ``KeyError`` and is a 404, so this route cannot be used to enumerate report ids.
+         */
+        get: operations["get_router_promotion_api_v1_router_promotions__report_id__get"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -2857,6 +2947,26 @@ export interface components {
             status: components["schemas"]["VerificationStatus"];
             /** Verifier Id */
             verifier_id: string;
+        };
+        /**
+         * CohortResult
+         * @description One §10.2 evaluation cohort. ``critical`` is what blocks promotion, not the metric.
+         *
+         *     OQ-413 names the critical cohorts — correctness, policy, secrets, high-risk, verifier
+         *     conflict — and leaves the list open. Carrying ``critical`` on the cohort rather than
+         *     hard-coding a set of ids means the promotion rule ("a critical regression blocks") stays
+         *     true when the list changes.
+         */
+        CohortResult: {
+            /** Cohort Id */
+            cohort_id: string;
+            comparison: components["schemas"]["MetricComparison"];
+            /** Critical */
+            critical: boolean;
+            /** Description */
+            description: string;
+            /** Sample Size */
+            sample_size: number;
         };
         /** CompatibilityAssessment */
         CompatibilityAssessment: {
@@ -5106,6 +5216,31 @@ export interface components {
             version: string;
         };
         /**
+         * MetricComparison
+         * @description One candidate-versus-baseline metric in a promotion report (SDD §7.13, §10.2).
+         *
+         *     The interval is on the *delta* and not on either value, because non-regression is a
+         *     statement about the difference: a candidate whose point estimate improved but whose
+         *     interval crosses zero has not been shown to be better, and ``passed`` records the
+         *     decision that was actually made against the bounds recorded beside it.
+         */
+        MetricComparison: {
+            /** Baseline Value */
+            baseline_value: number;
+            /** Candidate Value */
+            candidate_value: number;
+            /** Delta */
+            delta: number;
+            /** Delta Lower Bound */
+            delta_lower_bound: number;
+            /** Delta Upper Bound */
+            delta_upper_bound: number;
+            /** Metric Id */
+            metric_id: string;
+            /** Passed */
+            passed: boolean;
+        };
+        /**
          * ModelBinding
          * @description SDD §7.5 ``model``: which model, from which provider, configured how.
          *
@@ -5736,6 +5871,28 @@ export interface components {
             /** Experience Retrieval */
             experience_retrieval?: boolean | null;
         };
+        /**
+         * PromotionEvaluationCreate
+         * @description Which two versions to compare, and on which sealed holdout snapshot.
+         *
+         *     A plain ``BaseModel`` with ``extra`` forbidden, for the reason :class:`RollbackCreate`
+         *     gives: it is a request body and not a persisted contract, so a misspelt field is a 422
+         *     rather than a silently ignored one.
+         *
+         *     All three ids are required and none of them has a default. A route that defaulted the
+         *     baseline to "whatever is active" would let a caller evaluate against a version they were
+         *     not looking at, and the report would then name a comparison nobody chose.
+         */
+        PromotionEvaluationCreate: {
+            /** Baseline Version Id */
+            baseline_version_id: string;
+            /** Candidate Version Id */
+            candidate_version_id: string;
+            /** Holdout Snapshot Id */
+            holdout_snapshot_id: string;
+            /** Run Id */
+            run_id?: string | null;
+        };
         /** PromptContract */
         PromptContract: {
             /** Completion Criteria */
@@ -5806,6 +5963,26 @@ export interface components {
             schema_version: "2.0";
             /** Task Count */
             task_count: number;
+        };
+        /**
+         * RegressionFinding
+         * @description A §7.13 ``critical_regressions``/``noncritical_tradeoffs`` entry.
+         *
+         *     ``severity`` reuses v0.1's :class:`~accretion.contracts.FindingSeverity` rather than
+         *     introducing a fourth severity vocabulary. ``disclosed_bound`` is required for a
+         *     non-critical tradeoff because §10.3 allows one only "with explicit bounds and
+         *     disclosure" — an undisclosed tradeoff is not a tradeoff, it is a regression.
+         */
+        RegressionFinding: {
+            /** Description */
+            description: string;
+            /** Disclosed Bound */
+            disclosed_bound?: string | null;
+            /** Finding Id */
+            finding_id: string;
+            /** Metric Id */
+            metric_id: string;
+            severity: components["schemas"]["FindingSeverity"];
         };
         /**
          * RejectedCandidate
@@ -6114,6 +6291,74 @@ export interface components {
             verified_success_lcb: number;
         };
         /**
+         * RouterLineage
+         * @description AC4-M8-042: where a router version came from, and everything that happened to it.
+         *
+         *     Three joins a caller would otherwise make by hand and could make inconsistently: the
+         *     ``parent_version_id`` chain from this version back to the first ancestor stored, the
+         *     activation entries for its family in ledger order, and the promotion reports those
+         *     entries cite. A response model rather than a contract because it is a *projection* —
+         *     nothing here is persisted in this shape, every field is a copy of something that is, and
+         *     a stored lineage document would be a fourth place for the same facts to disagree.
+         *
+         *     ``active_version_id`` is the ledger head and not "the row whose status is ACTIVE": after
+         *     a rollback those are different answers, and the head is the one routing reads (ADR-061).
+         */
+        RouterLineage: {
+            /** Activations */
+            activations?: components["schemas"]["RouterActivation"][];
+            /** Active Version Id */
+            active_version_id?: string | null;
+            /** Family Key */
+            family_key: string;
+            /** Parent Chain */
+            parent_chain?: components["schemas"]["RouterLineageEntry"][];
+            /** Promotion Report Ids */
+            promotion_report_ids?: string[];
+            /** Rollback Target Version Id */
+            rollback_target_version_id?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            scope: components["schemas"]["RouterScope"];
+            /** Version Id */
+            version_id: string;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * RouterLineageEntry
+         * @description One version on a lineage chain, flattened to what an inspector renders (§17.3).
+         */
+        RouterLineageEntry: {
+            /** Algorithm Id */
+            algorithm_id: string;
+            /** Artifact Digest */
+            artifact_digest: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Parent Version Id */
+            parent_version_id?: string | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            scope: components["schemas"]["RouterScope"];
+            status: components["schemas"]["RouterStatus"];
+            /** Training Snapshot Id */
+            training_snapshot_id: string;
+            /** Version Id */
+            version_id: string;
+        };
+        /**
          * RouterModelVersion
          * @description SDD §7.12. An immutable router artifact with its data, its config and its lineage.
          *
@@ -6191,6 +6436,120 @@ export interface components {
             supersedes_contract_id?: string | null;
             /** Training Snapshot Id */
             training_snapshot_id: string;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * RouterPromotionDecision
+         * @description SDD §7.13. The outcome of a promotion evaluation.
+         *
+         *     ``REQUIRE_REVIEW`` is a first-class outcome and not an absence of one: §10.3 allows
+         *     non-critical tradeoffs to pass only with explicit bounds and disclosure, and that is a
+         *     human decision the report must be able to *request* rather than assume.
+         *
+         *     Named ``RouterPromotionDecision``, not ``PromotionDecision``, because registry §13
+         *     reserves the bare name for a *v0.10 canonical contract* — "human-reviewed canary/release/
+         *     reject decision and rollback metadata" about a capability candidate, not an enum about a
+         *     router model. SDD §7.13 writes the three values inline and names no enum, so nothing
+         *     forced the collision. Taking the name here would have left ``accretion.contracts``
+         *     owning two artifacts called ``PromotionDecision`` with different owners and different
+         *     kinds, which registry §19's "every contract has one owner and schema version" gate
+         *     cannot express; and by the time v0.10 lands this enum is frozen into every persisted
+         *     ``RouterPromotionReport.decision``, so the rename would then be a registry §3.2 Major
+         *     change requiring a §17 migration. Registry §21 calls that a stop-and-reconcile event and
+         *     ADR-054 records no reconciliation for this name, so v0.4 yields it.
+         * @enum {string}
+         */
+        RouterPromotionDecision: "PROMOTE" | "REJECT" | "REQUIRE_REVIEW";
+        /**
+         * RouterPromotionReport
+         * @description SDD §7.13. The holdout, cohort, safety, rollback and human record of one promotion.
+         *
+         *     §10.3 makes promotion atomic and reversible, and this is the document that authorises
+         *     it. ADR-049's "reversible" is why ``rollback_target`` is required even for a rejection:
+         *     the report states what would be restored, and a report that named a rollback target only
+         *     on success would leave the failure path undocumented.
+         *
+         *     **Field coverage (SDD §7.13 → here).** ``report_id`` → the header's ``contract_id``
+         *     (``rpr``). ``candidate_version``, ``baseline_version``, ``training_snapshot_id``,
+         *     ``holdout_definition_id``, ``rollback_target``, ``created_at`` → unchanged.
+         *     ``primary_metric_result``, ``verified_success_non_regression``,
+         *     ``false_acceptance_non_regression``, ``calibration_result`` → four
+         *     :class:`MetricComparison` values, typed instead of ``object``. ``cohort_results`` →
+         *     ``[CohortResult]``; ``shadow_result`` → :class:`ShadowSummary`;
+         *     ``critical_regressions`` and ``noncritical_tradeoffs`` → ``[RegressionFinding]``.
+         *     ``decision`` → :class:`RouterPromotionDecision`; ``approved_by`` → a typed
+         *     :class:`~accretion.contracts.PrincipalRef`, nullable because a rejection needs no
+         *     approver.
+         *
+         *     The validator enforces the two rules §10.3 states in prose: a critical regression blocks
+         *     promotion, and a promotion is a human act. A critical *cohort* that did not pass counts
+         *     as a critical regression whether or not anyone wrote it into
+         *     ``critical_regressions`` — otherwise the block could be avoided by leaving a list empty.
+         *
+         *     ``PROJECT_SCOPED`` is ``False``: promotion is a workspace release (OQ-411 puts approval
+         *     with a workspace admin or research owner), and a report scoped to one project would
+         *     misdescribe what was promoted.
+         */
+        RouterPromotionReport: {
+            approved_by?: components["schemas"]["PrincipalRef"] | null;
+            /** Baseline Version */
+            baseline_version: string;
+            calibration_result: components["schemas"]["MetricComparison"];
+            /** Candidate Version */
+            candidate_version: string;
+            /** Cohort Results */
+            cohort_results?: components["schemas"]["CohortResult"][];
+            /**
+             * Content Hash
+             * @default
+             */
+            content_hash: string;
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Contract Type
+             * @default accretion.router-promotion-report
+             * @constant
+             */
+            contract_type: "accretion.router-promotion-report";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            created_by: components["schemas"]["PrincipalRef"];
+            /** Critical Regressions */
+            critical_regressions?: components["schemas"]["RegressionFinding"][];
+            decision: components["schemas"]["RouterPromotionDecision"];
+            false_acceptance_non_regression: components["schemas"]["MetricComparison"];
+            /** Holdout Definition Id */
+            holdout_definition_id: string;
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            /** Noncritical Tradeoffs */
+            noncritical_tradeoffs?: components["schemas"]["RegressionFinding"][];
+            objective_contract_ref?: components["schemas"]["ObjectiveContractRef"] | null;
+            primary_metric_result: components["schemas"]["MetricComparison"];
+            /** Project Id */
+            project_id?: string | null;
+            /** Retention Class */
+            retention_class?: string | null;
+            /** Rollback Target */
+            rollback_target: string;
+            /**
+             * Schema Version
+             * @default 1.0.0
+             */
+            schema_version: string;
+            shadow_result: components["schemas"]["ShadowSummary"];
+            /** Supersedes Contract Id */
+            supersedes_contract_id?: string | null;
+            /** Training Snapshot Id */
+            training_snapshot_id: string;
+            verified_success_non_regression: components["schemas"]["MetricComparison"];
             /** Workspace Id */
             workspace_id: string;
         };
@@ -7027,6 +7386,25 @@ export interface components {
             run_id?: string | null;
             /** Workspace Id */
             workspace_id: string;
+        };
+        /**
+         * ShadowSummary
+         * @description SDD §7.13 ``shadow_result``: what shadow evaluation showed before promotion.
+         *
+         *     ``sample_size`` sits beside ``agreement_rate`` because OQ-409 leaves the minimum shadow
+         *     evidence to a power analysis: a 100% agreement rate over four decisions and over four
+         *     thousand are the same number and different evidence, and a report that recorded only the
+         *     rate could not tell them apart afterwards.
+         */
+        ShadowSummary: {
+            /** Agreement Rate */
+            agreement_rate: number;
+            /** Decision Count */
+            decision_count: number;
+            /** Projected Utility Delta */
+            projected_utility_delta: number;
+            /** Sample Size */
+            sample_size: number;
         };
         /**
          * SkillRef
@@ -9353,6 +9731,39 @@ export interface operations {
             };
         };
     };
+    get_router_lineage_api_v1_router_models__version_id__lineage_get: {
+        parameters: {
+            query: {
+                workspace_id: string;
+            };
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouterLineage"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     rollback_router_version_api_v1_router_models__version_id__rollback_post: {
         parameters: {
             query: {
@@ -9379,6 +9790,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RouterActivation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    evaluate_router_promotion_api_v1_router_promotions_post: {
+        parameters: {
+            query: {
+                workspace_id: string;
+            };
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PromotionEvaluationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouterPromotionReport"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_router_promotion_api_v1_router_promotions__report_id__get: {
+        parameters: {
+            query: {
+                workspace_id: string;
+            };
+            header?: never;
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouterPromotionReport"];
                 };
             };
             /** @description Validation Error */

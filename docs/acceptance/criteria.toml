@@ -156,14 +156,8 @@ AC4-M3-031 = { verification = "not_yet_due", reason = "v0.4 M3" }
 AC4-M3-032 = { verification = "not_yet_due", reason = "v0.4 M3" }
 AC4-M3-033 = { verification = "not_yet_due", reason = "v0.4 M3" }
 AC4-M3-034 = { verification = "not_yet_due", reason = "v0.4 M3" }
-AC4-M8-035 = { verification = "not_yet_due", reason = "v0.4 M8" }
-AC4-M8-036 = { verification = "not_yet_due", reason = "v0.4 M8" }
-AC4-M8-037 = { verification = "not_yet_due", reason = "v0.4 M8" }
-AC4-M8-038 = { verification = "not_yet_due", reason = "v0.4 M8" }
-AC4-M8-039 = { verification = "not_yet_due", reason = "v0.4 M8" }
 AC4-M9-040 = { verification = "not_yet_due", reason = "v0.4 M9" }
 AC4-M6-041 = { verification = "not_yet_due", reason = "v0.4 M6" }
-AC4-M8-042 = { verification = "not_yet_due", reason = "v0.4 M8" }
 AC4-M9-043 = { verification = "not_yet_due", reason = "v0.4 M9" }
 AC4-M9-044 = { verification = "not_yet_due", reason = "v0.4 M9" }
 AC4-M10-045 = { verification = "not_yet_due", reason = "v0.4 M10" }

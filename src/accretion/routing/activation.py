@@ -16,7 +16,9 @@ Two objects, and they face opposite directions. :class:`ActivationLedger` is the
 side — it works out the next sequence and the version it displaces, and hands the composite
 write to the store, which is the only place that can make the version rows and the ledger
 entry one act. :class:`LedgerActiveVersionResolver` is the *read* side, and it is the answer
-to "which router is serving this project right now" that M8.2 wires into routing.
+to "which router is serving this project right now" that :mod:`accretion.routing.bootstrap`
+hands to the routing service as its
+:class:`~accretion.routing.stages.ActiveVersionResolver`.
 
 Neither knows anything about promotion policy. Whether a candidate has *earned* activation
 is :mod:`accretion.routing.promotion`'s question; this module records the answer.
@@ -25,7 +27,6 @@ is :mod:`accretion.routing.promotion`'s question; this module records the answer
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
 
 from accretion.contracts import PrincipalRef
 from accretion.contracts.routing import (
@@ -37,6 +38,7 @@ from accretion.contracts.routing import (
 from accretion.ids import new_id
 from accretion.persistence.store import StateStore
 from accretion.routing.catalog import WORKSPACE_ROUTER_VERSION
+from accretion.routing.stages import ActiveVersions
 from accretion.routing.train import ALGORITHM_ID
 
 WORKSPACE_FAMILY_KEY = "workspace"
@@ -79,36 +81,6 @@ def family_key_for(version: RouterModelVersion) -> str:
             "project; it has no adapter family to be activated in"
         )
     return adapter_family_key(version.project_id, version.algorithm_id)
-
-
-@dataclass(frozen=True, slots=True)
-class LedgerActiveVersions:
-    """Who is routing for one project right now, according to the ledger.
-
-    Four fields and two of them are ids while two are labels, which is not redundancy.
-    ``router_version_id`` and ``adapter_version_id`` are ``rmv_`` contract ids and are
-    ``None`` in the cold-start case — a workspace that has promoted nothing routes
-    deterministically, which is a state and not a failure. The labels are what
-    :class:`~accretion.contracts.routing.RoutingContext` records in
-    ``workspace_router_version`` and ``project_adapter_version``, and
-    :mod:`accretion.routing.identity` folds into a decision's identity: a stable string
-    naming *who routed*, which for a learned policy is the version id and for the
-    deterministic baseline is :data:`~accretion.routing.catalog.WORKSPACE_ROUTER_VERSION`.
-    A receipt sealed under a label that had no value for "nothing is promoted yet" could not
-    be told apart from one sealed before the field existed.
-
-    ``router_label`` is therefore never ``None`` and ``adapter_label`` is ``None`` exactly
-    when no adapter is active: there is no deterministic *adapter*, and §7.4 already makes
-    the absent adapter the cold-start case ``identity.py`` encodes explicitly.
-
-    M8.2 replaces this dataclass with ``routing/stages.py:ActiveVersions``, which lands in
-    the same window. The field names here are the ones that migration expects.
-    """
-
-    router_version_id: str | None
-    adapter_version_id: str | None
-    router_label: str
-    adapter_label: str | None
 
 
 class ActivationLedger:
@@ -237,8 +209,23 @@ class LedgerActiveVersionResolver:
 
     async def resolve(
         self, *, workspace_id: str, project_id: str | None = None
-    ) -> LedgerActiveVersions:
-        """The active workspace router and project adapter, as ids and as labels."""
+    ) -> ActiveVersions:
+        """The active workspace router and project adapter, as ids and as labels.
+
+        Returns :class:`~accretion.routing.stages.ActiveVersions` — §9.4's own type and not a
+        local mirror of it — because this class *is* the
+        :class:`~accretion.routing.stages.ActiveVersionResolver` the routing service holds.
+        M8.1 declared the four fields locally because ``stages.py`` landed in the same window;
+        keeping the duplicate now would leave two structurally identical dataclasses that a
+        reader has to compare field by field to know are interchangeable, and one of them
+        would eventually gain a fifth field.
+
+        ``router_label`` is never ``None`` and ``adapter_label`` is ``None`` exactly when no
+        adapter is active: a workspace that has promoted nothing is routed by the audited
+        deterministic baseline, which is a state with a name
+        (:data:`~accretion.routing.catalog.WORKSPACE_ROUTER_VERSION`) rather than an absence,
+        and there is no deterministic *adapter* for the cold-start case to fall back to.
+        """
 
         workspace_head = await self.store.head_router_activation(
             workspace_id=workspace_id,
@@ -258,7 +245,7 @@ class LedgerActiveVersionResolver:
         adapter_version_id = (
             None if adapter_head is None else adapter_head.router_version_id
         )
-        return LedgerActiveVersions(
+        return ActiveVersions(
             router_version_id=router_version_id,
             adapter_version_id=adapter_version_id,
             router_label=(
@@ -274,7 +261,6 @@ __all__ = [
     "WORKSPACE_FAMILY_KEY",
     "ActivationLedger",
     "LedgerActiveVersionResolver",
-    "LedgerActiveVersions",
     "adapter_family_key",
     "family_key_for",
 ]

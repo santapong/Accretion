@@ -28,13 +28,16 @@ from __future__ import annotations
 
 import json
 import shutil
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from test_v04_m2_service import _routable_execution
 from test_v04_m4_train import frozen_clock, trained_once
+from test_v04_m5_coldstart import install_router, learned_once
 
 from accretion.api.auth import AuthRuntime
 from accretion.api.main import app
@@ -67,8 +70,13 @@ from accretion.contracts.routing import (
 from accretion.identity import IdentityService
 from accretion.ids import new_id
 from accretion.persistence.store import MemoryStore
-from accretion.routing.activation import WORKSPACE_FAMILY_KEY, ActivationLedger
+from accretion.routing.activation import (
+    WORKSPACE_FAMILY_KEY,
+    ActivationLedger,
+    LedgerActiveVersionResolver,
+)
 from accretion.routing.artifacts import ArtifactStore
+from accretion.routing.coldstart import ColdStartScorer
 from accretion.routing.features import EvidenceSummary, Vocabulary, featurize
 from accretion.routing.promotion import (
     DRILL_DIGEST_LABEL,
@@ -80,6 +88,8 @@ from accretion.routing.promotion import (
     _probe,
     build_promotion_service,
 )
+from accretion.routing.protocols import RoutingMode
+from accretion.routing.service import DefaultNodeRoutingService
 from accretion.routing.train import LearnedPredictorLoader
 
 FIXTURE_ROOT = Path(__file__).parent / "fixtures" / "contracts" / "v0.4"
@@ -93,6 +103,8 @@ APPROVER = PrincipalRef(
 )
 OPERATOR = "usr_m8_promotion_service"
 MISSING_DIGEST = "0" * 64
+UNACTIVATED_INSTANT = datetime(2026, 4, 2, 12, 0, tzinfo=UTC)
+"""A day after ``frozen_clock``: the stamp on the one row here no activation ever named."""
 
 
 def snake_case(name: str) -> str:
@@ -117,6 +129,7 @@ def reheader(
     *,
     status: RouterStatus,
     artifact_digest: str | None = None,
+    created_at: datetime | None = None,
 ) -> RouterModelVersion:
     """A second version row over the *same* trained bytes, under a new id and status.
 
@@ -124,6 +137,11 @@ def reheader(
     prove nothing extra, because what the drill exercises is whether the bytes a version
     *pins* still load. ``artifact_digest`` is overridable so that a target which cannot be
     drilled can be built the same way as one that can.
+
+    ``created_at`` is overridable for the one test that needs a row *younger* than
+    everything the promotion service wrote: the whole suite shares ``frozen_clock``, so
+    without it every row here carries one instant and any statement about which row is the
+    most recent would be decided by the id tie-break rather than by the timeline.
     """
 
     document = source.model_dump(mode="json")
@@ -134,6 +152,8 @@ def reheader(
     document["parent_version_id"] = source.contract_id
     if artifact_digest is not None:
         document["artifact_digest"] = artifact_digest
+    if created_at is not None:
+        document["created_at"] = created_at.isoformat()
     return RouterModelVersion.model_validate(document)
 
 
@@ -159,6 +179,30 @@ def promotion_report(
         rollback_target=rollback_target.contract_id,
         decision=decision,
         approved_by=APPROVER.model_dump(mode="json"),
+    )
+
+
+
+def routing_service(execution: Any, learned: Any) -> DefaultNodeRoutingService:
+    """The M2 routing stack with the M8.1 resolver and a real cold-start scorer attached.
+
+    ``active_versions`` is stated here rather than defaulted because it is the subject: the
+    default is still ``StatusActiveVersionResolver``, and a test that took it would prove the
+    opposite of what AC4-M8-039's second half claims.
+    """
+
+    return DefaultNodeRoutingService(
+        store=execution.service.store,
+        snapshots=execution.service.snapshots,
+        catalog_factory=execution.service.catalog_factory,
+        runtimes=execution.service.runtimes,
+        active_versions=LedgerActiveVersionResolver(execution.store),
+        scorer=ColdStartScorer(
+            LearnedPredictorLoader(execution.store, learned.artifacts),
+            learned.artifacts,
+            lambda: datetime(2026, 5, 1, tzinfo=UTC),
+        ),
+        default_mode=RoutingMode.AUTO,
     )
 
 
@@ -583,6 +627,123 @@ async def test_a_rollback_preserves_every_receipt_and_leaves_one_head(
     assert head.previous_version_id == promoted.router_version_id
     assert head.rollback_target_version_id == bench.target.contract_id
     assert head.cause == "elevated false acceptance in production"
+
+
+@pytest.mark.acceptance("AC4-M8-039")
+async def test_routing_pins_the_head_before_and_after_a_rollback_and_rewrites_no_receipt(
+    tmp_path: Path, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    """AC4-M8-039, second half. A rollback changes new decisions and only new decisions.
+
+    The routing service is wired with
+    :class:`~accretion.routing.activation.LedgerActiveVersionResolver` — the resolver
+    ``bootstrap.py`` now installs — and the whole claim is what that swap buys. A request
+    routed while the promotion is the head pins the promoted version in
+    ``workspace_router_version``; the same node routed after the withdrawal pins the restored
+    one; and the first receipt is byte for byte what it was, re-sealed from its stored body
+    rather than merely reporting an unchanged digest.
+
+    What makes the resolver's identity observable is the ``ACTIVE`` row below that the
+    ledger never activated. Migration 0019 retired the partial unique indexes that used to
+    forbid a second ``ACTIVE`` row per family precisely because promotion and rollback both
+    *append* ``ACTIVE`` rows and rewrite none, so the status column cannot say which of
+    several is serving — and a row can reach ``ACTIVE`` without an activation at all: a
+    promotion made before the ledger existed, a restored backup, an operator repairing a
+    table by hand. ``stray`` is that row, stamped a day after everything the promotion
+    service wrote so that "the latest ACTIVE row" names it beyond any tie-break, and it is
+    asserted to be that row at both checkpoints. A resolver reading
+    ``router_model_versions.status`` therefore pins a version nobody approved and no drill
+    ever rehearsed, at both checkpoints, every run; the ledger resolver pins the head.
+
+    Without the stray row this test discriminates nothing: the whole suite shares
+    ``frozen_clock``, so every version row carries one instant, and a status resolver would
+    fall back to comparing randomly minted ``contract_id``s and land on the right answer
+    about half the time. Under a monotone clock it would land on the right answer *always*,
+    since the rows an activation appends are always the youngest — which is why the
+    discriminator has to be a row the ledger does not know about rather than a later clock.
+
+    ``mode=AUTO`` and a real cold-start scorer, because the label under test is an
+    *attribution*: a receipt naming a version that never scored anything would credit the
+    deterministic fallback's outcomes to a learned router in every later evaluation.
+    """
+
+    learned = await learned_once(tmp_path_factory)
+    execution = await _routable_execution(tmp_path)
+    workspace_id = execution.frozen.node_contract.workspace_id
+    incumbent = await install_router(
+        execution.store, workspace_id, learned, status=RouterStatus.ACTIVE
+    )
+    challenger = await install_router(
+        execution.store, workspace_id, learned, status=RouterStatus.CANDIDATE
+    )
+    service = build_promotion_service(
+        execution.store, learned.artifacts, operator_identity=OPERATOR, clock=frozen_clock
+    )
+    report = await execution.store.put_router_promotion_report(
+        promotion_report(
+            workspace_id, candidate=challenger, rollback_target=incumbent
+        )
+    )
+    promoted = await service.promote(report.contract_id, APPROVER)
+
+    stray = await execution.store.put_router_model_version(
+        reheader(
+            incumbent,
+            workspace_id,
+            status=RouterStatus.ACTIVE,
+            created_at=UNACTIVATED_INSTANT,
+        )
+    )
+
+    async def latest_active_row() -> str:
+        """What a resolver reading the status column would answer: ``(created_at, id)``."""
+
+        versions = await execution.store.list_router_model_versions(
+            workspace_id=workspace_id
+        )
+        active = [
+            version
+            for version in versions
+            if version.scope is RouterScope.TEAM_WORKSPACE
+            and version.status is RouterStatus.ACTIVE
+        ]
+        return max(
+            active, key=lambda version: (version.created_at, version.contract_id)
+        ).contract_id
+
+    assert await latest_active_row() == stray.contract_id
+
+    routing = routing_service(execution, learned)
+    first = await routing.route(
+        frozen=execution.frozen,
+        snapshot=execution.snapshot,
+        mode=RoutingMode.AUTO,
+        run=execution.run,
+    )
+    assert first.workspace_router_version == promoted.router_version_id
+    assert first.workspace_router_version != stray.contract_id
+
+    withdrawal = await service.rollback(
+        promoted.router_version_id, "regression found in production", APPROVER
+    )
+    assert await latest_active_row() == stray.contract_id
+    second = await routing.route(
+        frozen=execution.frozen,
+        snapshot=execution.snapshot,
+        mode=RoutingMode.AUTO,
+        run=execution.run,
+    )
+
+    assert second.contract_id != first.contract_id
+    assert second.workspace_router_version != stray.contract_id
+    assert second.workspace_router_version == withdrawal.router_version_id
+    assert second.workspace_router_version != first.workspace_router_version
+
+    replayed = await execution.store.get_routing_receipt(first.contract_id)
+    assert replayed is not None
+    assert replayed.content_hash == first.content_hash
+    assert content_hash(replayed) == first.content_hash
+    assert replayed.workspace_router_version == promoted.router_version_id
 
 
 async def test_a_rollback_marks_the_withdrawn_version_and_restores_the_target(
