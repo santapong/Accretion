@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { api } from "./api";
 import { StatePill } from "./StatePill";
+import { shadowStages } from "./shadowStages";
 import type { GateStatus, Run, ShadowPair } from "./types";
 
 /**
@@ -62,22 +63,8 @@ export function ShadowComparison({
     enabled: routed && Boolean(workspaceId),
     retry: false,
   });
-  // The workspace's shadow stages that could have scored THIS run, newest first.
-  //
-  // `list_router_model_versions` orders by `(created_at, contract_id)`, and the stage an
-  // operator opening a run wants is the one currently accumulating evidence. A version scoped
-  // to another project is dropped here rather than passed to the route as `project_id`,
-  // because that parameter would also drop the workspace-scoped versions — the ones whose
-  // `project_id` is null — and those score every project's runs.
   const shadowVersions = useMemo(
-    () =>
-      (Array.isArray(versionsQuery.data) ? versionsQuery.data : [])
-        .filter(
-          (version) =>
-            version.status === "SHADOW" &&
-            (!version.project_id || version.project_id === run.project_id),
-        )
-        .reverse(),
+    () => shadowStages(versionsQuery.data, run.project_id),
     [versionsQuery.data, run.project_id],
   );
 

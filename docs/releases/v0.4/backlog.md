@@ -221,7 +221,7 @@ belongs to a milestone that owns retraining.
 
 ## Recorded during M9
 
-Four decisions the operator-UI milestone had to make before it could add a single element to
+Six decisions the operator-UI milestone had to make before it could add a single element to
 the run page. None changes the design; each records which of two readings the code took.
 
 **ADR4-M9-001 — a structural-change waiver for the computed-style diff, scoped to one route and
@@ -329,6 +329,48 @@ whose run belongs to the second, the panel lists the first workspace's stages an
 comparison, which is the safe failure but still a wrong one. Adding `workspace_id` to `Project`
 is the small fix; adding it to `Run` is the direct one. Either is a contract change and belongs
 to the milestone that owns those contracts, not to a UI PR.
+
+**ADR4-M9-005 (the TypeScript canonical twin is a VERIFIER, not a second writer).**
+`apps/ui/src/contracts/canonical.ts` implements ADR-056's rules in the browser and replays all
+nineteen committed vectors against `tests/fixtures/contracts/v0.4/hash_vectors.json` — the file
+`tests/test_v04_m0_canonical.py` replays — so the two implementations are pinned to one set of
+digests rather than to each other's prose. Its scope is deliberately narrow, and the narrowing is
+the decision:
+
+* It **verifies** a digest the server computed; it never mints one that is persisted. Nothing in
+  the app writes a `content_hash`, and a client that did would be a second writer of the field
+  registry §3 makes the server's.
+* It accepts what a browser can hold unambiguously — objects, arrays, strings, `null`, safe
+  integers, `bigint`, `Date` and three tagged wrappers (`float`, `decimal`, `dateTime`) — and
+  refuses everything else. JavaScript has one numeric type, so `1` and `1.0` are the same value
+  to it and hash differently in the canonical form; `float()` is how the difference is said out
+  loud rather than inferred, and an integral `number` beyond 2^53 is refused rather than rounded.
+* Key order is by **code point**, not by `Array.prototype.sort()`. RFC 8785 sorts by UTF-16 code
+  unit and would put `😀` before `ｽ`; the `astral_key_sort_order` vector exists to catch exactly
+  that, and it is the vector a JCS-shaped implementation fails first.
+* Digests go through `crypto.subtle` at runtime and `node:crypto` in the test, over the same
+  bytes. Two hashers over nineteen vectors is what makes a green run evidence about the canonical
+  FORM rather than about the digest wiring.
+
+The cost accepted: the twin has to be kept in step by hand, and the vectors are what enforce it —
+a rule changed on either side moves a digest and reddens the other side's suite.
+
+**ADR4-M9-006 (the canvas reads the panels' query cache; it does not fetch, and the queries are
+not lifted).** The §17.1 routing badges need the receipt and the candidate slate, and both are
+already fetched — by the panel below the canvas, for the node an operator selected. Three options
+were available. Fetching per node from the canvas is what ADR4-M9-002 exists to refuse: no route
+lists a run's receipts, so it would be N requests built on the audit's index. Lifting the queries
+into `RunExecution.tsx` would make the run page fetch receipts nobody opened, and would change
+`RoutingPanel`'s and `ShadowComparison`'s signatures — and their tests are acceptance anchors.
+
+So `RunExecution.tsx` subscribes to the panels' own query keys with react-query's `skipToken`,
+which observes a cache entry and can never fetch it, and passes the derived badges down as props.
+A node whose receipt no panel has read shows no routing badge rather than a placeholder one, which
+is the honest rendering: the badge appears because an operator opened that decision. The one
+approximation is recorded rather than hidden — the `shadowed` badge reads the report of the
+shadow stage `shadowStages()` picks by default, so an operator who selects a *different* stage in
+the §17.2 panel changes the panel and not the canvas. Both call the same exported rule, so they
+cannot disagree about the default.
 
 ## Recorded during M6
 

@@ -1,39 +1,31 @@
 import { useMemo, useState } from "react";
-import { useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Background,
-  BaseEdge,
-  Controls,
-  EdgeLabelRenderer,
-  MarkerType,
-  Position,
-  ReactFlow,
-  type Edge,
-  type EdgeProps,
-  type Node,
-} from "@xyflow/react";
-import "@xyflow/react/dist/style.css";
-import "./react-flow.css";
+import { skipToken, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
-import { layoutProjection } from "./graphLayout";
+import { ProjectionCanvas } from "./projection";
 import { RoutingPanel } from "./RoutingPanel";
+import { routingBadges } from "./routingBadges";
 import { routingIndex } from "./routingIndex";
-import { badgeParts, nodeBadges, type NodeBadge, type NodeBadgeIndex } from "./runBadges";
+import { nodeBadges } from "./runBadges";
 import { ShadowComparison } from "./ShadowComparison";
+import { shadowStages } from "./shadowStages";
 import type {
   ApprovalRecord,
   CandidateScore,
   CandidateTrajectory,
+  ConfigurationCandidate,
   ExperienceDetail,
   ExperienceMatch,
   GraphProjection,
-  GraphProjectionNode,
   GraphRevisionDiff,
   GraphValidationResult,
   LoopExecution,
+  MeResponse,
+  RouterModelVersion,
   Run,
+  RoutingDecisionReceipt,
   RuntimeDecision,
   SearchRecord,
+  ShadowReport,
   TrajectorySeed,
   ValidationFinding,
   VerificationResult,
@@ -55,214 +47,6 @@ function isGraphProjection(value: unknown): value is GraphProjection {
   return typeof candidate.run_id === "string"
     && (candidate.nodes === undefined || Array.isArray(candidate.nodes))
     && (candidate.edges === undefined || Array.isArray(candidate.edges));
-}
-
-function LoopBackEdge({
-  id,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-  markerEnd,
-  style,
-  label,
-  data,
-}: EdgeProps) {
-  const compact = Boolean((data as { compact?: boolean } | undefined)?.compact);
-  const minimumDepth = compact ? 46 : 92;
-  const curveDepth = Math.max(minimumDepth, Math.abs(sourceX - targetX) * 0.34);
-  const controlY = Math.max(sourceY, targetY) + curveDepth;
-  const edgePath = `M ${sourceX} ${sourceY} C ${sourceX + 72} ${controlY}, ${targetX - 72} ${controlY}, ${targetX} ${targetY}`;
-  const labelX = (sourceX + targetX) / 2;
-
-  return (
-    <>
-      <BaseEdge id={id} path={edgePath} markerEnd={markerEnd} style={style} className="projection-loop-edge" />
-      {label ? (
-        <EdgeLabelRenderer>
-          <span
-            className="projection-edge-label nodrag nopan"
-            style={{ transform: `translate(-50%, -50%) translate(${labelX}px, ${controlY}px)` }}
-          >
-            {label}
-          </span>
-        </EdgeLabelRenderer>
-      ) : null}
-    </>
-  );
-}
-
-const edgeTypes = { loopBack: LoopBackEdge };
-
-/**
- * The provenance badges for one node, in the order the audit recorded them.
- *
- * Rendered both inside the React Flow node (AC3-UI-05, SDD 16.6) and in the
- * `projection-node-summary` list that mirrors the canvas for assistive technology, so
- * the two can never disagree about what the gateway resolved.
- */
-function NodeBadges({ badges }: { badges: readonly NodeBadge[] }) {
-  return (
-    <>
-      {badges.map((badge) => (
-        <span className="node-badge" key={badge.requestId} data-capability-id={badge.capabilityId}>
-          <span className="node-badge-capability">{badge.capabilityId}</span>
-          {badgeParts(badge).map(([kind, value]) => (
-            <span className="node-badge-part" data-badge-part={kind} key={kind}>
-              {kind} {value}
-            </span>
-          ))}
-        </span>
-      ))}
-    </>
-  );
-}
-
-function ProjectionNodeLabel(
-  { node, badges }: { node: GraphProjectionNode; badges: readonly NodeBadge[] },
-) {
-  return (
-    <div className="projection-node-content">
-      <span className="projection-node-kind">{node.kind}</span>
-      <strong>{node.label}</strong>
-      <span className="projection-node-status"><i />{display(node.status)}</span>
-      {node.provider ? <span className="projection-provider">{node.provider}</span> : null}
-      {node.iteration != null && node.max_iterations != null ? (
-        <span className="iteration-badge">Iteration {node.iteration} / {node.max_iterations}</span>
-      ) : null}
-      {node.verifier_state ? <StatusBadge state={node.verifier_state} /> : null}
-      {node.kind === "GATE" && node.status === "WAITING" ? (
-        <span className="gate-waiting-hint">Waiting for approval</span>
-      ) : null}
-      {badges.length ? (
-        <span className="projection-node-badges">
-          <NodeBadges badges={badges} />
-        </span>
-      ) : null}
-    </div>
-  );
-}
-
-function ProjectionCanvas({ projection, badges }: { projection: GraphProjection; badges: NodeBadgeIndex }) {
-  const projectionNodes = useMemo(() => projection.nodes ?? [], [projection.nodes]);
-  const projectionEdges = useMemo(() => projection.edges ?? [], [projection.edges]);
-  const layout = useMemo(() => layoutProjection(projection), [projection]);
-  const parentIds = useMemo(
-    () => new Set(projectionNodes.map((node) => node.parent_id).filter(Boolean)),
-    [projectionNodes],
-  );
-  const flowNodes = useMemo<Node[]>(() => {
-    // React Flow requires subflow parents to precede their children.
-    const ordered = [...projectionNodes].sort((left, right) =>
-      Number(Boolean(left.parent_id)) - Number(Boolean(right.parent_id)),
-    );
-    return ordered.map((node) => {
-      const geometry = layout[node.node_id] ?? { x: 0, y: 0, width: 168, height: 112 };
-      const isGroup = parentIds.has(node.node_id);
-      return {
-        id: node.node_id,
-        position: { x: geometry.x, y: geometry.y },
-        parentId: node.parent_id ?? undefined,
-        extent: node.parent_id ? ("parent" as const) : undefined,
-        initialWidth: geometry.width,
-        initialHeight: geometry.height,
-        style: isGroup ? { width: geometry.width, height: geometry.height } : undefined,
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left,
-        className: [
-          "projection-node",
-          `projection-node-${node.status.toLowerCase()}`,
-          `projection-node-kind-${node.kind.toLowerCase()}`,
-          isGroup ? "projection-node-group" : "",
-        ].filter(Boolean).join(" "),
-        data: {
-          label: <ProjectionNodeLabel node={node} badges={badges.get(node.node_id) ?? []} />,
-        },
-      };
-    });
-  }, [projectionNodes, layout, parentIds, badges]);
-
-  const flowEdges = useMemo<Edge[]>(() => {
-    const parentByNode = new Map(
-      projectionNodes.map((node) => [node.node_id, node.parent_id ?? null]),
-    );
-    return projectionEdges.map((edge) => {
-      const sharedParent = parentByNode.get(edge.source) != null
-        && parentByNode.get(edge.source) === parentByNode.get(edge.target);
-      return {
-        id: edge.edge_id,
-        source: edge.source,
-        target: edge.target,
-        type: edge.kind === "LOOP_BACK" ? "loopBack" : "smoothstep",
-        label: edge.label ?? (edge.kind === "LOOP_BACK" ? "retry" : undefined),
-        animated: edge.active,
-        data: edge.kind === "LOOP_BACK" && sharedParent ? { compact: true } : undefined,
-        className: `projection-edge projection-edge-${edge.kind.toLowerCase().replaceAll("_", "-")}`,
-        markerEnd: { type: MarkerType.ArrowClosed, color: edge.active ? "#75db91" : "#657069" },
-        style: { stroke: edge.active ? "#75db91" : "#657069", strokeWidth: edge.active ? 2 : 1.25 },
-      };
-    });
-  }, [projectionNodes, projectionEdges]);
-
-  const labels = new Map(projectionNodes.map((node) => [node.node_id, node.label]));
-  const loopNode = projectionNodes.find((node) => node.iteration != null && node.max_iterations != null);
-
-  return (
-    <section className="projection-card" aria-labelledby="projection-heading">
-      <header className="projection-heading">
-        <div>
-          <p className="eyebrow">Read-only topology</p>
-          <h3 id="projection-heading">{projection.workflow_template_id}</h3>
-        </div>
-        <div className="projection-meta">
-          {loopNode ? <span className="iteration-badge">Iteration {loopNode.iteration} / {loopNode.max_iterations}</span> : null}
-          <span>Graph v{projection.run_graph_version}</span>
-        </div>
-      </header>
-      <div className="projection-flow" aria-label="Execution graph">
-        <ReactFlow
-          nodes={flowNodes}
-          edges={flowEdges}
-          edgeTypes={edgeTypes}
-          nodesDraggable={false}
-          nodesConnectable={false}
-          nodesFocusable={false}
-          edgesFocusable={false}
-          elementsSelectable={false}
-          fitView
-          fitViewOptions={{ padding: 0.2 }}
-          minZoom={0.35}
-          maxZoom={1.5}
-          colorMode="dark"
-        >
-          <Background color="#3a493f" gap={24} size={1} />
-          <Controls showInteractive={false} />
-        </ReactFlow>
-      </div>
-      <ul className="projection-node-summary" aria-label="Projection node states">
-        {projectionNodes.map((node) => (
-          <li key={node.node_id}>
-            <span>{node.label}</span>
-            <StatusBadge state={node.status} />
-            <NodeBadges badges={badges.get(node.node_id) ?? []} />
-          </li>
-        ))}
-      </ul>
-      <ul className="projection-routes" aria-label="Projection routes">
-        {projectionEdges.map((edge) => (
-          <li
-            key={edge.edge_id}
-            className={edge.kind === "LOOP_BACK" ? "loop-route" : undefined}
-            data-edge-visual={edge.kind === "LOOP_BACK" ? "curved-loop-back" : "standard"}
-          >
-            <span>{labels.get(edge.source) ?? edge.source} → {labels.get(edge.target) ?? edge.target}</span>
-            <strong>{display(edge.kind)}</strong>
-            <small>{edge.traversal_count} {edge.traversal_count === 1 ? "traversal" : "traversals"}</small>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
 }
 
 function PendingApprovals({ runId }: { runId: string }) {
@@ -960,16 +744,75 @@ export function RunExecution({ run }: { run: Run | undefined }) {
   // narrows a workspace-wide shadow report to this run with them, and a run that named none
   // asks the shadow routes for nothing — the same audit, and the same discipline, as the
   // §17.1 panel beside it.
-  const routedReceipts = useMemo(() => {
-    const index = routingIndex(auditQuery.data);
-    return [...new Set([...[...index.byNode.values()].flat(), ...index.unassigned])];
-  }, [auditQuery.data]);
+  const index = useMemo(() => routingIndex(auditQuery.data), [auditQuery.data]);
+  const routedReceipts = useMemo(
+    () => [...new Set([...[...index.byNode.values()].flat(), ...index.unassigned])],
+    [index],
+  );
+
+  // The §17.1 receipts and slates the routing panel has already read, and the §17.2 report
+  // the shadow comparison has, subscribed to WITHOUT asking for any of them.
+  //
+  // `skipToken` is react-query's way of saying "observe this cache entry and never fetch it"
+  // (`api.ts` is not imported here for these keys and no `queryFn` exists to call). The keys
+  // are the panels' own, so the canvas shows exactly what the panel below it shows, one
+  // render later, and a run whose operator has opened no receipt renders the canvas it
+  // always did. This is what keeps AC4-M9-043 true while the badges are still live: the
+  // projection reads a cache; it never fills one.
+  //
+  // Reading the cache rather than lifting the queries is deliberate. Lifting them would put
+  // the run page in charge of when a receipt is fetched — and ADR4-M9-002's whole argument is
+  // that a run page must NOT fetch a receipt per node, because no route lists them and the
+  // audit is the only run-scoped index there is.
+  const receiptCaches = useQueries({
+    queries: routedReceipts.map((receiptId) => ({
+      queryKey: ["routing-decision", receiptId],
+      queryFn: skipToken,
+    })),
+  });
+  const candidateCaches = useQueries({
+    queries: routedReceipts.map((receiptId) => ({
+      queryKey: ["routing-candidates", receiptId],
+      queryFn: skipToken,
+    })),
+  });
+  const meCache = useQuery({ queryKey: ["me"], queryFn: skipToken });
+  const workspaceId = (meCache.data as MeResponse | undefined)?.memberships?.[0]?.workspace_id;
+  const versionsCache = useQuery({
+    queryKey: ["router-models", workspaceId],
+    queryFn: skipToken,
+  });
+  // The stage the §17.2 panel defaults to, chosen by the panel's own exported rule so the two
+  // cannot disagree about which shadow stage a run is being read against. An operator who
+  // picks a different stage in the panel changes the panel; the canvas keeps reporting the
+  // default stage's pairs, which is the one every reader of this run sees first.
+  const shadowVersionId = shadowStages(
+    versionsCache.data as RouterModelVersion[] | undefined,
+    run?.project_id,
+  )[0]?.contract_id;
+  const shadowCache = useQuery({
+    queryKey: ["shadow-report", shadowVersionId],
+    queryFn: skipToken,
+  });
 
   if (!run) return <section className="execution-panel empty">Select a run to inspect its orchestration state.</section>;
 
   const projection = isGraphProjection(graphQuery.data) ? graphQuery.data : undefined;
   const verifications = Array.isArray(verificationQuery.data) ? verificationQuery.data : [];
   const badges = nodeBadges(auditQuery.data);
+  // Derived on every render for the reason the capability badges are: a badge must never
+  // outlive the record it projects, and there is no cached copy of it to go stale.
+  const routing = routingBadges({
+    byNode: index.byNode,
+    receipts: receiptCaches
+      .map((entry) => entry.data as RoutingDecisionReceipt | undefined)
+      .filter((receipt): receipt is RoutingDecisionReceipt => Boolean(receipt)),
+    candidates: candidateCaches.flatMap((entry) =>
+      Array.isArray(entry.data) ? (entry.data as ConfigurationCandidate[]) : [],
+    ),
+    shadowPairs: (shadowCache.data as ShadowReport | undefined)?.pairs ?? [],
+    nodes: projection?.nodes ?? [],
+  });
 
   return (
     <section className="execution-panel" aria-label="Run orchestration">
@@ -985,7 +828,7 @@ export function RunExecution({ run }: { run: Run | undefined }) {
         <SearchTree run={run} />
         <PendingApprovals runId={run.run_id} />
         {loopQuery.data ? <BudgetSummary loop={loopQuery.data} /> : null}
-        {projection ? <ProjectionCanvas projection={projection} badges={badges} /> : (
+        {projection ? <ProjectionCanvas projection={projection} badges={badges} routing={routing} /> : (
           <div className="projection-unavailable">
             <strong>{graphQuery.isPending ? "Loading execution graph…" : "No graph projection is available for this run"}</strong>
             <p>Runs created before graph persistence keep their normalized trace below.</p>

@@ -40,7 +40,7 @@ export interface Waiver {
 
 export const WAIVERS: readonly Waiver[] = [
   // Empty, and that is the claim: axe 4.13.0's full default ruleset reports zero
-  // violations across all seventeen routes. Adding the first entry here should feel like
+  // violations across all eighteen routes. Adding the first entry here should feel like
   // a decision, not a formality.
 ];
 

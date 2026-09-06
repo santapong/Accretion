@@ -34,9 +34,13 @@
  * `.projection-node-kind-gate` is (0,1,0) and so is xyflow's `.react-flow__node-default`,
  * which sets the border it overrides. This sheet therefore has to come after xyflow's, and
  * the only robust way to say that in a bundler is to import it on the line after it -
- * `RunExecution.tsx` does, adjacently, in one hunk. `cssPort.test.ts` asserts the adjacency
- * in the source text and `style-diff.spec.ts` asserts the resulting order in the BUILT
- * stylesheet in a real browser, because the bundler is what actually decides it.
+ * `projection/ProjectionCanvas.tsx` does, adjacently, in one hunk. `cssPort.test.ts` asserts
+ * the adjacency in the source text and `style-diff.spec.ts` asserts the resulting order in
+ * the BUILT stylesheet in a real browser, because the bundler is what actually decides it.
+ *
+ * The importer was `RunExecution.tsx` until M9d moved the canvas into `src/projection/`. The
+ * two imports moved with it, still adjacent, because the guarantee is about the component
+ * that mounts `<ReactFlow>` and not about which file that component lives in.
  *
  * Before PR5c the same guarantee came from `styles.css`, which was unlayered in its
  * entirety and imported from `App.tsx` after `./OperatorShell` - the import that reaches

@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "vitest";
 
@@ -656,7 +656,7 @@ describe("the shape of theme.css", () => {
 /**
  * The classes that mark an element as living INSIDE the React Flow canvas.
  *
- * Every one of them is rendered under `<ReactFlow>` in `RunExecution.tsx` - as a node
+ * Every one of them is rendered under `<ReactFlow>` in `projection/ProjectionCanvas.tsx` - as a node
  * (`.projection-node*`), as node content (`.projection-node-content`, `.projection-node-kind`,
  * `.projection-node-status`, `.projection-provider`, `.projection-node-badges`,
  * `.node-badge*`), as an edge (`.projection-loop-edge`) or as an edge label rendered into
@@ -1280,25 +1280,38 @@ describe("layering never takes a fight the pre-migration sheet had already settl
 /* ------------------------------------------------------------------------------------- */
 
 /**
- * The `src/*.tsx` files that pull in xyflow's own stylesheet.
+ * The `src/**\/*.tsx` files that pull in xyflow's own stylesheet.
  *
  * Matched as an import STATEMENT rather than as a mention of the path. Measured: a plain
  * `includes()` reported three importers the moment `App.tsx` and `OperatorShell.test.tsx`
  * started explaining the cascade in prose, and the prose is exactly what this file's
  * neighbours are supposed to carry.
+ *
+ * The walk is recursive from M9d, which moved the canvas into `src/projection/`. A scan of
+ * `src/` alone would have found ZERO importers there and the "exactly one" case below would
+ * have failed loudly — which is the right failure and is why it is fixed here rather than by
+ * pinning a path: the invariant is "one component imports the sheet and imports ours next to
+ * it", not "that component is at the root of `src`".
  */
 const XYFLOW_STYLESHEET = "@xyflow/react/dist/style.css";
 const XYFLOW_IMPORT = /^\s*import\s+["']@xyflow\/react\/dist\/style\.css["'];?\s*$/m;
-const xyflowImporters = readdirSync(resolve(HERE, "../src"))
-  .filter((entry) => entry.endsWith(".tsx"))
-  .filter((entry) => XYFLOW_IMPORT.test(read(`../src/${entry}`)));
+
+/** Every `.tsx` under `src`, as a path relative to this file, deepest last. */
+function componentFiles(directory: string): string[] {
+  return readdirSync(resolve(HERE, directory), { withFileTypes: true }).flatMap((entry) => {
+    if (entry.isDirectory()) return componentFiles(`${directory}/${entry.name}`);
+    return entry.name.endsWith(".tsx") ? [`${directory}/${entry.name}`] : [];
+  });
+}
+
+const xyflowImporters = componentFiles("../src").filter((entry) => XYFLOW_IMPORT.test(read(entry)));
 
 describe("the React Flow overrides sit beside the sheet they override", () => {
   test("exactly one component imports xyflow's stylesheet", () => {
     // Two importers would mean two places to keep the override next to, and the second one
     // would silently not have it. The count is the reason the case below can address "the"
     // importer at all.
-    expect(xyflowImporters, "src/*.tsx importing xyflow's stylesheet").toHaveLength(1);
+    expect(xyflowImporters, "src/**/*.tsx importing xyflow's stylesheet").toHaveLength(1);
   });
 
   test("react-flow.css is imported on the statement immediately after it", () => {
@@ -1312,19 +1325,26 @@ describe("the React Flow overrides sit beside the sheet they override", () => {
     // Read as SOURCE TEXT, not as a module graph: this is the line a reviewer sees and the
     // line an editor would move. `style-diff.spec.ts` asserts the same thing about the
     // BUILT stylesheet, in a browser, which is where it actually has to hold.
-    const source = read(`../src/${xyflowImporters[0]}`);
+    const importer = xyflowImporters[0];
+    const source = read(importer);
     const lines = source.split("\n");
     const at = lines.findIndex((line) => XYFLOW_IMPORT.test(line));
-    expect(at, `${xyflowImporters[0]} does not import ${XYFLOW_STYLESHEET}`).toBeGreaterThan(-1);
+    expect(at, `${importer} does not import ${XYFLOW_STYLESHEET}`).toBeGreaterThan(-1);
+
+    // The specifier is computed from where the importer actually is, so that moving the
+    // canvas into a subdirectory has to keep the adjacency rather than being able to satisfy
+    // a hard-coded `"./react-flow.css"` from a directory that has no such file.
+    const specifier = relative(dirname(resolve(HERE, importer)), resolve(HERE, "../src/react-flow.css"));
+    const expected = `import "${specifier.startsWith(".") ? specifier : `./${specifier}`}";`;
 
     // The literal next line, not the next import: a non-import statement slipped between
     // the two would otherwise pass while the sentence below still claimed "nothing between".
     const next = lines[at + 1];
     expect(
       next?.trim(),
-      `${xyflowImporters[0]} must import "./react-flow.css" on the import statement ` +
+      `${importer} must import react-flow.css on the import statement ` +
         "immediately after xyflow's own stylesheet, with nothing between them",
-    ).toBe('import "./react-flow.css";');
+    ).toBe(expected);
   });
 });
 

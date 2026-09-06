@@ -491,6 +491,44 @@ are kept together under their own sub-heading at the end of this section.
   measures 592,520 B raw and 174,385 B gzip, so `budget.ts` restates the two initial-JS caps
   as ceil(measured × 1.05) — 622,146 B and 183,105 B — with that provenance recorded beside
   them (#149).
+- Added `apps/ui/src/projection/` (M9d): `ProjectionCanvas`, `ProjectionNodeLabel`, `NodeBadges`
+  and `LoopBackEdge` moved verbatim out of `RunExecution.tsx`, with the xyflow stylesheet import
+  and `../react-flow.css` travelling together onto the component that mounts the canvas. The
+  package boundary is the claim: no module under `src/projection/` may name `../api`,
+  `@tanstack/react-query`, `fetch(` or `EventSource(`, and driving the rendered canvas — controls,
+  wheel, nodes, badges — issues no request and exposes no interactive role inside a badge.
+  `AC4-M9-043` is now proven (#TBD).
+- Added `apps/ui/src/routingBadges.ts` (M9d): the §17.1 badges a node shows — routed, shadowed,
+  overridden, explore, fallback or human review, with the runtime, model, tool count, verification
+  state, receipt revision, predicted cost and predicted latency behind them. Pure, importing no
+  API client, derived from the receipts, slates and shadow pairs the panels already hold;
+  `RunExecution.tsx` observes those panels' query keys with react-query's `skipToken`, which reads
+  a cache entry and can never fetch one, so the canvas gains badges without gaining a request
+  (ADR4-M9-006). The markup reuses the pinned stylesheet's `.node-badge*` classes: no CSS rule was
+  added anywhere (ADR4-M9-003) (#TBD).
+- Added `apps/ui/src/contracts/canonical.ts` (M9d): a TypeScript twin of
+  `src/accretion/contracts/canonical.py` that replays all nineteen committed hash vectors from
+  `tests/fixtures/contracts/v0.4/hash_vectors.json` byte for byte, so a browser can verify a
+  `content_hash` instead of trusting the field beside it. Keys sort by Unicode **code point**
+  (RFC 8785's UTF-16 order would put `😀` before `ｽ`), an integral float still prints `1.0`, an
+  integer past 2^53 must be a `bigint`, decimals keep their trailing zeros, and a datetime without
+  an offset is refused. It verifies and never writes a digest (ADR4-M9-005) (#TBD).
+- Added `tests/test_v04_m9_correlation.py` (M9d): the §16.2 chain walked end to end by ids over
+  one real routed run — task, run, graph revision, node contract, routing request, receipt, the
+  `RUNTIME_CALL_STARTED` stamp and the `ROUTING_DECISION_CREATED` causation, verification result,
+  experience record, training-snapshot manifest, promotion report, and back to the run through the
+  `ROUTER_PROMOTION_EVALUATED` event. `AC4-M9-044` is now proven (#TBD).
+- Recorded a gap rather than working around it: `SnapshotBuilder` resolves an experience record by
+  its `contract_id`, which is an experience id only for records the M4/M8 fixtures build. The M3
+  pipeline derives a per-node id and files the record under the experience id separately, so **no
+  experience a live routed run produces can currently enter a training snapshot** — the builder
+  refuses the window as "nothing eligible". `test_the_snapshot_builder_cannot_yet_include_a_run_projected_record`
+  pins the behaviour and its cause; the repair belongs to the milestone owning
+  `routing/training_snapshot.py` and `feedback/experience.py` (#TBD).
+- Changed `apps/ui/e2e/cssPort.test.ts` (M9d): the xyflow-stylesheet importer scan walks `src/`
+  recursively and the adjacency assertion computes the expected specifier from the importer's own
+  directory, so the invariant stays "one component imports the sheet and imports ours on the next
+  line" rather than "that component sits at the root of `src`" (#TBD).
 
 ### v0.4 — M10 the research instrument
 

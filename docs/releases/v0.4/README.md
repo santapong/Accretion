@@ -22,6 +22,7 @@ MUST: 0`; see the [draft release notes](notes.md) and [draft release audit](audi
 | [M6 plan](m6-plan.md) | Shadow evaluation by branched live rollout: what a shadow decision is, why it is never a replay, and the gates a fork passes |
 | [M7 plan](m7-plan.md) | The guarded bandit: the nine gates exploration passes, inverse-gap weighting under a conformal safety clip, and the cost ledger reconstructed from receipts |
 | [M8 plan](m8-plan.md) | The activation ledger, the rollback drill, and the CSPI-MT promotion gate over the Logarithmic-Smoothing estimator |
+| [M9 plan](m9-plan.md) | The Experiment Studio: the §17.1 panel, the §17.2 comparison, the §17.3 administration page, the badges the canvas derives, the TypeScript canonical twin, and the §16.2 correlation chain |
 | [Release notes (draft)](notes.md) | The v0.4.0 highlights, the acceptance target, the honest limitations, the eighteen-route accessibility position and the upgrade path |
 | [Release audit (draft)](audit.md) | Candidate identity, the SDD §24.8 gate, the automated checks, acceptance, the research evidence and the release procedure |
 | [Backlog](backlog.md) | Milestone order and the v0.3 deferrals carried into v0.4 |
