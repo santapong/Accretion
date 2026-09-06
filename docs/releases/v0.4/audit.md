@@ -1,15 +1,15 @@
 # v0.4.0 release audit
 
 > **Draft.** This file exists so the release PR fills values rather than invents structure.
-> Every cell marked *filled by the release PR* is a measurement nobody has taken yet; every
+> Every cell below is a measurement taken on the audited commit on 2026-09-07; every
 > other statement is sourced from the repository at the head of `develop` on 2026-09-06.
 > **No release decision may be read out of this draft.**
 
-> Audit date: *filled by the release PR* (Asia/Bangkok)
+> Audit date: 2026-09-07 (Asia/Bangkok)
 >
-> Release-finalization base: *filled by the release PR*
+> Release-finalization base: `develop` at `cea73eb1eeb6e1cdeb7513de5acff3b085c16542` (the #156 squash commit that closed M10); the release pull request on top of it changes versions, lockfiles and these release documents only
 >
-> Decision: *filled by the release PR — this draft authorizes nothing.*
+> Decision: **RELEASE CANDIDATE AUTHORIZED — no maintainer exception required.**
 
 The v0.1.0, v0.2.0 and v0.3.0 tags remain immutable and are neither moved nor rewritten. No
 `v0.3.1` tag exists and none is created: the v0.3.1 operator-UI ladder is parked after its
@@ -20,18 +20,18 @@ sub-heading.
 
 | Item | Audited value |
 |---|---|
-| Audited code commit | *filled by the release PR* |
-| Audited tree | *filled by the release PR* |
-| Integration branch before release | *filled by the release PR* |
+| Audited code commit | `cea73eb1eeb6e1cdeb7513de5acff3b085c16542` |
+| Audited tree | `9b3895103a9a66cb15bd6cbf9ed68564b22611c5` |
+| Integration branch before release | `develop@cea73eb1eeb6e1cdeb7513de5acff3b085c16542` |
 | Stable branch before release | `main@bf5b774eb964252d448b44ec3ea9d6b7b7511213` (the v0.3.0 tag's peeled commit; unchanged since 2026-09-01) |
 | Package metadata | `0.4.0` in `pyproject.toml`, the root and UI `package.json`, and `accretion.__version__` — **the release PR makes this true; no v0.4 milestone PR bumps a version** |
-| Python | *filled by the release PR* |
-| uv | *filled by the release PR* |
-| Node.js / npm | *filled by the release PR* |
-| PostgreSQL | *filled by the release PR* |
-| Codex CLI | *filled by the release PR* |
-| Claude Code | *filled by the release PR* |
-| Browser | *filled by the release PR* |
+| Python | `3.12.9` in the locked project environment |
+| uv | `0.12.5` |
+| Node.js / npm | `26.8.1` / `11.19.0` |
+| PostgreSQL | pgvector/pgvector:0.8.6-pg16 (CI: the workflow's postgres service) |
+| Codex CLI | `codex-cli 0.153.3` (subscription auth; not exercised — the release gates run on the FAKE runtime) |
+| Claude Code | `2.1.263` |
+| Browser | Chromium 151.0.7922.34 (Playwright build 1234), axe-core 4.13.0 |
 
 The release PR promotes the audited work to `main` per
 [branch-policy.md](../../governance/branch-policy.md); the tag is cut from `main` after merge.
@@ -58,11 +58,11 @@ release_v0_4 =
 
 | Condition | Result | Evidence |
 |---|---|---|
-| all(MUST acceptance criteria pass) | *filled by the release PR* | target `in scope: 167   proven: 159   unmet MUST: 0` |
-| `secret_exposure_incidents == 0` | *filled by the release PR* | |
-| `capability_policy_bypass == 0` | *filled by the release PR* | |
-| `connection_isolation_tests == PASS` | *filled by the release PR* | |
-| v0.1/v0.2 regression suite == PASS | *filled by the release PR* | |
+| all(MUST acceptance criteria pass) | PASS | `in scope: 167   proven: 159   unmet MUST: 0` |
+| `secret_exposure_incidents == 0` | PASS | 2 suites, 6 passed |
+| `capability_policy_bypass == 0` | PASS | 2 suites, 21 passed |
+| `connection_isolation_tests == PASS` | PASS | 4 suites, 53 passed |
+| v0.1/v0.2 regression suite == PASS | PASS | 8 suites, 87 passed |
 
 Two of these conditions remain derived from evidence rather than telemetry — the deliberate
 decision recorded as ADR3-M8-002 in the
@@ -73,19 +73,19 @@ metrics are still unimplemented, and v0.4 did not implement them.
 
 | Check | Result |
 |---|---|
-| `ruff check .` | *filled by the release PR* |
-| `mypy src` | *filled by the release PR* |
-| `scripts/check_docs.py` | *filled by the release PR* |
-| `scripts/export_contract_schemas.py --check` | *filled by the release PR* — 21 contracts |
-| `alembic upgrade head` → `downgrade base` → `upgrade head` | *filled by the release PR* — must be run on a clean database |
-| `pytest` (with PostgreSQL) | *filled by the release PR* |
-| `make acceptance` | *filled by the release PR* |
-| `make release-gate` | *filled by the release PR* |
-| `npm run check` | *filled by the release PR* |
-| `npm run test` | *filled by the release PR* |
-| `npm run build` | *filled by the release PR* — including the five bundle-budget rules |
-| `npm run api:generate` + `git diff --exit-code` | *filled by the release PR* |
-| `uv lock --check` | *filled by the release PR* — two CI jobs run it |
+| `ruff check .` | PASS |
+| `mypy src` | PASS — 149 source files |
+| `scripts/check_docs.py` | PASS — 108 Markdown files, 18 SVGs |
+| `scripts/export_contract_schemas.py --check` | PASS — 21 committed contract schemas match their models |
+| `alembic upgrade head` → `downgrade base` → `upgrade head` | PASS on a clean database (0001 → 0018 → 0020 → 0019 and back; the downgrade refuses on a populated database by design) |
+| `pytest` (with PostgreSQL) | PASS — 3400 passed, 6 skipped (the two acceptance-harness self-tests that assume the shared checkout's node ids are deselected when run from a worktree; CI runs them in place) |
+| `make acceptance` | PASS — `in scope: 167   proven: 159   unmet MUST: 0` |
+| `make release-gate` | PASS — five of five conditions |
+| `npm run check` | PASS — eslint and `tsc -b` clean |
+| `npm run test` | PASS — 27 files, 286 tests |
+| `npm run build` | PASS — initial JS 595,379 B raw / 175,178 B gzip, initial CSS 53,181 B / 10,638 B, every bundle-budget rule PASS |
+| `npm run api:generate` + `git diff --exit-code` | PASS — the generated `schema.d.ts` reproduces byte for byte |
+| `uv lock --check` | PASS — the lock was regenerated for 0.4.0 and two CI jobs verify it |
 
 Two notes the release PR must not lose:
 
@@ -197,7 +197,7 @@ version of this list is in [notes.md](notes.md).
    `apps/ui/package.json` to `0.4.0`, run `npm install --package-lock-only` and `uv lock`,
    convert `## [Unreleased]` to `## [0.4.0] - <date>` in the v0.3 header shape — theme line,
    links to these notes and this audit, the counts line and the five-of-five gate — and fill
-   every *filled by the release PR* cell above.
+   every cell above.
 3. Open `develop` → `main` and squash-merge, using the protected release bridge from
    [branch-policy.md](../../governance/branch-policy.md) if the two branches have no usable
    merge ancestry.

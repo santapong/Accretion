@@ -4,12 +4,22 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
-Theme: **Evidence-aware node configuration routing (v0.4)**. Draft notes are in
-[docs/releases/v0.4/notes.md](docs/releases/v0.4/notes.md) and the draft release audit, with
-its disclosed limitations, is in [docs/releases/v0.4/audit.md](docs/releases/v0.4/audit.md).
+Nothing yet.
+
+## [0.4.0] - 2026-09-07
+
+Theme: **Evidence-aware node configuration routing**. Full notes in
+[docs/releases/v0.4/notes.md](docs/releases/v0.4/notes.md); the release audit and
+its disclosed limitations are in
+[docs/releases/v0.4/audit.md](docs/releases/v0.4/audit.md).
+
+Acceptance at release: 167 criteria in scope, 159 proven by a passing claiming
+test, 5 by the frontend suite, 3 by a recorded live-provider run, **0 uncovered
+MUST criteria**, and the five SDD §24.8 release-gate conditions all PASS
+(`in scope: 167   proven: 159   unmet MUST: 0`).
 
 The per-milestone acceptance figures quoted below are historical — each records what the
-harness reported when that milestone merged. The release PR records the final line.
+harness reported when that milestone merged.
 
 The v0.3.1 operator-UI ladder (M9 of the v0.3 plan) is parked after its stylesheet port and
 was never tagged: no `v0.3.1` tag exists, so its merged entries ship inside this release and
