@@ -35,12 +35,14 @@ from accretion.contracts import (
     Run,
     Task,
 )
-from accretion.contracts.canonical import canonical_json
+from accretion.contracts.canonical import canonical_json, content_hash
 from accretion.contracts.routing import (
     Claim,
+    ContractSignature,
     Criticality,
     MetricOperator,
     MetricThreshold,
+    NodeContract,
     VerificationSpec,
     VerificationState,
 )
@@ -78,6 +80,55 @@ def execution_instance_id(run_id: str, node_key: str, attempt: int) -> str:
         )
     return derived_id(
         "execution_instance", EXECUTION_INSTANCE_DOMAIN, run_id, node_key, str(attempt)
+    )
+
+
+def contract_signature_for(node: NodeContract) -> ContractSignature:
+    """The §7.10 retrieval key of ``node``: what another node must share to be evidence about it.
+
+    An experience record is only useful to a *future* node if there is a decidable answer to
+    "is this outcome about the same kind of work?". :class:`ContractSignature` is that answer
+    and this is the one function that computes it, so that the projector which writes a record
+    and the retriever which reads one cannot key the same node two ways — a mismatch that would
+    not raise anywhere, it would merely make every stored experience invisible.
+
+    Five parts, and each is the smallest thing that changes what the outcome means:
+
+    * ``node_kind`` — a review node and an implementation node are not evidence about each
+      other however similar their objectives read.
+    * ``objective_digest`` — a digest of the objective *text* and not the text, because the
+      question is only ever "the same or not" and §14.2 keeps free prose out of a key that is
+      stored, indexed and compared forever. It is wrapped in a one-key mapping rather than
+      hashed bare so that the digest commits to *which field* was hashed: a later signature
+      part that also digested a string would otherwise be able to collide with this one.
+    * ``capability_digest`` — over the sorted ``(capability_id, capability_version)`` pairs and
+      nothing else. Sorted because ``required_capabilities`` is a list whose order the freezer
+      chose and which carries no meaning; the version is in because a capability at two schema
+      versions is two execution surfaces. ``version_range`` and ``required_scope`` are
+      deliberately out: they constrain what a *resolver* may bind, not what the node needs.
+    * ``verification_spec_hash`` — the frozen spec's digest, taken from the node's own
+      reference. Two nodes graded against different specs are not comparable outcomes even
+      when everything else about them matches (ADR-044).
+    * ``risk_class`` — the authority ceiling the node ran under. A LOW_DIGITAL success is not
+      evidence that the same configuration is safe at PHYSICAL_HIGH.
+
+    Deliberately absent: the run, the project, the graph revision and the attempt. All four
+    identify *this* execution, and a key that contained them would match nothing but itself,
+    which is the failure mode that makes a retrieval index quietly useless rather than wrong.
+    """
+
+    return ContractSignature(
+        node_kind=node.node_kind,
+        objective_digest=content_hash({"objective": node.objective}, exclude=()),
+        capability_digest=content_hash(
+            sorted(
+                [requirement.capability.capability_id, requirement.capability.capability_version]
+                for requirement in node.required_capabilities
+            ),
+            exclude=(),
+        ),
+        verification_spec_hash=node.verification_spec_ref.content_hash,
+        risk_class=node.allowed_risk_class,
     )
 
 
@@ -352,6 +403,7 @@ def _claim_id(prefix: str, name: str) -> str:
 __all__ = [
     "EXECUTION_INSTANCE_DOMAIN",
     "VerificationSpecBuilder",
+    "contract_signature_for",
     "execution_instance_id",
     "principal_ref_for_run",
     "routing_request_id",
