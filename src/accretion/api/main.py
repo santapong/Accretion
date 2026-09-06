@@ -22,6 +22,7 @@ from accretion.api.auth import (
     is_exempt,
 )
 from accretion.api.auth import principal as current_principal
+from accretion.api.benchmarks_router import router as router_benchmark_router
 from accretion.api.feedback import router as feedback_router
 from accretion.api.router_admin import router as router_admin_router
 from accretion.api.routing import router as routing_router
@@ -456,6 +457,7 @@ app.include_router(routing_router)
 app.include_router(router_admin_router)
 app.include_router(feedback_router)
 app.include_router(shadow_router)
+app.include_router(router_benchmark_router)
 settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
