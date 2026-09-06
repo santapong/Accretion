@@ -55,6 +55,7 @@ from accretion.api.schemas import (
     WorkflowProposeCreate,
     WorkflowTemplateSummary,
 )
+from accretion.api.shadow import router as shadow_router
 from accretion.benchmark import (
     AcrArchRunner,
     acr_arch_summary,
@@ -204,6 +205,7 @@ from accretion.routing.artifacts import ArtifactStore
 from accretion.routing.bootstrap import build_node_routing
 from accretion.routing.calibration import CalibrationReport
 from accretion.routing.errors import RoutingError
+from accretion.routing.shadow import ShadowEvaluator
 from accretion.routing.train import (
     IDEMPOTENCY_LABEL,
     HoldoutEvaluation,
@@ -413,6 +415,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         ArtifactStore(settings.router_artifact_dir),
         clock=lambda: datetime.now(UTC),
     )
+    # v0.4 M6. Same three collaborators and the same reason they are built here: shadow
+    # registration is offline and store-backed, and it reads the artefacts the trainer wrote.
+    app.state.shadow = ShadowEvaluator(
+        store, ArtifactStore(settings.router_artifact_dir), lambda: datetime.now(UTC)
+    )
     app.state.auth = build_auth_runtime(store, settings, enterprise_auth=enterprise_auth)
     await seed_templates(store)
     await seed_governance(store)
@@ -434,6 +441,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="Accretion API", version=__version__, lifespan=lifespan)
 app.include_router(routing_router)
+app.include_router(shadow_router)
 settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
