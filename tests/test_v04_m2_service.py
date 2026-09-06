@@ -669,7 +669,15 @@ async def test_real_freeze_catalog_selection_and_receipt_replay_are_end_to_end(
     configuration = await execution.service.configuration_for(receipt)
     assert configuration.runtime.provider is Provider.FAKE
     events = await execution.store.list_events(execution.run.run_id)
-    assert [event.native_type for event in events] == ["accretion/routing/created"]
+    # M5 added the three §12 lifecycle events M2 left unemitted. The list is still an
+    # exact equality and still proves what it proved before — that a replay appends
+    # nothing, because a second `route` above produced no second copy of any of them.
+    assert [event.native_type for event in events] == [
+        "accretion/routing/requested",
+        "accretion/routing/candidates-built",
+        "accretion/routing/created",
+        "accretion/routing/fallback",
+    ]
 
 
 @pytest.mark.acceptance("AC4-M2-012")

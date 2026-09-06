@@ -132,14 +132,10 @@ async def route_node_execution(
     payload: RoutingRequestCreate,
     request: Request,
 ) -> RoutingDecisionReceipt:
-    # M2 intentionally ships only the deterministic baseline.  Rejecting these
-    # explicitly is safer than accepting a mode the service might silently degrade.
-    if payload.mode is not RoutingMode.BASELINE_ONLY:
-        raise RoutingError(
-            "ROUTING_MODE_UNSUPPORTED",
-            f"routing mode {payload.mode.value} is not available in M2",
-            status_code=422,
-        )
+    # Which modes are available is a property of how the service was assembled — a learned
+    # scorer was injected or it was not — and this handler cannot see that. The service
+    # asks the question once, for HTTP and run-manager callers alike, and answers with
+    # ROUTING_MODE_UNAVAILABLE.
     return await _service(request).route_execution(
         project_id=project_id,
         execution_instance_id=execution_instance_id,
