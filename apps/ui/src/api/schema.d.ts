@@ -375,77 +375,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/experiences/search": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Search Experience Records
-         * @description The §7.10 records for a workspace, narrowed by any part of the retrieval key.
-         *
-         *     Declared before ``/{experience_record_id}`` because FastAPI matches in declaration order
-         *     and ``search`` would otherwise be read as a record id — a 404 for a working query.
-         *
-         *     The signature filters are separate parameters rather than one packed key so that a
-         *     partial question is askable: "every record for this objective" is what an operator
-         *     investigating a regression asks, and it is not a whole ``ContractSignature``.
-         */
-        get: operations["search_experience_records_api_v1_experiences_search_get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/experiences/{experience_record_id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get Experience Record
-         * @description One projection by id, or a 404 for one that is not this caller's to read.
-         */
-        get: operations["get_experience_record_api_v1_experiences__experience_record_id__get"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/experiences/{experience_record_id}/resolve-contradiction": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Resolve Experience Contradiction
-         * @description Append the ``RESOLVED`` revision that adjudicates one open contradiction.
-         *
-         *     A 201 because the answer is a *new row* and not an edit of the one named in the path:
-         *     §7.10's history is append-only, and a 200 would suggest the record the caller addressed
-         *     now reads differently.
-         */
-        post: operations["resolve_experience_contradiction_api_v1_experiences__experience_record_id__resolve_contradiction_post"];
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/v1/mcp/servers": {
         parameters: {
             query?: never;
@@ -611,31 +540,6 @@ export interface paths {
         get: operations["get_me_api_v1_me_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/node-executions/{execution_instance_id}/verification-results": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Record Verification Result
-         * @description Ingest one verdict, or return the record a prior identical submission already made.
-         *
-         *     Idempotence is decided by looking for the ``source_verification_id`` rather than by
-         *     letting the append-only store refuse the second write: the two calls are seconds apart, so
-         *     their records differ in ``signed_at`` and the store would reject the retry as a mutation
-         *     of an immutable row — a 409 for a caller who did exactly the right thing.
-         */
-        post: operations["record_verification_result_api_v1_node_executions__execution_instance_id__verification_results_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1234,26 +1138,6 @@ export interface paths {
         get: operations["run_events_api_v1_runs__run_id__events_get"];
         put?: never;
         post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/runs/{run_id}/final-verification": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Record Final Verification
-         * @description Project one experience record per routed node of a graded run (ADR-048).
-         */
-        post: operations["record_final_verification_api_v1_runs__run_id__final_verification_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2539,23 +2423,6 @@ export interface components {
             sha256?: string | null;
         };
         /**
-         * AttributionSummary
-         * @description SDD §7.10 ``attribution``: how much of the run's outcome this node is credited with.
-         *
-         *     ``score`` is nullable because §9.6 makes attribution a *derived, versioned view*: before
-         *     any attributor has run, the honest value is absent rather than zero. ``method_version``
-         *     is mandatory even when the score is null, so that a later re-attribution can tell which
-         *     records it has already replaced.
-         */
-        AttributionSummary: {
-            /** Confidence */
-            confidence: number;
-            /** Method Version */
-            method_version: string;
-            /** Score */
-            score?: number | null;
-        };
-        /**
          * AuthMode
          * @enum {string}
          */
@@ -3115,28 +2982,24 @@ export interface components {
             verifier_id: string;
         };
         /**
-         * ClaimResult
-         * @description SDD §7.9 ``claim_results``: one verifier verdict about one claim.
+         * CohortResult
+         * @description One §10.2 evaluation cohort. ``critical`` is what blocks promotion, not the metric.
          *
-         *     ``coverage`` and ``confidence`` are separate quantities: coverage says how much of the
-         *     claim was actually examined, confidence says how sure the verifier is about what it
-         *     examined. A model reviewer with high confidence over 10% coverage and a deterministic
-         *     check with total coverage are both useful and are not the same evidence.
-         *     ``limitations`` is required to be sayable and allowed to be empty, because "nothing
-         *     limited this verdict" is a claim worth being able to make explicitly.
+         *     OQ-413 names the critical cohorts — correctness, policy, secrets, high-risk, verifier
+         *     conflict — and leaves the list open. Carrying ``critical`` on the cohort rather than
+         *     hard-coding a set of ids means the promotion rule ("a critical regression blocks") stays
+         *     true when the list changes.
          */
-        ClaimResult: {
-            /** Claim Id */
-            claim_id: string;
-            /** Confidence */
-            confidence?: number | null;
-            /** Coverage */
-            coverage: number;
-            /** Evidence Refs */
-            evidence_refs?: components["schemas"]["EvidenceRef"][];
-            /** Limitations */
-            limitations?: string[];
-            status: components["schemas"]["VerificationState"];
+        CohortResult: {
+            /** Cohort Id */
+            cohort_id: string;
+            comparison: components["schemas"]["MetricComparison"];
+            /** Critical */
+            critical: boolean;
+            /** Description */
+            description: string;
+            /** Sample Size */
+            sample_size: number;
         };
         /** CompatibilityAssessment */
         CompatibilityAssessment: {
@@ -3446,42 +3309,6 @@ export interface components {
                 [key: string]: unknown;
             };
         };
-        /**
-         * ContractSignature
-         * @description SDD §7.10 ``contract_signature``, typed instead of left as ``object``.
-         *
-         *     The signature is what makes an experience *retrievable* for a future node: it is the
-         *     small set of properties two nodes must share before one's outcome is evidence about the
-         *     other. Digests rather than bodies, because the question is only ever "the same or not".
-         */
-        ContractSignature: {
-            /** Capability Digest */
-            capability_digest: string;
-            node_kind: components["schemas"]["GraphNodeKind"];
-            /** Objective Digest */
-            objective_digest: string;
-            risk_class: components["schemas"]["RiskClass"];
-            /** Verification Spec Hash */
-            verification_spec_hash: string;
-        };
-        /**
-         * ContradictionResolutionCreate
-         * @description The adjudication text registry §17 requires a resolution to carry.
-         */
-        ContradictionResolutionCreate: {
-            /** Resolution */
-            resolution: string;
-        };
-        /**
-         * ContradictionStatus
-         * @description SDD §7.10. Whether an experience contradicts other evidence, and whether that is settled.
-         *
-         *     ``NONE`` is not the same as ``RESOLVED``: the first says no contradiction was ever
-         *     found, the second says one was found and adjudicated. A training snapshot that
-         *     deduplicated them would silently change what its evidence means (§10.1).
-         * @enum {string}
-         */
-        ContradictionStatus: "NONE" | "OPEN" | "RESOLVED";
         /**
          * DecisionType
          * @description SDD §7.8. How a routing decision was reached, which is what makes it replayable.
@@ -4444,22 +4271,6 @@ export interface components {
             candidate_id?: string | null;
         };
         /**
-         * ExperienceOutcomes
-         * @description SDD §7.10 ``outcomes``: what the node actually cost and achieved.
-         *
-         *     ``quality`` is nullable — not every node has a quality metric — while cost and latency
-         *     are not, because every executed node consumed both. ``cost`` is a decimal for the same
-         *     reason :class:`ResourceBudget` uses one.
-         */
-        ExperienceOutcomes: {
-            /** Cost */
-            cost: string;
-            /** Latency Ms */
-            latency_ms: number;
-            /** Quality */
-            quality?: number | null;
-        };
-        /**
          * ExperiencePolarity
          * @enum {string}
          */
@@ -4480,114 +4291,6 @@ export interface components {
              * @default 5
              */
             top_k: number;
-        };
-        /**
-         * ExperienceRecord
-         * @description SDD §7.10. A routing-scoped **projection** over the v0.2 P7 ``Experience`` (ADR-054 b).
-         *
-         *     This record declares **none** of ``Experience``'s fields. It is keyed by the same
-         *     ``experience_id`` — carried as the header's ``contract_id``, which is why ``ID_KIND`` is
-         *     the existing ``experience`` prefix (``exp``) and ADR-055 mints no new one — and
-         *     everything the P7 record already knows is *read from it* rather than copied here.
-         *     Copying would have produced the duplicate source of truth registry §21 forbids, and the
-         *     two copies would have diverged the first time an experience was retracted.
-         *
-         *     **Read from** :class:`~accretion.experience.models.Experience` **(never re-declared):**
-         *     ``project_id`` (the header's ``project_id`` is the same project and is the only place it
-         *     appears — SDD §7.10's ``source_project_id`` is that field), ``source_run_id`` and
-         *     ``source_candidate_id`` (SDD §7.10's ``source_run_id``), ``source_kind``,
-         *     ``repository_identity``, ``source_commit``, ``architecture_version``, ``task_id``,
-         *     ``task_type``, ``task_family``, the seven digests (``manifest_digest``,
-         *     ``policy_digest``, ``verifier_digest``, ``prompt_digest``, ``context_digest``,
-         *     ``tool_profile_digest``, ``content_digest``), ``manifest_paths``, ``requested_skills``,
-         *     ``allowed_capabilities``, ``denied_capabilities``, ``verifier_ids``,
-         *     ``protected_side_effects``, ``provider``, ``runtime_model``, ``runtime_version``,
-         *     ``trust``, ``polarity``, ``outcome``, ``failure_taxonomy``, ``revision``, ``retracted``
-         *     and P7's own ``created_at``.
-         *
-         *     SDD §7.10 spells ``final_run_status`` as ``PASS | FAIL | INCONCLUSIVE | NOT_AVAILABLE``; the
-         *     fourth value is spelled ``null`` here, because registry §5.1 fixes ``VerificationState`` at
-         *     six values and a seventh may not be minted for a projection's convenience.
-         *
-         *     **Added here, because the P7 record has nowhere to put them:**
-         *     ``visibility`` — P7 experience is project-local and v0.4 is the first release that
-         *     shares it; ``source_node_execution_id`` — P7 is run-scoped and ADR-041 makes routing
-         *     node-scoped; ``contract_signature`` — the retrieval key a node matches on;
-         *     ``configuration_hash`` — the ``ExecutionConfiguration`` signature this outcome is
-         *     evidence about; ``local_verification_status`` and ``final_run_status`` — P7 carries a
-         *     free-text ``outcome`` and a ``polarity``, not a :class:`VerificationState`;
-         *     ``attribution`` — §9.6's derived, versioned credit; ``outcomes`` — the measured quality,
-         *     cost and latency P7 never recorded; ``failure_type`` — the typed §7.11 taxonomy beside
-         *     P7's free-string ``failure_taxonomy``; ``contradiction_status``; ``evidence_refs`` —
-         *     typed §4 references; ``permission_provenance`` — the §10.1 sharing proof;
-         *     ``eligible_for_learning``.
-         *
-         *     **How P7's vocabulary maps onto this record** (ADR-054 b). ``ExperienceTrust`` and
-         *     ``ExperiencePolarity`` remain the P7 vocabulary and are not restated: a record is
-         *     eligible for learning only when its own verification passed and no contradiction is
-         *     open, and the P7 rules — ``POSITIVE`` requires ``HIGH`` trust, ``NEGATIVE`` cannot have
-         *     it — continue to govern the ``Experience`` row this projection is keyed by. A retracted
-         *     ``Experience`` makes this projection ineligible by the same dereference.
-         */
-        ExperienceRecord: {
-            attribution: components["schemas"]["AttributionSummary"];
-            /** Configuration Hash */
-            configuration_hash: string;
-            /**
-             * Content Hash
-             * @default
-             */
-            content_hash: string;
-            /** Contract Id */
-            contract_id: string;
-            contract_signature: components["schemas"]["ContractSignature"];
-            /**
-             * Contract Type
-             * @default accretion.experience-record
-             * @constant
-             */
-            contract_type: "accretion.experience-record";
-            /** @default NONE */
-            contradiction_status: components["schemas"]["ContradictionStatus"];
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at?: string;
-            created_by: components["schemas"]["PrincipalRef"];
-            /**
-             * Eligible For Learning
-             * @default false
-             */
-            eligible_for_learning: boolean;
-            /** Evidence Refs */
-            evidence_refs?: components["schemas"]["EvidenceRef"][];
-            failure_type?: components["schemas"]["FailureType"] | null;
-            final_run_status?: components["schemas"]["VerificationState"] | null;
-            /** Labels */
-            labels?: {
-                [key: string]: string;
-            };
-            local_verification_status: components["schemas"]["VerificationState"];
-            objective_contract_ref?: components["schemas"]["ObjectiveContractRef"] | null;
-            outcomes: components["schemas"]["ExperienceOutcomes"];
-            permission_provenance: components["schemas"]["PermissionProvenance"];
-            /** Project Id */
-            project_id?: string | null;
-            /** Retention Class */
-            retention_class?: string | null;
-            /**
-             * Schema Version
-             * @default 1.0.0
-             */
-            schema_version: string;
-            /** Source Node Execution Id */
-            source_node_execution_id: string;
-            /** Supersedes Contract Id */
-            supersedes_contract_id?: string | null;
-            visibility: components["schemas"]["Visibility"];
-            /** Workspace Id */
-            workspace_id: string;
         };
         /** ExperienceRetractCreate */
         ExperienceRetractCreate: {
@@ -4706,22 +4409,6 @@ export interface components {
             /** Weight */
             weight: number;
         };
-        /**
-         * FailureType
-         * @description SDD §7.11's failure taxonomy, beside registry §5.4's ownership (ADR-054 e).
-         *
-         *     Type and owner are two questions, not one spelled twice: ``CONFIGURATION`` as a *type*
-         *     says the configuration was wrong, and ``CONFIGURATION`` as an *owner* says the router
-         *     may fix it. They usually agree and are allowed to disagree — a capability failure whose
-         *     real cause is a policy denial is typed ``CAPABILITY`` and owned by ``AUTHORITY`` — and
-         *     collapsing them into one enum would make that case unsayable.
-         *
-         *     Checked against v0.1's ``LoopStopReason`` (``BUDGET_EXHAUSTED``, ``PROVIDER_FAILURE``,
-         *     ``OPERATOR_CANCELLED``, ...), which classifies why a *loop stopped* rather than what
-         *     kind of thing went wrong; the two vocabularies do not overlap.
-         * @enum {string}
-         */
-        FailureType: "TRANSIENT" | "CONFIGURATION" | "CAPABILITY" | "EVIDENCE" | "VERIFICATION_CONFLICT" | "STRUCTURAL" | "POLICY_RISK" | "OBJECTIVE";
         /** FeatureEvidence */
         FeatureEvidence: {
             /**
@@ -4737,17 +4424,6 @@ export interface components {
             source: string;
             /** Value */
             value?: boolean | number | string | string[] | null;
-        };
-        /**
-         * FinalVerificationCreate
-         * @description The run-level verdict that permits projection, and the scope it may be shared at.
-         */
-        FinalVerificationCreate: {
-            /** @default RUN */
-            source: components["schemas"]["ExperienceSourceKind"];
-            status: components["schemas"]["VerificationState"];
-            /** @default PROJECT */
-            visibility: components["schemas"]["Visibility"];
         };
         /** Finding */
         Finding: {
@@ -4997,100 +4673,6 @@ export interface components {
          * @enum {string}
          */
         IdempotencyMode: "NONE" | "KEYED" | "TRANSACTIONAL";
-        /**
-         * IndependentVerificationResult
-         * @description SDD §7.9's ``VerificationResult``, under the code name ADR-054 (a) assigns it.
-         *
-         *     v0.1 already owns ``VerificationResult``: it is the run/iteration verifier outcome,
-         *     stored in the ``verifications`` table and exposed through the API, and renaming it would
-         *     be a registry §3.2 Major change to a schema with live readers. So the v0.4 contract —
-         *     a *node-scoped, independent* verification tied to a spec hash and its evidence — takes
-         *     the explicit name, and the two live side by side with ``source_verification_id`` as the
-         *     link between them.
-         *
-         *     **Field coverage (SDD §7.9 → here).** ``verification_result_id`` → the header's
-         *     ``contract_id`` (``ivr``). ``execution_instance_id``, ``verification_spec_hash``,
-         *     ``claim_results``, ``conflict_refs``, ``signed_at`` → unchanged. ``status`` →
-         *     :class:`VerificationState` (registry §5.1, per the §7.9 code-name note), which is what
-         *     lets an independent verifier report ``ERROR`` or ``QUARANTINED`` at all.
-         *     ``verifier_implementation_id`` → ``verifier``, a typed
-         *     :class:`~accretion.contracts.refs.VerifierRef` carrying the contract id *and* the
-         *     implementation digest registry §4 requires; ``verifier_version`` → unchanged beside it,
-         *     because the digest says what ran and the version says what it was called.
-         *     ``deterministic_evidence_refs`` and ``model_review_refs`` → ``[EvidenceRef]``, typed.
-         *
-         *     ``source_verification_id`` is added by ADR-054 (a) and is nullable: an independent
-         *     verification may be produced from a v0.1 result, or it may be the first verdict on a
-         *     node that no v0.1 path ever touched.
-         *
-         *     ``deterministic_evidence_refs`` and ``model_review_refs`` are two fields rather than one
-         *     list with a flag because §14.3's reward-hacking controls treat them differently: a model
-         *     review is an opinion and a deterministic check is a measurement, and a verdict that
-         *     could not say which kind it rested on would let the weaker one masquerade as the
-         *     stronger.
-         */
-        IndependentVerificationResult: {
-            /** Claim Results */
-            claim_results?: components["schemas"]["ClaimResult"][];
-            /** Conflict Refs */
-            conflict_refs?: string[];
-            /**
-             * Content Hash
-             * @default
-             */
-            content_hash: string;
-            /** Contract Id */
-            contract_id: string;
-            /**
-             * Contract Type
-             * @default accretion.independent-verification-result
-             * @constant
-             */
-            contract_type: "accretion.independent-verification-result";
-            /**
-             * Created At
-             * Format: date-time
-             */
-            created_at?: string;
-            created_by: components["schemas"]["PrincipalRef"];
-            /** Deterministic Evidence Refs */
-            deterministic_evidence_refs?: components["schemas"]["EvidenceRef"][];
-            /** Execution Instance Id */
-            execution_instance_id: string;
-            /** Labels */
-            labels?: {
-                [key: string]: string;
-            };
-            /** Model Review Refs */
-            model_review_refs?: components["schemas"]["EvidenceRef"][];
-            objective_contract_ref?: components["schemas"]["ObjectiveContractRef"] | null;
-            /** Project Id */
-            project_id?: string | null;
-            /** Retention Class */
-            retention_class?: string | null;
-            /**
-             * Schema Version
-             * @default 1.0.0
-             */
-            schema_version: string;
-            /**
-             * Signed At
-             * Format: date-time
-             */
-            signed_at: string;
-            /** Source Verification Id */
-            source_verification_id?: string | null;
-            status: components["schemas"]["VerificationState"];
-            /** Supersedes Contract Id */
-            supersedes_contract_id?: string | null;
-            /** Verification Spec Hash */
-            verification_spec_hash: string;
-            verifier: components["schemas"]["VerifierRef"];
-            /** Verifier Version */
-            verifier_version: string;
-            /** Workspace Id */
-            workspace_id: string;
-        };
         /** LoopBudgetRemaining */
         LoopBudgetRemaining: {
             /** Iterations */
@@ -5884,21 +5466,6 @@ export interface components {
          */
         OverridePolicyResult: "ACCEPTED" | "DENIED_TEMPLATE_MISMATCH" | "DENIED_SAFETY_POLICY";
         /**
-         * PermissionProvenance
-         * @description SDD §7.10 ``permission_provenance``, typed instead of left as ``object``.
-         *
-         *     §10.1 requires a training snapshot to carry "permission and visibility proof", which is
-         *     only a proof if it names the policy under which the record was shared, the principal who
-         *     shared it and the scope granted. A boolean "allowed" would be an assertion.
-         */
-        PermissionProvenance: {
-            granted_by: components["schemas"]["PrincipalRef"];
-            /** Justification */
-            justification: string;
-            policy: components["schemas"]["PolicyRef"];
-            scope: components["schemas"]["Visibility"];
-        };
-        /**
          * PlannerRuntime
          * @enum {string}
          */
@@ -6568,23 +6135,6 @@ export interface components {
              */
             reason: string;
         };
-        /**
-         * RiskClass
-         * @description Registry §5.3. The routing risk vocabulary, beside v0.1's ``RiskLevel``.
-         *
-         *     ``RiskLevel`` (``LOW | MEDIUM | HIGH | CRITICAL``) is the human-approval ladder used by
-         *     planning and governance and it stays exactly as it is (ADR-054 d). ``RiskClass`` answers
-         *     a different question — not "how much authority does this need" but "what kind of world
-         *     does this act on" — which is why ``SIMULATION`` and ``PHYSICAL_HIGH`` are values here
-         *     and could never be values there. The two are joined by the total mapping
-         *     :func:`risk_level_for`.
-         *
-         *     Project policy may make a class stricter. It may not reduce ``PHYSICAL_HIGH`` through a
-         *     plugin, a learned policy or a runtime request; ``PROHIBITED`` is not a level at all but
-         *     a refusal, and it maps to no approval ladder because nothing approves it.
-         * @enum {string}
-         */
-        RiskClass: "LOW_DIGITAL" | "MEDIUM_DIGITAL" | "HIGH_DIGITAL" | "SIMULATION" | "PHYSICAL_HIGH" | "PROHIBITED";
         /**
          * RiskLevel
          * @enum {string}
@@ -8629,56 +8179,6 @@ export interface components {
             verifier_version: string;
         };
         /**
-         * VerificationResultCreate
-         * @description One v0.1 verifier verdict, offered for §7.9 ingestion against an execution instance.
-         */
-        VerificationResultCreate: {
-            /** Configuration Hash */
-            configuration_hash: string;
-            /** Evidence Refs */
-            evidence_refs?: string[];
-            /** Producer Session Id */
-            producer_session_id?: string | null;
-            /** Run Id */
-            run_id: string;
-            status: components["schemas"]["VerificationStatus"];
-            /** Target Ref */
-            target_ref: string;
-            /** Verification Result Id */
-            verification_result_id: string;
-            /** Verifier Id */
-            verifier_id: string;
-            /** Verifier Session Id */
-            verifier_session_id?: string | null;
-            /** Verifier Version */
-            verifier_version: string;
-        };
-        /**
-         * VerificationState
-         * @description Registry §5.1. The v0.4 verification vocabulary, beside v0.1's ``VerificationStatus``.
-         *
-         *     ``VerificationStatus`` (``PASS | FAIL | INCONCLUSIVE``) is API-exposed on the v0.1-v0.3
-         *     run and iteration paths and keeps its name and its three values (ADR-054 a). This enum
-         *     is not a rename of it: it adds the three states an *independent* verifier needs and the
-         *     older one cannot express.
-         *
-         *     * ``PENDING`` — the verifier has been dispatched and has not answered. v0.1 had nowhere
-         *       to put this because its verification rows were written only at the end.
-         *     * ``ERROR`` — the verifier itself failed. Registry §5.1 is explicit that ``ERROR`` is
-         *       not ``INCONCLUSIVE`` and neither is ``PASS``: an inconclusive verdict is a *judgement*
-         *       about the evidence, an error is the absence of a judgement, and collapsing them would
-         *       let a broken verifier read as a cautious one.
-         *     * ``QUARANTINED`` — append-only governance state applied after a material concern. It is
-         *       set by a human or a policy, never by a verifier, and it never converts back to a
-         *       verdict; registry §3.2 forbids any migration that turns ``FAIL`` or ``INCONCLUSIVE``
-         *       into ``PASS``, and quarantine is the state that survives that rule.
-         *
-         *     A required verifier answering ``FAIL``, ``ERROR``, or an unresolved ``INCONCLUSIVE``
-         *     blocks acceptance.
-         * @enum {string}
-         */
-        VerificationState: "PENDING" | "PASS" | "FAIL" | "INCONCLUSIVE" | "ERROR" | "QUARANTINED";
-        /**
          * VerificationStatus
          * @enum {string}
          */
@@ -8732,15 +8232,6 @@ export interface components {
             /** Verifier Contract Id */
             verifier_contract_id: string;
         };
-        /**
-         * Visibility
-         * @description SDD §7.10. How widely an experience record may be read.
-         *
-         *     Two values only. There is no ``PUBLIC``: nothing in v0.4 crosses a workspace boundary,
-         *     and a value that no code can produce is a value someone eventually produces by hand.
-         * @enum {string}
-         */
-        Visibility: "PROJECT" | "TEAM_WORKSPACE";
         /** WorkflowActivationOutcome */
         WorkflowActivationOutcome: {
             /** Proposal Id */
@@ -9552,110 +9043,6 @@ export interface operations {
             };
         };
     };
-    search_experience_records_api_v1_experiences_search_get: {
-        parameters: {
-            query: {
-                workspace_id: string;
-                project_id?: string | null;
-                node_kind?: components["schemas"]["GraphNodeKind"] | null;
-                objective_digest?: string | null;
-                capability_digest?: string | null;
-                verification_spec_hash?: string | null;
-                risk_class?: components["schemas"]["RiskClass"] | null;
-                eligible_only?: boolean;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ExperienceRecord"][];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    get_experience_record_api_v1_experiences__experience_record_id__get: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                experience_record_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description Successful Response */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ExperienceRecord"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    resolve_experience_contradiction_api_v1_experiences__experience_record_id__resolve_contradiction_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                experience_record_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["ContradictionResolutionCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ExperienceRecord"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
     list_mcp_servers_api_v1_mcp_servers_get: {
         parameters: {
             query?: {
@@ -9955,41 +9342,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["MeResponse"];
-                };
-            };
-        };
-    };
-    record_verification_result_api_v1_node_executions__execution_instance_id__verification_results_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                execution_instance_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["VerificationResultCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["IndependentVerificationResult"];
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };
@@ -10989,41 +10341,6 @@ export interface operations {
                 };
                 content: {
                     "application/json": unknown;
-                };
-            };
-            /** @description Validation Error */
-            422: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["HTTPValidationError"];
-                };
-            };
-        };
-    };
-    record_final_verification_api_v1_runs__run_id__final_verification_post: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path: {
-                run_id: string;
-            };
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["FinalVerificationCreate"];
-            };
-        };
-        responses: {
-            /** @description Successful Response */
-            201: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["ExperienceRecord"][];
                 };
             };
             /** @description Validation Error */
