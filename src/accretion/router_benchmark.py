@@ -85,12 +85,15 @@ from accretion.contracts.routing import (
 )
 from accretion.ids import derived_id
 from accretion.routing.baselines import (
+    BaselineError,
     BenchmarkCandidate,
     BenchmarkContext,
-    PolicyNotAvailable,
+    ReplayEvidence,
+    ReplayTask,
     Selection,
     baseline_for,
 )
+from accretion.routing.flags import FULL, AblationRegistryError, RouterFeatureFlags, from_ablation
 from accretion.routing.regret import (
     ORACLE_SUBSET_LABEL,
     ORACLE_SUBSET_REGISTERED,
@@ -185,6 +188,15 @@ class RouterBenchmarkConfig(StrictModel):
     the registered oracle subset. Pre-registration is the whole point: a benchmark whose
     penalty could be tuned after the rows were seen is a benchmark with one free parameter
     per surprising result.
+
+    ``ablations_path`` names protocol §14's registered ablation table — an absolute path, or
+    a path relative to the repository root that holds the corpus (``<root>/../..``) — and is
+    optional and defaulted so that a corpus written before M10c still validates under a model
+    that forbids extras — the additive-optional rule the whole v0.4 registry runs under. A
+    corpus naming no table registers no ablations, which is a different statement from
+    registering an empty one: :meth:`RouterBenchmarkRunner.ablation` refuses the first and
+    :func:`~accretion.routing.flags.load_ablations` refuses the second. The table is reached
+    only through this field, never by convention, so moving a file cannot repoint a run.
     """
 
     schema_version: Literal["1.0"] = "1.0"
@@ -199,6 +211,7 @@ class RouterBenchmarkConfig(StrictModel):
     selection_split: SelectionSplit
     oracle_candidate_subset: list[str] = Field(min_length=1, max_length=64)
     deterministic_v01_table: dict[ExecutionMode, str] = Field(min_length=1)
+    ablations_path: str | None = Field(default=None, max_length=256)
 
 
 class CorpusCandidate(StrictModel):
@@ -318,6 +331,22 @@ class RouterBenchmarkCorpus:
         """The benchmark run's identity: a function of the corpus digests and nothing else."""
 
         return derived_id("benchmark_run", self.corpus_sha256, self.trace_sha256)
+
+    @property
+    def ablations_path(self) -> Path | None:
+        """Where this corpus's registered §14 table is, or ``None`` when it registers none.
+
+        A relative ``config.ablations_path`` is resolved against the repository root the
+        corpus lives under (two levels above ``root``), which is the only place the committed
+        table can be. Nothing is read here: a corpus that names a missing table is a corpus
+        whose ablations fail when asked for, with the path in the error, not at load time.
+        """
+
+        named = self.config.ablations_path
+        if named is None:
+            return None
+        path = Path(named)
+        return path if path.is_absolute() else self.root.parents[1] / path
 
     @classmethod
     def load(cls, root: Path = CORPUS_ROOT) -> RouterBenchmarkCorpus:
@@ -472,21 +501,41 @@ class RouterBenchmarkCorpus:
         trials: dict[tuple[str, str], list[ReplayTrace]] = {}
         for trace in self.traces:
             trials.setdefault((trace.task_id, trace.candidate_id), []).append(trace)
-        pooled: dict[tuple[str, str], Outcome] = {}
-        for pair in sorted(trials):
-            cell = sorted(trials[pair], key=lambda trace: trace.trial)
-            count = len(cell)
-            latency_ms = sum(trace.latency_ms for trace in cell) / count
-            pooled[pair] = Outcome(
-                quality=round(sum(trace.quality for trace in cell) / count, 6),
-                cost=round(sum(trace.cost for trace in cell) / count, 6),
-                latency=round(min(1.0, latency_ms / self.config.latency_budget_ms), 6),
-                latency_ms=round(latency_ms),
-                verified=all(trace.verified for trace in cell),
-                false_accept=any(trace.false_accept for trace in cell),
-                invalid=any(trace.invalid for trace in cell),
-            )
-        return pooled
+        return {pair: self._pool(trials[pair]) for pair in sorted(trials)}
+
+    def _pool(self, cell: Sequence[ReplayTrace]) -> Outcome:
+        """The one pooling rule, applied to whichever trials the caller kept."""
+
+        ordered = sorted(cell, key=lambda trace: trace.trial)
+        count = len(ordered)
+        latency_ms = sum(trace.latency_ms for trace in ordered) / count
+        return Outcome(
+            quality=round(sum(trace.quality for trace in ordered) / count, 6),
+            cost=round(sum(trace.cost for trace in ordered) / count, 6),
+            latency=round(min(1.0, latency_ms / self.config.latency_budget_ms), 6),
+            latency_ms=round(latency_ms),
+            verified=all(trace.verified for trace in ordered),
+            false_accept=any(trace.false_accept for trace in ordered),
+            invalid=any(trace.invalid for trace in ordered),
+        )
+
+    def first_trial_cells(self) -> dict[tuple[str, str], Outcome]:
+        """One outcome per cell from its *first* trial alone, for protocol §14's A10.
+
+        Expected-value stopping is a claim about how many trials were paid for, so the
+        ablation needs both readings of every cell: what the corpus saw after every trial,
+        and what it would have seen had it stopped after the first. Pooling is the same
+        function in both cases — the difference is only which trials are in the pool — so a
+        cell with one trial pools to itself and the two views agree, as they should.
+        """
+
+        first: dict[tuple[str, str], list[ReplayTrace]] = {}
+        for trace in self.traces:
+            pair = (trace.task_id, trace.candidate_id)
+            kept = first.get(pair)
+            if kept is None or trace.trial < kept[0].trial:
+                first[pair] = [trace]
+        return {pair: self._pool(cell) for pair, cell in sorted(first.items())}
 
     def outcomes(self) -> dict[str, Outcome]:
         """Pooled cells keyed by ``outcome_key(task_id, candidate_id)`` — the corpus's names."""
@@ -576,6 +625,13 @@ class BenchmarkRow:
     false_accept: bool
     invalid: bool
     utility: float
+    ablation: str | None = None
+    """Which protocol §14 ablation produced this row, or ``None`` for the unablated router.
+
+    On the row and not only on the run, because rows are what a reader joins, filters and
+    concatenates: an ablation's rows sitting in one table beside the full router's, with no
+    column saying which is which, is one copy-paste away from a comparison of a method
+    against itself."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -614,6 +670,7 @@ class RouterBenchmarkResult:
     evaluation_task_ids: tuple[str, ...]
     reported_task_ids: tuple[str, ...]
     policies: tuple[PolicyResult, ...]
+    ablation: str | None = None
 
     def policy(self, policy_id: str) -> PolicyResult:
         """One comparator's result, by protocol id."""
@@ -671,6 +728,58 @@ class RouterBenchmarkRunner:
         self._candidates = self._benchmark_candidates()
         self._v01_table = MappingProxyType(dict(self.corpus.config.deterministic_v01_table))
         self._oracle_subset = tuple(sorted(self.corpus.config.oracle_candidate_subset))
+        self._evidence = self._replay_evidence()
+
+    @property
+    def replay_evidence(self) -> ReplayEvidence:
+        """The bounded corpus the learned comparators may be fitted on.
+
+        Exposed because the entitlement is a claim worth checking from outside: a reader who
+        wants to know what M7, M8 and M9 were allowed to see should be able to read it off
+        the runner rather than infer it, and a caller comparing two flag configurations of
+        one comparator has to hand both of them the *same* evidence or it is comparing two
+        corpora. Frozen and shared on purpose — every field is immutable, so handing it out
+        cannot give anyone a way to widen what a fit is entitled to.
+        """
+
+        return self._evidence
+
+    def _replay_evidence(self) -> ReplayEvidence:
+        """What the learned comparators are allowed to learn from, bounded to the train half.
+
+        Built here rather than inside a policy for two reasons. A policy that loaded the
+        corpus itself would learn from the *shipped* files while the runner scored a copy a
+        test had edited, and the two would disagree silently. And the training half is a
+        decision this class already owns: ``train_task_ids`` is the selection split, so the
+        entitlement a learned method gets is visibly the entitlement §8.2 already grants the
+        chooser of the fixed baseline, and no wider.
+        """
+
+        return ReplayEvidence(
+            tasks=tuple(
+                ReplayTask(
+                    task_id=task.task_id,
+                    project_id=task.project_id,
+                    run_id=task.run_id,
+                    node_class=task.node_class,
+                    strategy_decision=task.strategy_decision,
+                    planner_choice=task.planner_choice,
+                    predicted_success=MappingProxyType(dict(task.predicted_success)),
+                    performance_scores=MappingProxyType(dict(task.performance_scores)),
+                )
+                for task in sorted(self.corpus.tasks, key=lambda item: item.task_id)
+            ),
+            candidates=self._candidates,
+            pooled=MappingProxyType(self.corpus.pooled_cells()),
+            first_trial=MappingProxyType(self.corpus.first_trial_cells()),
+            train_task_ids=frozenset(self._selection_ids),
+            weights=self.weights,
+            verified_success_floor=self.corpus.config.verified_success_floor,
+            invalid_action_penalty=self.corpus.config.invalid_action_penalty,
+            latency_budget_ms=self.corpus.config.latency_budget_ms,
+            seed=self.corpus.config.seed,
+            corpus_digest=self.corpus.run_id,
+        )
 
     # -- context construction -----------------------------------------------------------
 
@@ -733,12 +842,35 @@ class RouterBenchmarkRunner:
 
     # -- the run ------------------------------------------------------------------------
 
+    def ablation(self, ablation_id: str) -> RouterFeatureFlags:
+        """The flags one registered §14 ablation runs under, from the table *this corpus* names.
+
+        The registry is reached through ``config.v1.json``'s ``ablations_path`` and nowhere
+        else, so a corpus that names no table cannot be ablated against and a corpus that
+        names a different table runs that table's ablations. Editing the reviewed line is the
+        one way to change which ten runs a report contains.
+        """
+
+        path = self.corpus.ablations_path
+        if path is None:
+            raise AblationRegistryError(
+                f"the corpus at {self.corpus.root} registers no ablation table "
+                "(config.v1.json names no ablations_path), so nothing can be ablated against it"
+            )
+        if not path.is_file():
+            raise AblationRegistryError(
+                f"the corpus at {self.corpus.root} names an ablation table at {path} "
+                "that does not exist"
+            )
+        return from_ablation(ablation_id, path=path)
+
     def run(
         self,
         policy_ids: Sequence[str],
         *,
         split: BenchmarkSplit = BenchmarkSplit.EVALUATION,
         execution_source: BenchmarkExecutionSource = BenchmarkExecutionSource.REPLAY,
+        flags: RouterFeatureFlags = FULL,
     ) -> RouterBenchmarkResult:
         """Replay ``policy_ids`` over the corpus and report each of them.
 
@@ -746,9 +878,16 @@ class RouterBenchmarkRunner:
         ACR-ARCH route makes: a live run spends provider quota and mutates repositories, so it
         is released by an explicit local gate and never by a caller passing an enum.
 
-        Every requested policy appears in the result, including the ones no milestone has
-        wired: those come back with ``available=False`` and ``reason_code="NOT_AVAILABLE"``
-        rather than being dropped, because protocol §8.2 keeps all baselines in the report.
+        Every requested policy appears in the result, whatever happened to it: a method no
+        milestone has wired comes back ``available=False`` with ``NOT_AVAILABLE``, and an id
+        protocol §8.1 does not name comes back ``available=False`` with ``UNKNOWN_BASELINE``
+        rather than raising. §8.2 keeps all baselines in the report, and a run that aborted on
+        the tenth of eleven names would report neither the nine that worked nor the one that
+        did not.
+
+        ``flags`` is protocol §14: :data:`~accretion.routing.flags.FULL` is the shipped
+        router and every other configuration removes exactly one component. It reaches the
+        policies and the rows, so a result can always say which router produced it.
         """
 
         if execution_source is not BenchmarkExecutionSource.REPLAY:
@@ -781,6 +920,7 @@ class RouterBenchmarkRunner:
                     eligible_by_task=eligible_by_task,
                     registered=registered,
                     execution_source=execution_source,
+                    flags=flags,
                 )
             )
         return RouterBenchmarkResult(
@@ -795,10 +935,15 @@ class RouterBenchmarkRunner:
             evaluation_task_ids=self._evaluation_ids,
             reported_task_ids=tuple(sorted(reported)),
             policies=tuple(results),
+            ablation=flags.ablation_id,
         )
 
     def selections_for(
-        self, policy_id: str, *, split: BenchmarkSplit = BenchmarkSplit.EVALUATION
+        self,
+        policy_id: str,
+        *,
+        split: BenchmarkSplit = BenchmarkSplit.EVALUATION,
+        flags: RouterFeatureFlags = FULL,
     ) -> dict[str, Selection]:
         """What one policy chose for every task on ``split``, keyed by task id.
 
@@ -809,7 +954,7 @@ class RouterBenchmarkRunner:
 
         outcomes = self._outcomes
         reported = set(self.corpus.task_ids_for(split))
-        policy = baseline_for(policy_id)
+        policy = baseline_for(policy_id, flags=flags, evidence=self._evidence)
         candidates = self._candidates
         chosen: dict[str, Selection] = {}
         for task in self.corpus.tasks:
@@ -836,8 +981,12 @@ class RouterBenchmarkRunner:
         eligible_by_task: Mapping[str, tuple[str, ...]],
         registered: set[str],
         execution_source: BenchmarkExecutionSource,
+        flags: RouterFeatureFlags = FULL,
     ) -> PolicyResult:
-        policy = baseline_for(policy_id)
+        try:
+            policy = baseline_for(policy_id, flags=flags, evidence=self._evidence)
+        except BaselineError as error:
+            return self._unrun(policy_id, error)
         rows: list[BenchmarkRow] = []
         selections: list[TaskSelection] = []
         choice: dict[str, str] = {}
@@ -850,18 +999,8 @@ class RouterBenchmarkRunner:
             )
             try:
                 selection = policy.select(context, candidates)
-            except PolicyNotAvailable as error:
-                return PolicyResult(
-                    policy_id=policy_id,
-                    available=False,
-                    reason_code=error.reason_code,
-                    rows=(),
-                    regret=None,
-                    gates=None,
-                    mean_utility=None,
-                    estimands=None,
-                    regret_interval=None,
-                )
+            except BaselineError as error:
+                return self._unrun(policy_id, error)
             eligible = eligible_by_task[task.task_id]
             observed_outcome = outcomes.get(outcome_key(task.task_id, selection.candidate_id))
             invalid = selection.candidate_id not in eligible or (
@@ -901,6 +1040,7 @@ class RouterBenchmarkRunner:
                         if invalid or observed_outcome is None
                         else utility(observed_outcome, self.weights)
                     ),
+                    ablation=flags.ablation_id,
                 )
             )
 
@@ -921,6 +1061,28 @@ class RouterBenchmarkRunner:
             ),
             estimands=self._estimands(choice),
             regret_interval=self._regret_interval(report),
+        )
+
+    @staticmethod
+    def _unrun(policy_id: str, error: BaselineError) -> PolicyResult:
+        """A registered method's row when it produced no selection, and why it produced none.
+
+        One shape for both refusals — the method no milestone has wired and the id §8.1 never
+        named — because a reader of the table needs the same two things in both cases: the
+        name they asked for, and the reason it is empty. The reason code is the exception's
+        own, so a new refusal cannot reach the report as a blank.
+        """
+
+        return PolicyResult(
+            policy_id=policy_id,
+            available=False,
+            reason_code=error.reason_code,
+            rows=(),
+            regret=None,
+            gates=None,
+            mean_utility=None,
+            estimands=None,
+            regret_interval=None,
         )
 
     def _gates(self, rows: Sequence[BenchmarkRow]) -> GateReport:
@@ -963,6 +1125,10 @@ class RouterBenchmarkRunner:
         evaluation = self._evaluation_ids
         if not set(evaluation) <= set(choice):
             return None
+        # The chooser is asked for under the *unablated* flags, deliberately. Protocol §12's
+        # Z is a fixed reference point — what a chooser seeing only the routing signal could
+        # do — and a Z that moved with each §14 ablation would make G_Z a different quantity
+        # in every row of the ablation table, which is the one thing a reference may not be.
         signal = {
             task_id: selection.candidate_id
             for task_id, selection in self.selections_for(

@@ -74,6 +74,7 @@ from accretion.routing.candidates import CandidateBuilder
 from accretion.routing.catalog import WORKSPACE_ROUTER_VERSION, ConfigurationCatalog
 from accretion.routing.compatibility import CompatibilityEngine
 from accretion.routing.errors import RoutingError
+from accretion.routing.flags import FULL, RouterFeatureFlags
 from accretion.routing.freeze import NodeContractFreezer
 from accretion.routing.gates import PolicyGate
 from accretion.routing.graph_features import graph_features
@@ -163,6 +164,7 @@ class DefaultNodeRoutingService:
         post_route: Sequence[PostRouteHook] = (),
         post_node: Sequence[PostNodeHook] = (),
         default_mode: RoutingMode = RoutingMode.BASELINE_ONLY,
+        flags: RouterFeatureFlags = FULL,
     ) -> None:
         self.store = store
         self.snapshots = snapshots
@@ -177,7 +179,23 @@ class DefaultNodeRoutingService:
         # mode gate reads: a service that silently substituted a stand-in would accept AUTO
         # and route deterministically under a receipt claiming otherwise.
         self.scorer = scorer
-        self.behavior = behavior or DeterministicBehavior()
+        # Protocol §14, read at three collaborator sites and nowhere else. `FULL` is every
+        # component present, so a deployment that names no flags constructs the collaborators
+        # it constructed before this existed, retrieves the same evidence, scores the same
+        # slate and writes receipts with no additional label — which is what the M5, M6 and
+        # M7 suites assert by passing none of this.
+        #
+        # A7 is enforced here rather than at the call site because "no guarded exploration"
+        # is a statement about which behaviour policy exists, not about whether a policy that
+        # exists is consulted: an injected bandit that were merely skipped would still be
+        # holding a store handle and a ledger, and a later refactor that consulted it would
+        # be a one-line silent regression.
+        self.flags = flags
+        self.behavior = (
+            (behavior or DeterministicBehavior())
+            if flags.guarded_exploration
+            else DeterministicBehavior()
+        )
         self.post_route = tuple(post_route)
         self.post_node = tuple(post_node)
         self._default_mode = default_mode
@@ -499,6 +517,7 @@ class DefaultNodeRoutingService:
                     evaluator=CompatibilityEngine(created_by=who),
                     catalog=catalog,
                     created_by=who,
+                    flags=self.flags,
                 )
                 built = builder.build(
                     routing_request_id=request_id,
@@ -664,6 +683,14 @@ class DefaultNodeRoutingService:
         forbids, and it is the failure a caller cannot detect afterwards.
         """
 
+        if not self.flags.experience_retrieval:
+            # §14 A3, reported on the §15.1 ladder as `EVIDENCE_UNAVAILABLE` and not as an
+            # empty history. The consequence is the one that entry names — the decision was
+            # made without history — and it is the consequence, not the cause, that a reader
+            # of the receipt has to be able to trust. Returning `None` here would let the
+            # receipt claim the store was consulted and had nothing, which is the false
+            # statement §15.1 exists to forbid.
+            return [], EVIDENCE_UNAVAILABLE
         try:
             records = await self.evidence.retrieve(
                 workspace_id=frozen.node_contract.workspace_id,
@@ -708,9 +735,9 @@ class DefaultNodeRoutingService:
                 candidates=tuple(candidates),
                 calibration_version=COLD_START_PRIOR_METHOD,
                 evidence_ids=(),
-                labels={},
+                labels=self.flags.labels(),
             )
-        return await self.scorer.score(
+        scored = await self.scorer.score(
             context=context,
             candidates=candidates,
             node=node,
@@ -726,6 +753,15 @@ class DefaultNodeRoutingService:
                 for candidate in candidates
             },
         )
+        # §14 A4 and A9 reach the receipt through the slate's labels, which is the channel
+        # §15.1 already uses to say what a decision was made without. The scorer's own labels
+        # win a collision: they describe what happened during this scoring, while these
+        # describe the configuration it happened under, and a run that degraded for a reason
+        # of its own should say so rather than be overwritten by a flag.
+        ablation = self.flags.labels()
+        if not ablation:
+            return scored
+        return replace(scored, labels={**ablation, **scored.labels})
 
     async def _behave(
         self,

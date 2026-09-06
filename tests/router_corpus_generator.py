@@ -47,6 +47,14 @@ SEED = 20260905
 SUITE_VERSION = "v1"
 CONFIGURATION_VERSION = "router-baselines-v1"
 
+ABLATIONS_PATH = "evals/router/ablations.v1.json"
+"""Where protocol §14's registered ablation table lives, relative to the repository root.
+
+Named by the config rather than found by convention for the same reason the oracle subset
+and the v0.1 configuration table are: a run's ablations are part of what was pre-registered,
+and a benchmark that located them by a hard-coded path could be pointed at a different table
+by moving a file rather than by editing a reviewed line."""
+
 NODE_CLASSES: tuple[str, ...] = ("IMPLEMENTATION", "ANALYSIS", "VERIFICATION", "MIGRATION")
 STRATEGY_DECISIONS: tuple[str, ...] = ("DIRECT", "LOOP", "GRAPH", "HYBRID")
 
@@ -402,6 +410,7 @@ def build() -> dict[str, dict[str, Any]]:
         },
         "oracle_candidate_subset": list(ORACLE_CANDIDATE_SUBSET),
         "deterministic_v01_table": dict(DETERMINISTIC_V01_TABLE),
+        "ablations_path": ABLATIONS_PATH,
     }
     candidates = {
         "suite_version": SUITE_VERSION,
