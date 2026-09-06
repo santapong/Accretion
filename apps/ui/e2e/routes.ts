@@ -56,8 +56,8 @@ export interface RouteUnderTest {
 export const RUN_ID_PLACEHOLDER = ":runId";
 
 export const ROUTES: readonly RouteUnderTest[] = [
-  { path: "/", heading: /One control plane\./ },
-  { path: "/tasks/new", heading: "New task" },
+  { path: "/", heading: /One control plane\./, structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
+  { path: "/tasks/new", heading: "New task", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
   {
     path: `/runs/${RUN_ID_PLACEHOLDER}`,
     heading: /…/,
@@ -69,15 +69,15 @@ export const ROUTES: readonly RouteUnderTest[] = [
         "routing panel, so the run page renders more elements than the merge-base",
     },
   },
-  { path: "/runtimes", heading: "Runtime monitor" },
-  { path: "/history", heading: "Run history / trace replay" },
-  { path: "/approvals", heading: "Verifiers / approvals" },
-  { path: "/capabilities", heading: "Capabilities, skills, and plugins" },
-  { path: "/admin/connections", heading: "Connections" },
-  { path: "/admin/plugins", heading: "Plugins" },
-  { path: "/admin/mcp", heading: "MCP servers" },
-  { path: "/admin/capabilities/inspect", heading: "Capability inspector" },
-  { path: "/admin/identity", heading: "Identity and roles" },
+  { path: "/runtimes", heading: "Runtime monitor", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
+  { path: "/history", heading: "Run history / trace replay", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
+  { path: "/approvals", heading: "Verifiers / approvals", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
+  { path: "/capabilities", heading: "Capabilities, skills, and plugins", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
+  { path: "/admin/connections", heading: "Connections", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
+  { path: "/admin/plugins", heading: "Plugins", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
+  { path: "/admin/mcp", heading: "MCP servers", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
+  { path: "/admin/capabilities/inspect", heading: "Capability inspector", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
+  { path: "/admin/identity", heading: "Identity and roles", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
   {
     path: "/admin/router",
     heading: "Router administration",
@@ -89,10 +89,10 @@ export const ROUTES: readonly RouteUnderTest[] = [
       absentFromBase: true,
     },
   },
-  { path: "/benchmarks/acr-arch", heading: "ACR-ARCH" },
-  { path: "/benchmarks/dynamic", heading: "Dynamic workflow gate" },
-  { path: "/benchmarks/search", heading: "Quality vs compute" },
-  { path: "/benchmarks/experience", heading: "Experience transfer gate" },
+  { path: "/benchmarks/acr-arch", heading: "ACR-ARCH", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
+  { path: "/benchmarks/dynamic", heading: "Dynamic workflow gate", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
+  { path: "/benchmarks/search", heading: "Quality vs compute", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
+  { path: "/benchmarks/experience", heading: "Experience transfer gate", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
   // The catch-all. jsdom asserts this heading exists but never that it is the only one.
-  { path: "/definitely-not-a-route", heading: "Page not found" },
+  { path: "/definitely-not-a-route", heading: "Page not found", structuralChange: { pr: "M9c", reason: "the Router nav entry lands on every page, so every route gains one focusable element beside the sixteen the merge-base build renders" } },
 ];

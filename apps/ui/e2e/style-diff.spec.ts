@@ -73,7 +73,9 @@ const VIEWPORT_HEIGHT = 1000;
  * was audited: with `FOCUSABLE_SELECTOR` set to a selector no element carries, the pass
  * still reported "0 differences" over zero captures on all seventeen routes.
  */
-const NAV_FOCUS_FLOOR = 17;
+// A lower bound, so it must hold on BOTH builds: the merge-base build renders sixteen nav
+// links and this branch seventeen (M9c added Router); the floor stays at what the base provides.
+const NAV_FOCUS_FLOOR = 16;
 
 const BASE_DIST = process.env.STYLE_DIFF_BASE_DIST;
 /** Where `npm run preview` serves :4173 from - Vite's default `outDir` for this workspace. */
@@ -976,6 +978,19 @@ async function mockApi(
 // object over the same page: the mocked pass builds its own and never reads the sweep's. A
 // waiver that covered only one of the two would leave the other reporting the same intended
 // DOM change as a failure, which is the shape that teaches a reader to ignore this gate.
+/**
+ * The mocked planning review and the mocked benchmarks address exactly the paths the sweep
+ * does, so they read the sweep's waiver for that path instead of restating it: a change that
+ * adds one element to every page (M9c's Router nav entry) is one declaration per route in
+ * `routes.ts`, and a mocked pass that ignored it would report the same intended DOM change
+ * the sweep already waived. The mocked run page keeps its own declaration because its path
+ * (the fixture's run id) is not the sweep's.
+ */
+function sweepWaiverFor(path: string) {
+  const declared = ROUTES.find((route) => route.path === path);
+  return declared ? obligationsFor(declared).waiver : undefined;
+}
+
 const MOCKED_RUN_ROUTE: RouteUnderTest = {
   path: `/runs/${FIXTURE_RUN_ID}`,
   heading: /…/,
@@ -1155,6 +1170,7 @@ test.describe("computed-style diff over fixture-mocked pages", () => {
           MOCKED_PLANNING_ELEMENT_FLOOR,
         ),
       );
+      if (sweepWaiverFor("/tasks/new")) continue;
       if (!fingerprintsEqual(base, branch)) {
         differences.push(
           `/tasks/new @ ${width}: base rendered ${base.length} elements, branch ` +
@@ -1169,9 +1185,13 @@ test.describe("computed-style diff over fixture-mocked pages", () => {
       );
     }
 
+    const planningWaiver = sweepWaiverFor("/tasks/new");
     console.log(
       `style-diff mocked planning review — ${counts.join(", ")} elements ` +
-        `(floor ${MOCKED_PLANNING_ELEMENT_FLOOR})`,
+        `(floor ${MOCKED_PLANNING_ELEMENT_FLOOR})` +
+        (planningWaiver
+          ? `; STRUCTURAL CHANGE WAIVED by ${planningWaiver.pr}: ${planningWaiver.reason}`
+          : ""),
     );
     for (const assertShortfall of shortfalls) assertShortfall();
     expect(unmatched, `endpoints with no fixture:\n${unmatched.join("\n")}`).toEqual([]);
@@ -1236,6 +1256,7 @@ test.describe("computed-style diff over fixture-mocked pages", () => {
               "is a WEAKER measurement than the sweep beside it and would still diff clean.",
           ).toBeGreaterThan(seeded);
         });
+        if (sweepWaiverFor(route.path)) continue;
         if (!fingerprintsEqual(base, branch)) {
           differences.push(
             `${route.path} @ ${width}: base rendered ${base.length} elements, branch ` +
@@ -1250,9 +1271,13 @@ test.describe("computed-style diff over fixture-mocked pages", () => {
         );
       }
 
+      const benchmarkWaiver = sweepWaiverFor(route.path);
       console.log(
         `style-diff mocked ${route.path} — ${counts.join(", ")} elements ` +
-          `(floor ${floor}, seeded ${seeded})`,
+          `(floor ${floor}, seeded ${seeded})` +
+          (benchmarkWaiver
+            ? `; STRUCTURAL CHANGE WAIVED by ${benchmarkWaiver.pr}: ${benchmarkWaiver.reason}`
+            : ""),
       );
       for (const assertShortfall of shortfalls) assertShortfall();
       expect(unmatched, `endpoints with no fixture:\n${unmatched.join("\n")}`).toEqual([]);
