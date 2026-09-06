@@ -16,6 +16,7 @@
     "cnf-codex-standard",
     "cnf-deterministic-scripted"
   ],
+  "preregistration_sha256": "6b45998b3a9847298ba878a6414211ce38d64c775e5addd587509fdd70cf04ea",
   "seed": 20260905,
   "selection_split": {
     "evaluation_project_ids": [
