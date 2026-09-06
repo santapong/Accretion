@@ -104,10 +104,25 @@ from accretion.routing.regret import (
     regret_over_selections,
     utility,
 )
-from accretion.routing.split import SplitViolation, lineage_roots, load_project_registry
+from accretion.routing.split import (
+    ProjectRegistry,
+    SplitViolation,
+    lineage_roots,
+    load_project_registry,
+)
 from accretion.routing.stats import Estimands, estimands, hierarchical_bootstrap
 
-CORPUS_ROOT = Path(__file__).resolve().parents[2] / "evals" / "router"
+REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
+"""The checkout a relative ``ablations_path`` is resolved against.
+
+Derived from the package's own location rather than from the corpus's, because a corpus is a
+*directory* and corpora do not all sit at the same depth: the development corpus is
+``evals/router`` and M10d's locked and drift corpora are ``evals/router/locked`` and
+``evals/router/drift`` (ADR4-M10-004). Counting parents up from the corpus would resolve the
+same reviewed ``ablations_path`` line to a different file for each of them, which is exactly
+the "found by convention" behaviour ``ablations_path`` exists to prevent."""
+
+CORPUS_ROOT = REPOSITORY_ROOT / "evals" / "router"
 """Where the four ``*.v1.json`` corpus documents live, beside the project registry."""
 
 FROZEN_AT = datetime(2026, 9, 5, tzinfo=UTC)
@@ -189,8 +204,9 @@ class RouterBenchmarkConfig(StrictModel):
     penalty could be tuned after the rows were seen is a benchmark with one free parameter
     per surprising result.
 
-    ``ablations_path`` names protocol §14's registered ablation table — an absolute path, or
-    a path relative to the repository root that holds the corpus (``<root>/../..``) — and is
+    ``ablations_path`` names protocol §14's registered ablation table — an absolute path, or a
+    path relative to the repository root the package itself lives in (:data:`REPOSITORY_ROOT`, a
+    fixed point rather than a count of directories above any one corpus) — and is
     optional and defaulted so that a corpus written before M10c still validates under a model
     that forbids extras — the additive-optional rule the whole v0.4 registry runs under. A
     corpus naming no table registers no ablations, which is a different statement from
@@ -343,17 +359,37 @@ class RouterBenchmarkCorpus:
     def ablations_path(self) -> Path | None:
         """Where this corpus's registered §14 table is, or ``None`` when it registers none.
 
-        A relative ``config.ablations_path`` is resolved against the repository root the
-        corpus lives under (two levels above ``root``), which is the only place the committed
-        table can be. Nothing is read here: a corpus that names a missing table is a corpus
-        whose ablations fail when asked for, with the path in the error, not at load time.
+        A relative ``config.ablations_path`` is resolved against :data:`REPOSITORY_ROOT`,
+        which is the only place the committed table can be, and is a fixed point rather than a
+        count of parent directories above ``root`` — see :data:`REPOSITORY_ROOT` for why a
+        count is wrong once corpora sit at more than one depth. Nothing is read here: a corpus
+        that names a missing table is a corpus whose ablations fail when asked for, with the
+        path in the error, not at load time.
         """
 
         named = self.config.ablations_path
         if named is None:
             return None
         path = Path(named)
-        return path if path.is_absolute() else self.root.parents[1] / path
+        return path if path.is_absolute() else REPOSITORY_ROOT / path
+
+    def project_registry(self) -> ProjectRegistry:
+        """The lineage registry this corpus's split is proved against.
+
+        The registry beside the corpus, and the shipped development registry only when the
+        corpus has none. For ``evals/router`` those are the same file, so nothing about the
+        development corpus moves; for M10d's locked and drift corpora they are not, and they
+        must not be — those corpora name lineages the hand-authored development registry has
+        never heard of, and resolving their split against it would fail every project as
+        "not in the development registry" rather than proving anything about their halves.
+
+        Read on demand rather than carried on the dataclass: the registry is the *input* to
+        the proof, and a copy cached at load time would let a caller compare a split against
+        a registry the corpus no longer sits beside.
+        """
+
+        beside = self.root / "projects.v1.json"
+        return load_project_registry(beside) if beside.is_file() else load_project_registry()
 
     @classmethod
     def load(cls, root: Path = CORPUS_ROOT) -> RouterBenchmarkCorpus:
@@ -426,7 +462,7 @@ class RouterBenchmarkCorpus:
                 f"projects {homeless!r} carry tasks but are on neither side of the split; a "
                 "task that belongs to no split is a task nobody decided how to use"
             )
-        roots = lineage_roots(load_project_registry().projects)
+        roots = lineage_roots(self.project_registry().projects)
         by_root: dict[str, set[str]] = {}
         for project_id, side in sides.items():
             root = roots.get(project_id)

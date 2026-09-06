@@ -124,6 +124,7 @@ def as_stored(report: RegretReport) -> tuple[RegretRow, ...]:
     )
 
 
+@pytest.mark.acceptance("AC4-M10-047")
 async def test_regret_is_recomputed_identically_from_a_cold_store() -> None:
     runner = RouterBenchmarkRunner()
     result = runner.run(["M1", "M6"], split=BenchmarkSplit.EVALUATION)

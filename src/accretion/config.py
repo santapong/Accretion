@@ -20,6 +20,13 @@ class Settings(BaseSettings):
     # evaluations (SDD §7.12). Inside the gitignored data directory by default, because
     # an artefact tree under version control would make every training run a diff.
     router_artifact_dir: Path = Path(".accretion") / "router-artifacts"
+    # Releases the v0.4 locked test set and the drift holdout (`evals/router/locked` and
+    # `evals/router/drift`) for one read. Off by default and read only by
+    # `accretion.routing.locked_test`: the corpora are committed, so nothing technical stops
+    # a process loading them, and the point of the flag is that reading them is an act an
+    # operator performs deliberately and leaves a record of. Every released read appends a
+    # row to `docs/research/v0.4/access-log.jsonl`.
+    router_locked_test: bool = False
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
     global_max_runs: int = 4
     provider_max_runs: int = 2

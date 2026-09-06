@@ -1,11 +1,15 @@
 # v0.4 — Evidence-Aware Node Configuration Routing
 
-Status: **In release preparation (2026-09-06).** M0 through M8 are delivered on `develop`,
-along with M9's routing panel, shadow comparison and router administration page and M10's
-statistics, lineage splits, baselines, corpus and development pilot. M9d and M10c–M10d close
-the last nine acceptance rows, after which the release PR bumps the version and cuts the tag.
-The harness target the release PR must confirm is `in scope: 167   proven: 161   unmet
-MUST: 0`; see the [draft release notes](notes.md) and [draft release audit](audit.md).
+Status: **Acceptance complete; awaiting the release PR (2026-09-06).** M0 through M10 are
+delivered on `develop`. M10d closed the last six rows: the pre-registration is frozen and its
+digest pinned, the locked test set and the drift holdout were read once, and
+[`docs/research/v0.4/results.md`](../../research/v0.4/results.md) records what that read found.
+Every one of the fifty v0.4 rows now has a claiming test, so
+[`docs/acceptance/criteria.toml`](../../acceptance/criteria.toml)'s v0.4 section is empty. The
+harness target the release PR must confirm is `in scope: 167   proven: 159   unmet MUST: 0` —
+159 and not the 161 the earlier drafts quoted, which counted three rows proven by the vitest
+suite where the policy file carries five. See the [draft release notes](notes.md) and
+[draft release audit](audit.md).
 
 | Document | Purpose |
 |---|---|
@@ -23,6 +27,8 @@ MUST: 0`; see the [draft release notes](notes.md) and [draft release audit](audi
 | [M7 plan](m7-plan.md) | The guarded bandit: the nine gates exploration passes, inverse-gap weighting under a conformal safety clip, and the cost ledger reconstructed from receipts |
 | [M8 plan](m8-plan.md) | The activation ledger, the rollback drill, and the CSPI-MT promotion gate over the Logarithmic-Smoothing estimator |
 | [M9 plan](m9-plan.md) | The Experiment Studio: the §17.1 panel, the §17.2 comparison, the §17.3 administration page, the badges the canvas derives, the TypeScript canonical twin, and the §16.2 correlation chain |
+| [M10 plan](m10-plan.md) | The research instrument: the locked corpus and the drift holdout, the door they are read through, the committed access log, and what the one locked read found |
+| [Router benchmark results](../../research/v0.4/results.md) | The locked read itself: three estimands with exact intervals, the gates apart from utility, ten ablations, the drift holdout, and the priced run recorded as not run |
 | [Release notes (draft)](notes.md) | The v0.4.0 highlights, the acceptance target, the honest limitations, the eighteen-route accessibility position and the upgrade path |
 | [Release audit (draft)](audit.md) | Candidate identity, the SDD §24.8 gate, the automated checks, acceptance, the research evidence and the release procedure |
 | [Backlog](backlog.md) | Milestone order and the v0.3 deferrals carried into v0.4 |

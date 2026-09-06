@@ -598,6 +598,7 @@ def test_the_fifty_v04_rows_load_from_the_sdd_under_their_owner_stages() -> None
     delivered |= {f"AC4-M7-{number:03d}" for number in owners["M7"]}
     delivered |= {f"AC4-M8-{number:03d}" for number in owners["M8"]}
     delivered |= {f"AC4-M9-{number:03d}" for number in owners["M9"]}
+    delivered |= {f"AC4-M10-{number:03d}" for number in owners["M10"]}
     assert {name for name, c in v04.items() if c.in_scope} == delivered
 
     # M9 closes the Experiment Studio in the browser, so two of its three rows are proven by
