@@ -13,7 +13,7 @@ Read the templates rather than guessing. The most recent milestone is the best r
 
 - `src/accretion/mcp/manager.py` — manager shape, error hierarchy, state transitions
 - `src/accretion/plugins/manager.py` — the `_transition` single-door pattern
-- `src/accretion/contracts.py` — `StrictModel`, enums, field constraints
+- `src/accretion/contracts/__init__.py` — `StrictModel`, enums, field constraints
 - `src/accretion/persistence/{models.py,store.py}` — row shape, three-layer store
 - `migrations/versions/0013_*.py`, `0014_*.py` — migration style
 - `src/accretion/api/main.py:1143-1271` — route + auth + exception-handler style

@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import { EventStream } from "./App";
+import { EventStream } from "./EventStream";
 import type { AgentEvent, Run } from "./types";
 
 class ControllableEventSource {

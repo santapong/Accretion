@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "config_version": "promotion-v1",
+  "seed": 20260906,
+  "gamma": 0.05,
+  "delta_min": 0.02,
+  "delta_ni": -0.02,
+  "alpha": 0.05,
+  "power": 0.8,
+  "tune_eval_split": [0.2, 0.8],
+  "threshold_grid_start": 0.5,
+  "threshold_grid_stop": 0.95,
+  "threshold_grid_step": 0.05,
+  "ls_lambda_rule": "1/sqrt(n)",
+  "clip_beta_rule": "conformal",
+  "bootstrap_replicates": 500,
+  "critical_cohorts": [
+    "correctness",
+    "high_risk",
+    "policy",
+    "secrets",
+    "verifier_conflict"
+  ],
+  "calibration_max_ece": 0.05,
+  "shadow_min_paired_runs": 9,
+  "multiplicity": "bonferroni",
+  "utility_weights": {
+    "quality": 1.0,
+    "cost": 0.3,
+    "latency": 0.15
+  }
+}

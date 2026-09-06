@@ -1,0 +1,24 @@
+{
+  "affected_layer": "tool-binding",
+  "assigned_owner": "CONFIGURATION",
+  "classification_confidence": 0.72,
+  "content_hash": "a60cf6e8b573403c2b4f2183dc25c33d09a2bb7a7f492b81ac54cf219ac4beff",
+  "contract_id": "flr_NQ1CGY6QNTM2JDQH325NFW3EFW",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "execution_instance_id": "run_9ZAQAYEBNE6NQ3P27YWG8M082Y",
+  "failure_type": "CONFIGURATION",
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "recommended_action": {
+    "action_code": "REBIND_TOOL",
+    "owner": "CONFIGURATION",
+    "rationale": "Rebind the capability to the surviving connector.",
+    "retry_allowed": true
+  },
+  "retryable": true,
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

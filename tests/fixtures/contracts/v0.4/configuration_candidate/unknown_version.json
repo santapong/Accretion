@@ -1,0 +1,178 @@
+{
+  "compatibility_decision_refs": [
+    "cmp_T3W9XKVTJEYJNPXPEP35FSFV25",
+    "cmp_KX39QTT0AF3C2N8FEAJ190C523"
+  ],
+  "configuration": {
+    "configuration_hash": "fd15cc98d07e3e5540c511e721518e5c3f4d227dd3c39d3389740b793458abdc",
+    "content_hash": "6882c363e230a6db9da5baa44cb34d06dfda848b099ea92e8a1ae75550abb91d",
+    "contract_id": "cfg_CQ4M1K0F6SBB75XSH3TFH74H02",
+    "contract_type": "accretion.execution-configuration",
+    "created_at": "2026-03-01T09:00:00Z",
+    "created_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "environment": {
+      "environment": {
+        "environment_id": "sandboxed-worktree",
+        "image_digest": "287e34b12a9a744772571abf042fa288e44a38799e5792362e3754de304490fb",
+        "policy_profile": "restricted-egress"
+      },
+      "workspace_isolation": "worktree"
+    },
+    "labels": {
+      "owner": "routing-platform",
+      "tier": "gold"
+    },
+    "model": {
+      "inference_profile": {
+        "stream": true,
+        "temperature": 0.2,
+        "thinking_budget": 8000
+      },
+      "model_id": "claude-opus-4",
+      "provider": "CLAUDE"
+    },
+    "objective_contract_ref": null,
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": "STANDARD",
+    "runtime": {
+      "adapter_version": "accretion-claude-v1",
+      "capability_profile_digest": "d5c06c282061049bff56775278552ec601647511e1bdb6547323d345e2e7a3fd",
+      "model": "claude-opus-4",
+      "provider": "CLAUDE",
+      "runtime_id": "claude-cli"
+    },
+    "schema_version": "1.0.0",
+    "skills": [
+      {
+        "package_digest": "f1a57a54e4bc4bb27de3e73920cc8dbef3571189ed3881f2ec95827f33f25320",
+        "skill_id": "code-review",
+        "version": "2.0.0"
+      }
+    ],
+    "supersedes_contract_id": "cfg_06DFXBG7421CJKY6ECJF0P7X2Z",
+    "tools": [
+      {
+        "binding_id": "cbd_11V0G94S6N6VF1ZKQKYG9Y1HS4",
+        "binding_version": "1.0.0",
+        "capability": {
+          "capability_id": "fs.read",
+          "capability_version": "1.2.0"
+        },
+        "tool": {
+          "implementation_digest": "6b26c87d9fddfbec46aaec4d907bf0b7b02d58bf6041da758395739f99e7dd4d",
+          "tool_id": "ripgrep"
+        }
+      }
+    ],
+    "verifier": {
+      "verification_spec_hash": "d3f922a310a02725de5f9b2a75e3766c634df4b6a6ac4e806f64a2224a4a582d",
+      "verifier": {
+        "implementation_digest": "9686223298b97bb181aeb771c256208e2a4d2a321bf5fdde2f829250e93dc22e",
+        "verifier_contract_id": "diff-and-suite"
+      },
+      "version": "4.2.0"
+    },
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  "construction_stage": "RANK_BY_UTILITY",
+  "content_hash": "8ecfd8ac2a217d96d20554bebada9b14a616b83d1d1d80814415b0f45a576fea",
+  "contract_id": "ccd_WZ2VXFZVD3CT64PQPKGVGNVWN9",
+  "contract_type": "accretion.configuration-candidate",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "fallback_eligible": true,
+  "hard_eligible": true,
+  "labels": {
+    "owner": "routing-platform",
+    "tier": "gold"
+  },
+  "lower_confidence_success": 0.81,
+  "objective_contract_ref": {
+    "approved_at": "2026-02-01T08:00:00Z",
+    "approved_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "content_hash": "eeb604d2b673fc4518f6cc1028e1a3d67f72cc7ccd2110ce36b2c2f978371de9",
+    "contract_id": "objective-contract-ref-embedded",
+    "contract_type": "accretion.objective-contract-ref",
+    "created_at": "2026-03-01T09:00:00Z",
+    "created_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "labels": {},
+    "objective_contract_hash": "13f224df431229df61136c206eb2a5857df8c6a2907a3c3697192210aafc0ad4",
+    "objective_contract_id": "obj_HQ5A32JBQ5CTEZTZWCVPPPQ4JM",
+    "objective_contract_ref": null,
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": null,
+    "revision": 3,
+    "risk_policy": {
+      "content_digest": "b941fb5563b0aabec00a46d9150fff0d85e017346a26e12467ecdb80ffa458fd",
+      "policy_id": "workspace-risk-policy",
+      "version": "3.1.0"
+    },
+    "schema_version": "1.0.0",
+    "supersedes_contract_id": null,
+    "utility_profile_id": "balanced-delivery",
+    "verified_success_floor": 0.9,
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  "pareto_dominated": false,
+  "predicted": {
+    "cost": {
+      "confidence": 0.9,
+      "lower_bound": 3.25,
+      "mean": 4.5,
+      "method": "bootstrap-1000",
+      "upper_bound": 5.75
+    },
+    "latency": {
+      "confidence": 0.9,
+      "lower_bound": 32000.0,
+      "mean": 41000.0,
+      "method": "bootstrap-1000",
+      "upper_bound": 50000.0
+    },
+    "node_verified_success": {
+      "confidence": 0.9,
+      "lower_bound": 0.81,
+      "mean": 0.88,
+      "method": "conformal-v1",
+      "upper_bound": 0.95
+    },
+    "quality": {
+      "confidence": 0.9,
+      "lower_bound": 0.76,
+      "mean": 0.82,
+      "method": "bootstrap-1000",
+      "upper_bound": 0.88
+    },
+    "run_verified_success": {
+      "confidence": 0.9,
+      "lower_bound": 0.59,
+      "mean": 0.71,
+      "method": "conformal-v1",
+      "upper_bound": 0.83
+    }
+  },
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "retention_class": "STANDARD",
+  "routing_request_id": "rrq_XTFQABRZSGMVCXZQ2PYSDYBMV5",
+  "schema_version": "2.0.0",
+  "supersedes_contract_id": "ccd_8WPVFJEY00HWC7QC057CGXC35X",
+  "uncertainty_score": 0.14,
+  "utility_score": 0.66,
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

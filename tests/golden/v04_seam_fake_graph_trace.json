@@ -1,0 +1,1385 @@
+{
+  "phases": [
+    {
+      "approvals": [
+        {
+          "method": "accretion/gate",
+          "native_request_id": "gate:approve-plan",
+          "node_id": "run_001:approve-plan",
+          "status": "APPROVED"
+        },
+        {
+          "method": "accretion/gate",
+          "native_request_id": "gate:approve-outcome",
+          "node_id": "run_001:approve-outcome",
+          "status": "APPROVED"
+        }
+      ],
+      "checkpoints": [
+        {
+          "active_node_ids": [
+            "run_001:plan"
+          ],
+          "arrival_edge_key": "initialize-plan",
+          "budget_remaining": null,
+          "checkpoint_id": "chk_001",
+          "graph_revision": 1,
+          "kind": "NODE_BOUNDARY",
+          "loop_cursors": [],
+          "node_statuses": {
+            "act": "PENDING",
+            "approve-outcome": "PENDING",
+            "approve-plan": "PENDING",
+            "complete": "PENDING",
+            "initialize": "SUCCEEDED",
+            "observe": "PENDING",
+            "plan": "PENDING",
+            "verify": "PENDING"
+          },
+          "run_graph_id": "rgr_001",
+          "run_id": "run_001",
+          "run_revision": 2,
+          "run_state": "RUNNING",
+          "schema_version": "1.0",
+          "sequence": 5,
+          "side_effect_operation_id": null,
+          "version": "checkpoint-v1",
+          "workspace_diff_sha256": null,
+          "workspace_lease_id": "wsp_001",
+          "workspace_revision": "<digest>"
+        },
+        {
+          "active_node_ids": [
+            "run_001:approve-plan"
+          ],
+          "arrival_edge_key": "plan-approve-plan",
+          "budget_remaining": null,
+          "checkpoint_id": "chk_002",
+          "graph_revision": 1,
+          "kind": "NODE_BOUNDARY",
+          "loop_cursors": [],
+          "node_statuses": {
+            "act": "PENDING",
+            "approve-outcome": "PENDING",
+            "approve-plan": "PENDING",
+            "complete": "PENDING",
+            "initialize": "SUCCEEDED",
+            "observe": "PENDING",
+            "plan": "SUCCEEDED",
+            "verify": "PENDING"
+          },
+          "run_graph_id": "rgr_001",
+          "run_id": "run_001",
+          "run_revision": 2,
+          "run_state": "RUNNING",
+          "schema_version": "1.0",
+          "sequence": 11,
+          "side_effect_operation_id": null,
+          "version": "checkpoint-v1",
+          "workspace_diff_sha256": null,
+          "workspace_lease_id": "wsp_001",
+          "workspace_revision": "<digest>"
+        },
+        {
+          "active_node_ids": [
+            "run_001:act"
+          ],
+          "arrival_edge_key": "approve-plan-act",
+          "budget_remaining": null,
+          "checkpoint_id": "chk_003",
+          "graph_revision": 1,
+          "kind": "NODE_BOUNDARY",
+          "loop_cursors": [],
+          "node_statuses": {
+            "act": "PENDING",
+            "approve-outcome": "PENDING",
+            "approve-plan": "SUCCEEDED",
+            "complete": "PENDING",
+            "initialize": "SUCCEEDED",
+            "observe": "PENDING",
+            "plan": "SUCCEEDED",
+            "verify": "PENDING"
+          },
+          "run_graph_id": "rgr_001",
+          "run_id": "run_001",
+          "run_revision": 2,
+          "run_state": "RUNNING",
+          "schema_version": "1.0",
+          "sequence": 16,
+          "side_effect_operation_id": null,
+          "version": "checkpoint-v1",
+          "workspace_diff_sha256": null,
+          "workspace_lease_id": "wsp_001",
+          "workspace_revision": "<digest>"
+        },
+        {
+          "active_node_ids": [
+            "run_001:observe"
+          ],
+          "arrival_edge_key": "act-observe",
+          "budget_remaining": null,
+          "checkpoint_id": "chk_004",
+          "graph_revision": 1,
+          "kind": "NODE_BOUNDARY",
+          "loop_cursors": [],
+          "node_statuses": {
+            "act": "SUCCEEDED",
+            "approve-outcome": "PENDING",
+            "approve-plan": "SUCCEEDED",
+            "complete": "PENDING",
+            "initialize": "SUCCEEDED",
+            "observe": "PENDING",
+            "plan": "SUCCEEDED",
+            "verify": "PENDING"
+          },
+          "run_graph_id": "rgr_001",
+          "run_id": "run_001",
+          "run_revision": 2,
+          "run_state": "RUNNING",
+          "schema_version": "1.0",
+          "sequence": 22,
+          "side_effect_operation_id": null,
+          "version": "checkpoint-v1",
+          "workspace_diff_sha256": null,
+          "workspace_lease_id": "wsp_001",
+          "workspace_revision": "<digest>"
+        },
+        {
+          "active_node_ids": [
+            "run_001:verify"
+          ],
+          "arrival_edge_key": "observe-verify",
+          "budget_remaining": null,
+          "checkpoint_id": "chk_005",
+          "graph_revision": 1,
+          "kind": "NODE_BOUNDARY",
+          "loop_cursors": [],
+          "node_statuses": {
+            "act": "SUCCEEDED",
+            "approve-outcome": "PENDING",
+            "approve-plan": "SUCCEEDED",
+            "complete": "PENDING",
+            "initialize": "SUCCEEDED",
+            "observe": "SUCCEEDED",
+            "plan": "SUCCEEDED",
+            "verify": "PENDING"
+          },
+          "run_graph_id": "rgr_001",
+          "run_id": "run_001",
+          "run_revision": 2,
+          "run_state": "RUNNING",
+          "schema_version": "1.0",
+          "sequence": 25,
+          "side_effect_operation_id": null,
+          "version": "checkpoint-v1",
+          "workspace_diff_sha256": null,
+          "workspace_lease_id": "wsp_001",
+          "workspace_revision": "<digest>"
+        },
+        {
+          "active_node_ids": [
+            "run_001:approve-outcome"
+          ],
+          "arrival_edge_key": "verify-approve-outcome",
+          "budget_remaining": null,
+          "checkpoint_id": "chk_006",
+          "graph_revision": 1,
+          "kind": "NODE_BOUNDARY",
+          "loop_cursors": [],
+          "node_statuses": {
+            "act": "SUCCEEDED",
+            "approve-outcome": "PENDING",
+            "approve-plan": "SUCCEEDED",
+            "complete": "PENDING",
+            "initialize": "SUCCEEDED",
+            "observe": "SUCCEEDED",
+            "plan": "SUCCEEDED",
+            "verify": "SUCCEEDED"
+          },
+          "run_graph_id": "rgr_001",
+          "run_id": "run_001",
+          "run_revision": 2,
+          "run_state": "RUNNING",
+          "schema_version": "1.0",
+          "sequence": 34,
+          "side_effect_operation_id": null,
+          "version": "checkpoint-v1",
+          "workspace_diff_sha256": null,
+          "workspace_lease_id": "wsp_001",
+          "workspace_revision": "<digest>"
+        },
+        {
+          "active_node_ids": [
+            "run_001:complete"
+          ],
+          "arrival_edge_key": "approve-outcome-complete-approved",
+          "budget_remaining": null,
+          "checkpoint_id": "chk_007",
+          "graph_revision": 1,
+          "kind": "NODE_BOUNDARY",
+          "loop_cursors": [],
+          "node_statuses": {
+            "act": "SUCCEEDED",
+            "approve-outcome": "SUCCEEDED",
+            "approve-plan": "SUCCEEDED",
+            "complete": "PENDING",
+            "initialize": "SUCCEEDED",
+            "observe": "SUCCEEDED",
+            "plan": "SUCCEEDED",
+            "verify": "SUCCEEDED"
+          },
+          "run_graph_id": "rgr_001",
+          "run_id": "run_001",
+          "run_revision": 2,
+          "run_state": "RUNNING",
+          "schema_version": "1.0",
+          "sequence": 39,
+          "side_effect_operation_id": null,
+          "version": "checkpoint-v1",
+          "workspace_diff_sha256": null,
+          "workspace_lease_id": "wsp_001",
+          "workspace_revision": "<digest>"
+        }
+      ],
+      "events": [
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/run-created",
+          "node_id": null,
+          "normalized_type": "RUN_CREATED",
+          "payload": {
+            "acceptance_policy_id": "acp_001",
+            "execution_mode": "GRAPH",
+            "run_graph_id": "rgr_001",
+            "strategy_decision_id": "dec_001",
+            "template_checksum": "<digest>",
+            "template_record_id": "wft_001",
+            "workflow_template_id": "fixed-graph-v1"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 1,
+          "session_id": "ses_pending"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/run-started",
+          "node_id": null,
+          "normalized_type": "RUN_STARTED",
+          "payload": {},
+          "provider": "DETERMINISTIC",
+          "sequence": 2,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-entered",
+          "node_id": "run_001:initialize",
+          "normalized_type": "NODE_ENTERED",
+          "payload": {
+            "status": "RUNNING"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 3,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-exited",
+          "node_id": "run_001:initialize",
+          "normalized_type": "NODE_EXITED",
+          "payload": {
+            "status": "SUCCEEDED"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 4,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/checkpoint-saved",
+          "node_id": "run_001:plan",
+          "normalized_type": "CHECKPOINT_SAVED",
+          "payload": {
+            "active_node_ids": [
+              "run_001:plan"
+            ],
+            "checkpoint_id": "chk_001",
+            "kind": "NODE_BOUNDARY",
+            "run_graph_id": "rgr_001"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 5,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-entered",
+          "node_id": "run_001:plan",
+          "normalized_type": "NODE_ENTERED",
+          "payload": {
+            "entered_via": "initialize-plan",
+            "status": "RUNNING"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 6,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "fake-p2-v1",
+          "native_type": "fake/call-started",
+          "node_id": "run_001:plan",
+          "normalized_type": "RUNTIME_CALL_STARTED",
+          "payload": {
+            "directive": {
+              "evidence_refs": [],
+              "findings": [],
+              "kind": "INITIAL",
+              "objective": "Apply a high-risk change with plan and outcome approval.\n\nProduce an explicit written plan artifact for the requested change before any modification is made.",
+              "previous_iteration_id": null,
+              "schema_version": "1.0"
+            },
+            "iteration_number": 1,
+            "objective": "Apply a high-risk change with plan and outcome approval.\n\nProduce an explicit written plan artifact for the requested change before any modification is made.",
+            "runtime_call_id": "rtc_001"
+          },
+          "provider": "FAKE",
+          "sequence": 7,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "fake-p2-v1",
+          "native_type": "fake/progress",
+          "node_id": "run_001:plan",
+          "normalized_type": "RUN_PROGRESS",
+          "payload": {
+            "directive": {
+              "evidence_refs": [],
+              "findings": [],
+              "kind": "INITIAL",
+              "objective": "Apply a high-risk change with plan and outcome approval.\n\nProduce an explicit written plan artifact for the requested change before any modification is made.",
+              "previous_iteration_id": null,
+              "schema_version": "1.0"
+            },
+            "iteration_number": 1,
+            "message": "fake runtime executing",
+            "runtime_call_id": "rtc_001"
+          },
+          "provider": "FAKE",
+          "sequence": 8,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "fake-p2-v1",
+          "native_type": "fake/call-terminal",
+          "node_id": "run_001:plan",
+          "normalized_type": "RUNTIME_CALL_COMPLETED",
+          "payload": {
+            "directive": {
+              "evidence_refs": [],
+              "findings": [],
+              "kind": "INITIAL",
+              "objective": "Apply a high-risk change with plan and outcome approval.\n\nProduce an explicit written plan artifact for the requested change before any modification is made.",
+              "previous_iteration_id": null,
+              "schema_version": "1.0"
+            },
+            "iteration_number": 1,
+            "runtime_call_id": "rtc_001",
+            "status": "completed"
+          },
+          "provider": "FAKE",
+          "sequence": 9,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-exited",
+          "node_id": "run_001:plan",
+          "normalized_type": "NODE_EXITED",
+          "payload": {
+            "status": "SUCCEEDED"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 10,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/checkpoint-saved",
+          "node_id": "run_001:approve-plan",
+          "normalized_type": "CHECKPOINT_SAVED",
+          "payload": {
+            "active_node_ids": [
+              "run_001:approve-plan"
+            ],
+            "checkpoint_id": "chk_002",
+            "kind": "NODE_BOUNDARY",
+            "run_graph_id": "rgr_001"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 11,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-entered",
+          "node_id": "run_001:approve-plan",
+          "normalized_type": "NODE_ENTERED",
+          "payload": {
+            "entered_via": "plan-approve-plan",
+            "status": "RUNNING"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 12,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/gate-approval-required",
+          "node_id": "run_001:approve-plan",
+          "normalized_type": "APPROVAL_REQUIRED",
+          "payload": {
+            "approval_id": "apr_001",
+            "gate_id": "plan-approval",
+            "summary": "Approve the proposed plan before execution."
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 13,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/gate-approval-resolved",
+          "node_id": "run_001:approve-plan",
+          "normalized_type": "APPROVAL_RESOLVED",
+          "payload": {
+            "approval_id": "apr_001",
+            "decision": "APPROVE",
+            "gate_id": "plan-approval"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 14,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-exited",
+          "node_id": "run_001:approve-plan",
+          "normalized_type": "NODE_EXITED",
+          "payload": {
+            "status": "SUCCEEDED"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 15,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/checkpoint-saved",
+          "node_id": "run_001:act",
+          "normalized_type": "CHECKPOINT_SAVED",
+          "payload": {
+            "active_node_ids": [
+              "run_001:act"
+            ],
+            "checkpoint_id": "chk_003",
+            "kind": "NODE_BOUNDARY",
+            "run_graph_id": "rgr_001"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 16,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-entered",
+          "node_id": "run_001:act",
+          "normalized_type": "NODE_ENTERED",
+          "payload": {
+            "entered_via": "approve-plan-act",
+            "status": "RUNNING"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 17,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "fake-p2-v1",
+          "native_type": "fake/call-started",
+          "node_id": "run_001:act",
+          "normalized_type": "RUNTIME_CALL_STARTED",
+          "payload": {
+            "directive": {
+              "evidence_refs": [],
+              "findings": [],
+              "kind": "INITIAL",
+              "objective": "Apply a high-risk change with plan and outcome approval.",
+              "previous_iteration_id": null,
+              "schema_version": "1.0"
+            },
+            "iteration_number": 1,
+            "objective": "Apply a high-risk change with plan and outcome approval.",
+            "runtime_call_id": "rtc_002"
+          },
+          "provider": "FAKE",
+          "sequence": 18,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "fake-p2-v1",
+          "native_type": "fake/progress",
+          "node_id": "run_001:act",
+          "normalized_type": "RUN_PROGRESS",
+          "payload": {
+            "directive": {
+              "evidence_refs": [],
+              "findings": [],
+              "kind": "INITIAL",
+              "objective": "Apply a high-risk change with plan and outcome approval.",
+              "previous_iteration_id": null,
+              "schema_version": "1.0"
+            },
+            "iteration_number": 1,
+            "message": "fake runtime executing",
+            "runtime_call_id": "rtc_002"
+          },
+          "provider": "FAKE",
+          "sequence": 19,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "fake-p2-v1",
+          "native_type": "fake/call-terminal",
+          "node_id": "run_001:act",
+          "normalized_type": "RUNTIME_CALL_COMPLETED",
+          "payload": {
+            "directive": {
+              "evidence_refs": [],
+              "findings": [],
+              "kind": "INITIAL",
+              "objective": "Apply a high-risk change with plan and outcome approval.",
+              "previous_iteration_id": null,
+              "schema_version": "1.0"
+            },
+            "iteration_number": 1,
+            "runtime_call_id": "rtc_002",
+            "status": "completed"
+          },
+          "provider": "FAKE",
+          "sequence": 20,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-exited",
+          "node_id": "run_001:act",
+          "normalized_type": "NODE_EXITED",
+          "payload": {
+            "status": "SUCCEEDED"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 21,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/checkpoint-saved",
+          "node_id": "run_001:observe",
+          "normalized_type": "CHECKPOINT_SAVED",
+          "payload": {
+            "active_node_ids": [
+              "run_001:observe"
+            ],
+            "checkpoint_id": "chk_004",
+            "kind": "NODE_BOUNDARY",
+            "run_graph_id": "rgr_001"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 22,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-entered",
+          "node_id": "run_001:observe",
+          "normalized_type": "NODE_ENTERED",
+          "payload": {
+            "entered_via": "act-observe",
+            "status": "RUNNING"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 23,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-exited",
+          "node_id": "run_001:observe",
+          "normalized_type": "NODE_EXITED",
+          "payload": {
+            "status": "SUCCEEDED"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 24,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/checkpoint-saved",
+          "node_id": "run_001:verify",
+          "normalized_type": "CHECKPOINT_SAVED",
+          "payload": {
+            "active_node_ids": [
+              "run_001:verify"
+            ],
+            "checkpoint_id": "chk_005",
+            "kind": "NODE_BOUNDARY",
+            "run_graph_id": "rgr_001"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 25,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-entered",
+          "node_id": "run_001:verify",
+          "normalized_type": "NODE_ENTERED",
+          "payload": {
+            "entered_via": "observe-verify",
+            "status": "RUNNING"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 26,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/verification-started",
+          "node_id": "run_001:verify",
+          "normalized_type": "VERIFICATION_STARTED",
+          "payload": {
+            "iteration_id": null,
+            "verifier_id": "output-contract"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 27,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/verification-result",
+          "node_id": "run_001:verify",
+          "normalized_type": "VERIFICATION_RESULT",
+          "payload": {
+            "status": "PASS",
+            "verification_id": "ver_001",
+            "verifier_id": "output-contract"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 28,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/verification-started",
+          "node_id": "run_001:verify",
+          "normalized_type": "VERIFICATION_STARTED",
+          "payload": {
+            "iteration_id": null,
+            "verifier_id": "trajectory-policy"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 29,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/verification-result",
+          "node_id": "run_001:verify",
+          "normalized_type": "VERIFICATION_RESULT",
+          "payload": {
+            "status": "PASS",
+            "verification_id": "ver_002",
+            "verifier_id": "trajectory-policy"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 30,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/verification-started",
+          "node_id": "run_001:verify",
+          "normalized_type": "VERIFICATION_STARTED",
+          "payload": {
+            "iteration_id": null,
+            "verifier_id": "git-diff"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 31,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/verification-result",
+          "node_id": "run_001:verify",
+          "normalized_type": "VERIFICATION_RESULT",
+          "payload": {
+            "status": "PASS",
+            "verification_id": "ver_003",
+            "verifier_id": "git-diff"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 32,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-exited",
+          "node_id": "run_001:verify",
+          "normalized_type": "NODE_EXITED",
+          "payload": {
+            "status": "SUCCEEDED"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 33,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/checkpoint-saved",
+          "node_id": "run_001:approve-outcome",
+          "normalized_type": "CHECKPOINT_SAVED",
+          "payload": {
+            "active_node_ids": [
+              "run_001:approve-outcome"
+            ],
+            "checkpoint_id": "chk_006",
+            "kind": "NODE_BOUNDARY",
+            "run_graph_id": "rgr_001"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 34,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-entered",
+          "node_id": "run_001:approve-outcome",
+          "normalized_type": "NODE_ENTERED",
+          "payload": {
+            "entered_via": "verify-approve-outcome",
+            "status": "RUNNING"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 35,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/gate-approval-required",
+          "node_id": "run_001:approve-outcome",
+          "normalized_type": "APPROVAL_REQUIRED",
+          "payload": {
+            "approval_id": "apr_002",
+            "gate_id": "outcome-approval",
+            "summary": "Approve the verified outcome before completion."
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 36,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/gate-approval-resolved",
+          "node_id": "run_001:approve-outcome",
+          "normalized_type": "APPROVAL_RESOLVED",
+          "payload": {
+            "approval_id": "apr_002",
+            "decision": "APPROVE",
+            "gate_id": "outcome-approval"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 37,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-exited",
+          "node_id": "run_001:approve-outcome",
+          "normalized_type": "NODE_EXITED",
+          "payload": {
+            "status": "SUCCEEDED"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 38,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/checkpoint-saved",
+          "node_id": "run_001:complete",
+          "normalized_type": "CHECKPOINT_SAVED",
+          "payload": {
+            "active_node_ids": [
+              "run_001:complete"
+            ],
+            "checkpoint_id": "chk_007",
+            "kind": "NODE_BOUNDARY",
+            "run_graph_id": "rgr_001"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 39,
+          "session_id": "ses_001"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/graph-terminal",
+          "node_id": "run_001:complete",
+          "normalized_type": "RUN_COMPLETED",
+          "payload": {
+            "guard": "ON_APPROVED",
+            "node": "complete",
+            "terminal_state": "SUCCEEDED"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 40,
+          "session_id": "ses_001"
+        }
+      ],
+      "execution_mode": "GRAPH",
+      "last_sequence": 40,
+      "name": "graph-run-to-verified-success",
+      "run_state": "SUCCEEDED",
+      "workflow_template_id": "fixed-graph-v1"
+    },
+    {
+      "approvals": [
+        {
+          "method": "accretion/gate",
+          "native_request_id": "gate:approve-outcome",
+          "node_id": "run_002:approve-outcome",
+          "status": "APPROVED"
+        }
+      ],
+      "checkpoints": [
+        {
+          "active_node_ids": [
+            "run_002:act"
+          ],
+          "arrival_edge_key": "approve-plan-act",
+          "budget_remaining": null,
+          "checkpoint_id": "chk_012",
+          "graph_revision": 1,
+          "kind": "NODE_BOUNDARY",
+          "loop_cursors": [],
+          "node_statuses": {
+            "approve-plan": "SUCCEEDED",
+            "initialize": "SUCCEEDED",
+            "plan": "SUCCEEDED"
+          },
+          "run_graph_id": "rgr_002",
+          "run_id": "run_002",
+          "run_revision": 1,
+          "run_state": "RUNNING",
+          "schema_version": "1.0",
+          "sequence": 0,
+          "side_effect_operation_id": null,
+          "version": "checkpoint-v1",
+          "workspace_diff_sha256": null,
+          "workspace_lease_id": "wsp_002",
+          "workspace_revision": "<digest>"
+        },
+        {
+          "active_node_ids": [
+            "run_002:observe"
+          ],
+          "arrival_edge_key": "act-observe",
+          "budget_remaining": null,
+          "checkpoint_id": "chk_008",
+          "graph_revision": 1,
+          "kind": "NODE_BOUNDARY",
+          "loop_cursors": [],
+          "node_statuses": {
+            "act": "SUCCEEDED",
+            "approve-outcome": "PENDING",
+            "approve-plan": "SUCCEEDED",
+            "complete": "PENDING",
+            "initialize": "SUCCEEDED",
+            "observe": "PENDING",
+            "plan": "SUCCEEDED",
+            "verify": "PENDING"
+          },
+          "run_graph_id": "rgr_002",
+          "run_id": "run_002",
+          "run_revision": 4,
+          "run_state": "RUNNING",
+          "schema_version": "1.0",
+          "sequence": 7,
+          "side_effect_operation_id": null,
+          "version": "checkpoint-v1",
+          "workspace_diff_sha256": null,
+          "workspace_lease_id": "wsp_002",
+          "workspace_revision": "<digest>"
+        },
+        {
+          "active_node_ids": [
+            "run_002:verify"
+          ],
+          "arrival_edge_key": "observe-verify",
+          "budget_remaining": null,
+          "checkpoint_id": "chk_009",
+          "graph_revision": 1,
+          "kind": "NODE_BOUNDARY",
+          "loop_cursors": [],
+          "node_statuses": {
+            "act": "SUCCEEDED",
+            "approve-outcome": "PENDING",
+            "approve-plan": "SUCCEEDED",
+            "complete": "PENDING",
+            "initialize": "SUCCEEDED",
+            "observe": "SUCCEEDED",
+            "plan": "SUCCEEDED",
+            "verify": "PENDING"
+          },
+          "run_graph_id": "rgr_002",
+          "run_id": "run_002",
+          "run_revision": 4,
+          "run_state": "RUNNING",
+          "schema_version": "1.0",
+          "sequence": 10,
+          "side_effect_operation_id": null,
+          "version": "checkpoint-v1",
+          "workspace_diff_sha256": null,
+          "workspace_lease_id": "wsp_002",
+          "workspace_revision": "<digest>"
+        },
+        {
+          "active_node_ids": [
+            "run_002:approve-outcome"
+          ],
+          "arrival_edge_key": "verify-approve-outcome",
+          "budget_remaining": null,
+          "checkpoint_id": "chk_010",
+          "graph_revision": 1,
+          "kind": "NODE_BOUNDARY",
+          "loop_cursors": [],
+          "node_statuses": {
+            "act": "SUCCEEDED",
+            "approve-outcome": "PENDING",
+            "approve-plan": "SUCCEEDED",
+            "complete": "PENDING",
+            "initialize": "SUCCEEDED",
+            "observe": "SUCCEEDED",
+            "plan": "SUCCEEDED",
+            "verify": "SUCCEEDED"
+          },
+          "run_graph_id": "rgr_002",
+          "run_id": "run_002",
+          "run_revision": 4,
+          "run_state": "RUNNING",
+          "schema_version": "1.0",
+          "sequence": 19,
+          "side_effect_operation_id": null,
+          "version": "checkpoint-v1",
+          "workspace_diff_sha256": null,
+          "workspace_lease_id": "wsp_002",
+          "workspace_revision": "<digest>"
+        },
+        {
+          "active_node_ids": [
+            "run_002:complete"
+          ],
+          "arrival_edge_key": "approve-outcome-complete-approved",
+          "budget_remaining": null,
+          "checkpoint_id": "chk_011",
+          "graph_revision": 1,
+          "kind": "NODE_BOUNDARY",
+          "loop_cursors": [],
+          "node_statuses": {
+            "act": "SUCCEEDED",
+            "approve-outcome": "SUCCEEDED",
+            "approve-plan": "SUCCEEDED",
+            "complete": "PENDING",
+            "initialize": "SUCCEEDED",
+            "observe": "SUCCEEDED",
+            "plan": "SUCCEEDED",
+            "verify": "SUCCEEDED"
+          },
+          "run_graph_id": "rgr_002",
+          "run_id": "run_002",
+          "run_revision": 4,
+          "run_state": "RUNNING",
+          "schema_version": "1.0",
+          "sequence": 23,
+          "side_effect_operation_id": null,
+          "version": "checkpoint-v1",
+          "workspace_diff_sha256": null,
+          "workspace_lease_id": "wsp_002",
+          "workspace_revision": "<digest>"
+        }
+      ],
+      "events": [
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/run-resumed",
+          "node_id": null,
+          "normalized_type": "RUN_RESUMED",
+          "payload": {},
+          "provider": "DETERMINISTIC",
+          "sequence": 1,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-entered",
+          "node_id": "run_002:act",
+          "normalized_type": "NODE_ENTERED",
+          "payload": {
+            "entered_via": "approve-plan-act",
+            "status": "RUNNING"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 2,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "fake-p2-v1",
+          "native_type": "fake/call-started",
+          "node_id": "run_002:act",
+          "normalized_type": "RUNTIME_CALL_STARTED",
+          "payload": {
+            "directive": {
+              "evidence_refs": [],
+              "findings": [],
+              "kind": "INITIAL",
+              "objective": "Apply a high-risk change with plan and outcome approval.",
+              "previous_iteration_id": null,
+              "schema_version": "1.0"
+            },
+            "iteration_number": 1,
+            "objective": "Apply a high-risk change with plan and outcome approval.",
+            "runtime_call_id": "rtc_003"
+          },
+          "provider": "FAKE",
+          "sequence": 3,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "fake-p2-v1",
+          "native_type": "fake/progress",
+          "node_id": "run_002:act",
+          "normalized_type": "RUN_PROGRESS",
+          "payload": {
+            "directive": {
+              "evidence_refs": [],
+              "findings": [],
+              "kind": "INITIAL",
+              "objective": "Apply a high-risk change with plan and outcome approval.",
+              "previous_iteration_id": null,
+              "schema_version": "1.0"
+            },
+            "iteration_number": 1,
+            "message": "fake runtime executing",
+            "runtime_call_id": "rtc_003"
+          },
+          "provider": "FAKE",
+          "sequence": 4,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "fake-p2-v1",
+          "native_type": "fake/call-terminal",
+          "node_id": "run_002:act",
+          "normalized_type": "RUNTIME_CALL_COMPLETED",
+          "payload": {
+            "directive": {
+              "evidence_refs": [],
+              "findings": [],
+              "kind": "INITIAL",
+              "objective": "Apply a high-risk change with plan and outcome approval.",
+              "previous_iteration_id": null,
+              "schema_version": "1.0"
+            },
+            "iteration_number": 1,
+            "runtime_call_id": "rtc_003",
+            "status": "completed"
+          },
+          "provider": "FAKE",
+          "sequence": 5,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-exited",
+          "node_id": "run_002:act",
+          "normalized_type": "NODE_EXITED",
+          "payload": {
+            "status": "SUCCEEDED"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 6,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/checkpoint-saved",
+          "node_id": "run_002:observe",
+          "normalized_type": "CHECKPOINT_SAVED",
+          "payload": {
+            "active_node_ids": [
+              "run_002:observe"
+            ],
+            "checkpoint_id": "chk_008",
+            "kind": "NODE_BOUNDARY",
+            "run_graph_id": "rgr_002"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 7,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-entered",
+          "node_id": "run_002:observe",
+          "normalized_type": "NODE_ENTERED",
+          "payload": {
+            "entered_via": "act-observe",
+            "status": "RUNNING"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 8,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-exited",
+          "node_id": "run_002:observe",
+          "normalized_type": "NODE_EXITED",
+          "payload": {
+            "status": "SUCCEEDED"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 9,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/checkpoint-saved",
+          "node_id": "run_002:verify",
+          "normalized_type": "CHECKPOINT_SAVED",
+          "payload": {
+            "active_node_ids": [
+              "run_002:verify"
+            ],
+            "checkpoint_id": "chk_009",
+            "kind": "NODE_BOUNDARY",
+            "run_graph_id": "rgr_002"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 10,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-entered",
+          "node_id": "run_002:verify",
+          "normalized_type": "NODE_ENTERED",
+          "payload": {
+            "entered_via": "observe-verify",
+            "status": "RUNNING"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 11,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/verification-started",
+          "node_id": "run_002:verify",
+          "normalized_type": "VERIFICATION_STARTED",
+          "payload": {
+            "iteration_id": null,
+            "verifier_id": "output-contract"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 12,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/verification-result",
+          "node_id": "run_002:verify",
+          "normalized_type": "VERIFICATION_RESULT",
+          "payload": {
+            "status": "PASS",
+            "verification_id": "ver_004",
+            "verifier_id": "output-contract"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 13,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/verification-started",
+          "node_id": "run_002:verify",
+          "normalized_type": "VERIFICATION_STARTED",
+          "payload": {
+            "iteration_id": null,
+            "verifier_id": "git-diff"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 14,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/verification-result",
+          "node_id": "run_002:verify",
+          "normalized_type": "VERIFICATION_RESULT",
+          "payload": {
+            "status": "PASS",
+            "verification_id": "ver_005",
+            "verifier_id": "git-diff"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 15,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/verification-started",
+          "node_id": "run_002:verify",
+          "normalized_type": "VERIFICATION_STARTED",
+          "payload": {
+            "iteration_id": null,
+            "verifier_id": "trajectory-policy"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 16,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/verification-result",
+          "node_id": "run_002:verify",
+          "normalized_type": "VERIFICATION_RESULT",
+          "payload": {
+            "status": "PASS",
+            "verification_id": "ver_006",
+            "verifier_id": "trajectory-policy"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 17,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-exited",
+          "node_id": "run_002:verify",
+          "normalized_type": "NODE_EXITED",
+          "payload": {
+            "status": "SUCCEEDED"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 18,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/checkpoint-saved",
+          "node_id": "run_002:approve-outcome",
+          "normalized_type": "CHECKPOINT_SAVED",
+          "payload": {
+            "active_node_ids": [
+              "run_002:approve-outcome"
+            ],
+            "checkpoint_id": "chk_010",
+            "kind": "NODE_BOUNDARY",
+            "run_graph_id": "rgr_002"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 19,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-entered",
+          "node_id": "run_002:approve-outcome",
+          "normalized_type": "NODE_ENTERED",
+          "payload": {
+            "entered_via": "verify-approve-outcome",
+            "status": "RUNNING"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 20,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/gate-approval-resolved",
+          "node_id": "run_002:approve-outcome",
+          "normalized_type": "APPROVAL_RESOLVED",
+          "payload": {
+            "approval_id": "apr_003",
+            "decision": "APPROVE",
+            "gate_id": "outcome-approval"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 21,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/node-exited",
+          "node_id": "run_002:approve-outcome",
+          "normalized_type": "NODE_EXITED",
+          "payload": {
+            "status": "SUCCEEDED"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 22,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/checkpoint-saved",
+          "node_id": "run_002:complete",
+          "normalized_type": "CHECKPOINT_SAVED",
+          "payload": {
+            "active_node_ids": [
+              "run_002:complete"
+            ],
+            "checkpoint_id": "chk_011",
+            "kind": "NODE_BOUNDARY",
+            "run_graph_id": "rgr_002"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 23,
+          "session_id": "ses_002"
+        },
+        {
+          "adapter_version": "control-plane-p2-v1",
+          "native_type": "accretion/graph-terminal",
+          "node_id": "run_002:complete",
+          "normalized_type": "RUN_COMPLETED",
+          "payload": {
+            "guard": "ON_APPROVED",
+            "node": "complete",
+            "terminal_state": "SUCCEEDED"
+          },
+          "provider": "DETERMINISTIC",
+          "sequence": 24,
+          "session_id": "ses_002"
+        }
+      ],
+      "execution_mode": "GRAPH",
+      "last_sequence": 24,
+      "name": "interrupted-run-resumed",
+      "run_state": "SUCCEEDED",
+      "workflow_template_id": "fixed-graph-v1"
+    }
+  ],
+  "version": "v04-seam-1"
+}

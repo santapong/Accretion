@@ -1,0 +1,63 @@
+{
+  "agreement": true,
+  "comparison_notes": "Shadow and executed decisions selected the same tuple.",
+  "content_hash": "1db73e6020ceb264d62fe5ea034fb2c17b4752af437ccf358334850f434e17f9",
+  "contract_id": "shd_C12YJCNZBTPJQA17MNG4GJ2E59",
+  "contract_type": "accretion.shadow-decision",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "evaluated_at": "2026-03-01T09:20:00Z",
+  "executed_configuration_hash": "73828f6546f6e3b4730d76d7cf0530c39e50d9b0c6b605e42c52148ff6c91a44",
+  "executed_receipt_id": "rcp_YPW2A7XZVADFSDVJS4DGZHEK47",
+  "labels": {
+    "owner": "routing-platform",
+    "tier": "gold"
+  },
+  "objective_contract_ref": {
+    "approved_at": "2026-02-01T08:00:00Z",
+    "approved_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "content_hash": "eeb604d2b673fc4518f6cc1028e1a3d67f72cc7ccd2110ce36b2c2f978371de9",
+    "contract_id": "objective-contract-ref-embedded",
+    "contract_type": "accretion.objective-contract-ref",
+    "created_at": "2026-03-01T09:00:00Z",
+    "created_by": {
+      "display_name": "v0.4 contract freeze fixture",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "labels": {},
+    "objective_contract_hash": "13f224df431229df61136c206eb2a5857df8c6a2907a3c3697192210aafc0ad4",
+    "objective_contract_id": "obj_HQ5A32JBQ5CTEZTZWCVPPPQ4JM",
+    "objective_contract_ref": null,
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": null,
+    "revision": 3,
+    "risk_policy": {
+      "content_digest": "b941fb5563b0aabec00a46d9150fff0d85e017346a26e12467ecdb80ffa458fd",
+      "policy_id": "workspace-risk-policy",
+      "version": "3.1.0"
+    },
+    "schema_version": "1.0.0",
+    "supersedes_contract_id": null,
+    "utility_profile_id": "balanced-delivery",
+    "verified_success_floor": 0.9,
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "projected_utility_delta": 0.018,
+  "retention_class": "STANDARD",
+  "schema_version": "1.0.0",
+  "shadow_configuration_hash": "73828f6546f6e3b4730d76d7cf0530c39e50d9b0c6b605e42c52148ff6c91a44",
+  "shadow_receipt_id": "rcp_FQ639X9EJVHQ0BQDB279RN8DXX",
+  "shadow_router_version_id": "rmv_2KPQMJ4VCETFFK2Z973NZSM3NV",
+  "supersedes_contract_id": "shd_5A1XFJDG7KB9FG928CAVJX8XX5",
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

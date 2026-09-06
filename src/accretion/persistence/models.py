@@ -16,7 +16,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
 
 
 class Base(DeclarativeBase):
@@ -1338,3 +1338,797 @@ class SearchPromotionRow(Base):
     )
 
     __table_args__ = (Index("ix_search_promotions_run", "run_id", "created_at"),)
+
+
+# ---------------------------------------------------------------------------
+# v0.4 M0 — the routing contract family (SDD v0.4 §13, ADR-058)
+#
+# Fifteen additive tables, created by migration ``0017_v04_m0_routing_contracts``
+# and touched by nothing before it. They share one row shape, declared once in
+# ``V04ContractRow`` below, because they share one guarantee: every row is a
+# sealed ``CanonicalContract`` document (registry §3) that is written once and
+# never updated.
+#
+# There is no ``updated_at`` on any of them, and no store method that could set
+# one. These tables are append-only by construction (ADR-058).
+# ---------------------------------------------------------------------------
+
+
+class V04ContractRow(Base):
+    """The registry §3 header, as columns. Abstract: it maps no table of its own.
+
+    Every v0.4 contract carries the same eight header fields, and every one of the
+    fifteen §13 tables therefore stores the same seven columns beside whatever it
+    promotes for itself. Declaring them fifteen times would have been fifteen chances
+    to get one of them subtly wrong — a nullable that should not be, a ``String(40)``
+    where the id is longer, a missing timezone on a timestamp — and the store's
+    read/write helpers would then have had nothing common to be written against, which
+    is how ``MemoryStore`` and ``PostgresStore`` drift apart.
+
+    ``id``
+        The ADR-055 prefixed id, which *is* the contract's ``contract_id``. There is no
+        second surrogate key: a v0.4 record already carries a globally unique opaque id
+        before it reaches the store, and minting another one would create a second
+        answer to "which row is this receipt", which registry §16's provenance chain
+        cannot tolerate.
+    ``workspace_id``
+        Promoted because every ``list_`` scopes on it.
+    ``project_id``
+        Nullable exactly where the contract sets ``PROJECT_SCOPED = False`` (the three
+        router-scoped records). A foreign key to ``projects.id`` with
+        ``ondelete="RESTRICT"`` — never ``CASCADE``: §13.1's last bullet and registry
+        §16 both forbid a project deletion from silently erasing the evidence that
+        explains why a decision was made. It is a ``declared_attr`` because a
+        ``ForeignKey`` object belongs to exactly one table and cannot be shared by
+        fifteen.
+    ``content_hash``
+        The ADR-056 digest the contract sealed itself with, promoted so the store can
+        refuse a duplicate document under a new id without deserialising every row.
+    ``schema_version``
+        Registry §3 semver, promoted because §13.1's uniqueness rule is over the
+        *tuple* (hash, version), not the hash alone.
+    ``supersedes_contract_id``
+        Registry §3 header. A revision is a new row that points at the row it replaces;
+        nothing is ever edited in place (registry §17: "historical records are never
+        rewritten in place"). Promoted on every table rather than only the three that
+        also carry an integer ``revision``, because walking a supersession chain is a
+        query, and a query against a JSON blob is a table scan.
+    ``payload``
+        The whole contract as ``model_dump(mode="json")``. Reads reconstruct through
+        ``model_validate`` and never assemble a contract from the promoted columns,
+        which exist only to be queried and indexed.
+    ``created_at``
+        Timezone-aware, mirroring the header.
+
+    Subclasses add the §13 key columns they are queried by, their own
+    ``UniqueConstraint("content_hash", "schema_version")`` — the constraint cannot live
+    here, because a named constraint on an abstract base would try to give fifteen
+    tables the same constraint name — and their own indexes.
+    """
+
+    __abstract__ = True
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(64))
+    content_hash: Mapped[str] = mapped_column(String(64))
+    schema_version: Mapped[str] = mapped_column(String(32))
+    supersedes_contract_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    @declared_attr
+    @classmethod
+    def project_id(cls) -> Mapped[str | None]:
+        return mapped_column(ForeignKey("projects.id", ondelete="RESTRICT"), nullable=True)
+
+
+class ObjectiveContractRow(V04ContractRow):
+    """SDD §7.1 objective contract. Append-only; a revision is a new row.
+
+    ``revision`` is promoted beside ``supersedes_contract_id`` because the two answer
+    different questions — "which generation is this" and "which exact row did it
+    replace" — and an objective contract that was approved twice at the same revision
+    number is a governance incident rather than a merge.
+    """
+
+    __tablename__ = "objective_contracts"
+
+    revision: Mapped[int] = mapped_column(Integer)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_objective_contracts_hash_version"
+        ),
+        Index("ix_objective_contracts_project_created", "project_id", "created_at"),
+        Index("ix_objective_contracts_workspace_created", "workspace_id", "created_at"),
+        Index("ix_objective_contracts_supersedes", "supersedes_contract_id"),
+    )
+
+
+class NodeContractRow(V04ContractRow):
+    """SDD §7.2 node contract. §13 asks for "ID, project, graph revision, hash, JSON,
+    immutable flag".
+
+    ``immutable_hash`` is the contract's *derived* digest — the identity a routing
+    receipt pins and a compatibility decision is evaluated against — and is distinct
+    from ``content_hash``, which seals the whole document including its header. Both
+    are promoted because M1 and M2 look rows up by either one.
+
+    **Deviation from §13, recorded rather than invented.** §13's key-field list ends with
+    an "immutable flag" and this table promotes no such column. Every row in this family is
+    immutable by construction — there is no ``update_`` or ``delete_`` method for any of
+    the fifteen tables on any of the three store surfaces, and a revision is a new row
+    whose ``supersedes_contract_id`` names its parent — so a boolean column would be
+    ``true`` on every row ever written, and a constant column is a column a later
+    milestone can only get wrong. What a caller actually needs from the flag is the thing
+    that makes the contract immutable, and that is promoted: ``immutable_hash``, the
+    digest M1 pins a compatibility decision to and M2 pins a receipt to.
+    """
+
+    __tablename__ = "node_contracts"
+
+    node_id: Mapped[str] = mapped_column(String(64))
+    run_graph_id: Mapped[str] = mapped_column(String(64))
+    graph_revision: Mapped[int] = mapped_column(Integer)
+    execution_instance_id: Mapped[str] = mapped_column(String(64))
+    immutable_hash: Mapped[str] = mapped_column(String(64))
+
+    __table_args__ = (
+        UniqueConstraint("content_hash", "schema_version", name="uq_node_contracts_hash_version"),
+        Index("ix_node_contracts_project_created", "project_id", "created_at"),
+        Index("ix_node_contracts_workspace_created", "workspace_id", "created_at"),
+        Index("ix_node_contracts_graph_revision", "run_graph_id", "graph_revision"),
+        Index("ix_node_contracts_immutable_hash", "immutable_hash"),
+        Index("ix_node_contracts_supersedes", "supersedes_contract_id"),
+    )
+
+
+class VerificationSpecRow(V04ContractRow):
+    """SDD §7.3 verification specification. §13 asks for "ID, version, hash, JSON"."""
+
+    __tablename__ = "verification_specs"
+
+    revision: Mapped[int] = mapped_column(Integer)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_verification_specs_hash_version"
+        ),
+        Index("ix_verification_specs_project_created", "project_id", "created_at"),
+        Index("ix_verification_specs_workspace_created", "workspace_id", "created_at"),
+        Index("ix_verification_specs_supersedes", "supersedes_contract_id"),
+    )
+
+
+class RoutingRequestRow(V04ContractRow):
+    """SDD §7.4 routing context, stored under §13's name ``routing_requests``.
+
+    The row id *is* §8.2's idempotency key: ``RoutingContext.contract_id`` carries the
+    ``rrq`` prefix, so "repeated requests with identical immutable inputs MUST return
+    the same receipt" is enforceable as a primary-key lookup here plus the unique
+    ``routing_request_id`` on ``routing_receipts`` below.
+
+    The four snapshot ids are promoted together because §8.3's snapshot-consistency rule
+    is a query over all four at once: a request whose registry snapshot moved is a
+    *different* request and must carry a new id.
+
+    **Deviation from §13, recorded rather than invented.** §13's key-field list for this
+    table ends with "status", and there is no status column here. ``RoutingContext``
+    declares no status field — it is a sealed input document, not a state machine — and
+    M0's store is append-only with no update method, so a status column would be one no
+    writer could ever advance. M2 owns the request lifecycle and can add the column
+    additively (registry §3.2 Minor) when it owns something to put in it.
+    """
+
+    __tablename__ = "routing_requests"
+
+    node_contract_id: Mapped[str] = mapped_column(String(64))
+    node_contract_hash: Mapped[str] = mapped_column(String(64))
+    available_runtime_snapshot_id: Mapped[str] = mapped_column(String(64))
+    capability_registry_snapshot_id: Mapped[str] = mapped_column(String(64))
+    connection_availability_snapshot_id: Mapped[str] = mapped_column(String(64))
+    policy_snapshot_id: Mapped[str] = mapped_column(String(64))
+    workspace_router_version: Mapped[str] = mapped_column(String(64))
+    project_adapter_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_routing_requests_hash_version"
+        ),
+        Index("ix_routing_requests_project_created", "project_id", "created_at"),
+        Index("ix_routing_requests_workspace_created", "workspace_id", "created_at"),
+        Index("ix_routing_requests_node_contract", "node_contract_id", "requested_at"),
+        Index("ix_routing_requests_supersedes", "supersedes_contract_id"),
+    )
+
+
+class ConfigurationCandidateRow(V04ContractRow):
+    """SDD §7.6 configuration candidate. §13: "candidate, request, config hash,
+    predictions, eligibility".
+
+    ``configuration_hash`` is lifted out of the embedded ``ExecutionConfiguration``
+    rather than given a table of its own. §13 lists no ``execution_configurations``
+    table and the contract is only ever reachable through the candidate that proposed
+    it, so a separate table would have added a join and a second lifetime to a value
+    that has neither.
+
+    The predictions §13 names stay in ``payload``: they are five ``DistributionEstimate``
+    objects, nothing in v0.4 queries on a confidence bound, and promoting twenty float
+    columns to answer no question would be the opposite of the "promote only what is
+    queried" rule this file follows everywhere else.
+    """
+
+    __tablename__ = "configuration_candidates"
+
+    routing_request_id: Mapped[str] = mapped_column(String(64))
+    configuration_hash: Mapped[str] = mapped_column(String(64))
+    construction_stage: Mapped[str] = mapped_column(String(48))
+    hard_eligible: Mapped[bool] = mapped_column(Boolean)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_config_candidates_hash_version"
+        ),
+        Index("ix_config_candidates_project_created", "project_id", "created_at"),
+        Index("ix_config_candidates_workspace_created", "workspace_id", "created_at"),
+        Index("ix_config_candidates_request_created", "routing_request_id", "created_at"),
+        Index("ix_config_candidates_configuration_hash", "configuration_hash"),
+        Index("ix_config_candidates_supersedes", "supersedes_contract_id"),
+    )
+
+
+class CompatibilityDecisionRow(V04ContractRow):
+    """SDD §7.7 compatibility decision. §13: "candidate, rule, status, reason".
+
+    §13's "candidate" is spelled ``subject_ref`` here and is not always a candidate:
+    ``SubjectType`` ranges over the six configuration layers plus the joint
+    ``CONFIGURATION`` check, so the column has to hold whichever subject the rule
+    judged. Typing it as the candidate id would have made the six per-layer decisions
+    unstorable, which is the majority of them.
+    """
+
+    __tablename__ = "compatibility_decisions"
+
+    subject_type: Mapped[str] = mapped_column(String(32))
+    subject_ref: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(32))
+    rule_id: Mapped[str] = mapped_column(String(64))
+    rule_version: Mapped[str] = mapped_column(String(64))
+    reason_code: Mapped[str] = mapped_column(String(64))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_compat_decisions_hash_version"
+        ),
+        Index("ix_compat_decisions_project_created", "project_id", "created_at"),
+        Index("ix_compat_decisions_workspace_created", "workspace_id", "created_at"),
+        Index("ix_compat_decisions_subject", "subject_type", "subject_ref"),
+        Index("ix_compat_decisions_rule", "rule_id", "rule_version"),
+        Index("ix_compat_decisions_supersedes", "supersedes_contract_id"),
+    )
+
+
+class RoutingReceiptRow(V04ContractRow):
+    """SDD §7.8 routing decision receipt. §13: "receipt, selected config, versions,
+    propensity, decision type".
+
+    ``routing_request_id`` is **unique**, which is §13.1's "one immutable receipt per
+    routing request ID" and §8.2's idempotency guarantee written as a database
+    constraint rather than as a convention. It is the one uniqueness rule in this family
+    that is not about a content digest, and it is the reason a retried dispatch cannot
+    quietly produce a second, differently-argued receipt for the same question.
+
+    ``selection_propensity`` is promoted as a real column because off-policy evaluation
+    reads it in bulk across every receipt in a window; a propensity buried in JSON would
+    make the M4 estimator scan the table.
+    """
+
+    __tablename__ = "routing_receipts"
+
+    routing_request_id: Mapped[str] = mapped_column(String(64), unique=True)
+    node_contract_hash: Mapped[str] = mapped_column(String(64))
+    selected_configuration_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    selected_configuration_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    decision_type: Mapped[str] = mapped_column(String(32))
+    selection_propensity: Mapped[float | None] = mapped_column(Float, nullable=True)
+    workspace_router_version: Mapped[str] = mapped_column(String(64))
+    project_adapter_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_routing_receipts_hash_version"
+        ),
+        Index("ix_routing_receipts_project_created", "project_id", "created_at"),
+        Index("ix_routing_receipts_workspace_created", "workspace_id", "created_at"),
+        Index("ix_routing_receipts_decision_type", "decision_type", "created_at"),
+        Index("ix_routing_receipts_router_version", "workspace_router_version"),
+        Index("ix_routing_receipts_supersedes", "supersedes_contract_id"),
+    )
+
+
+class RoutingOverrideRow(V04ContractRow):
+    """SDD §13 ``routing_overrides``: "receipt, principal, candidate, reason".
+
+    **This is the one table in the family with no frozen contract behind it.** PR2 froze
+    nineteen models and none of them is a routing override: the SDD describes the
+    override only as an API request body (§11.1) and an event payload (§12). M0 may not
+    invent a twentieth contract — that is precisely the drift a freeze exists to prevent —
+    so the table is created now, with §13's four key fields as real columns, and its
+    ``payload`` holds the ADR-056 canonical JSON object that the store hashes into
+    ``content_hash``. Every immutability guarantee the other fourteen tables get, this one
+    gets too; what it does not get is a pydantic model, and M2 — which owns
+    ``POST /routing-decisions/{id}/override`` — is where that model belongs.
+
+    The row still needs an identity, and it gets its own. ``ids.py`` has mapped
+    ``"override" -> "ovr"`` since v0.1, but that kind is minted by ``planning.py`` for the
+    *strategy* override, so reusing it would leave an ``ovr_`` id unable to say which
+    record class or which table it names — and would give M2's ``RoutingOverride.ID_KIND``
+    check a second claimant to accept. This milestone therefore adds a distinct kind,
+    ``"routing_override" -> "rov"``, and that is what ``put_routing_override`` ids are
+    minted from. The stored document's type marker is likewise held outside the frozen
+    ``accretion.<contract>`` namespace; see ``store.ROUTING_OVERRIDE_DOCUMENT_TYPE``.
+
+    The shape of that document is frozen by
+    ``tests/fixtures/records/v0.4/routing_override/minimal.json`` and the digest recorded
+    for it in ``docs/releases/v0.4/m0-freeze.md``, which is how this table gets the same
+    protection against a silent shape change that the fourteen committed schemas get. That
+    file is kept under ``records/`` and out of ``tests/fixtures/contracts/v0.4/`` on
+    purpose: the contract tree holds exactly one directory per frozen contract, and filing
+    a pre-contract record there would re-assert the claim this docstring withdraws.
+
+    ``superseding_receipt_id`` is nullable because §11.1's override endpoint records the
+    human's choice before the replacement receipt is sealed; a non-null value is the link
+    registry §16's provenance chain walks from the overridden decision to the executed one.
+    """
+
+    __tablename__ = "routing_overrides"
+
+    receipt_id: Mapped[str] = mapped_column(String(64))
+    principal_id: Mapped[str] = mapped_column(String(64))
+    candidate_id: Mapped[str] = mapped_column(String(64))
+    reason_code: Mapped[str] = mapped_column(String(64))
+    superseding_receipt_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_routing_overrides_hash_version"
+        ),
+        Index("ix_routing_overrides_project_created", "project_id", "created_at"),
+        Index("ix_routing_overrides_workspace_created", "workspace_id", "created_at"),
+        Index("ix_routing_overrides_receipt_created", "receipt_id", "created_at"),
+        Index("ix_routing_overrides_principal", "principal_id"),
+        Index("ix_routing_overrides_supersedes", "supersedes_contract_id"),
+    )
+
+
+class VerificationResultRow(V04ContractRow):
+    """SDD §7.9 independent verification result, stored under §13's
+    ``verification_results`` — **not** the v0.1 ``verifications`` table (ADR-054 a).
+
+    The two are different records with different owners: ``verifications`` holds the v0.1
+    run/iteration verifier outcome and is API-exposed, this holds the v0.4 independent
+    result whose ``status`` is a ``VerificationState``. ``source_verification_id`` is the
+    link between them, promoted and indexed because reconciling the two is a query M3
+    runs, and nullable because an independent result need not have a v0.1 ancestor.
+
+    **Deviation from §13, recorded rather than invented.** §13 asks for "execution, spec
+    hash, status, claim results" and the first three are columns here; the claim results
+    stay in ``payload``, for the reason ``FailureEventRow`` gives about its evidence list.
+    A column cannot hold a list, and a join table would give the claim results a lifetime
+    independent of the result that reached them — which is exactly what registry §16's
+    provenance chain forbids, because a claim result is only meaningful as part of the
+    sealed document whose ``content_hash`` covers it.
+    """
+
+    __tablename__ = "verification_results"
+
+    execution_instance_id: Mapped[str] = mapped_column(String(64))
+    verification_spec_hash: Mapped[str] = mapped_column(String(64))
+    status: Mapped[str] = mapped_column(String(32))
+    source_verification_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    signed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_verification_results_hash_version"
+        ),
+        Index("ix_verification_results_project_created", "project_id", "created_at"),
+        Index("ix_verification_results_workspace_created", "workspace_id", "created_at"),
+        Index("ix_verification_results_execution", "execution_instance_id", "created_at"),
+        Index("ix_verification_results_source", "source_verification_id"),
+        Index("ix_verification_results_supersedes", "supersedes_contract_id"),
+    )
+
+
+class ExperienceRecordRow(V04ContractRow):
+    """SDD §7.10 experience record — a **projection**, keyed by the v0.2 P7
+    ``experience_id`` (ADR-054 b). §13: "source lineage, signatures, outcomes,
+    visibility, eligibility".
+
+    ``experience_id`` and not ``id`` carries the key into ``experiences`` (migration
+    0020). M0 made the primary key *be* the foreign key, on the reading that a projection
+    and the experience it projects share one identity. That reading is right about the
+    *first* projection and wrong about every one after it: registry §17 and §7.10 model a
+    revision — a recomputed ``attribution`` (§9.6), a contradiction moving OPEN → RESOLVED,
+    a ``final_run_status`` that only arrived once the run finished — as a **new row** with
+    its own derived ``contract_id`` and a ``supersedes_contract_id`` pointing at the row it
+    replaces. Under the old key such a row was unstorable: its id is a fresh ``exp_`` id
+    that names no ``experiences`` row, so PostgreSQL refused exactly the records the
+    contract was designed to produce. Splitting the two columns is what lets the whole
+    revision chain of one experience coexist: every revision carries the same
+    ``experience_id`` and is told apart by its own ``id``.
+
+    ``ExperienceRecord`` declares no field for it — the sealed contract reads everything
+    P7 knows *through* the id it is keyed by — so ``experience_id`` is derived at the store
+    boundary rather than promoted out of the payload, and defaults to ``contract_id``,
+    which is what the root projection of an experience always is.
+
+    ``ondelete="RESTRICT"`` and not ``CASCADE``: §13.1's last bullet says evidence
+    deletion "must not orphan provenance silently", and a routing projection is exactly
+    the provenance that would be orphaned. Retention removes the projection first, on
+    purpose, or it does not remove the experience. Moving the key off the primary key
+    strengthens that rule rather than weakening it: an experience is now pinned by every
+    revision that projects it, not only by the first.
+
+    The four promoted flags — ``visibility``, ``local_verification_status``,
+    ``contradiction_status``, ``eligible_for_learning`` — are the entire eligibility
+    predicate the M4 training-snapshot builder filters on, and it filters over the whole
+    workspace at once.
+    """
+
+    __tablename__ = "experience_records"
+
+    experience_id: Mapped[str] = mapped_column(
+        ForeignKey(
+            "experiences.id",
+            ondelete="RESTRICT",
+            name="fk_experience_records_experience",
+        ),
+        nullable=False,
+    )
+    source_node_execution_id: Mapped[str] = mapped_column(String(64))
+    configuration_hash: Mapped[str] = mapped_column(String(64))
+    visibility: Mapped[str] = mapped_column(String(32))
+    local_verification_status: Mapped[str] = mapped_column(String(32))
+    final_run_status: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    contradiction_status: Mapped[str] = mapped_column(String(32))
+    eligible_for_learning: Mapped[bool] = mapped_column(Boolean)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_experience_records_hash_version"
+        ),
+        Index("ix_experience_records_project_created", "project_id", "created_at"),
+        Index("ix_experience_records_workspace_created", "workspace_id", "created_at"),
+        Index(
+            "ix_experience_records_eligibility",
+            "workspace_id",
+            "visibility",
+            "eligible_for_learning",
+        ),
+        Index("ix_experience_records_configuration_hash", "configuration_hash"),
+        Index("ix_experience_records_supersedes", "supersedes_contract_id"),
+        # Every read of one experience's revision chain filters on this column, and the
+        # foreign key check on ``DELETE FROM experiences`` scans it too. It was free when
+        # the key was the primary key; it is not free now.
+        Index("ix_experience_records_experience_id", "experience_id"),
+    )
+
+
+class FailureEventRow(V04ContractRow):
+    """SDD §7.11 failure event. §13: "execution, taxonomy, owner, evidence".
+
+    §13's "evidence" stays in ``payload`` as a list of typed ``EvidenceRef``; a column
+    cannot hold a list, and the alternative — a join table — would give evidence
+    references a lifetime independent of the event that cited them, which registry §16
+    forbids.
+    """
+
+    __tablename__ = "failure_events"
+
+    execution_instance_id: Mapped[str] = mapped_column(String(64))
+    failure_type: Mapped[str] = mapped_column(String(48))
+    assigned_owner: Mapped[str] = mapped_column(String(48))
+    retryable: Mapped[bool] = mapped_column(Boolean)
+
+    __table_args__ = (
+        UniqueConstraint("content_hash", "schema_version", name="uq_failure_events_hash_version"),
+        Index("ix_failure_events_project_created", "project_id", "created_at"),
+        Index("ix_failure_events_workspace_created", "workspace_id", "created_at"),
+        Index("ix_failure_events_execution", "execution_instance_id", "created_at"),
+        Index("ix_failure_events_taxonomy", "failure_type", "assigned_owner"),
+        Index("ix_failure_events_supersedes", "supersedes_contract_id"),
+    )
+
+
+class RouterModelVersionRow(V04ContractRow):
+    """SDD §7.12 router model version. §13: "scope, artifact digest, lineage, status".
+
+    **This table carried the repository's only two partial unique indexes until M8.1, and
+    carries none now.** M0 read §13.1's third and fourth bullets — "one active workspace
+    router per workspace", "one active adapter per project/router family" — as conditional
+    uniqueness over ``status = 'ACTIVE'`` and expressed them as
+    ``uq_router_versions_active_workspace`` and
+    ``uq_router_versions_active_project_adapter``. The rules are right; that implementation
+    of them composes with nothing. This family has no ``update_`` method on any table, by
+    design, so the first ``ACTIVE`` row could never be retired and a second could never be
+    inserted: a workspace was activatable exactly once, forever, and §10.3's reversible
+    promotion was unreachable. Migration 0019 drops both indexes (ADR-061).
+
+    What replaces them is :class:`RouterActivationRow`, whose
+    ``uq_router_activations_sequence`` over ``(workspace_id, scope, family_key, sequence)``
+    is an ordinary, unconditional unique constraint. "Active" is no longer a value in a
+    column that something has to keep unique; it is *the head of a sequence*, and the
+    active version of a family is the ``router_version_id`` of its highest-numbered
+    activation. Several rows here may therefore be ``ACTIVE`` at once — a retired head and
+    its successor are both real records of what was once serving — and asking this table
+    which one is live is now the wrong question to ask of it.
+
+    ``status`` is a promoted column on an append-only table, which reads like a
+    contradiction and is not: a version is never updated in place, so retiring one and
+    activating the next is two new rows whose ``parent_version_id`` chains them. That is
+    also why §10.3's rollback works — the retired row is still there, still readable,
+    still the artifact digest it always was.
+    """
+
+    __tablename__ = "router_model_versions"
+
+    scope: Mapped[str] = mapped_column(String(32))
+    algorithm_id: Mapped[str] = mapped_column(String(128))
+    feature_schema_version: Mapped[str] = mapped_column(String(32))
+    training_snapshot_id: Mapped[str] = mapped_column(String(64))
+    artifact_digest: Mapped[str] = mapped_column(String(64))
+    parent_version_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    status: Mapped[str] = mapped_column(String(32))
+
+    __table_args__ = (
+        UniqueConstraint("content_hash", "schema_version", name="uq_router_versions_hash_version"),
+        Index("ix_router_versions_project_created", "project_id", "created_at"),
+        Index("ix_router_versions_workspace_created", "workspace_id", "created_at"),
+        Index("ix_router_versions_snapshot", "training_snapshot_id"),
+        Index("ix_router_versions_parent", "parent_version_id"),
+        Index("ix_router_versions_supersedes", "supersedes_contract_id"),
+    )
+
+
+class RouterTrainingSnapshotRow(V04ContractRow):
+    """SDD §7.14 router training snapshot. §13: "included experience manifest and split
+    definition".
+
+    Both of §13's key fields are lists of ids — up to a hundred thousand experience ids,
+    and three project-id lists — and both stay in ``payload``. Promoting the manifest to
+    a join table would let a snapshot's membership be edited row by row after the fact,
+    and a training snapshot whose contents can change is not a snapshot; it is the exact
+    failure §10.1 is written to prevent. The window bounds are promoted instead, because
+    "which snapshots covered this period" is the only question asked of the manifest from
+    outside the snapshot itself.
+    """
+
+    __tablename__ = "router_training_snapshots"
+
+    feature_schema_version: Mapped[str] = mapped_column(String(32))
+    contract_schema_version: Mapped[str] = mapped_column(String(32))
+    window_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    window_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_router_snapshots_hash_version"
+        ),
+        Index("ix_router_snapshots_project_created", "project_id", "created_at"),
+        Index("ix_router_snapshots_workspace_created", "workspace_id", "created_at"),
+        Index("ix_router_snapshots_window", "window_start", "window_end"),
+        Index("ix_router_snapshots_supersedes", "supersedes_contract_id"),
+    )
+
+
+class RouterPromotionReportRow(V04ContractRow):
+    """SDD §7.13 router promotion report. §13: "candidate/baseline metrics, cohorts,
+    decision".
+
+    §13.1's fifth bullet — "promotion reports are append-only" — is not implemented as a
+    trigger or a check constraint. It is implemented by there being **no update and no
+    delete method for this table anywhere in the store**, on either backend, and by a
+    test that asserts the absence rather than trusting it. A rejected promotion that could
+    later be edited into an approval is the single most valuable row in this schema to an
+    attacker, and the cheapest way to make that impossible is to write no code that could
+    do it.
+    """
+
+    __tablename__ = "router_promotion_reports"
+
+    candidate_version: Mapped[str] = mapped_column(String(64))
+    baseline_version: Mapped[str] = mapped_column(String(64))
+    training_snapshot_id: Mapped[str] = mapped_column(String(64))
+    holdout_definition_id: Mapped[str] = mapped_column(String(64))
+    decision: Mapped[str] = mapped_column(String(32))
+    rollback_target: Mapped[str] = mapped_column(String(64))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_router_promotions_hash_version"
+        ),
+        Index("ix_router_promotions_project_created", "project_id", "created_at"),
+        Index("ix_router_promotions_workspace_created", "workspace_id", "created_at"),
+        Index("ix_router_promotions_candidate", "candidate_version", "created_at"),
+        Index("ix_router_promotions_decision", "decision", "created_at"),
+        Index("ix_router_promotions_supersedes", "supersedes_contract_id"),
+    )
+
+
+class ShadowDecisionRow(V04ContractRow):
+    """SDD §7.15 shadow decision. §13: "executed receipt, shadow receipt, comparison".
+
+    Neither receipt id is a foreign key to ``routing_receipts``. A shadow receipt is
+    produced by a model that is not serving traffic and §10.2 explicitly forbids it from
+    affecting execution; making this row unwritable until both receipts had been persisted
+    would let the shadow pipeline's write ordering block the executed path, which is the
+    one thing shadow evaluation must never do. The ids are indexed instead, and the
+    comparison is what the row is for.
+    """
+
+    __tablename__ = "shadow_decisions"
+
+    executed_receipt_id: Mapped[str] = mapped_column(String(64))
+    shadow_receipt_id: Mapped[str] = mapped_column(String(64))
+    shadow_router_version_id: Mapped[str] = mapped_column(String(64))
+    agreement: Mapped[bool] = mapped_column(Boolean)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_shadow_decisions_hash_version"
+        ),
+        Index("ix_shadow_decisions_project_created", "project_id", "created_at"),
+        Index("ix_shadow_decisions_workspace_created", "workspace_id", "created_at"),
+        Index("ix_shadow_decisions_executed", "executed_receipt_id"),
+        Index("ix_shadow_decisions_router_version", "shadow_router_version_id", "created_at"),
+        Index("ix_shadow_decisions_supersedes", "supersedes_contract_id"),
+    )
+
+
+class ShadowRolloutResultRow(V04ContractRow):
+    """ADR-060 shadow rollout result. Added by the freeze delta, created by migration 0018.
+
+    SDD §13 names no table for this record because M0's §13 table predates the decision to
+    score shadow choices by *branching the live run* rather than by replaying it. The key
+    fields follow from the query M6.2's report is: "every rollout of this shadow decision,
+    oldest first", which is the paired lookup that turns two rows into one measurement.
+
+    ``shadow_decision_id`` is not a foreign key into ``shadow_decisions``, for exactly the
+    reason ``ShadowDecisionRow`` gives for its two receipt ids: a rollout is produced by a
+    fork that is forbidden from affecting execution, and a key that made this row
+    unwritable until the decision had been persisted would let the shadow pipeline's write
+    ordering block the executed path.
+
+    ``kind`` is promoted beside it because the pair is the unit of evidence and "the
+    ``SHADOW`` arm of decision X" is a two-column lookup, not a payload scan.
+    ``configuration_hash`` is promoted because the report groups paired deltas by the
+    configuration that was actually executed, and ``completed_at`` because the composite
+    index below is what makes the ordering of a pair deterministic without deserialising
+    either row.
+    """
+
+    __tablename__ = "shadow_rollout_results"
+
+    shadow_decision_id: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(32))
+    configuration_hash: Mapped[str] = mapped_column(String(64))
+    completed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_shadow_rollouts_hash_version"
+        ),
+        Index("ix_shadow_rollouts_decision", "shadow_decision_id", "completed_at"),
+        Index("ix_shadow_rollouts_workspace_created", "workspace_id", "created_at"),
+        Index("ix_shadow_rollouts_project_created", "project_id", "created_at"),
+        Index("ix_shadow_rollouts_supersedes", "supersedes_contract_id"),
+    )
+
+
+class RouterActivationRow(V04ContractRow):
+    """ADR-061 router activation ledger. Added by the freeze delta, created by 0018.
+
+    The table that replaces a mutable ``status`` column with a sequence. §13.1's "one
+    active workspace router per workspace" is expressed here as
+    ``uq_router_activations_sequence`` over ``(workspace_id, scope, family_key, sequence)``:
+    a plain :class:`~sqlalchemy.UniqueConstraint` and *not* a third partial unique index,
+    because the rule is now unconditional. Uniqueness over a contiguous sequence is what
+    makes "the active version" the single row with the greatest ``sequence`` in its
+    partition, and two writers racing to append the same next number is the one collision
+    that must be impossible rather than merely unlikely.
+
+    **The two M0 partial indexes on ``router_model_versions`` were deliberately untouched
+    by 0018.** M8.1 retired them, in migration 0019, together with the composite
+    ``activate_router_version`` that writes the version rows and the ledger row in one
+    transaction. Between 0018 and 0019 a database satisfies both rules at once, which is
+    the only ordering under which each migration is independently reversible; at 0019 and
+    after, this table is the sole statement of which version is active.
+
+    Every id column is a plain ``String(64)`` and none is a foreign key into
+    ``router_model_versions`` or ``router_promotion_reports``. A rollback happens during an
+    incident, and an activation that could not be recorded because the row it points at was
+    written by a transaction that has not committed yet is an activation that fails when it
+    is needed most.
+    """
+
+    __tablename__ = "router_activations"
+
+    scope: Mapped[str] = mapped_column(String(32))
+    family_key: Mapped[str] = mapped_column(String(128))
+    sequence: Mapped[int] = mapped_column(Integer)
+    kind: Mapped[str] = mapped_column(String(32))
+    router_version_id: Mapped[str] = mapped_column(String(64))
+    previous_version_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    rollback_target_version_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    promotion_report_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "content_hash", "schema_version", name="uq_router_activations_hash_version"
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "scope",
+            "family_key",
+            "sequence",
+            name="uq_router_activations_sequence",
+        ),
+        Index("ix_router_activations_workspace_created", "workspace_id", "created_at"),
+        Index("ix_router_activations_project_created", "project_id", "created_at"),
+        Index("ix_router_activations_version", "router_version_id", "created_at"),
+        Index("ix_router_activations_supersedes", "supersedes_contract_id"),
+    )
+
+
+V04_M0_ROUTING_TABLES: tuple[str, ...] = (
+    "objective_contracts",
+    "node_contracts",
+    "verification_specs",
+    "routing_requests",
+    "configuration_candidates",
+    "compatibility_decisions",
+    "routing_receipts",
+    "routing_overrides",
+    "verification_results",
+    "experience_records",
+    "failure_events",
+    "router_model_versions",
+    "router_training_snapshots",
+    "router_promotion_reports",
+    "shadow_decisions",
+    # The freeze delta of 5 Sep 2026 (ADR-060, ADR-061) appended these two. They are
+    # created by migration **0018** and not by 0017, which pins its own creation list to
+    # everything above this comment through `V04_FREEZE_DELTA_TABLES` — a migration already
+    # applied in the field cannot start creating tables it did not create the first time.
+    "shadow_rollout_results",
+    "router_activations",
+)
+"""The seventeen v0.4 routing tables, in creation order (ADR-058, ADR-060, ADR-061).
+
+Declared here rather than only in the migrations so that one list is read by both of them,
+by the store and by the tests. The order is a dependency order — nothing in it references
+anything later in it — which is what makes ``reversed()`` a valid drop order and leaves
+each ``downgrade`` nothing further to reason about.
+
+The constant keeps its ``M0`` name on purpose. Every parity proof in the suite is written
+against it — the ``MemoryStore`` bucket set, the derived ``put_``/``get_``/``list_`` method
+names, the header-column and no-``updated_at`` checks — and renaming it would have made a
+two-table addition touch every one of those call sites, which is exactly the kind of diff
+that hides a real change. The fifteen it originally named are the fifteen 0017 creates, and
+:data:`V04_FREEZE_DELTA_TABLES` is what says which two are not among them.
+"""
+
+V04_FREEZE_DELTA_TABLES: tuple[str, ...] = (
+    "shadow_rollout_results",
+    "router_activations",
+)
+"""The two tables migration 0018 creates, subtracted from 0017's list (ADR-060, ADR-061).
+
+Read by ``0017_v04_m0_routing_contracts`` to pin its creation list to the fifteen it has
+always created, and by ``0018_v04_freeze_delta_shadow_rollouts_router_activations`` as the
+list it creates. Without it the two migrations would both read the same seventeen names,
+0017 would silently start creating tables that did not exist when it was written, and a
+database migrated to 0017 would no longer be reproducible from the revision it records.
+"""

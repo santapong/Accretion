@@ -28,6 +28,7 @@ from accretion.contracts import (
     TaskBudgets,
     TaskEnvelope,
 )
+from accretion.contracts.canonical import canonical_json
 from accretion.ids import new_id
 from accretion.redaction import redact_text
 from accretion.runtimes.claude import ClaudeRuntime
@@ -155,7 +156,11 @@ async def _run_assignment(
     try:
         await _initialize_repository(workspace)
         expected = expected_artifact(assignment)
-        exact_json = json.dumps(expected, sort_keys=True, separators=(",", ":"))
+        # Converged onto ADR-056 canonical JSON in M8. This is prompt text, not a digest:
+        # ``verify_artifact`` compares *parsed* objects, so the escaping cannot change a
+        # verdict or the recorded ``artifact_sha256``. Every one of the ten frozen
+        # assignments serializes to identical bytes either way.
+        exact_json = canonical_json(expected).decode()
         task = TaskEnvelope(
             task_id=new_id("task"),
             project_id=new_id("project"),

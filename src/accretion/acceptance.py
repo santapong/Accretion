@@ -28,9 +28,10 @@ SDDS = {
     "v0.1": ROOT / "docs" / "sdd" / "Accretion_SDD_v0.1.md",
     "v0.2": ROOT / "docs" / "sdd" / "Accretion_SDD_v0.2.md",
     "v0.3": ROOT / "docs" / "sdd" / "Accretion_SDD_v0.3.md",
+    "v0.4": ROOT / "docs" / "sdd" / "Accretion_SDD_v0.4.md",
 }
 
-_ROW = re.compile(r"^\|\s*((?:V0[12]|AC3)[A-Z0-9-]+)\s*\|(.+)\|\s*$")
+_ROW = re.compile(r"^\|\s*((?:V0[12]|AC3|AC4)[A-Z0-9-]+)\s*\|(.+)\|\s*$")
 
 # Frontend evidence is one or more ``path[:line] <test title>`` segments joined by
 # ``" + "``. The pointer and the title it carries are both machine-checked.
@@ -83,7 +84,7 @@ class Criterion:
 
 
 def stage_of(criterion_id: str) -> str:
-    """P-phase for v0.1/v0.2, milestone for v0.3.
+    """P-phase for v0.1/v0.2, milestone for v0.3, release-prefixed milestone for v0.4.
 
     Not every inherited id encodes a phase: v0.1 files its benchmark gate under
     ``V01-BENCH-*`` and v0.2 its frontend criteria under ``V02-UI-*``.
@@ -98,6 +99,12 @@ def stage_of(criterion_id: str) -> str:
     category = re.match(r"^AC3-([A-Z]+)-", criterion_id)
     if category:
         return _CATEGORY_MILESTONE.get(category.group(1), "unassigned")
+    # v0.4 ids carry their owning milestone (SDD v0.4 ADR-052). The stage is
+    # prefixed with the release so that ``--stage M4`` keeps meaning the v0.3
+    # plugin manager and can never select v0.4's offline ranker by accident.
+    owned = re.match(r"^AC4-(M[0-9]+)-[0-9]{3}$", criterion_id)
+    if owned:
+        return f"v0.4-{owned.group(1)}"
     return "unassigned"
 
 

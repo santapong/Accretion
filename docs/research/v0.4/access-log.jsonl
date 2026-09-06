@@ -1,0 +1,2 @@
+{"accessed_at": "2026-09-06T15:54:50.698865+00:00", "principal": "usr-accretion-release", "protocol_digest": "6b45998b3a9847298ba878a6414211ce38d64c775e5addd587509fdd70cf04ea", "reason": "the v0.4.0 release's locked read (M10d) (drift corpus)", "schema_version": "1.0"}
+{"accessed_at": "2026-09-06T15:54:50.698865+00:00", "principal": "usr-accretion-release", "protocol_digest": "6b45998b3a9847298ba878a6414211ce38d64c775e5addd587509fdd70cf04ea", "reason": "the v0.4.0 release's locked read (M10d) (locked corpus)", "schema_version": "1.0"}

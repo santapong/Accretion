@@ -1,0 +1,18 @@
+{
+  "algorithm_id": "gradient-boosted-ranker",
+  "artifact_digest": "c30ae8a610457ec1599e9b3ee961dae19db1e94b162c58ab52c3dd66f353bce0",
+  "calibration_artifact_digest": "6522b871b0b575d19232eb6a3e24b462df52ff40aa28c608fa5c546d912c4bc1",
+  "content_hash": "273a829ecc4a09d26ec2a03a3d199868855ebd0e63dcb25acabec1c0ad74e995",
+  "contract_id": "rmv_QHDYKC5JPH9ZCPWDEN4E02EAE3",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "feature_schema_version": "1.0.0",
+  "scope": "TEAM_WORKSPACE",
+  "status": "CANDIDATE",
+  "training_snapshot_id": "rts_EDB22B93VQVFFB77KJCXN83MCB",
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

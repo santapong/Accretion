@@ -32,10 +32,11 @@ from accretion.contracts import (
 from accretion.ids import new_id
 from accretion.redaction import redact, redact_text
 from accretion.runtimes.common import (
+    RUNTIME_STREAM_LIMIT,
     RuntimeSubmission,
     classify_runtime_health,
-    command_result,
     make_event,
+    probe_result,
     provider_environment,
     submission_call_id,
     submission_metadata,
@@ -109,8 +110,8 @@ class OpencodeRuntime:
     # ------------------------------------------------------------------ health
 
     async def health(self) -> RuntimeHealth:
-        version_code, version_output = await command_result([self.command, "--version"])
-        auth_code, auth_output = await command_result([self.command, "auth", "list"])
+        version_code, version_output = await probe_result([self.command, "--version"])
+        auth_code, auth_output = await probe_result([self.command, "auth", "list"])
         status, pressure, error = classify_runtime_health(
             version_code=version_code,
             version_output=version_output,
@@ -132,7 +133,7 @@ class OpencodeRuntime:
         so an unavailable model must surface as health rather than as a mid-run failure.
         """
 
-        models_code, models_output = await command_result([self.command, "models"], 15.0)
+        models_code, models_output = await probe_result([self.command, "models"], 15.0)
         if models_code != 0:
             return RuntimeStatus.DEGRADED, f"could not list opencode models: {models_output}"
         available = {line.strip() for line in models_output.splitlines() if line.strip()}
@@ -432,6 +433,7 @@ class OpencodeRuntime:
                         ),
                     }
                 ),
+                limit=RUNTIME_STREAM_LIMIT,
             )
             self.process = process
             self.stderr_task = asyncio.create_task(self._stderr_reader(process))

@@ -40,7 +40,7 @@ export function IdentityPage() {
         </div>
       </header>
 
-      <section aria-label="Principal" tabIndex={-1} className="registry-card">
+      <section aria-label="Principal" tabIndex={0} className="registry-card">
         <h2>Principal</h2>
         {principal ? (
           <dl className="registry-list">
@@ -60,7 +60,7 @@ export function IdentityPage() {
         )}
       </section>
 
-      <section aria-label="Current session" tabIndex={-1} className="registry-card">
+      <section aria-label="Current session" tabIndex={0} className="registry-card">
         <h2>Current session</h2>
         <p aria-label="Auth mode">
           Authentication mode {me.data?.auth_mode ?? "unknown"}
@@ -79,7 +79,7 @@ export function IdentityPage() {
 
       <EnterpriseAuthPanel />
 
-      <section aria-label="Workspace roles" tabIndex={-1} className="registry-card">
+      <section aria-label="Workspace roles" tabIndex={0} className="registry-card">
         <h2>Workspace roles</h2>
         <table className="benchmark-table">
           <thead>

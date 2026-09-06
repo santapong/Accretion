@@ -3,12 +3,14 @@ from __future__ import annotations
 import asyncio
 import hashlib
 import json
+import logging
+import re
 import time
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, cast
 
 from accretion.checkpoints import (
     ReconcileClassification,
@@ -60,6 +62,7 @@ from accretion.contracts import (
     RunRef,
     RunState,
     RuntimeExecutionRequest,
+    RuntimeStatus,
     SessionConfig,
     SessionRef,
     StrategyOverrideResult,
@@ -77,6 +80,17 @@ from accretion.contracts import (
     WorkflowTemplate,
     WorkspaceLease,
 )
+from accretion.contracts.canonical import content_hash
+from accretion.contracts.routing import (
+    DecisionType,
+    ExecutionConfiguration,
+    FailureType,
+    IndependentVerificationResult,
+    RoutingDecisionReceipt,
+    ToolBinding,
+    VerificationState,
+)
+from accretion.experience.models import ExperienceSourceKind
 from accretion.ids import new_id
 from accretion.looping import (
     build_loop_execution,
@@ -92,6 +106,12 @@ from accretion.planning import (
     has_irreversible_capabilities,
 )
 from accretion.projections import build_graph_projection, build_loop_projection
+from accretion.routing.identity import principal_ref_for_run, workspace_for_run
+from accretion.routing.protocols import (
+    FeedbackPipeline,
+    FrozenNode,
+    NodeRoutingService,
+)
 from accretion.runtimes.common import make_event
 from accretion.templates import (
     compute_template_checksum,
@@ -120,6 +140,23 @@ class RuntimeCallOutcome:
     stop_reason: LoopStopReason | None = None
 
 
+@dataclass(slots=True, frozen=True)
+class ActiveRuntimeRef:
+    """One in-flight provider call, together with the session that owns it.
+
+    ``RunRef`` names a call by run and session id but not by provider, so a bare ref
+    cannot say which runtime is holding it. That was harmless while every session on a
+    run ran on ``run.provider``; it stops being harmless the moment a node executes on
+    a runtime other than the run's, because interrupt, resume and terminate would then
+    be delivered to a runtime that has never heard of the call. Pairing the ref with
+    its session keeps the owning runtime derivable from the entry itself, which is
+    what :meth:`RunManager._runtime_for` reads.
+    """
+
+    session: SessionRef
+    ref: RunRef
+
+
 class CapabilityNodeInvoker(Protocol):
     """Executes one capability reference hung on a workflow node.
 
@@ -142,6 +179,22 @@ class CapabilityNodeInvoker(Protocol):
         node_id: str,
         capability_id: str,
         arguments: dict[str, object],
+        executing_provider: Provider | None = None,
+    ) -> object | None: ...
+
+
+class SelectedCapabilityNodeInvoker(Protocol):
+    """Executes the exact immutable tool binding selected by the router."""
+
+    async def invoke_selected(
+        self,
+        *,
+        run_id: str,
+        node_id: str,
+        workspace_id: str,
+        selected: ToolBinding,
+        arguments: dict[str, object],
+        executing_provider: Provider,
     ) -> object | None: ...
 
 
@@ -190,6 +243,52 @@ _TERMINAL_GUARD_STATES: dict[EdgeGuard, RunState] = {
 }
 
 
+_LOGGER = logging.getLogger(__name__)
+
+CONTRADICTION_RESOLVED = "accretion/verification-contradiction-resolved"
+"""The durable adjudication of a §7.9 material conflict, as a control event.
+
+A conflict is between *records* and the records are append-only, so a re-verification of the
+same execution instance conflicts with the same stored verdict forever: "resolved" cannot be
+re-derived from the evidence, and a scheduler that tried would pause a run it had already been
+told to continue. The event is that decision, named on the run it unblocks and on the
+execution instance it settles, and :meth:`RunManager.resolve_verification_contradiction` is the
+only thing that writes one.
+"""
+
+_CODED_FAILURE = re.compile(r"^([A-Z][A-Z0-9_]*): ")
+"""How every dispatch refusal in this module spells its own code, as a prefix of the message."""
+
+_FINAL_VERIFICATION_STATE: dict[RunState, VerificationState] = {
+    RunState.SUCCEEDED: VerificationState.PASS,
+    RunState.FAILED: VerificationState.FAIL,
+}
+"""How a terminal :class:`RunState` reads as a §7.9 verdict for ADR-048's projection.
+
+Two entries and an ``INCONCLUSIVE`` default, which is the point: ``REQUIRES_HUMAN`` and
+``CANCELLED`` are runs nobody graded, and recording either as a ``FAIL`` would teach the router
+that a configuration failed when what happened is that the work stopped.
+"""
+
+
+def _failure_error_summary(exc: BaseException) -> ErrorSummary:
+    """The typed error a raised dispatch failure carries, without reading its prose.
+
+    Two sources and no third. A :class:`~accretion.routing.errors.RoutingError` states its code
+    as a field; every refusal raised in this module is a ``RuntimeError`` whose message opens
+    with that same code and ``": "``, which is the convention every raise site here already
+    follows. Anything else is ``NODE_EXECUTION_FAILED`` — the §7.11 taxonomy then types the
+    failure from its other signals rather than from a guess at this one, and no rule anywhere
+    matches on the message text.
+    """
+
+    code = getattr(exc, "code", None)
+    if not isinstance(code, str):
+        match = _CODED_FAILURE.match(str(exc))
+        code = match.group(1) if match else "NODE_EXECUTION_FAILED"
+    return ErrorSummary(code=code, message=str(exc) or code)
+
+
 @dataclass(slots=True)
 class _GraphCursor:
     """In-memory scheduler state, always recoverable from durable evidence."""
@@ -207,6 +306,27 @@ class _GraphCursor:
     last_error: ErrorSummary | None = None
     stop_reason: LoopStopReason | None = None
     gate_wait_seconds: float = 0.0
+    # Routing is an opt-in sidecar.  Both maps are intentionally cursor-local: a running
+    # graph revision keeps the exact contract/receipt it started with even if a new graph
+    # revision is activated concurrently.  Durable recovery repopulates these through the
+    # routing service in M2.2. Receipts cache the last observed durable head (and are
+    # refreshed before claim); configurations mark an uncertain claimed dispatch that must
+    # never be submitted again without reconciliation.
+    frozen: dict[str, FrozenNode] = field(default_factory=dict)
+    receipts: dict[str, RoutingDecisionReceipt] = field(default_factory=dict)
+    configurations: dict[str, ExecutionConfiguration] = field(default_factory=dict)
+    # M3 feedback bookkeeping, cursor-local for the same reason the three maps above are.
+    # ``attempts`` is the ADR-041 attempt number the next freeze of a node uses; a §9.7 retry
+    # is a different routable action and must not reuse the identity of the attempt that
+    # failed. ``attempted_hashes`` is what §9.7 refuses to try again without new evidence, and
+    # it is passed to ``route`` rather than re-derived there. The two ``last_producer`` fields
+    # are whose work a verifier node is grading: a §7.9 record is about the *producer's*
+    # execution instance and session, and a verifier recording against its own instance would
+    # be recording its independence from itself.
+    attempts: dict[str, int] = field(default_factory=dict)
+    attempted_hashes: dict[str, list[str]] = field(default_factory=dict)
+    last_producer_key: str | None = None
+    last_producer_session_id: str | None = None
 
 
 class RunManager:
@@ -237,7 +357,7 @@ class RunManager:
         self.default_verifier_ids = default_verifier_ids
         self.auto_resume_on_reconcile = auto_resume_on_reconcile
         self.background: dict[str, asyncio.Task[None]] = {}
-        self.active_refs: dict[str, RunRef] = {}
+        self.active_refs: dict[str, ActiveRuntimeRef] = {}
         self.event_conditions: dict[str, asyncio.Condition] = {}
         self.pause_requested: set[str] = set()
         self.terminal_locks: dict[str, asyncio.Lock] = {}
@@ -248,6 +368,16 @@ class RunManager:
         # than building one. ``None`` means capability-bearing nodes execute precisely as
         # they did before v0.3 M5.
         self.capability_invoker: CapabilityNodeInvoker | None = None
+        # The two v0.4 routing seams, on the same ``search_executor`` precedent and for the
+        # same reason: both implementations own a store, a snapshot builder and — later — a
+        # ranker and the P7 experience service, so constructing them here would drag the
+        # whole routing stack into every run. They are frozen as protocols in M1.2
+        # (``accretion.routing.protocols``) and implemented by M2 and M3 respectively.
+        # ``None`` is the default and means a node is planned, dispatched and recorded
+        # precisely as it was before v0.4: nothing here calls either attribute, and a
+        # deployment that never sets them cannot tell this release from the last.
+        self.routing_service: NodeRoutingService | None = None
+        self.feedback_pipeline: FeedbackPipeline | None = None
 
     async def create_project(self, name: str, repository_path: Path) -> Project:
         repository_path = repository_path.resolve(strict=True)
@@ -682,6 +812,22 @@ class RunManager:
                 "live providers are disabled; set ACCRETION_ENABLE_LIVE_PROVIDERS=true"
             )
 
+    def _runtime_for(self, session: SessionRef) -> AgentRuntime:
+        """The runtime that is actually executing ``session``.
+
+        ``run.provider`` is the provider the operator *requested* for the run. The
+        provider that executes a given call is a property of the session that call was
+        submitted on, and the two coincide only for as long as every session on a run
+        is created on ``run.provider``. Every site that has a session in hand reads it
+        from here instead, so per-node runtime selection becomes a change to session
+        creation and to nothing else.
+        """
+
+        runtime = self.runtimes.get(session.provider)
+        if runtime is None:
+            raise ValueError(f"runtime {session.provider.value} is not configured")
+        return runtime
+
     def _verifier_ids(self, task: Task) -> list[str]:
         selected = list(self.default_verifier_ids)
         if task.envelope.required_outputs:
@@ -702,6 +848,9 @@ class RunManager:
     async def _execute_new(self, run_id: str) -> None:
         run = await self._require_run(run_id)
         task = await self._require_task(run.task_id)
+        # A session-creation site, and the only surviving one that reads the run: there
+        # is no session yet, so the requested provider is the right and only answer.
+        # Everything downstream of ``create_session`` reads the session instead.
         runtime = self.runtimes[run.provider]
         lease: WorkspaceLease | None = None
         session: SessionRef | None = None
@@ -908,6 +1057,15 @@ class RunManager:
                     cursor.current_key = active_key
             # Restore the durable routing decision so guard-dependent behavior
             # (a TERMINAL commit, a REPAIR retry) survives a restart.
+            # A resumed graph must not re-capture the diff it already captured. The capture
+            # names are unique per run, so the second attempt is refused by the store rather
+            # than deduplicated, and the node that was about to be graded would fail on a
+            # workspace nobody touched. On a first run there are no artifacts and this
+            # restores nothing.
+            artifacts = await self.store.list_artifacts(run.run_id)
+            if artifacts:
+                cursor.last_artifact_id = artifacts[-1].artifact_id
+                cursor.last_artifact_sha256 = artifacts[-1].sha256
             if checkpoint.arrival_edge_key:
                 edge = next(
                     (
@@ -926,6 +1084,8 @@ class RunManager:
                         cursor.last_results = self._latest_verifications(
                             await self.store.list_verifications(run.run_id)
                         )
+        if self.routing_service is not None:
+            cursor.attempts.update(await self._recovered_attempts(run))
         return cursor
 
     async def _remaining_run_budgets(self, run_id: str, task: Task) -> tuple[int, int]:
@@ -1056,7 +1216,9 @@ class RunManager:
                 policy=policy,
                 deadline=deadline,
                 cursor=cursor,
+                graph_revision=graph.graph_revision,
             )
+            await self._after_routed_node(run, node, lease, cursor)
             if outcome is NodeOutcome.PAUSED:
                 await self._pause_graph(run)
                 return
@@ -1118,12 +1280,122 @@ class RunManager:
         policy: AcceptancePolicy,
         deadline: float,
         cursor: _GraphCursor,
+        graph_revision: int = 1,
+    ) -> tuple[NodeOutcome, SessionRef]:
+        """One node, re-entered once per §9.7 configuration retry the pipeline authorises.
+
+        The loop lives here rather than inside the attempt because a retry is a *different*
+        routable action (ADR-041): the attempt's frozen contract, its receipt and its claimed
+        configuration are discarded and the next pass freezes a new execution instance under
+        a new attempt number, which is precisely what re-entering this method does. Nothing is
+        ever re-dispatched: the claimed decision of the failed attempt stays claimed and stays
+        in the trace.
+
+        Both entries into recovery are here for the same reason. A node that *returned* FAIL
+        and a dispatch that *raised* are one event to §7.11 — the node did not succeed — and
+        classifying only the first would leave every pre-submission refusal (a runtime that
+        drifted after routing, a receipt that could not be claimed) untyped and unrecoverable.
+
+        With no feedback pipeline wired :meth:`_reroute_after_failure` answers ``False``
+        before reading anything, so the body runs once and this method returns exactly what
+        it returned before v0.4 M3.
+        """
+
+        while True:
+            try:
+                outcome, session = await self._graph_node_attempt(
+                    run,
+                    task,
+                    lease,
+                    session,
+                    node=node,
+                    template_node=template_node,
+                    template=template,
+                    gate=gate,
+                    policy=policy,
+                    deadline=deadline,
+                    cursor=cursor,
+                    graph_revision=graph_revision,
+                )
+            except Exception as exc:
+                # A failure raised before this node had a routing decision is not a decision
+                # to reroute: there is no configuration to exclude and no receipt to classify
+                # against, so it propagates exactly as it did before M3.
+                if node.key not in cursor.receipts or not await self._reroute_after_failure(
+                    run, node, cursor, error=_failure_error_summary(exc)
+                ):
+                    raise
+                continue
+            if outcome is not NodeOutcome.FAIL or node.key not in cursor.receipts:
+                return outcome, session
+            if not await self._reroute_after_failure(
+                run, node, cursor, error=cursor.last_error
+            ):
+                return outcome, session
+
+    async def _graph_node_attempt(
+        self,
+        run: Run,
+        task: Task,
+        lease: WorkspaceLease,
+        session: SessionRef,
+        *,
+        node: RunNode,
+        template_node: object,
+        template: WorkflowTemplate,
+        gate: object,
+        policy: AcceptancePolicy,
+        deadline: float,
+        cursor: _GraphCursor,
+        graph_revision: int = 1,
     ) -> tuple[NodeOutcome, SessionRef]:
         from accretion.contracts import GateSpec
 
         spec = template_node if isinstance(template_node, WorkflowNodeSpec) else None
         entered_via = cursor.entry_edge_key
         cursor.entry_edge_key = None
+        if self.routing_service is not None and node.key in cursor.configurations:
+            # ADR-041: a node re-entered through the template's own retry or replan edge is a
+            # *different* routable action. Its prior decision stays claimed and stays in the
+            # trace — nothing is ever re-dispatched — and this pass freezes a new execution
+            # instance under the next attempt number, which is the same rule
+            # ``_recovered_attempts`` applies to a node re-entered after a restart.
+            cursor.attempts[node.key] = cursor.attempts.get(node.key, 1) + 1
+            cursor.frozen.pop(node.key, None)
+            cursor.receipts.pop(node.key, None)
+            cursor.configurations.pop(node.key, None)
+        if (
+            self.routing_service is not None
+            and spec is not None
+            and node.kind
+            in {GraphNodeKind.AGENT, GraphNodeKind.TOOL, GraphNodeKind.VERIFIER}
+            and node.key not in cursor.frozen
+        ):
+            cursor.frozen[node.key] = await self.routing_service.freeze(
+                run=run,
+                task=task,
+                node=node,
+                spec=spec,
+                template=template,
+                policy=policy,
+                graph_revision=graph_revision,
+                attempt=cursor.attempts.get(node.key, 1),
+            )
+        if (
+            self.routing_service is not None
+            and node.kind
+            in {GraphNodeKind.AGENT, GraphNodeKind.TOOL, GraphNodeKind.VERIFIER}
+        ):
+            session, routing_outcome = await self._prepare_routed_node(
+                run=run,
+                task=task,
+                lease=lease,
+                session=session,
+                node=node,
+                cursor=cursor,
+            )
+            if routing_outcome is not None:
+                return routing_outcome, session
         if node.kind is GraphNodeKind.TASK:
             if cursor.statuses.get(node.key) is GraphNodeStatus.SUCCEEDED:
                 return NodeOutcome.SUCCESS, session
@@ -1134,6 +1406,13 @@ class RunManager:
             cursor.statuses[node.key] = GraphNodeStatus.SUCCEEDED
             return NodeOutcome.SUCCESS, session
         if node.kind is GraphNodeKind.AGENT:
+            if node.key in cursor.frozen:
+                # Whose work the next verifier node grades. Recorded at dispatch rather than
+                # derived afterwards: once a node has been retried the graph holds two
+                # execution instances under one key, and only the scheduler knows which of
+                # them produced the artifact about to be verified.
+                cursor.last_producer_key = node.key
+                cursor.last_producer_session_id = session.session_id
             return await self._graph_agent(
                 run,
                 task,
@@ -1144,6 +1423,8 @@ class RunManager:
                 deadline=deadline,
                 cursor=cursor,
                 entered_via=entered_via,
+                routing_receipt=cursor.receipts.get(node.key),
+                routing_configuration=cursor.configurations.get(node.key),
             )
         if node.kind is GraphNodeKind.TOOL:
             await self._node_transition(
@@ -1155,7 +1436,17 @@ class RunManager:
             # with no references does not reach this call at all, so the diff capture
             # below --- the entirety of pre-M5 TOOL behaviour --- is untouched.
             if spec is not None and spec.capability_refs:
-                await self._invoke_node_capabilities(run, node, spec)
+                await self._invoke_node_capabilities(
+                    run,
+                    node,
+                    spec,
+                    executing_provider=(
+                        cursor.configurations[node.key].runtime.provider
+                        if node.key in cursor.configurations
+                        else session.provider
+                    ),
+                    routing_configuration=cursor.configurations.get(node.key),
+                )
             captures = cursor.entered_via.get(f"capture:{node.key}", 0) + 1
             cursor.entered_via[f"capture:{node.key}"] = captures
             artifact = await self.worktrees.capture_diff(
@@ -1180,6 +1471,8 @@ class RunManager:
                 policy=policy,
                 cursor=cursor,
                 entered_via=entered_via,
+                routing_configuration=cursor.configurations.get(node.key),
+                frozen=cursor.frozen.get(node.key),
             )
         if node.kind is GraphNodeKind.GATE:
             assert isinstance(gate, GateSpec)
@@ -1209,8 +1502,465 @@ class RunManager:
             )
         raise RuntimeError(f"unsupported graph node kind {node.kind.value}")
 
+    async def _after_routed_node(
+        self, run: Run, node: RunNode, lease: WorkspaceLease, cursor: _GraphCursor
+    ) -> None:
+        """Tell the routing service's post-node hooks that a routed node has finished.
+
+        The scheduler owns this call because it is the only party that knows a node has
+        *finished*: the router sees a decision and no outcome, and a hook attached anywhere
+        else would have to reconstruct which decision the outcome belonged to.  ADR-048 makes
+        this the one point at which an experience may be projected, and M6.2 hangs its branched
+        rollouts here for the same reason.
+
+        Only AGENT and TOOL nodes, and only ones that were actually routed and dispatched.  A
+        VERIFIER node is a grader rather than a producer, so a rollout of it would measure the
+        verifier twice; a node with no entry in ``cursor.configurations`` never dispatched
+        anything for a hook to be about.
+
+        ``post_node`` is read with ``getattr`` for the reason ``configuration_for`` is read that
+        way in ``_prepare_routed_node``: ``NodeRoutingService`` is the frozen M1 seam and does
+        not declare the stage sequences, and reaching for an attribute that may be absent is
+        preferable to editing a protocol whose digest is recorded in the M1 plan.  Exceptions
+        are logged and swallowed -- the node has already reported its outcome, and a hook that
+        could fail it would turn an observation into a control action.
+        """
+
+        if self.routing_service is None or node.kind not in {
+            GraphNodeKind.AGENT,
+            GraphNodeKind.TOOL,
+        }:
+            return
+        frozen = cursor.frozen.get(node.key)
+        receipt = cursor.receipts.get(node.key)
+        configuration = cursor.configurations.get(node.key)
+        if frozen is None or receipt is None or configuration is None:
+            return
+        for hook in getattr(self.routing_service, "post_node", ()):
+            try:
+                await hook.after_node(
+                    run=run,
+                    node=node,
+                    frozen=frozen,
+                    receipt=receipt,
+                    configuration=configuration,
+                    outcome=None,
+                    lease=lease,
+                )
+            except Exception:
+                # Imported here rather than at module scope: this module has no logger, and
+                # adding one would be a third edit to a file another lane is changing in the
+                # same window.  Function-local imports have precedent in this repository
+                # (`ids.derived_id`, `api/shadow.py`) and the cost is one lookup per failure.
+                import logging
+
+                logging.getLogger(__name__).exception(
+                    "post-node hook %s failed for receipt %s",
+                    type(hook).__name__,
+                    receipt.contract_id,
+                )
+
+    async def _prepare_routed_node(
+        self,
+        *,
+        run: Run,
+        task: Task,
+        lease: WorkspaceLease,
+        session: SessionRef,
+        node: RunNode,
+        cursor: _GraphCursor,
+    ) -> tuple[SessionRef, NodeOutcome | None]:
+        """Restore or create a receipt, claim it, then prepare the selected runtime.
+
+        The dispatch claim is the last durable control-plane act before any external side
+        effect.  If the process dies after that claim, a reconstructed cursor calls
+        ``claim_dispatch`` again and the service refuses it until runtime evidence has been
+        reconciled; this is deliberately fail-closed and does not pretend the external
+        boundary is exactly-once.
+        """
+
+        assert self.routing_service is not None
+        frozen = cursor.frozen.get(node.key)
+        if frozen is None:
+            raise RuntimeError("DISPATCH_WITHOUT_RECEIPT: node was not frozen")
+        if node.key in cursor.configurations:
+            raise RuntimeError(
+                "RECEIPT_ALREADY_DISPATCHED: prior dispatch is uncertain until runtime "
+                "evidence is reconciled"
+            )
+
+        # A review decision can be superseded by an operator override while this cursor is
+        # still alive.  The durable head, not the cursor cache, is authoritative before each
+        # claim attempt.
+        receipt = await self.routing_service.latest_receipt(frozen=frozen, run=run)
+        if receipt is None:
+            snapshot = await self.routing_service.snapshot(
+                workspace_id=frozen.node_contract.workspace_id,
+                project_id=run.project_id,
+                task=task,
+            )
+            receipt = await self.routing_service.route(
+                frozen=frozen,
+                snapshot=snapshot,
+                mode=self.routing_service.default_mode,
+                run=run,
+                excluded_configuration_hashes=cursor.attempted_hashes.get(node.key, ()),
+            )
+        cursor.receipts[node.key] = receipt
+
+        if receipt.decision_type is DecisionType.HUMAN_REVIEW_REQUIRED:
+            cursor.statuses[node.key] = GraphNodeStatus.WAITING
+            return session, NodeOutcome.INCONCLUSIVE
+
+        configuration_preview: ExecutionConfiguration | None = None
+        if node.kind is GraphNodeKind.AGENT:
+            configuration_for = getattr(self.routing_service, "configuration_for", None)
+            if configuration_for is None:
+                raise RuntimeError(
+                    "SELECTED_AGENT_CONFIGURATION_UNAVAILABLE: routing service cannot "
+                    "resolve the selected configuration before claim"
+                )
+            configuration_preview = await configuration_for(receipt)
+            if configuration_preview.tools:
+                raise RuntimeError(
+                    "SELECTED_AGENT_TOOL_BINDING_UNAVAILABLE: agent sessions cannot pin "
+                    "selected tool bindings"
+                )
+
+        # This persists the dispatch claim before session creation, capability invocation,
+        # verifier execution, worktree capture, or runtime submission.  A second entry on
+        # this cursor is refused above rather than resubmitted without another durable claim.
+        configuration = await self.routing_service.claim_dispatch(receipt=receipt, run=run)
+        cursor.configurations[node.key] = configuration
+
+        if (
+            configuration_preview is not None
+            and configuration_preview.configuration_hash
+            != configuration.configuration_hash
+        ):
+            raise RuntimeError(
+                "SELECTED_AGENT_CONFIGURATION_CHANGED: claimed configuration differs "
+                "from the pre-claim selection"
+            )
+
+        if node.kind is not GraphNodeKind.AGENT:
+            return session, None
+
+        self._require_runtime(configuration.runtime.provider)
+        runtime = self.runtimes[configuration.runtime.provider]
+        routed_session = await runtime.create_session(
+            SessionConfig(
+                run_id=run.run_id,
+                workspace=lease.path,
+                model=configuration.model.model_id,
+                allowed_tools=[
+                    tool.capability.capability_id for tool in configuration.tools
+                ],
+                denied_tools=task.envelope.denied_capabilities,
+            )
+        )
+        await self.store.save_session(routed_session)
+        return routed_session, None
+
+    async def _recovered_attempts(self, run: Run) -> dict[str, int]:
+        """The ADR-041 attempt number each already-dispatched node is re-entered under.
+
+        One after the highest attempt whose receipt was claimed for dispatch, per node key,
+        and absent for a node that has never been dispatched. A restarted graph rebuilds its
+        cursor from a checkpoint and knows nothing about the attempt that was running when it
+        stopped; re-entering *that* attempt would ask the router to claim a decision it has
+        already dispatched, which §8.2 refuses — so a paused routed run could never resume.
+        A retry is a different routable action, so it gets its own execution instance instead.
+
+        Read from the node contracts and the dispatch events rather than from a counter,
+        because those are the only durable record of what was attempted: the labels the
+        freezer writes carry the run, the node key and the attempt, and the dispatch event
+        carries the contract hash that was actually claimed. On a first run both are empty and
+        this returns nothing, which is why the fresh path still freezes attempt one.
+        """
+
+        dispatched = {
+            str(event.payload.get("node_contract_hash"))
+            for event in await self.store.list_events(run.run_id)
+            if event.native_type == "accretion/routing/dispatch"
+        }
+        if not dispatched:
+            return {}
+        attempts: dict[str, int] = {}
+        for contract in await self.store.list_node_contracts(
+            workspace_id=await workspace_for_run(self.store, run),
+            project_id=run.project_id,
+        ):
+            key = contract.labels.get("node_key")
+            if (
+                key is None
+                or contract.labels.get("run_id") != run.run_id
+                or contract.immutable_hash not in dispatched
+            ):
+                continue
+            attempt = int(contract.labels.get("attempt", "1")) + 1
+            attempts[key] = max(attempts.get(key, attempt), attempt)
+        return attempts
+
+    async def _reroute_after_failure(
+        self,
+        run: Run,
+        node: RunNode,
+        cursor: _GraphCursor,
+        *,
+        error: ErrorSummary | None,
+    ) -> bool:
+        """Type the failure, ask §9.7 what may happen next, and re-arm only for a reroute.
+
+        Returns ``True`` exactly when the node has been re-armed for another attempt, which
+        this method has already prepared: the failed configuration is appended to the
+        attempted set, the frozen contract, receipt and claimed configuration are dropped and
+        the attempt number is incremented. Every other decision returns ``False`` and leaves
+        the outcome alone, and that is the authority boundary rather than a simplification —
+        a ``STRUCTURAL`` failure goes to the graph's own replan edge and, failing that, to the
+        ``REQUIRES_HUMAN`` terminal ``_run_graph`` already commits, under the same policy
+        snapshot and with the same capability set. Nothing here plans, widens a capability set
+        or escalates; the router's authority is to choose a different configuration and stops
+        there.
+
+        The failure event is written even when nothing is retried. §7.11's record is what an
+        operator reads to find out why a run stopped, and a taxonomy that only ran when
+        recovery was possible would have nothing to say about exactly the runs that needed it.
+        """
+
+        if self.feedback_pipeline is None or self.routing_service is None:
+            return False
+        frozen = cursor.frozen.get(node.key)
+        receipt = cursor.receipts.get(node.key)
+        if frozen is None or receipt is None:
+            return False
+        failure = await self.feedback_pipeline.classify_failure(
+            run=run,
+            execution_instance_id=frozen.node_contract.execution_instance_id,
+            error=error,
+            local=await self._verdict_for_classification(run, cursor),
+            attempted_configuration_hashes=cursor.attempted_hashes.get(node.key, []),
+        )
+        decision = await self.feedback_pipeline.recovery_decision(
+            failure=failure,
+            budget=frozen.node_contract.resource_cap,
+            candidate_hashes=await self._candidate_hashes(receipt),
+        )
+        if (
+            failure.failure_type is not FailureType.CONFIGURATION
+            or not decision.action.retry_allowed
+            or decision.next_configuration_hash is None
+        ):
+            return False
+        selected = cursor.configurations.get(node.key)
+        attempted_hash = (
+            selected.configuration_hash
+            if selected is not None
+            else receipt.selected_configuration_hash
+        )
+        attempted = cursor.attempted_hashes.setdefault(node.key, [])
+        if attempted_hash is not None and attempted_hash not in attempted:
+            attempted.append(attempted_hash)
+        cursor.frozen.pop(node.key, None)
+        cursor.receipts.pop(node.key, None)
+        cursor.configurations.pop(node.key, None)
+        cursor.attempts[node.key] = cursor.attempts.get(node.key, 1) + 1
+        cursor.last_error = None
+        return True
+
+    async def _candidate_hashes(self, receipt: RoutingDecisionReceipt) -> list[str]:
+        """The configuration signatures §9.7 counts, in the order the router ranked them.
+
+        Order is the receipt's and is not sorted: the guard's EVI gate divides the eligible
+        candidates by the total and its ``RESELECT`` names the first survivor, so re-sorting
+        would replace the router's preference with an alphabetical one. A candidate whose row
+        is unreadable is dropped rather than substituted, which lowers the denominator and can
+        only make the guard more cautious.
+        """
+
+        hashes: list[str] = []
+        for candidate_id in receipt.candidate_summary_refs:
+            candidate = await self.store.get_configuration_candidate(candidate_id)
+            if candidate is not None:
+                hashes.append(candidate.configuration.configuration_hash)
+        return hashes
+
+    async def _verdict_for_classification(
+        self, run: Run, cursor: _GraphCursor
+    ) -> IndependentVerificationResult | None:
+        """The §7.9 verdict the taxonomy reads, or ``None`` when the node was never verified.
+
+        The newest *non-passing* record about the producer's execution instance, falling back
+        to the newest of any status. The classifier is being asked why the node did not
+        succeed, so the verdict that says it did not is the relevant one; taking whichever
+        verifier happened to be recorded last would let one passing check hide the failing
+        claim that types the failure as ``STRUCTURAL``.
+        """
+
+        producer = (
+            cursor.frozen.get(cursor.last_producer_key)
+            if cursor.last_producer_key is not None
+            else None
+        )
+        if producer is None:
+            return None
+        instance = producer.node_contract.execution_instance_id
+        records = [
+            record
+            for record in await self.store.list_verification_results(
+                workspace_id=await workspace_for_run(self.store, run),
+                project_id=run.project_id,
+            )
+            if record.execution_instance_id == instance
+        ]
+        if not records:
+            return None
+        failing = [
+            record for record in records if record.status is not VerificationState.PASS
+        ]
+        return (failing or records)[-1]
+
+    async def _record_local_verdicts(
+        self,
+        run: Run,
+        task: Task,
+        session: SessionRef,
+        *,
+        policy: AcceptancePolicy,
+        results: list[VerificationResult],
+        cursor: _GraphCursor,
+        routing_configuration: ExecutionConfiguration | None,
+        frozen: FrozenNode | None,
+    ) -> bool:
+        """Seal one §7.9 record per verifier, and answer whether acceptance is blocked.
+
+        **One record per verifier and not one per verifier node.** ``record_local`` folds every
+        verdict it is handed into a single record by taking the worst status per claim, and
+        §7.9's ``conflict_refs`` are detected *between* records. Handing it all three verifiers
+        at once would therefore make a material disagreement structurally unrepresentable: two
+        verifiers contradicting each other about one REQUIRED claim would come back as a plain
+        FAIL, and AC4-M3-027's "blocks acceptance until resolved" would have nothing to fire
+        on. Each verifier is an independent judgement about the same work, so each is recorded
+        as one, and the second one to disagree carries the reference to the first.
+
+        The instance recorded against is the **producer's**, not this verifier node's: §7.9
+        asks what an independent verifier decided about the work a node did, and the sessions
+        compared for independence are the producer's and each verifier's. A verifier session
+        is not declared at all here, which the recorder reads as "this verifier never entered
+        a session" — true of every deterministic in-process check in the registry, and the
+        honest declaration rather than the convenient one.
+        """
+
+        if (
+            self.feedback_pipeline is None
+            or frozen is None
+            or routing_configuration is None
+        ):
+            return False
+        producer = (
+            cursor.frozen.get(cursor.last_producer_key)
+            if cursor.last_producer_key is not None
+            else None
+        )
+        if producer is not None:
+            for verifier_id in sorted({result.verifier_id for result in results}):
+                await self.feedback_pipeline.record_local(
+                    run=run,
+                    task=task,
+                    execution_instance_id=producer.node_contract.execution_instance_id,
+                    session_id=cursor.last_producer_session_id,
+                    results=[
+                        result for result in results if result.verifier_id == verifier_id
+                    ],
+                    policy=policy,
+                    configuration_hash=routing_configuration.configuration_hash,
+                )
+        return await self._unresolved_verification_conflict(run)
+
+    async def _unresolved_verification_conflict(self, run: Run) -> bool:
+        """Whether an unadjudicated material conflict stands against any node of this run.
+
+        Asked of the *store* rather than of the record just written, because that is the only
+        form of the question a resumed run can ask: a rebuilt cursor holds no frozen nodes, and
+        a conflict that had to be re-derived from a fresh verification would be missed on the
+        very pass that is supposed to honour it. Conflicts are append-only, so the resolution
+        is an event and not the absence of a record — see :data:`CONTRADICTION_RESOLVED`.
+        """
+
+        workspace_id = await workspace_for_run(self.store, run)
+        instances = {
+            contract.execution_instance_id
+            for contract in await self.store.list_node_contracts(
+                workspace_id=workspace_id, project_id=run.project_id
+            )
+            if contract.labels.get("run_id") == run.run_id
+        }
+        resolved = {
+            str(event.payload.get("execution_instance_id"))
+            for event in await self.store.list_events(run.run_id)
+            if event.native_type == CONTRADICTION_RESOLVED
+        }
+        return any(
+            record.execution_instance_id in instances
+            and record.execution_instance_id not in resolved
+            and record.conflict_refs
+            and record.status is not VerificationState.PASS
+            for record in await self.store.list_verification_results(
+                workspace_id=workspace_id, project_id=run.project_id
+            )
+        )
+
+    async def _project_experiences(self, run: Run) -> None:
+        """ADR-048's projection point: once the *run* has been graded, and not before.
+
+        Skipped for a run with no routing receipts — there is no decision the outcome is
+        evidence about — and for one with no principal, because §10.1 makes sharing an act of
+        permission and a record authored by nobody names no one who granted it.
+
+        A refusal from the experience layer is logged and swallowed, for the reason
+        :class:`~accretion.routing.stages.PostRouteHook` gives: by the time this runs the
+        terminal state is durable and already announced, and a disabled retrieval gate or an
+        unreadable repository must not turn a finished run into a crashed scheduler task.
+        """
+
+        if (
+            self.feedback_pipeline is None
+            or self.routing_service is None
+            or not run.principal_id
+        ):
+            return
+        graph = await self.store.get_run_graph(run.run_id)
+        if graph is None:
+            return
+        receipts = await self.store.list_routing_receipts_for_run_graph(
+            workspace_id=await workspace_for_run(self.store, run),
+            run_graph_id=graph.run_graph_id,
+        )
+        if not receipts:
+            return
+        try:
+            await self.feedback_pipeline.record_final(
+                run=run,
+                status=_FINAL_VERIFICATION_STATE.get(
+                    run.state, VerificationState.INCONCLUSIVE
+                ),
+                source=ExperienceSourceKind.RUN,
+                principal=principal_ref_for_run(run),
+            )
+        except Exception:
+            _LOGGER.exception(
+                "experience projection failed for run %s; the run terminal stands",
+                run.run_id,
+            )
+
     async def _invoke_node_capabilities(
-        self, run: Run, node: RunNode, spec: WorkflowNodeSpec
+        self,
+        run: Run,
+        node: RunNode,
+        spec: WorkflowNodeSpec,
+        *,
+        executing_provider: Provider | None = None,
+        routing_configuration: ExecutionConfiguration | None = None,
     ) -> None:
         """Spend each of the node's capability references, in declared order.
 
@@ -1225,20 +1975,64 @@ class RunManager:
 
         One reference failing does not stop the next, and none of them changes the
         node's outcome: this loop cannot make a TOOL node fail.
+
+        ``executing_provider`` is the provider of the session the node is running on,
+        and is what the gateway's authorization terminals and audit events name. It
+        defaults to the run's requested provider so that the two callers that hold no
+        session --- the tests that spend a node's references directly --- attribute
+        exactly what they attributed before.
         """
 
-        if self.capability_invoker is None:
-            return
         query = (spec.instruction or spec.label).strip()
         if not query:
             return
+        provider = executing_provider if executing_provider is not None else run.provider
         for capability_id in spec.capability_refs:
+            if routing_configuration is not None:
+                matches = [
+                    binding
+                    for binding in routing_configuration.tools
+                    if binding.capability.capability_id == capability_id
+                ]
+                if len(matches) != 1:
+                    raise RuntimeError(
+                        "SELECTED_TOOL_BINDING_MISMATCH: routed capability has no unique "
+                        "selected binding"
+                    )
+                selected = matches[0]
+                invoke_selected = getattr(
+                    self.capability_invoker, "invoke_selected", None
+                )
+                if invoke_selected is None:
+                    raise RuntimeError(
+                        "SELECTED_TOOL_BINDING_UNAVAILABLE: capability invoker cannot pin "
+                        "the selected binding"
+                    )
+                selected_invoker = cast(
+                    SelectedCapabilityNodeInvoker, self.capability_invoker
+                )
+                result = await selected_invoker.invoke_selected(
+                    run_id=run.run_id,
+                    node_id=node.key,
+                    workspace_id=routing_configuration.workspace_id,
+                    selected=selected,
+                    arguments={"query": query},
+                    executing_provider=provider,
+                )
+                if result is None:
+                    raise RuntimeError(
+                        "SELECTED_TOOL_BINDING_UNAVAILABLE: selected binding was not invoked"
+                    )
+                continue
+            if self.capability_invoker is None:
+                return
             try:
                 await self.capability_invoker(
                     run_id=run.run_id,
                     node_id=node.key,
                     capability_id=capability_id,
                     arguments={"query": query},
+                    executing_provider=provider,
                 )
             except Exception:  # noqa: BLE001 - a reference must not abort the run
                 continue
@@ -1255,6 +2049,8 @@ class RunManager:
         deadline: float,
         cursor: _GraphCursor,
         entered_via: str | None,
+        routing_receipt: RoutingDecisionReceipt | None,
+        routing_configuration: ExecutionConfiguration | None,
     ) -> tuple[NodeOutcome, SessionRef]:
         revisions = await self.store.list_graph_revisions(run.run_id)
         graph_revision = revisions[-1].revision if revisions else 1
@@ -1375,6 +2171,8 @@ class RunManager:
             deadline=deadline,
             node_key=node.key,
             directive=directive,
+            routing_receipt=routing_receipt,
+            routing_configuration=routing_configuration,
         )
         session = outcome.session
         await self.store.add_budget_spent(
@@ -1414,7 +2212,22 @@ class RunManager:
         policy: AcceptancePolicy,
         cursor: _GraphCursor,
         entered_via: str | None,
+        routing_configuration: ExecutionConfiguration | None = None,
+        frozen: FrozenNode | None = None,
     ) -> tuple[NodeOutcome, SessionRef]:
+        if routing_configuration is not None:
+            if frozen is None:
+                raise RuntimeError("DISPATCH_WITHOUT_RECEIPT: verifier was not frozen")
+            selected_verifier_id = self._selected_verifier_id(
+                routing_configuration, frozen
+            )
+            if selected_verifier_id not in policy.required_verifiers:
+                raise RuntimeError(
+                    "SELECTED_VERIFIER_MISMATCH: selected verifier is not required by "
+                    "the acceptance policy"
+                )
+            # The selected verifier is the configuration's pinned primary implementation;
+            # it does not replace the other mandatory checks frozen into the policy/spec.
         await self._node_transition(
             run, session.session_id, node.key, entered=True, entered_via=entered_via
         )
@@ -1436,6 +2249,26 @@ class RunManager:
             diff_sha256=cursor.last_artifact_sha256,
         )
         cursor.last_results = results
+        if await self._record_local_verdicts(
+            run,
+            task,
+            session,
+            policy=policy,
+            results=results,
+            cursor=cursor,
+            routing_configuration=routing_configuration,
+            frozen=frozen,
+        ):
+            # AC4-M3-027. A material conflict is not a verdict: one independent verifier
+            # passed a REQUIRED claim another failed, so what is known is that the evidence
+            # contradicts itself. Accepting the failing side as settled would state a verdict
+            # this record is itself evidence against, so the node waits and the run pauses
+            # until the contradiction is adjudicated.
+            await self._node_transition(
+                run, session.session_id, node.key, entered=False, status="WAITING"
+            )
+            cursor.statuses[node.key] = GraphNodeStatus.WAITING
+            return NodeOutcome.PAUSED, session
         acceptance = evaluate_acceptance_policy(
             policy, results, risk=task.envelope.risk_level
         ).status
@@ -1453,6 +2286,36 @@ class RunManager:
             VerificationStatus.FAIL: NodeOutcome.FAIL,
             VerificationStatus.INCONCLUSIVE: NodeOutcome.INCONCLUSIVE,
         }[acceptance], session
+
+    def _selected_verifier_id(
+        self, configuration: ExecutionConfiguration, frozen: FrozenNode
+    ) -> str:
+        selected = configuration.verifier
+        if selected.verification_spec_hash != frozen.verification_spec.content_hash:
+            raise RuntimeError(
+                "SELECTED_VERIFIER_MISMATCH: verifier pins a different verification spec"
+            )
+        verifier_id = selected.verifier.verifier_contract_id
+        verifier = self.verifiers.get(verifier_id)
+        implementation_identity = (
+            f"{type(verifier).__module__}.{type(verifier).__qualname__}"
+        )
+        implementation_digest = content_hash(
+            {
+                "verifier_id": verifier_id,
+                "version": verifier.verifier_version,
+                "implementation": implementation_identity,
+            },
+            exclude=(),
+        )
+        if (
+            verifier.verifier_version != selected.version
+            or implementation_digest != selected.verifier.implementation_digest
+        ):
+            raise RuntimeError(
+                "SELECTED_VERIFIER_MISMATCH: selected verifier implementation changed"
+            )
+        return verifier_id
 
     async def _graph_gate(
         self,
@@ -2133,6 +2996,56 @@ class RunManager:
         paused = await self.store.update_run(run.run_id, RunState.PAUSED)
         await self._append_pause_if_missing(paused)
 
+    async def resolve_verification_contradiction(
+        self, run_id: str, execution_instance_id: str, *, resolution: str
+    ) -> Run:
+        """Adjudicate one §7.9 material conflict so the paused run may continue.
+
+        The resolution is recorded as a control event on the run rather than as a change to
+        the verdicts, because §7.9 records are append-only and a contradiction that was
+        settled is not a contradiction that never happened: both sides stay readable, and
+        ``list_verification_results`` still answers what each verifier decided.
+
+        Raises ``KeyError`` when no conflicted record names ``execution_instance_id`` — there
+        is nothing to adjudicate, and recording a resolution anyway would leave an event
+        claiming a decision nobody made — and ``ValueError`` for an empty ``resolution``, on
+        the same registry §17 rule the experience projector applies: a closure with no stated
+        reason settles nothing.
+        """
+
+        if not resolution.strip():
+            raise ValueError(
+                "a contradiction is resolved by adjudicating it, so the resolution must say "
+                "something; an empty reason closes the conflict without settling it"
+            )
+        run = await self._require_run(run_id)
+        workspace_id = await workspace_for_run(self.store, run)
+        conflicted = [
+            record
+            for record in await self.store.list_verification_results(
+                workspace_id=workspace_id, project_id=run.project_id
+            )
+            if record.execution_instance_id == execution_instance_id
+            and record.conflict_refs
+        ]
+        if not conflicted:
+            raise KeyError(execution_instance_id)
+        await self._append(
+            self._control_event(
+                run,
+                CONTRADICTION_RESOLVED,
+                EventType.VERIFICATION_RESULT,
+                payload={
+                    "execution_instance_id": execution_instance_id,
+                    "resolution": resolution,
+                    "verification_result_ids": [
+                        record.contract_id for record in conflicted
+                    ],
+                },
+            )
+        )
+        return await self._require_run(run_id)
+
     async def resolve_approval(
         self, approval_id: str, decision: ApprovalDecisionValue
     ) -> ApprovalRecord:
@@ -2406,8 +3319,38 @@ class RunManager:
         node_key: str,
         iteration_number: int = 1,
         directive: IterationDirective | None = None,
+        routing_receipt: RoutingDecisionReceipt | None = None,
+        routing_configuration: ExecutionConfiguration | None = None,
     ) -> RuntimeCallOutcome:
-        runtime = self.runtimes[run.provider]
+        runtime = self._runtime_for(session)
+        if (routing_receipt is None) != (routing_configuration is None):
+            raise RuntimeError(
+                "DISPATCH_WITHOUT_RECEIPT: routed calls require both receipt and configuration"
+            )
+        if routing_configuration is not None:
+            self._require_runtime(routing_configuration.runtime.provider)
+            health = await runtime.health()
+            if (
+                session.provider is not routing_configuration.runtime.provider
+                or health.provider is not routing_configuration.runtime.provider
+                or health.runtime_id != routing_configuration.runtime.runtime_id
+                or health.status is not RuntimeStatus.READY
+                or health.runtime_version
+                != routing_configuration.runtime.adapter_version
+                or content_hash(
+                    {
+                        "runtime_id": health.runtime_id,
+                        "provider": health.provider,
+                        "runtime_version": health.runtime_version,
+                        "capabilities": sorted(health.capabilities),
+                    },
+                    exclude=(),
+                )
+                != routing_configuration.runtime.capability_profile_digest
+            ):
+                raise RuntimeError(
+                    "RUNTIME_VERSION_DRIFT: selected runtime changed before submission"
+                )
         remaining = max(1, int(deadline - datetime.now(UTC).timestamp()))
         request_envelope = envelope.model_copy(
             update={
@@ -2436,7 +3379,7 @@ class RunManager:
         if ref.native_run_id and ref.native_run_id != session.native_session_id:
             session = session.model_copy(update={"native_session_id": ref.native_run_id})
             await self.store.save_session(session)
-        self.active_refs[run.run_id] = ref
+        self.active_refs[run.run_id] = ActiveRuntimeRef(session=session, ref=ref)
         completed = False
         cancelled = False
         tool_ids: set[str] = set()
@@ -2449,6 +3392,9 @@ class RunManager:
             async for event in runtime.events(ref):
                 payload = dict(event.payload)
                 payload.setdefault("runtime_call_id", ref.runtime_call_id or runtime_call_id)
+                if routing_receipt is not None:
+                    payload["routing_receipt_id"] = routing_receipt.contract_id
+                    payload["node_contract_hash"] = routing_receipt.node_contract_hash
                 stored = await self._append(
                     event.model_copy(
                         update={
@@ -3334,9 +4280,9 @@ class RunManager:
         if run.state in TERMINAL_RUN_STATES or run.state is RunState.PAUSED:
             return run
         self.pause_requested.add(run_id)
-        ref = self.active_refs.get(run_id)
-        if ref:
-            await self.runtimes[run.provider].interrupt(ref)
+        active = self.active_refs.get(run_id)
+        if active:
+            await self._runtime_for(active.session).interrupt(active.ref)
         elif run.execution_mode is ExecutionMode.LOOP:
             execution = await self._require_loop(run_id)
             await self.store.update_loop_execution(
@@ -3354,10 +4300,10 @@ class RunManager:
         if run.state in TERMINAL_RUN_STATES:
             return run
         if run.state is not RunState.PAUSED:
-            ref = self.active_refs.get(run_id)
-            if not ref:
+            active = self.active_refs.get(run_id)
+            if not active:
                 return run
-            await self.runtimes[run.provider].resume(ref)
+            await self._runtime_for(active.session).resume(active.ref)
             return await self.store.update_run(run_id, RunState.RUNNING)
         if run_id in self.background and not self.background[run_id].done():
             return run
@@ -3405,8 +4351,12 @@ class RunManager:
             )
             return
         try:
-            async with self.limiter.slot(run.provider, run.project_id):
-                session = await self.runtimes[run.provider].create_session(
+            # A resume continues the prior session rather than opening a new one: the
+            # native session id handed to ``create_session`` below is meaningful only to
+            # the runtime that minted it, so both the slot and the call follow the
+            # session's provider, not the run's. They are the same provider today.
+            async with self.limiter.slot(prior_session.provider, run.project_id):
+                session = await self._runtime_for(prior_session).create_session(
                     SessionConfig(
                         run_id=run_id,
                         workspace=lease.path,
@@ -3454,8 +4404,12 @@ class RunManager:
             )
             return
         try:
-            async with self.limiter.slot(run.provider, run.project_id):
-                session = await self.runtimes[run.provider].create_session(
+            # A resume continues the prior session rather than opening a new one: the
+            # native session id handed to ``create_session`` below is meaningful only to
+            # the runtime that minted it, so both the slot and the call follow the
+            # session's provider, not the run's. They are the same provider today.
+            async with self.limiter.slot(prior_session.provider, run.project_id):
+                session = await self._runtime_for(prior_session).create_session(
                     SessionConfig(
                         run_id=run_id,
                         workspace=lease.path,
@@ -3509,8 +4463,12 @@ class RunManager:
             )
             return
         try:
-            async with self.limiter.slot(run.provider, run.project_id):
-                session = await self.runtimes[run.provider].create_session(
+            # A resume continues the prior session rather than opening a new one: the
+            # native session id handed to ``create_session`` below is meaningful only to
+            # the runtime that minted it, so both the slot and the call follow the
+            # session's provider, not the run's. They are the same provider today.
+            async with self.limiter.slot(prior_session.provider, run.project_id):
+                session = await self._runtime_for(prior_session).create_session(
                     SessionConfig(
                         run_id=run_id,
                         workspace=lease.path,
@@ -3544,9 +4502,9 @@ class RunManager:
         run = await self._require_run(run_id)
         if run.state in TERMINAL_RUN_STATES:
             return run
-        ref = self.active_refs.get(run_id)
-        if ref:
-            await self.runtimes[run.provider].terminate(ref)
+        active = self.active_refs.get(run_id)
+        if active:
+            await self._runtime_for(active.session).terminate(active.ref)
         task = self.background.get(run_id)
         if task and not task.done():
             task.cancel()
@@ -3746,7 +4704,7 @@ class RunManager:
                 and checkpoint is not None
                 and evaluation is not None
                 and evaluation.valid
-                and self._runtime_available(run.provider)
+                and await self._resume_runtime_available(run)
             ):
                 # resume() registers background[run_id] itself; a distinct key
                 # keeps its not-already-running check truthful.
@@ -3756,6 +4714,19 @@ class RunManager:
 
     async def _auto_resume(self, run_id: str) -> None:
         await self.resume(run_id)
+
+    async def _resume_runtime_available(self, run: Run) -> bool:
+        """Can the runtime an auto-resume would actually reach be reached?
+
+        A resume re-enters the prior session's runtime, because only that runtime knows
+        the native session id it is asked to continue. Probing ``run.provider`` instead
+        would clear a run for auto-resume against a runtime that is not the one about
+        to be called. A run with no session cannot be resumed at all --- the resume
+        paths escalate --- so the run's requested provider is the honest fallback.
+        """
+
+        session = await self.store.get_session_for_run(run.run_id)
+        return self._runtime_available(session.provider if session is not None else run.provider)
 
     def _runtime_available(self, provider: Provider) -> bool:
         if provider not in self.runtimes:
@@ -3918,6 +4889,7 @@ class RunManager:
                     entered=False,
                     status=final_node_status,
                 )
+            await self._project_experiences(current)
             return current
 
     async def _append_pause_if_missing(self, run: Run) -> None:

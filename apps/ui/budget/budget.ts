@@ -1,0 +1,154 @@
+import type { Budget, GroupingExpectation } from "./evaluate.js";
+
+/**
+ * The committed bundle budget. One file, read by both `vite.config.ts` (which needs the
+ * lazy-only pattern to build the `cosmic` group) and the gate (which needs all of it).
+ *
+ * ## The honesty rule
+ *
+ * Every number below carries a comment naming the PR that set it and quoting the measured
+ * value it came from. A budget constant with no provenance is indistinguishable from a
+ * number somebody raised to make a build go green, and the two have opposite meanings.
+ *
+ * Raising a cap is allowed and is sometimes correct — a real feature costs real bytes. It
+ * is allowed *in the same commit as the change that needs it*, with the new measurement
+ * quoted here. What is not allowed is raising it in a separate "fix the build" commit,
+ * because that severs the number from its justification.
+ *
+ * ## Where the numbers come from
+ *
+ * All of them are the GATE's own measurements, printed by its own table on a passing
+ * build — never Vite's CLI reporter. Vite's `gzip:` column comes from a native Rust
+ * reporter whose settings are not ours; this gate uses `node:zlib` `gzipSync` at its
+ * default level. The two disagree by a small margin, and mixing them would mean a cap set
+ * against one number and enforced against the other.
+ *
+ * ## Headroom
+ *
+ * The four initial caps are `ceil(measured x 1.05)`. Five percent is a tight ratchet, and
+ * that is the point: it catches an accidental dependency (a date library, a second icon
+ * set) on the PR that adds it, while leaving room for the ordinary drift of a dependency
+ * bump. It is deliberately too tight to absorb a feature silently.
+ */
+
+/**
+ * Modules that may only ever be reached through a dynamic import.
+ *
+ * Empty of matches today, and that is the reason it is being written today. PR7 adds a
+ * three.js "cosmic" background scene; a budget negotiated after that chunk exists would be
+ * negotiated against whatever it happens to weigh. Committing the constraint first means
+ * the scene is lazy by construction, and the gate says so out loud (`lazy-only: no
+ * matching modules (vacuous until PR7)`) rather than passing in silence.
+ *
+ * `[\\/]` rather than `/` throughout: Rolldown's own documentation calls this out, because
+ * module ids use backslashes on Windows and a `/`-only pattern silently matches nothing
+ * there — the exact failure mode where a gate reports success while checking nothing.
+ */
+export const LAZY_ONLY_MODULES = /node_modules[\\/](three|@react-three)[\\/]|[\\/]src[\\/]cosmic[\\/]/;
+
+/** The chunk `LAZY_ONLY_MODULES` must land in. Mirrored by the `cosmic` group in `vite.config.ts`. */
+export const LAZY_ONLY_CHUNK_NAME = "cosmic";
+
+/**
+ * Grouping identity: not "how many bytes" but "which chunk".
+ *
+ * Byte caps cannot see a dependency migrating out of `vendor-react` and into the app
+ * chunk — the total is unchanged, so every size rule stays green while long-term caching
+ * quietly stops working, because the app chunk's hash changes on every commit and React's
+ * used not to.
+ *
+ * Two probes, not five, and deliberately so: each names a package whose placement is load-
+ * bearing and whose absence would be a real event. `react-dom` anchors `vendor-react`;
+ * `@xyflow/react` anchors `vendor-flow`. `vendor-data` and `vendor` are catch-alls whose
+ * membership is defined by exclusion, so an identity probe on them would assert a
+ * tautology.
+ */
+export const GROUPING: readonly GroupingExpectation[] = [
+  { pattern: /node_modules[\\/]react-dom[\\/]/, chunkName: "vendor-react" },
+  { pattern: /node_modules[\\/]@xyflow[\\/]react[\\/]/, chunkName: "vendor-flow" },
+];
+
+/**
+ * Vite's own chunk-size advisory threshold, promoted from a printed warning nobody reads
+ * to a condition that fails the build.
+ *
+ * Flat, not measured-plus-headroom, because unlike the totals it is not a ratchet against
+ * this app's own history — it is the industry advisory this repo had been printing and
+ * ignoring since v0.2. M9 PR3: the pre-split build emitted a single 561,241 B chunk, so
+ * this cap is the reason the split had to land in the same PR rather than being a number
+ * chosen to fit what already existed.
+ */
+export const PER_CHUNK_RAW_BYTES = 500_000;
+
+/**
+ * v0.4 M9c (with M9a and M9b landed). Gate-measured 592,520 B on the first green build of the
+ * router administration page merged over the routing panel and the shadow comparison — the
+ * three §17 screens together. Cap = ceil(592,520 x 1.05).
+ *
+ * The previous cap (M9 PR3: 589,195 from 561,138) was set on a bundle with no v0.4 screen;
+ * the three panels and their client functions cost 31,382 B raw, every byte in the initial
+ * closure because they mount on the run page and the admin nav. M9 PR3's note still holds:
+ * splitting moved bytes between chunks and shrank nothing, and only this rule says so.
+ */
+export const INITIAL_JS_RAW_BYTES = 622_146;
+
+/**
+ * v0.4 M9c. Gate-measured 174,385 B on the same build (node:zlib `gzipSync`, default level,
+ * summed per chunk). Cap = ceil(174,385 x 1.05). Restated with the raw cap so both numbers
+ * carry the same provenance; the old cap (175,348) would still have passed this build.
+ */
+export const INITIAL_JS_GZIP_BYTES = 183_105;
+
+/**
+ * M9 PR5c. Gate-measured 51,491 B (`index-CCp98dUw.css`). Cap = ceil(51,491 x 1.05).
+ *
+ * The cap FALLS, from PR5b's 54,133, because the measurement does: 64 B below the
+ * merge-base's 51,555 B (`index-BhzsXDyn.css`, built by `make style-diff-base` from
+ * `00765e5` with this branch's `node_modules`). PR5b predicted the number would keep
+ * falling once the last `@media` split closed, and it does. Two `@media` wrappers stopped
+ * existing in this slice - `styles.css:276`, which PR5b split across the two sheets, and the
+ * 620 px block of `:99`, which PR5c split for the length of one commit - and nothing was
+ * added, because a port moves rule text and writes none.
+ *
+ * ## The 159 bytes that were nearly recorded here as a cascade effect
+ *
+ * The first green build of this PR measured 51,650 B, and a draft of this comment explained
+ * the +95 B as Lightning CSS folding less inside `@layer components` than it did across the
+ * flat unlayered tail. That explanation was wrong and the bytes were not CSS at all. The
+ * rewritten comment above `import "./theme.css"` in `App.tsx` contained the sentence "hand
+ * every node border back to xyflow", and `theme.css` scopes Tailwind's class detection to
+ * the app's own `.tsx` files with `@source`. That scanner extracts candidates from the whole
+ * file, comments included, so the
+ * English word `border` generated the `.border` utility and its `@property --tw-border-style`
+ * declaration - 159 B of dead CSS that nothing on any page carries. This is the trap
+ * `docs/runbooks/v03-operator-ui.md` records from M9 PR4, hit again by the PR that documents
+ * the cascade. The word was removed; the utilities layer is now `.static` and `.transform`,
+ * 141 B, byte-identical to the merge-base's.
+ *
+ * Worth stating because it very nearly became a committed explanation of a real-sounding
+ * effect that does not exist. The number to watch after a port slice is the layer, and prose
+ * in a `.tsx` file is the thing that moves it without moving a rule.
+ *
+ * This should now be stable: nothing is left to move. PR5d turns Preflight on, which ADDS a
+ * reset and will move it materially; it restates the cap from its own measurement.
+ *
+ * `apps/ui/e2e/style-diff.spec.ts` reports zero computed-style differences against the
+ * merge-base across 17 routes x 5 widths, the interaction pass and six fixture-mocked pages,
+ * so these 64 bytes cost no pixels either.
+ */
+export const INITIAL_CSS_RAW_BYTES = 54_066;
+
+/** M9 PR5c. Gate-measured 10,352 B gzip on the same build, 38 B below PR5b's 10,390 - the
+ * same two `@media` wrappers, compressed. Cap = ceil(10,352 x 1.05). */
+export const INITIAL_CSS_GZIP_BYTES = 10_870;
+
+export const BUDGET: Budget = {
+  perChunkRawBytes: PER_CHUNK_RAW_BYTES,
+  initialJsRawBytes: INITIAL_JS_RAW_BYTES,
+  initialJsGzipBytes: INITIAL_JS_GZIP_BYTES,
+  initialCssRawBytes: INITIAL_CSS_RAW_BYTES,
+  initialCssGzipBytes: INITIAL_CSS_GZIP_BYTES,
+  lazyOnlyModules: LAZY_ONLY_MODULES,
+  lazyOnlyChunkName: LAZY_ONLY_CHUNK_NAME,
+  grouping: GROUPING,
+};

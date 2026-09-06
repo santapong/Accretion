@@ -91,10 +91,24 @@ sideways at 390 px because their registry tables had no scroll container.
 
 ### Inherited from v0.2 release hardening
 
-- Split or lazy-load the operator bundle to remove the current Vite chunk-size
-  advisory without changing routing or backend authority.
-- Automate the manual browser/accessibility release smoke while preserving the
-  current deterministic component tests.
+- ~~Split or lazy-load the operator bundle to remove the current Vite chunk-size
+  advisory without changing routing or backend authority.~~ **Done — M9 PR3.**
+  `apps/ui/vite.config.ts` splits the single over-cap chunk into an app chunk plus
+  four static vendor chunks, each well under the 500,000 B per-chunk cap, and
+  `apps/ui/budget/` turns Vite's ignored advisory into a build failure: five rules, caps
+  measured by the gate itself at `ceil(measured x 1.05)`. The measured numbers live in
+  `apps/ui/budget/budget.ts` and nowhere else. Routing and backend authority are untouched — no route
+  is lazy — and the stylesheet is byte-identical to the pre-split build, because the
+  chunk groups skip CSS ids so the cascade order cannot move. The gate found a real
+  defect on its first run: `@xyflow/react/dist/style.css` matched the `@xyflow/react`
+  grouping probe, so the rule was demanding a stylesheet be placed in a JavaScript
+  chunk.
+- ~~Automate the manual browser/accessibility release smoke while preserving the
+  current deterministic component tests.~~ **Done — M9 PR2.** `apps/ui/e2e/a11y.spec.ts`
+  and the `browser` CI job re-run the recorded procedure against the production build on
+  every push. The vitest suite is untouched. It found five real
+  `scrollable-region-focusable` violations at 390 px on its first run — regions made
+  scrollable by M8's own F1 fix, which a keyboard could see but never reach.
 - Turn the v0.2 evidence manifest, dependency audits, secret scan, and fixture
   hash validation into a repeatable release command or protected workflow.
 

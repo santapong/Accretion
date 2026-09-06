@@ -1,0 +1,19 @@
+{
+  "content_hash": "df42649243a2f55f6a9b3fe009928c4ee1f86c974fbef4bedeb482546ce6fac0",
+  "contract_id": "cmp_8F8D7PY3E21ZEG1XTT0P2TW7X3",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "evaluated_at": "2026-03-01T08:59:45Z",
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "reason_code": "DISTINCT_RUNTIME",
+  "rule_id": "verifier-independence",
+  "rule_version": "2.0.0",
+  "status": "COMPATIBLE",
+  "subject_ref": "diff-and-suite@4.2.0",
+  "subject_type": "VERIFIER",
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

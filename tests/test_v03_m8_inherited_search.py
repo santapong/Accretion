@@ -140,7 +140,12 @@ async def test_search_stops_on_acceptance_and_records_the_selected_candidate(
     """Acceptance: two distinct candidates, a clear winner, promotion succeeds."""
     runtime = FakeRuntime(
         scripted_outcomes=[
-            FakeCallOutcome(hook=writes("")),
+            # Writes no output at all, so it misses the required output and is
+            # deterministically ineligible. It must NOT write an empty file:
+            # `capture_diff` returns None for an empty diff, which would leave
+            # an *eligible* candidate with `patch_sha256 = None` and trip the
+            # LOW_DIVERSITY guard instead of promoting the winner.
+            FakeCallOutcome(),
             FakeCallOutcome(hook=writes("a materially better candidate")),
         ]
     )
@@ -153,6 +158,22 @@ async def test_search_stops_on_acceptance_and_records_the_selected_candidate(
     assert stored.stop_reason is SearchStopReason.ACCEPTED
     assert stored.selected_candidate_id is not None
     assert stored.completed_at is not None
+
+    # Pin the state this outcome depends on, so the LOW_DIVERSITY flake cannot
+    # come back silently: exactly one candidate is eligible, and it is the one
+    # that produced an artifact. A second eligible candidate carrying a null
+    # patch hash is what used to divert this run to LOW_DIVERSITY.
+    candidates = await manager.store.list_search_candidates(record.plan.search_id)
+    scores = await manager.store.list_candidate_scores(record.plan.search_id)
+    assert len(candidates) == 2
+    eligible = [score for score in scores if score.eligible]
+    assert len(eligible) == 1, (
+        "exactly one candidate may be eligible; two eligible with one artifact "
+        "trips the LOW_DIVERSITY guard"
+    )
+    winner = next(c for c in candidates if c.candidate_id == stored.selected_candidate_id)
+    assert winner.patch_sha256 is not None
+    assert eligible[0].candidate_id == winner.candidate_id
 
     payloads = await stopped_event_payloads(manager, run_id)
     assert [item["stop_reason"] for item in payloads] == ["ACCEPTED"]
@@ -405,7 +426,12 @@ async def test_the_six_named_stop_reasons_are_pairwise_distinct(tmp_path: Path) 
 
     accept_runtime = FakeRuntime(
         scripted_outcomes=[
-            FakeCallOutcome(hook=writes("")),
+            # Writes no output at all, so it misses the required output and is
+            # deterministically ineligible. It must NOT write an empty file:
+            # `capture_diff` returns None for an empty diff, which would leave
+            # an *eligible* candidate with `patch_sha256 = None` and trip the
+            # LOW_DIVERSITY guard instead of promoting the winner.
+            FakeCallOutcome(),
             FakeCallOutcome(hook=writes("clearly better")),
         ]
     )

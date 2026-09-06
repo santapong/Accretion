@@ -7,6 +7,8 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from accretion.routing.protocols import RoutingMode
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_prefix="ACCRETION_", extra="ignore")
@@ -14,6 +16,17 @@ class Settings(BaseSettings):
     environment: str = "development"
     database_url: str = "postgresql+asyncpg://accretion:accretion@localhost:5432/accretion"
     data_dir: Path = Path(".accretion")
+    # Where the v0.4 router keeps trained artefacts, calibrations and holdout
+    # evaluations (SDD §7.12). Inside the gitignored data directory by default, because
+    # an artefact tree under version control would make every training run a diff.
+    router_artifact_dir: Path = Path(".accretion") / "router-artifacts"
+    # Releases the v0.4 locked test set and the drift holdout (`evals/router/locked` and
+    # `evals/router/drift`) for one read. Off by default and read only by
+    # `accretion.routing.locked_test`: the corpora are committed, so nothing technical stops
+    # a process loading them, and the point of the flag is that reading them is an act an
+    # operator performs deliberately and leaves a record of. Every released read appends a
+    # row to `docs/research/v0.4/access-log.jsonl`.
+    router_locked_test: bool = False
     cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:5173"])
     global_max_runs: int = 4
     provider_max_runs: int = 2
@@ -45,6 +58,12 @@ class Settings(BaseSettings):
     session_cookie_name: str = "accretion_session"
     session_ttl_seconds: int = 28_800
     enable_dynamic_workflows: bool = False
+    # M2 is an explicit opt-in. Enabling it does not enable learned or live routing.
+    enable_node_routing: bool = False
+    # §11.1's three regimes, as the default this process routes a graph under. BASELINE_ONLY
+    # because §11.1 makes AUTO something a workspace earns by passing shadow evaluation, and
+    # a default that started anywhere else would grant it by deployment accident.
+    node_routing_mode: RoutingMode = RoutingMode.BASELINE_ONLY
     enable_candidate_search: bool = False
     enable_experience_retrieval: bool = False
     mcp_allowed_hosts: list[str] = Field(default_factory=list)

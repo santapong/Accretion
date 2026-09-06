@@ -1,0 +1,27 @@
+{
+  "accepted_outcomes": [
+    "PASS",
+    "FAIL"
+  ],
+  "claims": [
+    {
+      "claim_id": "migration-reverses",
+      "criticality": "REQUIRED",
+      "description": "upgrade head, downgrade base, upgrade head runs clean.",
+      "required_evidence_types": [
+        "DIGITAL"
+      ]
+    }
+  ],
+  "content_hash": "4d31f0eec814eae1f489437b9f37dd15951554a98c3f32e173c1fd5fba53a0e6",
+  "contract_id": "vsp_0ET0ZEV445T6JX58HZ2CF5WKSW",
+  "created_at": "2026-03-01T09:00:00Z",
+  "created_by": {
+    "display_name": "v0.4 contract freeze fixture",
+    "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+    "status": "ACTIVE"
+  },
+  "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+  "revision": 2,
+  "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+}

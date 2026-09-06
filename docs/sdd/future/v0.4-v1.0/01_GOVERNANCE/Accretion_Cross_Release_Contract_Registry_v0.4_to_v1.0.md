@@ -135,6 +135,8 @@ LOW_DIGITAL | MEDIUM_DIGITAL | HIGH_DIGITAL | SIMULATION | PHYSICAL_HIGH | PROHI
 
 Project policy may make a class stricter. It may not reduce `PHYSICAL_HIGH` through a plugin, learned policy, or runtime request.
 
+The repository's v0.1 `RiskLevel` (`LOW|MEDIUM|HIGH|CRITICAL`, the human-approval ladder) stays; `RiskClass` maps onto it totally and `PROHIBITED` maps to nothing (SDD v0.4 ADR-054).
+
 ### 5.4 Failure ownership
 
 ```text
@@ -183,10 +185,10 @@ v0.4 owns node-level objective, routing, verification-feedback, and learned-rout
 | `RoutingContext` | v0.4 | Immutable decision snapshot |
 | `ExecutionConfiguration` | v0.4 | Runtime/model/tool/skill/verifier implementation/environment tuple |
 | `ConfigurationCandidate` | v0.4 | Policy-compatible candidate with predicted outcomes |
-| `CompatibilityDecision` | v0.4 | Deterministic admissibility receipt for node configuration |
+| `CompatibilityDecision` | v0.4 | Deterministic admissibility receipt for node configuration. Distinct from the v0.2 `CompatibilityAssessment` of a past experience (SDD v0.4 ADR-054) |
 | `RoutingDecisionReceipt` | v0.4 | Candidate set, selected option, propensity, explanation, policy snapshot |
-| `VerificationResult` | v0.4 | Independent verification outcome tied to spec and evidence |
-| `ExperienceRecord` | v0.4 | Verified, compatibility-scoped reusable experience |
+| `VerificationResult` | v0.4 | Independent verification outcome tied to spec and evidence. Code name `IndependentVerificationResult` (SDD v0.4 ADR-054): the v0.1 `VerificationResult` is API-exposed and keeps its name |
+| `ExperienceRecord` | v0.4 | Verified, compatibility-scoped reusable experience. A projection keyed by the v0.2 P7 `experience_id`; no second `Experience` schema (SDD v0.4 ADR-054) |
 | `FailureEvent` | v0.4 | Typed failure and owning recovery layer |
 | `RouterModelVersion` | v0.4 | Immutable router artifact/data/config snapshot |
 | `RouterPromotionReport` | v0.4 | Holdout, cohort, safety, rollback, and human promotion record |

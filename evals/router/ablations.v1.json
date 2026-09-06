@@ -1,0 +1,66 @@
+{
+  "ablations": [
+    {
+      "ablation_id": "A1",
+      "cleared_flag": "hierarchical_construction",
+      "question": "Is factorized search necessary?",
+      "removed_component": "Hierarchical construction"
+    },
+    {
+      "ablation_id": "A2",
+      "cleared_flag": "compatibility_pruning",
+      "question": "Does typed pruning improve validity/efficiency?",
+      "removed_component": "Compatibility pruning"
+    },
+    {
+      "ablation_id": "A3",
+      "cleared_flag": "experience_retrieval",
+      "question": "Does verified history improve routing?",
+      "removed_component": "Experience retrieval"
+    },
+    {
+      "ablation_id": "A4",
+      "cleared_flag": "project_adapter",
+      "question": "Is local adaptation beneficial?",
+      "removed_component": "Project adapter"
+    },
+    {
+      "ablation_id": "A5",
+      "cleared_flag": "node_feedback",
+      "question": "Is local credit required?",
+      "removed_component": "Node-level feedback"
+    },
+    {
+      "ablation_id": "A6",
+      "cleared_flag": "final_run_feedback",
+      "question": "Does global outcome correct local optimization?",
+      "removed_component": "Final-run feedback"
+    },
+    {
+      "ablation_id": "A7",
+      "cleared_flag": "guarded_exploration",
+      "question": "Does online exploration add value beyond offline ranker?",
+      "removed_component": "Guarded exploration"
+    },
+    {
+      "ablation_id": "A8",
+      "cleared_flag": "independent_verification",
+      "question": "Does evidence governance change learned behavior?",
+      "removed_component": "Independent verification"
+    },
+    {
+      "ablation_id": "A9",
+      "cleared_flag": "uncertainty_gate",
+      "question": "Does conservative confidence control prevent unsafe choices?",
+      "removed_component": "Uncertainty gate"
+    },
+    {
+      "ablation_id": "A10",
+      "cleared_flag": "evi_recovery_stop",
+      "question": "Does expected-value stopping reduce waste/thrashing?",
+      "removed_component": "EVI recovery stop"
+    }
+  ],
+  "protocol_section": "14",
+  "suite_version": "v1"
+}

@@ -1,0 +1,967 @@
+{
+  "$defs": {
+    "ExpectedHorizon": {
+      "enum": [
+        "SHORT",
+        "MEDIUM",
+        "LONG"
+      ],
+      "title": "ExpectedHorizon",
+      "type": "string"
+    },
+    "GraphFeatures": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.4 ``graph_features``: where in the graph this node sits.\n\nThe neighbour types are :class:`~accretion.contracts.GraphNodeKind` values \u2014 the v0.1\nenum, still nine kinds, reused rather than restated \u2014 so a feature vector cannot record a\nneighbour kind the graph engine cannot produce.",
+      "properties": {
+        "child_node_types": {
+          "items": {
+            "$ref": "#/$defs/GraphNodeKind"
+          },
+          "maxItems": 64,
+          "title": "Child Node Types",
+          "type": "array"
+        },
+        "critical_path": {
+          "title": "Critical Path",
+          "type": "boolean"
+        },
+        "depth": {
+          "minimum": 0,
+          "title": "Depth",
+          "type": "integer"
+        },
+        "parent_node_types": {
+          "items": {
+            "$ref": "#/$defs/GraphNodeKind"
+          },
+          "maxItems": 64,
+          "title": "Parent Node Types",
+          "type": "array"
+        },
+        "retry_number": {
+          "minimum": 0,
+          "title": "Retry Number",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "depth",
+        "critical_path",
+        "retry_number"
+      ],
+      "title": "GraphFeatures",
+      "type": "object"
+    },
+    "GraphNodeKind": {
+      "enum": [
+        "TASK",
+        "AGENT",
+        "TOOL",
+        "VERIFIER",
+        "GATE",
+        "LOOP",
+        "JOIN",
+        "HUMAN",
+        "TERMINAL"
+      ],
+      "title": "GraphNodeKind",
+      "type": "string"
+    },
+    "NodeContractRef": {
+      "additionalProperties": false,
+      "description": "The exact node contract a routing context was built from (SDD \u00a77.4, \u00a78.3).\n\nSDD \u00a77.4 writes ``node_contract_ref: uuid``. An id alone would not satisfy \u00a78.3, which\nrequires routing to use an *exact snapshot*: the id would still resolve after a\nrevision, and the decision would silently claim to have been made against a contract it\nnever saw. Pinning ``immutable_hash`` is what makes the claim checkable.",
+      "properties": {
+        "immutable_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Immutable Hash",
+          "type": "string"
+        },
+        "node_contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Node Contract Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "node_contract_id",
+        "immutable_hash"
+      ],
+      "title": "NodeContractRef",
+      "type": "object"
+    },
+    "ObjectiveContractRef": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.1. The exact objective revision a node was authorised against.\n\nThis is the type of the registry \u00a73 optional header field ``objective_contract_ref``,\nwhich is why it is defined before every other contract in this module and why\n:class:`~accretion.contracts.canonical.CanonicalContract` is rebuilt immediately below\nit.\n\n**Field coverage (SDD \u00a77.1 \u2192 here).** ``project_id`` \u2192 the header's ``project_id``.\n``objective_contract_id`` \u2192 ``objective_contract_id``. ``version`` \u2192 ``revision``, the\nregistry \u00a77.1 spelling, which is also what the ``ObjectiveContract`` aggregate calls its\nown counter. ``content_hash`` \u2192 ``objective_contract_hash``. ``verified_success_floor``,\n``utility_profile_id``, ``approved_at`` \u2192 unchanged. ``risk_policy_id`` \u2192 ``risk_policy``,\na typed :class:`~accretion.contracts.refs.PolicyRef` (registry \u00a73.1 requires policies to\nuse immutable typed references, and an authority decision audited against \"policy v3\" is\naudited against a label). ``approved_by`` \u2192 a typed\n:class:`~accretion.contracts.PrincipalRef` for the same reason.\n\n**Why the target's identity is qualified.** Registry \u00a73 describes the header field as\n``{contract_id, revision, content_hash}``, but inside a :class:`CanonicalContract` those\ntwo unqualified names already mean *this reference's own* id and digest. The target's\nare therefore spelled ``objective_contract_id`` and ``objective_contract_hash``. Nothing\nis lost and the ambiguity that would otherwise sit in every receipt is.\n\n``ID_KIND`` is ``None``: ADR-055 mints no prefix for a reference, because a reference is\ncreated and owned by the contract that embeds it and has no id space to collide in.\n``verified_success_floor`` is copied onto the reference rather than dereferenced because\n\u00a78.3 requires routing to run against an exact snapshot \u2014 a router that re-read the floor\nfrom the live objective would be routing against a number the receipt cannot prove.",
+      "properties": {
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.objective-contract-ref",
+          "default": "accretion.objective-contract-ref",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "objective_contract_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Objective Contract Hash",
+          "type": "string"
+        },
+        "objective_contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Objective Contract Id",
+          "type": "string"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "risk_policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "utility_profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Utility Profile Id",
+          "type": "string"
+        },
+        "verified_success_floor": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Verified Success Floor",
+          "type": "number"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "objective_contract_id",
+        "revision",
+        "objective_contract_hash",
+        "verified_success_floor",
+        "utility_profile_id",
+        "risk_policy",
+        "approved_by",
+        "approved_at"
+      ],
+      "title": "ObjectiveContractRef",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "description": "A policy by id, version and content digest (registry \u00a74).\n\nAuthority decisions are audited against the exact policy text that produced them, so the\ncontent digest is required: \"policy v3\" is a label, and labels are editable.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "policy_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version",
+        "content_digest"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "PrincipalRef": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "principal_id": {
+          "title": "Principal Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PrincipalStatus"
+        }
+      },
+      "required": [
+        "principal_id",
+        "status"
+      ],
+      "title": "PrincipalRef",
+      "type": "object"
+    },
+    "PrincipalStatus": {
+      "enum": [
+        "ACTIVE",
+        "DISABLED"
+      ],
+      "title": "PrincipalStatus",
+      "type": "string"
+    },
+    "ProjectFeatures": {
+      "additionalProperties": false,
+      "description": "The project half of a routing context's feature vector, aggregated over ``TaskProfile``.\n\nSDD \u00a77.4 writes ``project_features: object`` and names no fields, so the same rule\napplies as for :class:`TaskFeatures`: nothing is invented. Every field here is an\naggregate over the same :class:`~accretion.contracts.TaskProfile` rows the task features\nare drawn from, computed over an explicit window, because a project-level prior that\ncould not say *what it summarised* would be unreproducible from a training snapshot.\n\n**Field provenance \u2014 the aggregation and its source field:**\n\n* ``feature_window_days`` \u2014 the window every aggregate below is computed over. Recorded\n  rather than assumed, because the same project has different features under a 30-day\n  and a 365-day window.\n* ``observed_task_count`` \u2014 the number of ``TaskProfile`` rows in the window. This is the\n  denominator of every other field, and a prior computed over three tasks deserves to be\n  recognisable as one.\n* ``mean_complexity`` \u2190 mean of ``TaskProfile.complexity``.\n* ``mean_uncertainty`` \u2190 mean of ``TaskProfile.uncertainty``.\n* ``mean_verifier_strength`` \u2190 mean of ``TaskProfile.verifier_strength``.\n* ``irreversible_action_rate`` \u2190 fraction of rows with\n  ``TaskProfile.irreversible_actions`` true.\n* ``maximum_risk`` \u2190 the maximum of ``TaskProfile.risk`` under\n  :data:`~accretion.contracts.RISK_RANK` (and *not* under ``StrEnum`` ordering, which\n  sorts ``CRITICAL`` below ``LOW``).\n* ``dominant_expected_horizon`` \u2190 the modal ``TaskProfile.expected_horizon``.\n\nThe four means and the two summaries are nullable for the same reason the task features\nare: an empty window yields no mean, and zero would be a claim.",
+      "properties": {
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.project-features",
+          "default": "accretion.project-features",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "dominant_expected_horizon": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExpectedHorizon"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "feature_window_days": {
+          "maximum": 3650,
+          "minimum": 1,
+          "title": "Feature Window Days",
+          "type": "integer"
+        },
+        "irreversible_action_rate": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Irreversible Action Rate"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "maximum_risk": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RiskLevel"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "mean_complexity": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean Complexity"
+        },
+        "mean_uncertainty": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean Uncertainty"
+        },
+        "mean_verifier_strength": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Mean Verifier Strength"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "observed_task_count": {
+          "minimum": 0,
+          "title": "Observed Task Count",
+          "type": "integer"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "feature_window_days",
+        "observed_task_count"
+      ],
+      "title": "ProjectFeatures",
+      "type": "object"
+    },
+    "RiskLevel": {
+      "enum": [
+        "LOW",
+        "MEDIUM",
+        "HIGH",
+        "CRITICAL"
+      ],
+      "title": "RiskLevel",
+      "type": "string"
+    },
+    "TaskFeatures": {
+      "additionalProperties": false,
+      "description": "The task half of a routing context's feature vector, derived from v0.1's ``TaskProfile``.\n\nSDD \u00a77.4 writes ``task_features: object``. An untyped blob is the one thing a feature\nschema must not be: \u00a77.12 makes a router model record the ``feature_schema_version`` it\nlearned under, and a version number over a free-form dict versions nothing. So the\nfeatures are named, and every one of them is *taken* from the deterministic profiler\nrather than invented here \u2014 a feature the profiler cannot produce is a feature no\ntraining snapshot could ever contain.\n\n**Field provenance \u2014 every field names its source on**\n:class:`~accretion.contracts.TaskProfile`:\n\n* ``source_profile_id`` \u2190 ``TaskProfile.profile_id`` (provenance, not a feature).\n* ``complexity`` \u2190 ``TaskProfile.complexity``.\n* ``structure_certainty`` \u2190 ``TaskProfile.structure_certainty``.\n* ``feedback_dependency`` \u2190 ``TaskProfile.feedback_dependency``.\n* ``dependency_complexity`` \u2190 ``TaskProfile.dependency_complexity``.\n* ``parallelism_potential`` \u2190 ``TaskProfile.parallelism_potential``.\n* ``uncertainty`` \u2190 ``TaskProfile.uncertainty``.\n* ``verifier_strength`` \u2190 ``TaskProfile.verifier_strength``.\n* ``risk`` \u2190 ``TaskProfile.risk`` (v0.1 :class:`~accretion.contracts.RiskLevel`; the\n  node's :class:`RiskClass` is a different axis and lives on ``NodeContract``).\n* ``irreversible_actions`` \u2190 ``TaskProfile.irreversible_actions``.\n* ``expected_horizon`` \u2190 ``TaskProfile.expected_horizon``.\n* ``profile_confidence`` \u2190 ``TaskProfile.profile_confidence``.\n\nThe seven scored dimensions keep ``TaskProfile``'s ``float | None`` typing rather than\ndefaulting a missing score to zero. ``TaskProfile`` leaves a dimension null when the\nprofiler could not observe it, and zero is a *confident* score of \"none of this\"; the\ndifference matters to a model and would be erased on the way in.\n\n``ID_KIND`` is ``None``: ADR-055 mints no prefix, because a feature vector is minted and\nowned by the :class:`RoutingContext` that embeds it.",
+      "properties": {
+        "complexity": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Complexity"
+        },
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.task-features",
+          "default": "accretion.task-features",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "dependency_complexity": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Dependency Complexity"
+        },
+        "expected_horizon": {
+          "$ref": "#/$defs/ExpectedHorizon"
+        },
+        "feedback_dependency": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Feedback Dependency"
+        },
+        "irreversible_actions": {
+          "title": "Irreversible Actions",
+          "type": "boolean"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "parallelism_potential": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Parallelism Potential"
+        },
+        "profile_confidence": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Profile Confidence",
+          "type": "number"
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "risk": {
+          "$ref": "#/$defs/RiskLevel"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "source_profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Source Profile Id",
+          "type": "string"
+        },
+        "structure_certainty": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Structure Certainty"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "uncertainty": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Uncertainty"
+        },
+        "verifier_strength": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Verifier Strength"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "source_profile_id",
+        "risk",
+        "irreversible_actions",
+        "expected_horizon",
+        "profile_confidence"
+      ],
+      "title": "TaskFeatures",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "SDD \u00a77.4. The immutable snapshot one routing decision was made against.\n\n\u00a78.2 makes this contract's id the idempotency key for routing, and \u00a78.3 makes it the\nplace where \"exact snapshot\" stops being a principle and becomes a field list: a changed\nregistry, model, policy or contract snapshot MUST use a new request id, so every\nsnapshot the decision depended on is pinned here rather than looked up later.\n\n**Field coverage (SDD \u00a77.4 \u2192 here).** ``routing_request_id`` \u2192 the header's\n``contract_id``, carrying the ADR-055 ``rrq`` prefix. ``node_contract_ref`` \u2192\n:class:`NodeContractRef`, which pins the node's ``immutable_hash`` beside its id because\nan id alone would still resolve after a revision and \u00a78.3 would be unenforceable.\n``task_features`` \u2192 :class:`TaskFeatures`; ``project_features`` \u2192\n:class:`ProjectFeatures`; ``graph_features`` \u2192 :class:`GraphFeatures` \u2014 the SDD's two\n``object`` fields and its inline graph block, all three typed.\n``available_runtime_snapshot_id``, ``capability_registry_snapshot_id``,\n``connection_availability_snapshot_id``, ``policy_snapshot_id``,\n``workspace_router_version``, ``project_adapter_version``,\n``historical_experience_refs``, ``requested_at`` \u2192 unchanged.\n\n``feature_schema_version`` is added by this implementation and is not in SDD \u00a77.4. It is\nrequired by \u00a77.12, which makes a router model record the feature schema it was trained\nunder; without the same version on the context, a stored decision could not be matched\nto the model that made it, and the freeze would have versioned the model but not its\ninput. It defaults to :data:`FEATURE_SCHEMA_VERSION`.\n\n``requested_at`` and the header's ``created_at`` are both kept and are not the same\ninstant: ``requested_at`` is when the caller asked, ``created_at`` is when this record\nwas written. They differ under retry and under replay, and collapsing them would make\nlatency measured from the record rather than from the request.\n\n``historical_experience_refs`` is a list of v0.2 P7 ``experience_id`` strings, not typed\nreferences. That is the existing convention for experience ids across v0.2-v0.3 and\nre-typing it would be a registry \u00a73.2 Major change to schemas that already store them.",
+  "properties": {
+    "available_runtime_snapshot_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Available Runtime Snapshot Id",
+      "type": "string"
+    },
+    "capability_registry_snapshot_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Capability Registry Snapshot Id",
+      "type": "string"
+    },
+    "connection_availability_snapshot_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Connection Availability Snapshot Id",
+      "type": "string"
+    },
+    "content_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "contract_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "accretion.routing-context",
+      "default": "accretion.routing-context",
+      "title": "Contract Type",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/PrincipalRef"
+    },
+    "feature_schema_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Feature Schema Version",
+      "type": "string"
+    },
+    "graph_features": {
+      "$ref": "#/$defs/GraphFeatures"
+    },
+    "historical_experience_refs": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 64,
+      "title": "Historical Experience Refs",
+      "type": "array"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "node_contract_ref": {
+      "$ref": "#/$defs/NodeContractRef"
+    },
+    "objective_contract_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectiveContractRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "policy_snapshot_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Policy Snapshot Id",
+      "type": "string"
+    },
+    "project_adapter_version": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Adapter Version"
+    },
+    "project_features": {
+      "$ref": "#/$defs/ProjectFeatures"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "requested_at": {
+      "format": "date-time",
+      "title": "Requested At",
+      "type": "string"
+    },
+    "retention_class": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention Class"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "supersedes_contract_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Contract Id"
+    },
+    "task_features": {
+      "$ref": "#/$defs/TaskFeatures"
+    },
+    "workspace_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Workspace Id",
+      "type": "string"
+    },
+    "workspace_router_version": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Workspace Router Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_id",
+    "created_by",
+    "workspace_id",
+    "node_contract_ref",
+    "task_features",
+    "graph_features",
+    "project_features",
+    "available_runtime_snapshot_id",
+    "capability_registry_snapshot_id",
+    "connection_availability_snapshot_id",
+    "policy_snapshot_id",
+    "workspace_router_version",
+    "requested_at"
+  ],
+  "title": "RoutingContext",
+  "type": "object"
+}

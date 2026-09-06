@@ -1,0 +1,448 @@
+{
+  "$defs": {
+    "ObjectiveContractRef": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.1. The exact objective revision a node was authorised against.\n\nThis is the type of the registry \u00a73 optional header field ``objective_contract_ref``,\nwhich is why it is defined before every other contract in this module and why\n:class:`~accretion.contracts.canonical.CanonicalContract` is rebuilt immediately below\nit.\n\n**Field coverage (SDD \u00a77.1 \u2192 here).** ``project_id`` \u2192 the header's ``project_id``.\n``objective_contract_id`` \u2192 ``objective_contract_id``. ``version`` \u2192 ``revision``, the\nregistry \u00a77.1 spelling, which is also what the ``ObjectiveContract`` aggregate calls its\nown counter. ``content_hash`` \u2192 ``objective_contract_hash``. ``verified_success_floor``,\n``utility_profile_id``, ``approved_at`` \u2192 unchanged. ``risk_policy_id`` \u2192 ``risk_policy``,\na typed :class:`~accretion.contracts.refs.PolicyRef` (registry \u00a73.1 requires policies to\nuse immutable typed references, and an authority decision audited against \"policy v3\" is\naudited against a label). ``approved_by`` \u2192 a typed\n:class:`~accretion.contracts.PrincipalRef` for the same reason.\n\n**Why the target's identity is qualified.** Registry \u00a73 describes the header field as\n``{contract_id, revision, content_hash}``, but inside a :class:`CanonicalContract` those\ntwo unqualified names already mean *this reference's own* id and digest. The target's\nare therefore spelled ``objective_contract_id`` and ``objective_contract_hash``. Nothing\nis lost and the ambiguity that would otherwise sit in every receipt is.\n\n``ID_KIND`` is ``None``: ADR-055 mints no prefix for a reference, because a reference is\ncreated and owned by the contract that embeds it and has no id space to collide in.\n``verified_success_floor`` is copied onto the reference rather than dereferenced because\n\u00a78.3 requires routing to run against an exact snapshot \u2014 a router that re-read the floor\nfrom the live objective would be routing against a number the receipt cannot prove.",
+      "properties": {
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.objective-contract-ref",
+          "default": "accretion.objective-contract-ref",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "objective_contract_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Objective Contract Hash",
+          "type": "string"
+        },
+        "objective_contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Objective Contract Id",
+          "type": "string"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "risk_policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "utility_profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Utility Profile Id",
+          "type": "string"
+        },
+        "verified_success_floor": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Verified Success Floor",
+          "type": "number"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "objective_contract_id",
+        "revision",
+        "objective_contract_hash",
+        "verified_success_floor",
+        "utility_profile_id",
+        "risk_policy",
+        "approved_by",
+        "approved_at"
+      ],
+      "title": "ObjectiveContractRef",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "description": "A policy by id, version and content digest (registry \u00a74).\n\nAuthority decisions are audited against the exact policy text that produced them, so the\ncontent digest is required: \"policy v3\" is a label, and labels are editable.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "policy_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version",
+        "content_digest"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "PrincipalRef": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "principal_id": {
+          "title": "Principal Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PrincipalStatus"
+        }
+      },
+      "required": [
+        "principal_id",
+        "status"
+      ],
+      "title": "PrincipalRef",
+      "type": "object"
+    },
+    "PrincipalStatus": {
+      "enum": [
+        "ACTIVE",
+        "DISABLED"
+      ],
+      "title": "PrincipalStatus",
+      "type": "string"
+    },
+    "RouterActivationKind": {
+      "description": "ADR-061. Why a router version became the head of the activation ledger.\n\n\u00a710.3 makes promotion \"atomic and reversible\", and M0 implemented \"one active router\"\nas two partial unique indexes over ``router_model_versions.status``. That composes with\na first activation and with nothing after it: the store has no ``update_`` for any v0.4\ntable, so a second ``ACTIVE`` row can never be inserted and the first one can never be\nretired. The ledger replaces the index \u2014 \"active\" becomes the head of an append-only\nsequence \u2014 and this enum is why each entry was appended.\n\n``ROLLBACK`` is not ``PROMOTE`` with a different target. A promotion is a release and a\nrollback is a withdrawal, they are approved under different circumstances, and \u00a710.3's\nreversibility claim is worth nothing if the ledger cannot distinguish the two after the\nfact. Distinct from :class:`RouterPromotionDecision`, which grades an *evaluation*\n(``PROMOTE``/``REJECT``/``REQUIRE_REVIEW``); this records an *act*, and a rejected\nevaluation produces no activation row at all.",
+      "enum": [
+        "PROMOTE",
+        "ROLLBACK"
+      ],
+      "title": "RouterActivationKind",
+      "type": "string"
+    },
+    "RouterScope": {
+      "description": "SDD \u00a77.12. The two learning scopes of ADR-047: a workspace prior and a project adapter.\n\nShares the token ``TEAM_WORKSPACE`` with :class:`Visibility` and means something\ndifferent by it \u2014 there, who may read a record; here, what a model was fitted over.\nThey are kept as two enums rather than one because their value sets are not the same\nand never will be: a project adapter is not a visibility and ``PROJECT`` is not a scope.",
+      "enum": [
+        "TEAM_WORKSPACE",
+        "PROJECT_ADAPTER"
+      ],
+      "title": "RouterScope",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "ADR-061. One append-only entry in the ledger whose head is the active router.\n\n**Added by the freeze delta of 5 Sep 2026, not by M0.** \u00a713.1 says \"one active\nworkspace router per workspace\" and M0 implemented it as the partial unique index\n``uq_router_versions_active_workspace`` over ``router_model_versions.status``. That\nrule is correct and its implementation does not compose with \u00a710.3: this family has no\n``update_`` method on any table, by design, so the first ``ACTIVE`` row can never be\nretired and a second one can never be inserted. A workspace could be activated exactly\nonce, forever.\n\nThe ledger is the fix, and it is a better statement of the requirement than the index\nwas. \"Active\" stops being a mutable column and becomes *the head of a sequence*: the\nactivation with the highest ``sequence`` for a ``(workspace_id, scope, family_key)``\nnames the version now serving. Promotion appends; rollback appends; nothing is edited;\nthe history of who activated what, when, and why is the table itself rather than a\nreconstruction from timestamps. M8.1 owns the migration that retires the two partial\nindexes (0019); this freeze adds the contract and its table and touches neither index,\nso a database between the two migrations is consistent under both rules at once.\n\n**Fields.** ``scope`` and ``family_key`` are the ledger's partition \u2014 ``scope`` is\n:class:`RouterScope`, the same enum :class:`RouterModelVersion` carries, and\n``family_key`` is the router family within it (``algorithm_id`` for a workspace prior,\nand the project-and-algorithm pair for an adapter), so that two families promoting on\nthe same day are two sequences rather than one contested one. ``sequence`` is\ncontiguous from 1 and unique per partition \u2014 a database constraint, not a hope, and it\nis what makes \"the head\" a query rather than a scan. ``router_version_id`` is the\n``rmv_`` version being activated, ``previous_version_id`` the one it displaces,\n``rollback_target_version_id`` what a withdrawal would restore, and\n``promotion_report_id`` the ``rpr_`` evaluation that authorised it \u2014 nullable because a\nrollback is authorised by an incident and not by a report. ``approved_by`` is required\non **every** entry, rollbacks included (OQ-411): \u00a710.3 makes activation a human act, and\na rollback performed by nobody is the activation nobody can be asked about afterwards.\n\n``PROJECT_SCOPED`` is ``False``, exactly as it is on :class:`RouterModelVersion` and for\nthe same reason: a ``TEAM_WORKSPACE`` activation belongs to the workspace and to no\nproject. The validator makes the nullability exact rather than merely permitted.\n\nThe two ledger rules the validator holds are the ones a database constraint cannot\nstate. A ``ROLLBACK`` names both what it restores and why \u2014 \u00a710.3's reversibility is\nworth nothing if the ledger records that something was withdrawn but not what it was\nwithdrawn to, and an unexplained withdrawal is the row an incident review most needs to\nread. And the first entry in a sequence displaces nothing, so a ``sequence`` of 1 that\nclaims a predecessor is describing a history that does not exist.",
+  "properties": {
+    "approved_by": {
+      "$ref": "#/$defs/PrincipalRef"
+    },
+    "cause": {
+      "anyOf": [
+        {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Cause"
+    },
+    "content_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "contract_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "accretion.router-activation",
+      "default": "accretion.router-activation",
+      "title": "Contract Type",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/PrincipalRef"
+    },
+    "family_key": {
+      "maxLength": 128,
+      "minLength": 1,
+      "title": "Family Key",
+      "type": "string"
+    },
+    "kind": {
+      "$ref": "#/$defs/RouterActivationKind"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "objective_contract_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectiveContractRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "previous_version_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Previous Version Id"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "promotion_report_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Promotion Report Id"
+    },
+    "retention_class": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention Class"
+    },
+    "rollback_target_version_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Rollback Target Version Id"
+    },
+    "router_version_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Router Version Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope": {
+      "$ref": "#/$defs/RouterScope"
+    },
+    "sequence": {
+      "minimum": 1,
+      "title": "Sequence",
+      "type": "integer"
+    },
+    "supersedes_contract_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Contract Id"
+    },
+    "workspace_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_id",
+    "created_by",
+    "workspace_id",
+    "scope",
+    "family_key",
+    "sequence",
+    "kind",
+    "router_version_id",
+    "approved_by"
+  ],
+  "title": "RouterActivation",
+  "type": "object"
+}

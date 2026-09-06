@@ -1,0 +1,624 @@
+{
+  "$defs": {
+    "CohortResult": {
+      "additionalProperties": false,
+      "description": "One \u00a710.2 evaluation cohort. ``critical`` is what blocks promotion, not the metric.\n\nOQ-413 names the critical cohorts \u2014 correctness, policy, secrets, high-risk, verifier\nconflict \u2014 and leaves the list open. Carrying ``critical`` on the cohort rather than\nhard-coding a set of ids means the promotion rule (\"a critical regression blocks\") stays\ntrue when the list changes.",
+      "properties": {
+        "cohort_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Cohort Id",
+          "type": "string"
+        },
+        "comparison": {
+          "$ref": "#/$defs/MetricComparison"
+        },
+        "critical": {
+          "title": "Critical",
+          "type": "boolean"
+        },
+        "description": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "sample_size": {
+          "minimum": 0,
+          "title": "Sample Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "cohort_id",
+        "description",
+        "sample_size",
+        "critical",
+        "comparison"
+      ],
+      "title": "CohortResult",
+      "type": "object"
+    },
+    "FindingSeverity": {
+      "enum": [
+        "INFO",
+        "WARNING",
+        "ERROR"
+      ],
+      "title": "FindingSeverity",
+      "type": "string"
+    },
+    "MetricComparison": {
+      "additionalProperties": false,
+      "description": "One candidate-versus-baseline metric in a promotion report (SDD \u00a77.13, \u00a710.2).\n\nThe interval is on the *delta* and not on either value, because non-regression is a\nstatement about the difference: a candidate whose point estimate improved but whose\ninterval crosses zero has not been shown to be better, and ``passed`` records the\ndecision that was actually made against the bounds recorded beside it.",
+      "properties": {
+        "baseline_value": {
+          "title": "Baseline Value",
+          "type": "number"
+        },
+        "candidate_value": {
+          "title": "Candidate Value",
+          "type": "number"
+        },
+        "delta": {
+          "title": "Delta",
+          "type": "number"
+        },
+        "delta_lower_bound": {
+          "title": "Delta Lower Bound",
+          "type": "number"
+        },
+        "delta_upper_bound": {
+          "title": "Delta Upper Bound",
+          "type": "number"
+        },
+        "metric_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "passed": {
+          "title": "Passed",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "metric_id",
+        "baseline_value",
+        "candidate_value",
+        "delta",
+        "delta_lower_bound",
+        "delta_upper_bound",
+        "passed"
+      ],
+      "title": "MetricComparison",
+      "type": "object"
+    },
+    "ObjectiveContractRef": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.1. The exact objective revision a node was authorised against.\n\nThis is the type of the registry \u00a73 optional header field ``objective_contract_ref``,\nwhich is why it is defined before every other contract in this module and why\n:class:`~accretion.contracts.canonical.CanonicalContract` is rebuilt immediately below\nit.\n\n**Field coverage (SDD \u00a77.1 \u2192 here).** ``project_id`` \u2192 the header's ``project_id``.\n``objective_contract_id`` \u2192 ``objective_contract_id``. ``version`` \u2192 ``revision``, the\nregistry \u00a77.1 spelling, which is also what the ``ObjectiveContract`` aggregate calls its\nown counter. ``content_hash`` \u2192 ``objective_contract_hash``. ``verified_success_floor``,\n``utility_profile_id``, ``approved_at`` \u2192 unchanged. ``risk_policy_id`` \u2192 ``risk_policy``,\na typed :class:`~accretion.contracts.refs.PolicyRef` (registry \u00a73.1 requires policies to\nuse immutable typed references, and an authority decision audited against \"policy v3\" is\naudited against a label). ``approved_by`` \u2192 a typed\n:class:`~accretion.contracts.PrincipalRef` for the same reason.\n\n**Why the target's identity is qualified.** Registry \u00a73 describes the header field as\n``{contract_id, revision, content_hash}``, but inside a :class:`CanonicalContract` those\ntwo unqualified names already mean *this reference's own* id and digest. The target's\nare therefore spelled ``objective_contract_id`` and ``objective_contract_hash``. Nothing\nis lost and the ambiguity that would otherwise sit in every receipt is.\n\n``ID_KIND`` is ``None``: ADR-055 mints no prefix for a reference, because a reference is\ncreated and owned by the contract that embeds it and has no id space to collide in.\n``verified_success_floor`` is copied onto the reference rather than dereferenced because\n\u00a78.3 requires routing to run against an exact snapshot \u2014 a router that re-read the floor\nfrom the live objective would be routing against a number the receipt cannot prove.",
+      "properties": {
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.objective-contract-ref",
+          "default": "accretion.objective-contract-ref",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "objective_contract_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Objective Contract Hash",
+          "type": "string"
+        },
+        "objective_contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Objective Contract Id",
+          "type": "string"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "risk_policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "utility_profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Utility Profile Id",
+          "type": "string"
+        },
+        "verified_success_floor": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Verified Success Floor",
+          "type": "number"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "objective_contract_id",
+        "revision",
+        "objective_contract_hash",
+        "verified_success_floor",
+        "utility_profile_id",
+        "risk_policy",
+        "approved_by",
+        "approved_at"
+      ],
+      "title": "ObjectiveContractRef",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "description": "A policy by id, version and content digest (registry \u00a74).\n\nAuthority decisions are audited against the exact policy text that produced them, so the\ncontent digest is required: \"policy v3\" is a label, and labels are editable.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "policy_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version",
+        "content_digest"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "PrincipalRef": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "principal_id": {
+          "title": "Principal Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PrincipalStatus"
+        }
+      },
+      "required": [
+        "principal_id",
+        "status"
+      ],
+      "title": "PrincipalRef",
+      "type": "object"
+    },
+    "PrincipalStatus": {
+      "enum": [
+        "ACTIVE",
+        "DISABLED"
+      ],
+      "title": "PrincipalStatus",
+      "type": "string"
+    },
+    "RegressionFinding": {
+      "additionalProperties": false,
+      "description": "A \u00a77.13 ``critical_regressions``/``noncritical_tradeoffs`` entry.\n\n``severity`` reuses v0.1's :class:`~accretion.contracts.FindingSeverity` rather than\nintroducing a fourth severity vocabulary. ``disclosed_bound`` is required for a\nnon-critical tradeoff because \u00a710.3 allows one only \"with explicit bounds and\ndisclosure\" \u2014 an undisclosed tradeoff is not a tradeoff, it is a regression.",
+      "properties": {
+        "description": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "disclosed_bound": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Disclosed Bound"
+        },
+        "finding_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "metric_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Metric Id",
+          "type": "string"
+        },
+        "severity": {
+          "$ref": "#/$defs/FindingSeverity"
+        }
+      },
+      "required": [
+        "finding_id",
+        "metric_id",
+        "severity",
+        "description"
+      ],
+      "title": "RegressionFinding",
+      "type": "object"
+    },
+    "RouterPromotionDecision": {
+      "description": "SDD \u00a77.13. The outcome of a promotion evaluation.\n\n``REQUIRE_REVIEW`` is a first-class outcome and not an absence of one: \u00a710.3 allows\nnon-critical tradeoffs to pass only with explicit bounds and disclosure, and that is a\nhuman decision the report must be able to *request* rather than assume.\n\nNamed ``RouterPromotionDecision``, not ``PromotionDecision``, because registry \u00a713\nreserves the bare name for a *v0.10 canonical contract* \u2014 \"human-reviewed canary/release/\nreject decision and rollback metadata\" about a capability candidate, not an enum about a\nrouter model. SDD \u00a77.13 writes the three values inline and names no enum, so nothing\nforced the collision. Taking the name here would have left ``accretion.contracts``\nowning two artifacts called ``PromotionDecision`` with different owners and different\nkinds, which registry \u00a719's \"every contract has one owner and schema version\" gate\ncannot express; and by the time v0.10 lands this enum is frozen into every persisted\n``RouterPromotionReport.decision``, so the rename would then be a registry \u00a73.2 Major\nchange requiring a \u00a717 migration. Registry \u00a721 calls that a stop-and-reconcile event and\nADR-054 records no reconciliation for this name, so v0.4 yields it.",
+      "enum": [
+        "PROMOTE",
+        "REJECT",
+        "REQUIRE_REVIEW"
+      ],
+      "title": "RouterPromotionDecision",
+      "type": "string"
+    },
+    "ShadowSummary": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.13 ``shadow_result``: what shadow evaluation showed before promotion.\n\n``sample_size`` sits beside ``agreement_rate`` because OQ-409 leaves the minimum shadow\nevidence to a power analysis: a 100% agreement rate over four decisions and over four\nthousand are the same number and different evidence, and a report that recorded only the\nrate could not tell them apart afterwards.",
+      "properties": {
+        "agreement_rate": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Agreement Rate",
+          "type": "number"
+        },
+        "decision_count": {
+          "minimum": 0,
+          "title": "Decision Count",
+          "type": "integer"
+        },
+        "projected_utility_delta": {
+          "title": "Projected Utility Delta",
+          "type": "number"
+        },
+        "sample_size": {
+          "minimum": 0,
+          "title": "Sample Size",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "decision_count",
+        "agreement_rate",
+        "projected_utility_delta",
+        "sample_size"
+      ],
+      "title": "ShadowSummary",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "SDD \u00a77.13. The holdout, cohort, safety, rollback and human record of one promotion.\n\n\u00a710.3 makes promotion atomic and reversible, and this is the document that authorises\nit. ADR-049's \"reversible\" is why ``rollback_target`` is required even for a rejection:\nthe report states what would be restored, and a report that named a rollback target only\non success would leave the failure path undocumented.\n\n**Field coverage (SDD \u00a77.13 \u2192 here).** ``report_id`` \u2192 the header's ``contract_id``\n(``rpr``). ``candidate_version``, ``baseline_version``, ``training_snapshot_id``,\n``holdout_definition_id``, ``rollback_target``, ``created_at`` \u2192 unchanged.\n``primary_metric_result``, ``verified_success_non_regression``,\n``false_acceptance_non_regression``, ``calibration_result`` \u2192 four\n:class:`MetricComparison` values, typed instead of ``object``. ``cohort_results`` \u2192\n``[CohortResult]``; ``shadow_result`` \u2192 :class:`ShadowSummary`;\n``critical_regressions`` and ``noncritical_tradeoffs`` \u2192 ``[RegressionFinding]``.\n``decision`` \u2192 :class:`RouterPromotionDecision`; ``approved_by`` \u2192 a typed\n:class:`~accretion.contracts.PrincipalRef`, nullable because a rejection needs no\napprover.\n\nThe validator enforces the two rules \u00a710.3 states in prose: a critical regression blocks\npromotion, and a promotion is a human act. A critical *cohort* that did not pass counts\nas a critical regression whether or not anyone wrote it into\n``critical_regressions`` \u2014 otherwise the block could be avoided by leaving a list empty.\n\n``PROJECT_SCOPED`` is ``False``: promotion is a workspace release (OQ-411 puts approval\nwith a workspace admin or research owner), and a report scoped to one project would\nmisdescribe what was promoted.",
+  "properties": {
+    "approved_by": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "baseline_version": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Baseline Version",
+      "type": "string"
+    },
+    "calibration_result": {
+      "$ref": "#/$defs/MetricComparison"
+    },
+    "candidate_version": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Candidate Version",
+      "type": "string"
+    },
+    "cohort_results": {
+      "items": {
+        "$ref": "#/$defs/CohortResult"
+      },
+      "maxItems": 256,
+      "title": "Cohort Results",
+      "type": "array"
+    },
+    "content_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "contract_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "accretion.router-promotion-report",
+      "default": "accretion.router-promotion-report",
+      "title": "Contract Type",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/PrincipalRef"
+    },
+    "critical_regressions": {
+      "items": {
+        "$ref": "#/$defs/RegressionFinding"
+      },
+      "maxItems": 64,
+      "title": "Critical Regressions",
+      "type": "array"
+    },
+    "decision": {
+      "$ref": "#/$defs/RouterPromotionDecision"
+    },
+    "false_acceptance_non_regression": {
+      "$ref": "#/$defs/MetricComparison"
+    },
+    "holdout_definition_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Holdout Definition Id",
+      "type": "string"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "noncritical_tradeoffs": {
+      "items": {
+        "$ref": "#/$defs/RegressionFinding"
+      },
+      "maxItems": 64,
+      "title": "Noncritical Tradeoffs",
+      "type": "array"
+    },
+    "objective_contract_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectiveContractRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "primary_metric_result": {
+      "$ref": "#/$defs/MetricComparison"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "retention_class": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention Class"
+    },
+    "rollback_target": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Rollback Target",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "shadow_result": {
+      "$ref": "#/$defs/ShadowSummary"
+    },
+    "supersedes_contract_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Contract Id"
+    },
+    "training_snapshot_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Training Snapshot Id",
+      "type": "string"
+    },
+    "verified_success_non_regression": {
+      "$ref": "#/$defs/MetricComparison"
+    },
+    "workspace_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_id",
+    "created_by",
+    "workspace_id",
+    "candidate_version",
+    "baseline_version",
+    "training_snapshot_id",
+    "holdout_definition_id",
+    "primary_metric_result",
+    "verified_success_non_regression",
+    "false_acceptance_non_regression",
+    "calibration_result",
+    "shadow_result",
+    "rollback_target",
+    "decision"
+  ],
+  "title": "RouterPromotionReport",
+  "type": "object"
+}

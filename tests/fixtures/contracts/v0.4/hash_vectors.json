@@ -1,0 +1,238 @@
+[
+  {
+    "name": "empty_object",
+    "description": "The empty object is the base case: no keys, no whitespace, `{}`.",
+    "input": {},
+    "sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+  },
+  {
+    "name": "empty_array",
+    "description": "The empty array hashes distinctly from the empty object.",
+    "input": [],
+    "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+  },
+  {
+    "name": "nested_scrambled_keys",
+    "description": "Keys are written here out of order at every level. Sorting is part of the canonical form, so re-ordering this input must not move the digest.",
+    "input": {
+      "zulu": {
+        "nested_b": [
+          3,
+          2,
+          1
+        ],
+        "nested_a": {
+          "y": true,
+          "x": null
+        }
+      },
+      "alpha": "first by value, last by position",
+      "mike": [
+        {
+          "b": 2,
+          "a": 1
+        },
+        {
+          "d": 4,
+          "c": 3
+        }
+      ],
+      "Alpha": "capitals sort before lowercase by code point"
+    },
+    "sha256": "bf5946721345ba36d77835e4572df345d03600bd3341df1df7dce0173a943980"
+  },
+  {
+    "name": "unicode_text",
+    "description": "Non-ASCII text hashes as UTF-8 characters, not as \\uXXXX escapes (ensure_ascii=False). Astral characters included on purpose.",
+    "input": {
+      "ascii": "plain",
+      "thai": "สวัสดีชาวโลก",
+      "japanese": "ラベル",
+      "emoji": "🚀🛰️",
+      "combining": "é vs é"
+    },
+    "sha256": "25cd1bb49d2c4cd8c6bc7b703253adfeab53f97acd7a5d8fe19c0a1721ec3915"
+  },
+  {
+    "name": "integer_one",
+    "description": "An integer stays an integer: serializes as `1`.",
+    "input": {
+      "count": 1
+    },
+    "sha256": "6aea6dfe6561984cdc5c54ead84d47d2cf29e48253ae282aef237404adad4661"
+  },
+  {
+    "name": "float_one",
+    "description": "A float stays a float: serializes as `1.0`. This is a DIFFERENT input from integer_one and must hash differently.",
+    "input": {
+      "count": 1.0
+    },
+    "sha256": "dfa53b44c37f852a9d4257f9d2baa8e7e60e096f44b420a5bada9e8adb07a397"
+  },
+  {
+    "name": "float_shortest_roundtrip",
+    "description": "Floats use the shortest round-trip form: 0.1 is `0.1`.",
+    "input": {
+      "ratio": 0.1,
+      "third": 0.3333333333333333,
+      "negative_zero": -0.0
+    },
+    "sha256": "deabbdd33ce4e40a68a7287245e93f24444ebb62a6be658c0a71d8a46c711f80"
+  },
+  {
+    "name": "large_integer",
+    "description": "A big integer is not coerced to a float and keeps every digit.",
+    "input": {
+      "n": 12345678901234567890
+    },
+    "sha256": "8716eed5e3ea73042324b69568de421fc67f1547923dcb85ab0d1e156d6e0588"
+  },
+  {
+    "name": "decimal_as_string",
+    "description": "A Decimal serializes as its exact string, trailing zeros included: Decimal('1.50') is \"1.50\" and is deliberately distinct from '1.5'.",
+    "input": {
+      "amount": {
+        "$type": "decimal",
+        "value": "1.50"
+      },
+      "other": {
+        "$type": "decimal",
+        "value": "1.5"
+      }
+    },
+    "sha256": "ed2486713b48b2bec56c85f33b4f2adc1d4ca0e64f66a553e347a1294413ffca"
+  },
+  {
+    "name": "datetime_offset_normalises_to_z",
+    "description": "A +02:00 timestamp is converted to UTC and spelled with a literal Z. Its digest equals datetime_already_utc, which names the same instant.",
+    "input": {
+      "observed_at": {
+        "$type": "datetime",
+        "value": "2026-09-05T12:00:00+02:00"
+      }
+    },
+    "sha256": "524ea12cb512c630b9c1117b790224ac7befa41c87774ecbf8fb601cc97cb23d"
+  },
+  {
+    "name": "datetime_already_utc",
+    "description": "The same instant written as UTC. Same digest as datetime_offset_normalises_to_z.",
+    "input": {
+      "observed_at": {
+        "$type": "datetime",
+        "value": "2026-09-05T10:00:00+00:00"
+      }
+    },
+    "sha256": "524ea12cb512c630b9c1117b790224ac7befa41c87774ecbf8fb601cc97cb23d"
+  },
+  {
+    "name": "null_kept",
+    "description": "None is a value, not an absence: {\"a\": null} does not collide with {}.",
+    "input": {
+      "a": null
+    },
+    "sha256": "d091f9c83c091f79652fe8786375b3fe4ce0861a56f5bfbafedbe431877ff0e8"
+  },
+  {
+    "name": "booleans_and_nesting",
+    "description": "Booleans stay JSON booleans; arrays keep their order.",
+    "input": {
+      "flags": [
+        true,
+        false,
+        null
+      ],
+      "nested": {
+        "ok": true,
+        "items": [
+          [
+            1
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      }
+    },
+    "sha256": "65e0bf85fa927d058caf5e05601760a5cc0273cfcd229ff45d553e797946522c"
+  },
+  {
+    "name": "bogus_content_hash_excluded",
+    "description": "The top-level content_hash is omitted from its own input. This payload carries obvious garbage there; the digest is that of the same payload without the field, so replacing the garbage cannot move it.",
+    "input": {
+      "contract_type": "objective-contract",
+      "content_hash": "not-a-hash-at-all",
+      "schema_version": "1.0.0",
+      "value": 41
+    },
+    "sha256": "20d6c17a6f683faa19770d74981874a2aec132e200925b06497bb56a28a591dd"
+  },
+  {
+    "name": "nested_content_hash_retained",
+    "description": "Only the TOP-LEVEL content_hash is excluded. A nested reference's digest is part of what the outer contract commits to and stays in the input.",
+    "input": {
+      "content_hash": "ignored",
+      "objective_contract_ref": {
+        "contract_id": "obj_0000000000000000000000000",
+        "revision": 3,
+        "content_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    "sha256": "a069f31b686e2505f5bf9c0a4706f716f371d4fdfe7e85159b66adc726c4d587"
+  },
+  {
+    "name": "model_datetime_offset_normalises_to_z",
+    "description": "A pydantic model carrying a +02:00 timestamp. The model path applies the same datetime rule as a plain dict: the offset is converted to UTC and spelled with a literal Z. Same digest as model_equivalent_plain_dict, which holds the identical value with no model around it.",
+    "input": {
+      "$type": "model",
+      "class": "PluginSignature",
+      "fields": {
+        "value": "c2lnbmF0dXJl",
+        "key_id": "ops-key-1",
+        "signed_at": {
+          "$type": "datetime",
+          "value": "2026-09-05T12:00:00+02:00"
+        }
+      }
+    },
+    "sha256": "28ccbb58f201698f5fa48f2434d34c957a27d5a2f75c45840f3f035fb8467190"
+  },
+  {
+    "name": "model_equivalent_plain_dict",
+    "description": "The fields of model_datetime_offset_normalises_to_z as a bare dict, defaults written out. Its digest must equal that vector's: canonicalization is a property of the value, not of the Python type it arrived in.",
+    "input": {
+      "algorithm": "SHA256_PIN",
+      "key_id": "ops-key-1",
+      "value": "c2lnbmF0dXJl",
+      "signed_at": {
+        "$type": "datetime",
+        "value": "2026-09-05T12:00:00+02:00"
+      }
+    },
+    "sha256": "28ccbb58f201698f5fa48f2434d34c957a27d5a2f75c45840f3f035fb8467190"
+  },
+  {
+    "name": "model_artifact_ref_path",
+    "description": "A real contract from the package root. Pins two rules through the model path: a Path serializes as its string (non-ASCII included, unescaped) and an unset optional stays null rather than being dropped.",
+    "input": {
+      "$type": "model",
+      "class": "ArtifactRef",
+      "fields": {
+        "artifact_id": "art_0000000000000000000000000",
+        "run_id": "run_0000000000000000000000000",
+        "kind": "LOG",
+        "path": "/workspaces/acme/out/สรุป.log"
+      }
+    },
+    "sha256": "04452cb622fa7886d27c6a16a364a5af011aee0163bbfa2bd534b0ccd8247e9f"
+  },
+  {
+    "name": "astral_key_sort_order",
+    "description": "Keys sort by Unicode code point (U+FF7D before U+1F600), which is Python's native order; a JCS/RFC 8785 sorter orders by UTF-16 code unit and would emit the emoji first. The TypeScript twin must sort this way.",
+    "input": {
+      "ｽ": 1,
+      "😀": 2
+    },
+    "sha256": "0d71091dd283ee3440ce2e56ba237123ad38eddab89bbfda9e395a6f72e3c66b"
+  }
+]

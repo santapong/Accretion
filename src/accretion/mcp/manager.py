@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import hashlib
 import json
 from datetime import UTC, datetime, timedelta
 from fnmatch import fnmatch
@@ -28,6 +27,7 @@ from accretion.contracts import (
     McpServerState,
     McpTransport,
 )
+from accretion.digests import legacy_json_digest
 from accretion.enterprise_auth import EnterpriseAuthError, EnterpriseAuthManager
 from accretion.ids import new_id
 from accretion.mcp.endpoint_policy import McpEndpointPolicy
@@ -649,9 +649,11 @@ class RemoteMcpManager:
             },
             "schema_errors": errors,
         }
-        digest = hashlib.sha256(
-            json.dumps(content, sort_keys=True, separators=(",", ":")).encode()
-        ).hexdigest()
+        # Byte-frozen, not converged (M8). ``server_info``, tool descriptions, resource
+        # names and prompt descriptions are all supplied by a *remote* server, making this
+        # the most likely non-ASCII payload in the repository, and the digest is persisted
+        # as ``McpDiscoverySnapshot.content_sha256``. See :mod:`accretion.digests`.
+        digest = legacy_json_digest(content)
         return McpDiscoverySnapshot(
             discovery_snapshot_id=new_id("mcp_snapshot"),
             mcp_server_id=server.mcp_server_id,

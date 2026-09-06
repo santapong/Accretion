@@ -1,0 +1,499 @@
+{
+  "$defs": {
+    "ContradictionStatus": {
+      "description": "SDD \u00a77.10. Whether an experience contradicts other evidence, and whether that is settled.\n\n``NONE`` is not the same as ``RESOLVED``: the first says no contradiction was ever\nfound, the second says one was found and adjudicated. A training snapshot that\ndeduplicated them would silently change what its evidence means (\u00a710.1).",
+      "enum": [
+        "NONE",
+        "OPEN",
+        "RESOLVED"
+      ],
+      "title": "ContradictionStatus",
+      "type": "string"
+    },
+    "ObjectiveContractRef": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.1. The exact objective revision a node was authorised against.\n\nThis is the type of the registry \u00a73 optional header field ``objective_contract_ref``,\nwhich is why it is defined before every other contract in this module and why\n:class:`~accretion.contracts.canonical.CanonicalContract` is rebuilt immediately below\nit.\n\n**Field coverage (SDD \u00a77.1 \u2192 here).** ``project_id`` \u2192 the header's ``project_id``.\n``objective_contract_id`` \u2192 ``objective_contract_id``. ``version`` \u2192 ``revision``, the\nregistry \u00a77.1 spelling, which is also what the ``ObjectiveContract`` aggregate calls its\nown counter. ``content_hash`` \u2192 ``objective_contract_hash``. ``verified_success_floor``,\n``utility_profile_id``, ``approved_at`` \u2192 unchanged. ``risk_policy_id`` \u2192 ``risk_policy``,\na typed :class:`~accretion.contracts.refs.PolicyRef` (registry \u00a73.1 requires policies to\nuse immutable typed references, and an authority decision audited against \"policy v3\" is\naudited against a label). ``approved_by`` \u2192 a typed\n:class:`~accretion.contracts.PrincipalRef` for the same reason.\n\n**Why the target's identity is qualified.** Registry \u00a73 describes the header field as\n``{contract_id, revision, content_hash}``, but inside a :class:`CanonicalContract` those\ntwo unqualified names already mean *this reference's own* id and digest. The target's\nare therefore spelled ``objective_contract_id`` and ``objective_contract_hash``. Nothing\nis lost and the ambiguity that would otherwise sit in every receipt is.\n\n``ID_KIND`` is ``None``: ADR-055 mints no prefix for a reference, because a reference is\ncreated and owned by the contract that embeds it and has no id space to collide in.\n``verified_success_floor`` is copied onto the reference rather than dereferenced because\n\u00a78.3 requires routing to run against an exact snapshot \u2014 a router that re-read the floor\nfrom the live objective would be routing against a number the receipt cannot prove.",
+      "properties": {
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.objective-contract-ref",
+          "default": "accretion.objective-contract-ref",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "objective_contract_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Objective Contract Hash",
+          "type": "string"
+        },
+        "objective_contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Objective Contract Id",
+          "type": "string"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "risk_policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "utility_profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Utility Profile Id",
+          "type": "string"
+        },
+        "verified_success_floor": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Verified Success Floor",
+          "type": "number"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "objective_contract_id",
+        "revision",
+        "objective_contract_hash",
+        "verified_success_floor",
+        "utility_profile_id",
+        "risk_policy",
+        "approved_by",
+        "approved_at"
+      ],
+      "title": "ObjectiveContractRef",
+      "type": "object"
+    },
+    "PermissionProvenance": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.10 ``permission_provenance``, typed instead of left as ``object``.\n\n\u00a710.1 requires a training snapshot to carry \"permission and visibility proof\", which is\nonly a proof if it names the policy under which the record was shared, the principal who\nshared it and the scope granted. A boolean \"allowed\" would be an assertion.",
+      "properties": {
+        "granted_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "justification": {
+          "maxLength": 1000,
+          "minLength": 1,
+          "title": "Justification",
+          "type": "string"
+        },
+        "policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "scope": {
+          "$ref": "#/$defs/Visibility"
+        }
+      },
+      "required": [
+        "scope",
+        "policy",
+        "granted_by",
+        "justification"
+      ],
+      "title": "PermissionProvenance",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "description": "A policy by id, version and content digest (registry \u00a74).\n\nAuthority decisions are audited against the exact policy text that produced them, so the\ncontent digest is required: \"policy v3\" is a label, and labels are editable.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "policy_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version",
+        "content_digest"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "PrincipalRef": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "principal_id": {
+          "title": "Principal Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PrincipalStatus"
+        }
+      },
+      "required": [
+        "principal_id",
+        "status"
+      ],
+      "title": "PrincipalRef",
+      "type": "object"
+    },
+    "PrincipalStatus": {
+      "enum": [
+        "ACTIVE",
+        "DISABLED"
+      ],
+      "title": "PrincipalStatus",
+      "type": "string"
+    },
+    "SnapshotSplit": {
+      "additionalProperties": false,
+      "description": "SDD \u00a710.1's \"training, validation, and holdout project groups\".\n\nSplit by *project* and not by record. Two nodes from one project share an objective, a\nrepository and a policy set, so records from the same project on both sides of a split\nleak, and a holdout that leaks measures memorisation. The validator refuses any project\nthat appears in two groups, which is the cheap half of that guarantee.",
+      "properties": {
+        "holdout_project_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 4096,
+          "minItems": 1,
+          "title": "Holdout Project Ids",
+          "type": "array"
+        },
+        "training_project_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 4096,
+          "minItems": 1,
+          "title": "Training Project Ids",
+          "type": "array"
+        },
+        "validation_project_ids": {
+          "items": {
+            "type": "string"
+          },
+          "maxItems": 4096,
+          "title": "Validation Project Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "training_project_ids",
+        "holdout_project_ids"
+      ],
+      "title": "SnapshotSplit",
+      "type": "object"
+    },
+    "Visibility": {
+      "description": "SDD \u00a77.10. How widely an experience record may be read.\n\nTwo values only. There is no ``PUBLIC``: nothing in v0.4 crosses a workspace boundary,\nand a value that no code can produce is a value someone eventually produces by hand.",
+      "enum": [
+        "PROJECT",
+        "TEAM_WORKSPACE"
+      ],
+      "title": "Visibility",
+      "type": "string"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "SDD \u00a710.1. Exactly which evidence a router version was fitted on, and under what rules.\n\n\u00a710.1 lists seven things a snapshot MUST record and this contract is that list, typed.\nThe reason it is a contract rather than a query is reproducibility: a snapshot described\nas \"everything eligible as of March\" cannot be rebuilt once eligibility changes, and a\npromotion report that pointed at an unrebuildable snapshot would be an unfalsifiable\nclaim.\n\n**Field coverage (SDD \u00a710.1 \u2192 here).** \"Included experience IDs\" \u2192\n``included_experience_ids``. \"Permission and visibility proof\" \u2192\n``permission_proof`` (:class:`PermissionProvenance`). \"Contract/feature schema versions\"\n\u2192 ``contract_schema_version`` and ``feature_schema_version``. \"Contradiction treatment\"\n\u2192 ``excluded_contradiction_statuses`` plus the prose ``contradiction_treatment`` \u2014 the\nmachine-checkable rule and the human explanation of it, because the list alone cannot\nsay *why* and the prose alone cannot be enforced. \"Deduplication rules\" \u2192\n``deduplication_rule``. \"Time/provider/model version boundaries\" \u2192 ``window_start``,\n``window_end`` and ``provider_version_boundaries``. \"Training, validation, and holdout\nproject groups\" \u2192 ``split`` (:class:`SnapshotSplit`).\n\n``PROJECT_SCOPED`` is ``False``: a snapshot spans the workspace by construction, and\nits per-project structure is in ``split``.",
+  "properties": {
+    "content_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "contract_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "contract_schema_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Contract Schema Version",
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "accretion.router-training-snapshot",
+      "default": "accretion.router-training-snapshot",
+      "title": "Contract Type",
+      "type": "string"
+    },
+    "contradiction_treatment": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Contradiction Treatment",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/PrincipalRef"
+    },
+    "deduplication_rule": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "title": "Deduplication Rule",
+      "type": "string"
+    },
+    "excluded_contradiction_statuses": {
+      "items": {
+        "$ref": "#/$defs/ContradictionStatus"
+      },
+      "maxItems": 3,
+      "title": "Excluded Contradiction Statuses",
+      "type": "array"
+    },
+    "feature_schema_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Feature Schema Version",
+      "type": "string"
+    },
+    "included_experience_ids": {
+      "items": {
+        "type": "string"
+      },
+      "maxItems": 100000,
+      "minItems": 1,
+      "title": "Included Experience Ids",
+      "type": "array"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "objective_contract_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectiveContractRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "permission_proof": {
+      "$ref": "#/$defs/PermissionProvenance"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "provider_version_boundaries": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Provider Version Boundaries",
+      "type": "object"
+    },
+    "retention_class": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention Class"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "split": {
+      "$ref": "#/$defs/SnapshotSplit"
+    },
+    "supersedes_contract_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Contract Id"
+    },
+    "window_end": {
+      "format": "date-time",
+      "title": "Window End",
+      "type": "string"
+    },
+    "window_start": {
+      "format": "date-time",
+      "title": "Window Start",
+      "type": "string"
+    },
+    "workspace_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_id",
+    "created_by",
+    "workspace_id",
+    "included_experience_ids",
+    "permission_proof",
+    "contradiction_treatment",
+    "deduplication_rule",
+    "window_start",
+    "window_end",
+    "split"
+  ],
+  "title": "RouterTrainingSnapshot",
+  "type": "object"
+}
