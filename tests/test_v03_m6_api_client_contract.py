@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 from httpx import ASGITransport, AsyncClient
@@ -79,6 +79,16 @@ M6_CLIENT_FUNCTIONS: dict[str, tuple[str, str]] = {
     # route on the other end exists or still returns what the client names.
     "routerModels": ("get", "RouterModelVersion[]"),
     "shadowPolicyReport": ("get", "ShadowReport"),
+    # v0.4 M9c — the §17.3 router administration page. Two reads and two writes, all four
+    # naming their workspace in a query string this test erases before comparing shapes, so
+    # what is checked is the route: `/api/v1/router-models/*/lineage` and
+    # `/api/v1/router-promotions/*` exist and return the contracts the client names, and the
+    # two mutating paths are the ones `router_admin.py` serves rather than near misses that
+    # `tsc` would have accepted.
+    "routerLineage": ("get", "RouterLineage"),
+    "routerPromotion": ("get", "RouterPromotionReport"),
+    "promoteRouter": ("post", "RouterActivation"),
+    "rollbackRouter": ("post", "RouterActivation"),
 }
 
 _ENTRY = re.compile(
@@ -185,6 +195,27 @@ def _actual_schema(schema: dict[str, Any]) -> dict[str, Any]:
     return {"type": "object"}
 
 
+def _success_schema(operation: dict[str, Any], name: str) -> dict[str, Any]:
+    """The schema of the one success response an operation declares.
+
+    Not `responses["200"]`. A route that creates something answers 201 — promotion and
+    rollback both do, because each writes an activation — and reading the key literally
+    raised `KeyError` rather than reporting a mismatch, which made a whole class of client
+    function impossible to register here. The success response is found by status class
+    instead, and more than one is an error rather than a choice: a route with two success
+    shapes has no single contract for the client to declare.
+    """
+
+    successes = {
+        status: response
+        for status, response in operation["responses"].items()
+        if status.isdigit() and 200 <= int(status) < 300
+    }
+    assert len(successes) == 1, f"{name}: {sorted(successes)} success responses, expected one"
+    (response,) = successes.values()
+    return cast(dict[str, Any], response["content"]["application/json"]["schema"])
+
+
 def test_every_m6_client_function_calls_a_route_the_app_actually_serves() -> None:
     spec = app.openapi()
     routes = {
@@ -207,9 +238,7 @@ def test_every_m6_client_function_calls_a_route_the_app_actually_serves() -> Non
         if key not in routes:
             mismatches.append(f"{name}: {method.upper()} {path} is not served by the app")
             continue
-        served = _actual_schema(
-            routes[key]["responses"]["200"]["content"]["application/json"]["schema"]
-        )
+        served = _actual_schema(_success_schema(routes[key], name))
         if served != _expected_schema(response_type):
             mismatches.append(
                 f"{name}: client expects {response_type}, route returns {served}"

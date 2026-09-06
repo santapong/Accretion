@@ -202,6 +202,22 @@ export interface StructuralChangeWaiver {
   readonly pr: string;
   /** What was added, in one sentence, so a reader need not diff two builds to find out. */
   readonly reason: string;
+  /**
+   * The route does not exist in the merge-base build, so it cannot be measured there.
+   *
+   * A markup change and a NEW route are not the same exemption. On a changed route both
+   * builds render the page and the only thing that cannot be compared is its shape; on a
+   * new one the base build has no such route, its SPA answers with the `*` fallback, and
+   * `openRoute` fails on the base origin at the heading assertion — before a single style
+   * is read. Without this the only ways to add a route were to delete it from the sweep or
+   * to let the gate fail red on every run, and both end with the gate unread.
+   *
+   * It suspends the BASE MEASUREMENT and nothing else. The branch is still opened, its own
+   * `h1` is still asserted by `openRoute`, and the element floor still runs — which is the
+   * whole of the evidence a new route brings to this gate, and the reason `enforceFloor`
+   * below is not a function of any waiver.
+   */
+  readonly absentFromBase?: boolean;
 }
 
 /** The part of a route this module needs: its path, and whether it carries a waiver. */
@@ -231,6 +247,15 @@ export interface RouteObligations {
    * state would sail through the gate that exists to notice exactly that.
    */
   readonly enforceFloor: boolean;
+  /**
+   * Whether the merge-base build is opened for this route at all.
+   *
+   * False only for a route the base build does not serve, and never merely because a route
+   * is waived: a waived route that DOES exist in the base is still opened there, because
+   * the interaction pass asserts its focus floor on both origins and a route measured on
+   * one origin only would lose that half silently.
+   */
+  readonly measureBase: boolean;
   /** The waiver that produced this, for the log line, or `null`. */
   readonly waiver: StructuralChangeWaiver | null;
 }
@@ -246,7 +271,12 @@ export interface RouteObligations {
  */
 export function obligationsFor(route: WaivableRoute): RouteObligations {
   const waiver = route.structuralChange ?? null;
-  return { compareStructure: waiver === null, enforceFloor: true, waiver };
+  return {
+    compareStructure: waiver === null,
+    enforceFloor: true,
+    measureBase: waiver?.absentFromBase !== true,
+    waiver,
+  };
 }
 
 /** The verdict for one route/width: aligned or not, and every difference found. */

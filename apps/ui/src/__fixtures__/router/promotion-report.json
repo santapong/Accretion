@@ -1,0 +1,221 @@
+[
+  {
+    "approved_by": {
+      "display_name": "Priya Raman",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "baseline_version": "rmv_73BPF68NW342QGTDNRRFYDCH6B",
+    "calibration_result": {
+      "baseline_value": 0.07,
+      "candidate_value": 0.05,
+      "delta": -0.02,
+      "delta_lower_bound": -0.03,
+      "delta_upper_bound": -0.01,
+      "metric_id": "expected-calibration-error",
+      "passed": true
+    },
+    "candidate_version": "rmv_2KPQMJ4VCETFFK2Z973NZSM3NV",
+    "cohort_results": [
+      {
+        "cohort_id": "high-risk",
+        "comparison": {
+          "baseline_value": 0.7,
+          "candidate_value": 0.74,
+          "delta": 0.04,
+          "delta_lower_bound": 0.01,
+          "delta_upper_bound": 0.07,
+          "metric_id": "verified-success",
+          "passed": true
+        },
+        "critical": true,
+        "description": "Nodes whose allowed risk class is HIGH_DIGITAL or above.",
+        "sample_size": 412
+      },
+      {
+        "cohort_id": "long-horizon",
+        "comparison": {
+          "baseline_value": 0.66,
+          "candidate_value": 0.68,
+          "delta": 0.02,
+          "delta_lower_bound": -0.01,
+          "delta_upper_bound": 0.05,
+          "metric_id": "verified-success",
+          "passed": true
+        },
+        "critical": false,
+        "description": "Tasks whose plan exceeds twelve nodes.",
+        "sample_size": 188
+      }
+    ],
+    "content_hash": "",
+    "contract_id": "rpr_P5ZJB9X8T0JM655SQFCBNJQ4T7",
+    "contract_type": "accretion.router-promotion-report",
+    "created_at": "2026-03-01T08:40:00Z",
+    "created_by": {
+      "display_name": "Priya Raman",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "critical_regressions": [],
+    "decision": "PROMOTE",
+    "false_acceptance_non_regression": {
+      "baseline_value": 0.7,
+      "candidate_value": 0.69,
+      "delta": -0.01,
+      "delta_lower_bound": -0.03,
+      "delta_upper_bound": 0.01,
+      "metric_id": "false-acceptance",
+      "passed": true
+    },
+    "holdout_definition_id": "rts_X3K3EJ2ZS40W7BHS4CK2X173ZQ",
+    "labels": {
+      "owner": "routing-platform"
+    },
+    "noncritical_tradeoffs": [
+      {
+        "description": "p95 latency rose while quality improved.",
+        "disclosed_bound": "+1.4s [+0.9s, +1.9s]",
+        "finding_id": "latency-up",
+        "metric_id": "latency-p95",
+        "severity": "WARNING"
+      }
+    ],
+    "objective_contract_ref": null,
+    "primary_metric_result": {
+      "baseline_value": 0.7,
+      "candidate_value": 0.66,
+      "delta": -0.04,
+      "delta_lower_bound": -0.05,
+      "delta_upper_bound": -0.03,
+      "metric_id": "constrained-regret",
+      "passed": true
+    },
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": "STANDARD",
+    "rollback_target": "rmv_73BPF68NW342QGTDNRRFYDCH6B",
+    "schema_version": "1.0.0",
+    "shadow_result": {
+      "agreement_rate": 0.87,
+      "decision_count": 1842,
+      "projected_utility_delta": 0.031,
+      "sample_size": 1842
+    },
+    "supersedes_contract_id": null,
+    "training_snapshot_id": "rts_EDB22B93VQVFFB77KJCXN83MCB",
+    "verified_success_non_regression": {
+      "baseline_value": 0.7,
+      "candidate_value": 0.72,
+      "delta": 0.02,
+      "delta_lower_bound": 0.01,
+      "delta_upper_bound": 0.03,
+      "metric_id": "verified-success",
+      "passed": true
+    },
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  {
+    "approved_by": null,
+    "baseline_version": "rmv_6HND5PVA2Y7KQ3XT9RJZ0CWMEB",
+    "calibration_result": {
+      "baseline_value": 0.7,
+      "candidate_value": 0.68,
+      "delta": -0.02,
+      "delta_lower_bound": -0.03,
+      "delta_upper_bound": -0.01,
+      "metric_id": "expected-calibration-error",
+      "passed": true
+    },
+    "candidate_version": "rmv_7CJEP8EAB33CNS3R0N4CRPN18G",
+    "cohort_results": [
+      {
+        "cohort_id": "high-risk",
+        "comparison": {
+          "baseline_value": 0.7,
+          "candidate_value": 0.71,
+          "delta": 0.01,
+          "delta_lower_bound": 0.0,
+          "delta_upper_bound": 0.02,
+          "metric_id": "verified-success",
+          "passed": true
+        },
+        "critical": true,
+        "description": "Nodes whose allowed risk class is HIGH_DIGITAL or above.",
+        "sample_size": 412
+      }
+    ],
+    "content_hash": "",
+    "contract_id": "rpr_N99A206Y89ZZTCGZNFH0W4W2XD",
+    "contract_type": "accretion.router-promotion-report",
+    "created_at": "2026-03-05T08:40:00Z",
+    "created_by": {
+      "display_name": "Priya Raman",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "critical_regressions": [
+      {
+        "description": "False acceptance rose on the verifier-conflict cohort.",
+        "disclosed_bound": "+0.03 [+0.02, +0.04]",
+        "finding_id": "false-acceptance-up",
+        "metric_id": "false-acceptance",
+        "severity": "ERROR"
+      }
+    ],
+    "decision": "REQUIRE_REVIEW",
+    "false_acceptance_non_regression": {
+      "baseline_value": 0.7,
+      "candidate_value": 0.73,
+      "delta": 0.03,
+      "delta_lower_bound": 0.02,
+      "delta_upper_bound": 0.04,
+      "metric_id": "false-acceptance",
+      "passed": false
+    },
+    "holdout_definition_id": "rts_X3K3EJ2ZS40W7BHS4CK2X173ZQ",
+    "labels": {
+      "owner": "routing-platform"
+    },
+    "noncritical_tradeoffs": [
+      {
+        "description": "p95 latency rose while quality improved.",
+        "disclosed_bound": "+1.4s [+0.9s, +1.9s]",
+        "finding_id": "latency-up",
+        "metric_id": "latency-p95",
+        "severity": "WARNING"
+      }
+    ],
+    "objective_contract_ref": null,
+    "primary_metric_result": {
+      "baseline_value": 0.7,
+      "candidate_value": 0.66,
+      "delta": -0.04,
+      "delta_lower_bound": -0.05,
+      "delta_upper_bound": -0.03,
+      "metric_id": "constrained-regret",
+      "passed": true
+    },
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": "STANDARD",
+    "rollback_target": "rmv_6HND5PVA2Y7KQ3XT9RJZ0CWMEB",
+    "schema_version": "1.0.0",
+    "shadow_result": {
+      "agreement_rate": 0.87,
+      "decision_count": 1842,
+      "projected_utility_delta": 0.031,
+      "sample_size": 1842
+    },
+    "supersedes_contract_id": null,
+    "training_snapshot_id": "rts_TR41NDVX8Q0KM7ZJ5HB2WCPY63",
+    "verified_success_non_regression": {
+      "baseline_value": 0.7,
+      "candidate_value": 0.72,
+      "delta": 0.02,
+      "delta_lower_bound": 0.01,
+      "delta_upper_bound": 0.03,
+      "metric_id": "verified-success",
+      "passed": true
+    },
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  }
+]

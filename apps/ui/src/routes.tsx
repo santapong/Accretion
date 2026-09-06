@@ -41,6 +41,7 @@ import { McpServersPage } from "./pages/McpServersPage";
 import { NewTaskPage } from "./pages/NewTaskPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { PluginsPage } from "./pages/PluginsPage";
+import { RouterAdminPage } from "./pages/RouterAdminPage";
 import { RuntimeMonitorPage } from "./pages/RuntimeMonitorPage";
 import { SearchBenchmarkPage } from "./pages/SearchBenchmarkPage";
 
@@ -65,6 +66,7 @@ export const ROUTES: readonly RouteEntry[] = [
   { path: "/admin/mcp", label: "MCP servers", element: <McpServersPage /> },
   { path: "/admin/capabilities/inspect", label: "Capability inspector", element: <CapabilityInspectorPage /> },
   { path: "/admin/identity", label: "Identity", element: <IdentityPage /> },
+  { path: "/admin/router", label: "Router", element: <RouterAdminPage /> },
   { path: "/benchmarks/acr-arch", label: "ACR-ARCH", element: <BenchmarkPage /> },
   { path: "/benchmarks/dynamic", label: "P5 Dynamic", element: <DynamicBenchmarkPage /> },
   { path: "/benchmarks/search", label: "P6 Search", element: <SearchBenchmarkPage /> },

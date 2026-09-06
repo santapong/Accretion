@@ -117,7 +117,8 @@ operator can answer five questions before and during every run:
 ## Frontend status
 
 Yes—the frontend is implemented for the P0–P7 scope plus the v0.3 M6
-administration pages, seventeen routes in all.
+administration pages and the v0.4 router administration page, eighteen routes
+in all.
 It is not a mock dashboard: it calls the generated API contract, starts from
 authoritative snapshots, follows active runs through resumable server-sent
 events, and exposes the decision and verifier evidence needed to explain a run.
