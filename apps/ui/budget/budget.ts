@@ -81,27 +81,23 @@ export const GROUPING: readonly GroupingExpectation[] = [
 export const PER_CHUNK_RAW_BYTES = 500_000;
 
 /**
- * M9 PR3. Gate-measured 561,138 B on the first green build after the vendor split — five
- * chunks, all in the initial closure. Cap = ceil(561,138 x 1.05).
+ * v0.4 M9c (with M9a and M9b landed). Gate-measured 592,520 B on the first green build of the
+ * router administration page merged over the routing panel and the shadow comparison — the
+ * three §17 screens together. Cap = ceil(592,520 x 1.05).
  *
- * The pre-split build measured 561,255 B at this same hook in ONE chunk (561,241 B as
- * written to disk), so splitting moved 117 bytes, not 400 kB: this cap is the rule that
- * says so out loud. Code splitting fixes per-chunk size
- * and cache granularity and shrinks nothing, and a budget that only enforced the per-chunk
- * rule would let the initial payload double while every chunk stayed comfortably small.
+ * The previous cap (M9 PR3: 589,195 from 561,138) was set on a bundle with no v0.4 screen;
+ * the three panels and their client functions cost 31,382 B raw, every byte in the initial
+ * closure because they mount on the run page and the admin nav. M9 PR3's note still holds:
+ * splitting moved bytes between chunks and shrank nothing, and only this rule says so.
  */
-export const INITIAL_JS_RAW_BYTES = 589_195;
+export const INITIAL_JS_RAW_BYTES = 622_146;
 
 /**
- * M9 PR3. Gate-measured 166,998 B on the same build (node:zlib `gzipSync`, default level,
- * summed per chunk). Cap = ceil(166,998 x 1.05).
- *
- * Higher than the pre-split 165,490 B measured at this same hook (165,471 B for the file
- * on disk), and that is expected rather than a regression: gzip finds fewer cross-file
- * repetitions once one chunk becomes five. The 1,508 B is the price of cache granularity,
- * paid once and recorded here so nobody later reads it as drift.
+ * v0.4 M9c. Gate-measured 174,385 B on the same build (node:zlib `gzipSync`, default level,
+ * summed per chunk). Cap = ceil(174,385 x 1.05). Restated with the raw cap so both numbers
+ * carry the same provenance; the old cap (175,348) would still have passed this build.
  */
-export const INITIAL_JS_GZIP_BYTES = 175_348;
+export const INITIAL_JS_GZIP_BYTES = 183_105;
 
 /**
  * M9 PR5c. Gate-measured 51,491 B (`index-CCp98dUw.css`). Cap = ceil(51,491 x 1.05).

@@ -43,7 +43,6 @@ import type {
   ReplanOutcome,
   ReplanRequest,
   ConfigurationCandidate,
-  RouterModelVersion,
   RoutingDecisionReceipt,
   RoutingOverrideCreate,
   ShadowReport,
