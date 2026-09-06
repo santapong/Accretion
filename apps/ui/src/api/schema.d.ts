@@ -1770,6 +1770,61 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v2/benchmarks/router": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Router Benchmark
+         * @description The last summary this process produced, or a fresh evaluation-half run if there is none.
+         *
+         *     Reading is unauthenticated beyond the session the middleware already established, and
+         *     unscoped to a workspace, for the reason every benchmark route in this API is: the corpus
+         *     is a committed development fixture, the run touches no workspace's data, and a number
+         *     computed from files in the repository is not somebody's tenant record.
+         *
+         *     The fallback is a run and not a 404. A dashboard asking a fresh process what the router
+         *     benchmark says should get the answer, and "nobody has pressed run yet" is a fact about
+         *     this process rather than about the benchmark.
+         */
+        get: operations["get_router_benchmark_api_v2_benchmarks_router_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v2/benchmarks/router/run": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run Router Benchmark
+         * @description Replay the corpus and make the result what ``GET`` will return next.
+         *
+         *     ``execution_source`` must be ``REPLAY``. The check is the one
+         *     ``POST /api/v1/benchmarks/acr-arch/run`` makes and it is made here, before the runner, so
+         *     that the refusal carries :data:`LIVE_RUN_REFUSED` at 422 instead of surfacing the runner's
+         *     ``RuntimeError`` as a 500. A live router benchmark spends provider quota against real
+         *     repositories and is released by an explicit local gate, never by a caller sending an enum.
+         */
+        post: operations["run_router_benchmark_api_v2_benchmarks_router_run_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v2/benchmarks/search": {
         parameters: {
             query?: never;
@@ -2627,6 +2682,19 @@ export interface components {
          * @enum {string}
          */
         BenchmarkRunStatus: "RUNNING" | "COMPLETED" | "FAILED";
+        /**
+         * BenchmarkSplit
+         * @description Which half of the corpus a run reports rows for.
+         *
+         *     ``EVALUATION`` is the honest headline and the only side a superiority claim may quote.
+         *     ``SELECTION`` exists because the half that picks the baseline is also the half a
+         *     developer is *allowed* to look at while iterating, and giving that permission a name is
+         *     better than having people quietly evaluate on the locked side to see how it is going.
+         *     The estimands are computed the same way whichever side is reported: the baseline is
+         *     always chosen on the selection ids and always scored on the evaluation ids.
+         * @enum {string}
+         */
+        BenchmarkSplit: "SELECTION" | "EVALUATION";
         /** BenchmarkTask */
         BenchmarkTask: {
             /** Applicable Modes */
@@ -6749,6 +6817,103 @@ export interface components {
          */
         RouterActivationKind: "PROMOTE" | "ROLLBACK";
         /**
+         * RouterBenchmarkRunCreate
+         * @description The request body: which half to report, and an execution source that must be REPLAY.
+         *
+         *     A plain ``BaseModel`` with ``extra="forbid"`` and not a ``StrictModel``, following
+         *     :class:`~accretion.api.router_admin` — a request body is not a persisted contract, so it
+         *     carries no ``schema_version``, but a misspelt field is still a 422 rather than a silently
+         *     ignored one.
+         *
+         *     ``execution_source`` is typed as the full enum rather than as ``Literal[REPLAY]`` on
+         *     purpose. Narrowing it here would make a live request a schema error, and the refusal this
+         *     route owes is a *policy* refusal with a code a client can act on, not a validation
+         *     complaint about a value the enum genuinely has.
+         */
+        RouterBenchmarkRunCreate: {
+            /** @default REPLAY */
+            execution_source: components["schemas"]["BenchmarkExecutionSource"];
+            /** @default EVALUATION */
+            split: components["schemas"]["BenchmarkSplit"];
+        };
+        /**
+         * RouterBenchmarkSummary
+         * @description One benchmark run as an API document: the corpus it read and every comparator.
+         *
+         *     The digests are part of the response and not metadata: a number quoted from this endpoint
+         *     is only evidence if the reader can say which bytes produced it, and ``run_id`` is derived
+         *     from those two digests alone.
+         */
+        RouterBenchmarkSummary: {
+            /** Configuration Version */
+            configuration_version: string;
+            /** Corpus Sha256 */
+            corpus_sha256: string;
+            /** Evaluation Task Ids */
+            evaluation_task_ids: string[];
+            /**
+             * Execution Source
+             * @default REPLAY
+             * @constant
+             */
+            execution_source: "REPLAY";
+            /** Policies */
+            policies: components["schemas"]["RouterPolicySummary"][];
+            /** Reported Task Ids */
+            reported_task_ids: string[];
+            /** Run Id */
+            run_id: string;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Selection Task Ids */
+            selection_task_ids: string[];
+            split: components["schemas"]["BenchmarkSplit"];
+            /** Suite Version */
+            suite_version: string;
+            /** Trace Sha256 */
+            trace_sha256: string;
+        };
+        /**
+         * RouterBestFixedSummary
+         * @description The selection-valid baseline: what won the argmax, and what it then scored.
+         *
+         *     Both rates are carried for the reason
+         *     :class:`~accretion.routing.stats.BestFixed` gives — ``selection_rate`` is inflated by
+         *     having won the selection and ``evaluation_rate`` is the honest one — so that a dashboard
+         *     can show the winner's curse rather than describe it.
+         */
+        RouterBestFixedSummary: {
+            /** Config Id */
+            config_id: string;
+            /** Evaluation Interval */
+            evaluation_interval: [
+                number,
+                number
+            ];
+            /** Evaluation Rate */
+            evaluation_rate: number;
+            /** Evaluation Successes */
+            evaluation_successes: number;
+            /** Evaluation Trials */
+            evaluation_trials: number;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Selection Rate */
+            selection_rate: number;
+            /** Selection Successes */
+            selection_successes: number;
+            /** Selection Trials */
+            selection_trials: number;
+        };
+        /**
          * RouterCalibrationSummary
          * @description The calibration report's headline numbers, without its bins.
          *
@@ -6782,6 +6947,77 @@ export interface components {
             /** Training Snapshot Id */
             training_snapshot_id: string;
             version: components["schemas"]["RouterModelVersion"];
+        };
+        /**
+         * RouterEstimandsSummary
+         * @description Protocol §12's three gains, their intervals and the recovered fraction when defined.
+         *
+         *     ``recovered_fraction`` stays ``None`` whenever the opportunity gap's lower limit is not
+         *     strictly positive, exactly as :func:`~accretion.routing.stats.estimands` decides it. The
+         *     field is nullable in the schema for that reason and not as a convenience: a share of an
+         *     opportunity nobody has shown to exist is not a small number, it is not a number.
+         */
+        RouterEstimandsSummary: {
+            /** Adjusted Alpha */
+            adjusted_alpha: number;
+            best_fixed: components["schemas"]["RouterBestFixedSummary"];
+            /** G Learn */
+            g_learn: number;
+            /** G Out */
+            g_out: number;
+            /** G Z */
+            g_z: number;
+            /** Intervals */
+            intervals: {
+                [key: string]: [
+                    number,
+                    number
+                ];
+            };
+            /** Recovered Fraction */
+            recovered_fraction?: number | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+        };
+        /**
+         * RouterGateSummary
+         * @description Protocol §8.2's two safety rates and the registered thresholds they are read against.
+         *
+         *     ``both_met`` is carried rather than left to the client to compute, because it is a
+         *     property of the gates and not of a reader: the two rates are deliberately not combined
+         *     into a score, and a client that ANDed them itself would eventually AND them wrongly.
+         */
+        RouterGateSummary: {
+            /** Both Met */
+            both_met: boolean;
+            /** False Acceptance Ceiling */
+            false_acceptance_ceiling: number;
+            /** False Acceptance Met */
+            false_acceptance_met: boolean;
+            /** False Acceptance Rate */
+            false_acceptance_rate: number;
+            /** False Acceptances */
+            false_acceptances: number;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Selections */
+            selections: number;
+            /** Verified Success Floor */
+            verified_success_floor: number;
+            /** Verified Success Met */
+            verified_success_met: boolean;
+            /** Verified Success Rate */
+            verified_success_rate: number;
+            /** Verified Successes */
+            verified_successes: number;
         };
         /**
          * RouterHoldoutSummary
@@ -6966,6 +7202,48 @@ export interface components {
             workspace_id: string;
         };
         /**
+         * RouterPolicySummary
+         * @description One comparator's line, or the reason it has none.
+         *
+         *     Unavailable §8.1 methods keep their row with ``available`` false and every measurement
+         *     ``None``: §8.2 requires all baselines to remain in the final report, and an API that
+         *     dropped the unbuilt ones would let a client believe the field was smaller than it is.
+         */
+        RouterPolicySummary: {
+            /** Available */
+            available: boolean;
+            estimands?: components["schemas"]["RouterEstimandsSummary"] | null;
+            gates?: components["schemas"]["RouterGateSummary"] | null;
+            /** Mean Regret */
+            mean_regret?: number | null;
+            /** Mean Utility */
+            mean_utility?: number | null;
+            /** Policy Id */
+            policy_id: string;
+            /** Reason Code */
+            reason_code?: string | null;
+            /** Regret By Project */
+            regret_by_project?: {
+                [key: string]: number;
+            };
+            /** Regret Interval */
+            regret_interval?: [
+                number,
+                number
+            ] | null;
+            safety?: components["schemas"]["RouterSafetySummary"] | null;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Selections */
+            selections: number;
+            /** Total Regret */
+            total_regret?: number | null;
+        };
+        /**
          * RouterPromotionDecision
          * @description SDD §7.13. The outcome of a promotion evaluation.
          *
@@ -7078,6 +7356,26 @@ export interface components {
             verified_success_non_regression: components["schemas"]["MetricComparison"];
             /** Workspace Id */
             workspace_id: string;
+        };
+        /**
+         * RouterSafetySummary
+         * @description The four safety counters the regret report keeps beside its utility column.
+         */
+        RouterSafetySummary: {
+            /** Deferred To Human */
+            deferred_to_human: number;
+            /** False Acceptances */
+            false_acceptances: number;
+            /** Invalid Selections */
+            invalid_selections: number;
+            /**
+             * Schema Version
+             * @default 1.0
+             * @constant
+             */
+            schema_version: "1.0";
+            /** Unverified Selections */
+            unverified_selections: number;
         };
         /**
          * RouterScope
@@ -11851,6 +12149,59 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExperienceBenchmarkSummary"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_router_benchmark_api_v2_benchmarks_router_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouterBenchmarkSummary"];
+                };
+            };
+        };
+    };
+    run_router_benchmark_api_v2_benchmarks_router_run_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RouterBenchmarkRunCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouterBenchmarkSummary"];
                 };
             };
             /** @description Validation Error */
