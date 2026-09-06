@@ -53,6 +53,7 @@ from accretion.persistence.models import (
     V04_M0_ROUTING_TABLES,
     Base,
     ExperienceRecordRow,
+    RouterActivationRow,
     RouterModelVersionRow,
     RoutingOverrideRow,
     RoutingReceiptRow,
@@ -73,6 +74,9 @@ DELTA_MIGRATION_PATH = (
 # names a v0.4 table" rule below checks it rather than exempting it.
 EXPERIENCE_FK_MIGRATION_PATH = (
     ROOT / "migrations" / "versions" / "0020_v04_experience_record_revisions.py"
+)
+ACTIVATION_LEDGER_MIGRATION_PATH = (
+    ROOT / "migrations" / "versions" / "0019_v04_m8_router_activation_ledger.py"
 )
 FREEZE_PATH = ROOT / "docs" / "releases" / "v0.4" / "m0-freeze.md"
 SCHEMA_ROOT = ROOT / "docs" / "contracts" / "v0.4"
@@ -414,26 +418,39 @@ def test_one_immutable_receipt_per_routing_request_id() -> None:
     assert RoutingReceiptRow.__table__.columns["routing_request_id"].unique is True
 
 
-def test_the_two_partial_unique_indexes_exist_and_say_what_they_mean() -> None:
-    """§13.1's third and fourth bullets; the repository's first partial unique indexes."""
+def test_the_two_partial_unique_indexes_are_gone_and_the_ledger_states_the_rule() -> None:
+    """M8.1 retired §13.1's third and fourth bullets *as indexes*, not as rules.
 
-    indexes = {index.name: index for index in RouterModelVersionRow.__table__.indexes}
+    They were the repository's only partial unique indexes and they made §10.3 unreachable:
+    with no ``update_`` anywhere in this family, the first ``ACTIVE`` row could never be
+    retired and, with the index in place, a second could never be inserted. Migration 0019
+    drops them; ``uq_router_activations_sequence`` states the same requirement
+    unconditionally, over a sequence whose head is the active version.
 
-    workspace = indexes["uq_router_versions_active_workspace"]
-    assert workspace.unique is True
-    assert [column.name for column in workspace.columns] == ["workspace_id"]
-    clause = str(workspace.dialect_options["postgresql"]["where"])
-    assert "ACTIVE" in clause and "TEAM_WORKSPACE" in clause
+    Asserting the *absence* here is what keeps 0019 honest: metadata is what 0017 builds a
+    fresh database from, so an index left declared would be recreated at 0017 and dropped
+    again at 0019 on every upgrade, and nobody would notice which of the two was wrong.
+    """
 
-    adapter = indexes["uq_router_versions_active_project_adapter"]
-    assert adapter.unique is True
-    assert [column.name for column in adapter.columns] == ["project_id", "algorithm_id"]
-    clause = str(adapter.dialect_options["postgresql"]["where"])
-    assert "ACTIVE" in clause and "PROJECT_ADAPTER" in clause
+    names = {index.name for index in RouterModelVersionRow.__table__.indexes}
+    assert "uq_router_versions_active_workspace" not in names
+    assert "uq_router_versions_active_project_adapter" not in names
+
+    sequence = {
+        constraint.name for constraint in RouterActivationRow.__table__.constraints
+    }
+    assert "uq_router_activations_sequence" in sequence
 
 
-def test_no_other_v04_table_declares_a_partial_unique_index() -> None:
-    """Two, and only the two §13.1 names. A third would be an unreviewed rule."""
+def test_no_v04_table_declares_a_partial_unique_index() -> None:
+    """Zero, since M8.1. A partial unique index here would be an unreviewed rule.
+
+    The set was ``{uq_router_versions_active_workspace,
+    uq_router_versions_active_project_adapter}`` until 0019 retired both. It is empty rather
+    than deleted so that reintroducing a conditional uniqueness rule anywhere in the family
+    — the shape that could not compose with an append-only table the first time — has to
+    come through this assertion.
+    """
 
     partial = {
         index.name
@@ -441,10 +458,7 @@ def test_no_other_v04_table_declares_a_partial_unique_index() -> None:
         for index in table(name).indexes
         if index.dialect_options["postgresql"].get("where") is not None
     }
-    assert partial == {
-        "uq_router_versions_active_workspace",
-        "uq_router_versions_active_project_adapter",
-    }
+    assert partial == set()
 
 
 def test_every_index_on_the_v04_tables_follows_the_naming_convention() -> None:
@@ -561,12 +575,15 @@ def test_the_freeze_delta_migration_follows_0017_and_creates_only_its_own_two() 
 def test_no_other_migration_names_a_v04_table() -> None:
     """No migration outside the two may create one of these under a different shape.
 
-    0020 is the single exception, and it is *checked* rather than exempted: it names
-    exactly one of these tables — ``experience_records``, whose foreign key it moves from
-    the primary key onto its own column — and creates none of them. A migration that
-    created a v0.4 table outside 0017 and 0018 would be a second definition of a table
-    that already has one, and the two would drift; a migration that alters one is a
-    different thing and has to say which table and prove it builds nothing.
+    0020 and 0019 are the two exceptions, and both are *checked* rather than exempted. 0020
+    names exactly one of these tables — ``experience_records``, whose foreign key it moves
+    from the primary key onto its own column. 0019 names exactly one — ``router_model_versions``,
+    whose two partial unique indexes it retires (ADR-061) — and it must additionally build
+    no table and add, drop or alter no column, because retiring an index is the whole of
+    what it is allowed to do. A migration that created a v0.4 table outside 0017 and 0018
+    would be a second definition of a table that already has one, and the two would drift;
+    a migration that alters one is a different thing and has to say which table and prove it
+    builds nothing.
     """
 
     versions = ROOT / "migrations" / "versions"
@@ -580,6 +597,13 @@ def test_no_other_migration_names_a_v04_table() -> None:
             assert named == {"experience_records"}, path.name
             assert "create_table" not in text, path.name
             assert ".create(bind" not in text, path.name
+            continue
+        if path.name == ACTIVATION_LEDGER_MIGRATION_PATH.name:
+            assert named == {"router_model_versions"}, path.name
+            assert "create_table" not in text, path.name
+            assert ".create(bind" not in text, path.name
+            for forbidden in ("add_column", "drop_column", "alter_column", "drop_table"):
+                assert forbidden not in text, (path.name, forbidden)
             continue
         assert not named, (path.name, sorted(named))
 

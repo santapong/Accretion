@@ -15,7 +15,6 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
-    text,
 )
 from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
 
@@ -1846,25 +1845,25 @@ class FailureEventRow(V04ContractRow):
 class RouterModelVersionRow(V04ContractRow):
     """SDD §7.12 router model version. §13: "scope, artifact digest, lineage, status".
 
-    This table carries **the repository's first two partial unique indexes**, because
-    §13.1's third and fourth bullets are conditional rules that no plain
-    ``UniqueConstraint`` can express: uniqueness holds only over the rows whose ``status``
-    is ``ACTIVE``, and a table that also stores every candidate, shadow, retired and
-    rolled-back version would otherwise be unable to store a second candidate at all.
+    **This table carried the repository's only two partial unique indexes until M8.1, and
+    carries none now.** M0 read §13.1's third and fourth bullets — "one active workspace
+    router per workspace", "one active adapter per project/router family" — as conditional
+    uniqueness over ``status = 'ACTIVE'`` and expressed them as
+    ``uq_router_versions_active_workspace`` and
+    ``uq_router_versions_active_project_adapter``. The rules are right; that implementation
+    of them composes with nothing. This family has no ``update_`` method on any table, by
+    design, so the first ``ACTIVE`` row could never be retired and a second could never be
+    inserted: a workspace was activatable exactly once, forever, and §10.3's reversible
+    promotion was unreachable. Migration 0019 drops both indexes (ADR-061).
 
-    * ``uq_router_versions_active_workspace`` — "one active workspace router per
-      workspace" (§13.1). Scoped to ``scope = 'TEAM_WORKSPACE'`` so that a project
-      adapter, which is also ``ACTIVE`` and also belongs to the workspace, does not
-      collide with the workspace prior.
-    * ``uq_router_versions_active_project_adapter`` — "one active adapter per
-      project/router family" (§13.1), keyed on ``(project_id, algorithm_id)``:
-      ``algorithm_id`` is what §7.12 calls the router family, and two adapters fitted by
-      different algorithms for the same project are a comparison, not a conflict.
-
-    ``postgresql_where`` is a PostgreSQL-only clause; the store also pre-checks each rule
-    and raises ``ValueError`` before the insert, so the error a caller sees is the same
-    on both backends and ``MemoryStore`` can mirror the rule exactly. The index is the
-    backstop against a concurrent second writer, not the first line of defence.
+    What replaces them is :class:`RouterActivationRow`, whose
+    ``uq_router_activations_sequence`` over ``(workspace_id, scope, family_key, sequence)``
+    is an ordinary, unconditional unique constraint. "Active" is no longer a value in a
+    column that something has to keep unique; it is *the head of a sequence*, and the
+    active version of a family is the ``router_version_id`` of its highest-numbered
+    activation. Several rows here may therefore be ``ACTIVE`` at once — a retired head and
+    its successor are both real records of what was once serving — and asking this table
+    which one is live is now the wrong question to ask of it.
 
     ``status`` is a promoted column on an append-only table, which reads like a
     contradiction and is not: a version is never updated in place, so retiring one and
@@ -1885,19 +1884,6 @@ class RouterModelVersionRow(V04ContractRow):
 
     __table_args__ = (
         UniqueConstraint("content_hash", "schema_version", name="uq_router_versions_hash_version"),
-        Index(
-            "uq_router_versions_active_workspace",
-            "workspace_id",
-            unique=True,
-            postgresql_where=text("status = 'ACTIVE' AND scope = 'TEAM_WORKSPACE'"),
-        ),
-        Index(
-            "uq_router_versions_active_project_adapter",
-            "project_id",
-            "algorithm_id",
-            unique=True,
-            postgresql_where=text("status = 'ACTIVE' AND scope = 'PROJECT_ADAPTER'"),
-        ),
         Index("ix_router_versions_project_created", "project_id", "created_at"),
         Index("ix_router_versions_workspace_created", "workspace_id", "created_at"),
         Index("ix_router_versions_snapshot", "training_snapshot_id"),
@@ -2053,11 +2039,12 @@ class RouterActivationRow(V04ContractRow):
     partition, and two writers racing to append the same next number is the one collision
     that must be impossible rather than merely unlikely.
 
-    **The two M0 partial indexes on ``router_model_versions`` are deliberately untouched
-    here.** M8.1 owns retiring them, in migration 0019, together with the composite
+    **The two M0 partial indexes on ``router_model_versions`` were deliberately untouched
+    by 0018.** M8.1 retired them, in migration 0019, together with the composite
     ``activate_router_version`` that writes the version rows and the ledger row in one
     transaction. Between 0018 and 0019 a database satisfies both rules at once, which is
-    the only ordering under which each migration is independently reversible.
+    the only ordering under which each migration is independently reversible; at 0019 and
+    after, this table is the sole statement of which version is active.
 
     Every id column is a plain ``String(64)`` and none is a foreign key into
     ``router_model_versions`` or ``router_promotion_reports``. A rollback happens during an

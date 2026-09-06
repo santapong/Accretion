@@ -830,6 +830,60 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/router-models/{version_id}/rollback": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rollback Router Version
+         * @description Withdraw the active router version and restore what its activation named (§10.3).
+         *
+         *     ``version_id`` must be the head of its family's ledger; naming an older version is a
+         *     conflict rather than a deeper rollback, because the operator asking for it is looking at
+         *     a ledger that has moved on. The restored target is drilled before anything is written,
+         *     so a rollback never replaces a bad router with a dead one.
+         */
+        post: operations["rollback_router_version_api_v1_router_models__version_id__rollback_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/router-promotions/{report_id}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Promote Router Version
+         * @description Activate the candidate a ``PROMOTE`` report names, and record the act (§10.3).
+         *
+         *     The response is the ledger entry, which is the whole of what changed that a caller can
+         *     act on: the sequence it took, the version it activated, the version it displaced, the
+         *     target a withdrawal would restore and the drill digest that target passed. The version
+         *     rows are readable through ``GET /api/v1/router-models``.
+         *
+         *     A report that decided ``REJECT`` or ``REQUIRE_REVIEW``, and a report whose rollback
+         *     target cannot be loaded and scored, are both refused with their own code and leave no
+         *     row behind (AC4-M8-038). Replaying a successful promotion returns the same activation.
+         */
+        post: operations["promote_router_version_api_v1_router_promotions__report_id__promote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/routing-decisions/{receipt_id}": {
         parameters: {
             query?: never;
@@ -5819,6 +5873,144 @@ export interface components {
          */
         RiskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
         /**
+         * RollbackCreate
+         * @description Why the active router is being withdrawn.
+         *
+         *     ``cause`` is required and has no default. §10.3's reversibility is worth nothing if the
+         *     ledger records that something was withdrawn but not what it was withdrawn *for*, and an
+         *     incident review reads this field first. A plain ``BaseModel`` rather than
+         *     ``StrictModel`` because it is a request body and not a persisted contract; ``extra`` is
+         *     still forbidden, so a misspelt field is a 422 rather than a silently ignored one.
+         */
+        RollbackCreate: {
+            /** Cause */
+            cause: string;
+            /** Run Id */
+            run_id?: string | null;
+        };
+        /**
+         * RouterActivation
+         * @description ADR-061. One append-only entry in the ledger whose head is the active router.
+         *
+         *     **Added by the freeze delta of 5 Sep 2026, not by M0.** §13.1 says "one active
+         *     workspace router per workspace" and M0 implemented it as the partial unique index
+         *     ``uq_router_versions_active_workspace`` over ``router_model_versions.status``. That
+         *     rule is correct and its implementation does not compose with §10.3: this family has no
+         *     ``update_`` method on any table, by design, so the first ``ACTIVE`` row can never be
+         *     retired and a second one can never be inserted. A workspace could be activated exactly
+         *     once, forever.
+         *
+         *     The ledger is the fix, and it is a better statement of the requirement than the index
+         *     was. "Active" stops being a mutable column and becomes *the head of a sequence*: the
+         *     activation with the highest ``sequence`` for a ``(workspace_id, scope, family_key)``
+         *     names the version now serving. Promotion appends; rollback appends; nothing is edited;
+         *     the history of who activated what, when, and why is the table itself rather than a
+         *     reconstruction from timestamps. M8.1 owns the migration that retires the two partial
+         *     indexes (0019); this freeze adds the contract and its table and touches neither index,
+         *     so a database between the two migrations is consistent under both rules at once.
+         *
+         *     **Fields.** ``scope`` and ``family_key`` are the ledger's partition — ``scope`` is
+         *     :class:`RouterScope`, the same enum :class:`RouterModelVersion` carries, and
+         *     ``family_key`` is the router family within it (``algorithm_id`` for a workspace prior,
+         *     and the project-and-algorithm pair for an adapter), so that two families promoting on
+         *     the same day are two sequences rather than one contested one. ``sequence`` is
+         *     contiguous from 1 and unique per partition — a database constraint, not a hope, and it
+         *     is what makes "the head" a query rather than a scan. ``router_version_id`` is the
+         *     ``rmv_`` version being activated, ``previous_version_id`` the one it displaces,
+         *     ``rollback_target_version_id`` what a withdrawal would restore, and
+         *     ``promotion_report_id`` the ``rpr_`` evaluation that authorised it — nullable because a
+         *     rollback is authorised by an incident and not by a report. ``approved_by`` is required
+         *     on **every** entry, rollbacks included (OQ-411): §10.3 makes activation a human act, and
+         *     a rollback performed by nobody is the activation nobody can be asked about afterwards.
+         *
+         *     ``PROJECT_SCOPED`` is ``False``, exactly as it is on :class:`RouterModelVersion` and for
+         *     the same reason: a ``TEAM_WORKSPACE`` activation belongs to the workspace and to no
+         *     project. The validator makes the nullability exact rather than merely permitted.
+         *
+         *     The two ledger rules the validator holds are the ones a database constraint cannot
+         *     state. A ``ROLLBACK`` names both what it restores and why — §10.3's reversibility is
+         *     worth nothing if the ledger records that something was withdrawn but not what it was
+         *     withdrawn to, and an unexplained withdrawal is the row an incident review most needs to
+         *     read. And the first entry in a sequence displaces nothing, so a ``sequence`` of 1 that
+         *     claims a predecessor is describing a history that does not exist.
+         */
+        RouterActivation: {
+            approved_by: components["schemas"]["PrincipalRef"];
+            /** Cause */
+            cause?: string | null;
+            /**
+             * Content Hash
+             * @default
+             */
+            content_hash: string;
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Contract Type
+             * @default accretion.router-activation
+             * @constant
+             */
+            contract_type: "accretion.router-activation";
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at?: string;
+            created_by: components["schemas"]["PrincipalRef"];
+            /** Family Key */
+            family_key: string;
+            kind: components["schemas"]["RouterActivationKind"];
+            /** Labels */
+            labels?: {
+                [key: string]: string;
+            };
+            objective_contract_ref?: components["schemas"]["ObjectiveContractRef"] | null;
+            /** Previous Version Id */
+            previous_version_id?: string | null;
+            /** Project Id */
+            project_id?: string | null;
+            /** Promotion Report Id */
+            promotion_report_id?: string | null;
+            /** Retention Class */
+            retention_class?: string | null;
+            /** Rollback Target Version Id */
+            rollback_target_version_id?: string | null;
+            /** Router Version Id */
+            router_version_id: string;
+            /**
+             * Schema Version
+             * @default 1.0.0
+             */
+            schema_version: string;
+            scope: components["schemas"]["RouterScope"];
+            /** Sequence */
+            sequence: number;
+            /** Supersedes Contract Id */
+            supersedes_contract_id?: string | null;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /**
+         * RouterActivationKind
+         * @description ADR-061. Why a router version became the head of the activation ledger.
+         *
+         *     §10.3 makes promotion "atomic and reversible", and M0 implemented "one active router"
+         *     as two partial unique indexes over ``router_model_versions.status``. That composes with
+         *     a first activation and with nothing after it: the store has no ``update_`` for any v0.4
+         *     table, so a second ``ACTIVE`` row can never be inserted and the first one can never be
+         *     retired. The ledger replaces the index — "active" becomes the head of an append-only
+         *     sequence — and this enum is why each entry was appended.
+         *
+         *     ``ROLLBACK`` is not ``PROMOTE`` with a different target. A promotion is a release and a
+         *     rollback is a withdrawal, they are approved under different circumstances, and §10.3's
+         *     reversibility claim is worth nothing if the ledger cannot distinguish the two after the
+         *     fact. Distinct from :class:`RouterPromotionDecision`, which grades an *evaluation*
+         *     (``PROMOTE``/``REJECT``/``REQUIRE_REVIEW``); this records an *act*, and a rejected
+         *     evaluation produces no activation row at all.
+         * @enum {string}
+         */
+        RouterActivationKind: "PROMOTE" | "ROLLBACK";
+        /**
          * RouterCalibrationSummary
          * @description The calibration report's headline numbers, without its bins.
          *
@@ -9092,6 +9284,81 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RouterCandidateTrained"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rollback_router_version_api_v1_router_models__version_id__rollback_post: {
+        parameters: {
+            query: {
+                workspace_id: string;
+            };
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RollbackCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouterActivation"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    promote_router_version_api_v1_router_promotions__report_id__promote_post: {
+        parameters: {
+            query: {
+                workspace_id: string;
+                run_id?: string | null;
+            };
+            header?: {
+                "Idempotency-Key"?: string | null;
+            };
+            path: {
+                report_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouterActivation"];
                 };
             };
             /** @description Validation Error */
