@@ -21,7 +21,6 @@ from accretion.routing.snapshot import RegistrySnapshotBuilder, RoutingSnapshot
 from accretion.routing.stages import (
     CandidateScorer,
     DeterministicBehavior,
-    NoEvidence,
     PostNodeHook,
     PostRouteHook,
     StatusActiveVersionResolver,
