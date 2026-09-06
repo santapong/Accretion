@@ -46,6 +46,7 @@ SEED = 20260905
 
 SUITE_VERSION = "v1"
 CONFIGURATION_VERSION = "router-baselines-v1"
+PREREGISTRATION_SHA256 = "6b45998b3a9847298ba878a6414211ce38d64c775e5addd587509fdd70cf04ea"
 
 ABLATIONS_PATH = "evals/router/ablations.v1.json"
 """Where protocol §14's registered ablation table lives, relative to the repository root.
@@ -411,6 +412,7 @@ def build() -> dict[str, dict[str, Any]]:
         "oracle_candidate_subset": list(ORACLE_CANDIDATE_SUBSET),
         "deterministic_v01_table": dict(DETERMINISTIC_V01_TABLE),
         "ablations_path": ABLATIONS_PATH,
+        "preregistration_sha256": PREREGISTRATION_SHA256,
     }
     candidates = {
         "suite_version": SUITE_VERSION,

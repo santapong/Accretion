@@ -15,7 +15,7 @@ as a research result.
 | [P5 dynamic workflows](p5/benchmark.md) | 12 tasks, 24 paired static/dynamic traces | Heterogeneous/uncertain utility uplift `+0.224631`; success `9/12 → 12/12`; predictable uplift `+0.009195`; static fallback and safety gates pass | PASS · POSITIVE |
 | [P6 bounded search](p6/acceptance.md#frozen-benchmark-result) | 12 held-out tasks at N=1, 2, and 4 | Verified accepts `8/12 → 12/12`; mean quality `0.472500 → 0.768333`; explicit null-gain result preserved | PASS |
 | [P7 verified experience](p7/acceptance.md#frozen-benchmark-result) | 20 tasks, 50 sources, 80 traces, four treatments | Replay quality uplift `+0.070500`; 20% fewer tool calls; 95% stale rejection (corpus-declared, see ADR3-M8-005); 3.33% negative transfer; false accepts do not increase | PASS |
-| [Router benchmark v0.4](v0.4/preregistration.md) | 12 projects in two lineage-disjoint halves, 36 tasks, 6 configurations, 432 replay traces | Development-only pilot statistics only; all fifteen §21 pre-registration fields still `TBD`, so no superiority claim is made or implied | PENDING FREEZE |
+| [Router benchmark v0.4](v0.4/preregistration.md) | 12 projects in two lineage-disjoint halves, 36 tasks, 6 configurations, 432 replay traces | Pilot statistics recorded; all fifteen §21 fields frozen and the page's sha256 pinned in `evals/router/config.v1.json`; the locked test set is unread until M10d | FROZEN 2026-09-06 |
 
 The P5–P7 values above are deterministic properties of versioned fixtures. They
 do not claim that a currently hosted model will reproduce those exact values.

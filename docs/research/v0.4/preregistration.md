@@ -1,15 +1,17 @@
-# Router benchmark v0.4 — pre-registration (PENDING FREEZE)
+# Router benchmark v0.4 — pre-registration (FROZEN 2026-09-06)
 
-**Status: none of the fifteen fields below is frozen.** Every one carries `Status: TBD` and a
-proposal. Test-set access does not begin, and no result from the evaluation half may be quoted
-as a claim, until a maintainer replaces each `TBD` with `FROZEN` and fills the pilot table at
-the end of this page by hand.
+**Status: all fifteen fields below are frozen as of 2026-09-06.** The pilot table at the end of
+this page was filled by hand from `scripts/router_pilot.py` before any field was frozen, and the
+sha256 of this file is pinned in `evals/router/config.v1.json` (`preregistration_sha256`), so the
+locked-test runner refuses to start if a single character here changes. A later change is a
+documented protocol amendment with a new pin, never an edit.
 
 [Section 21 of the research protocol](../../sdd/future/v0.4-v1.0/03_RESEARCH/Accretion_v0.4_Research_Protocol.md)
-lists the fields and requires a development-only pilot before they are frozen. This page is
-the draft that pilot exists to inform. It is written before the numbers are entered on
+lists the fields and requires a development-only pilot before they are frozen. This page was
+drafted before the pilot ran and its proposals were written before the numbers were entered, on
 purpose: a pre-registration assembled after its measurements are known is a description, not a
-registration.
+registration. The numbers were entered at the freeze, after the proposals, and the fields they
+changed (1 and 2) say so.
 
 ## How to run the pilot
 
@@ -37,14 +39,19 @@ same seed, same designed world, only the repeat count moves.
 
 ### 1. Exact project count and trial repetitions
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** Size the trial repetitions from `power_sample_size(delta, sigma)` evaluated at
   the **trial-to-trial** σ the pilot measures, not at the pooled spread across cells, and take
   the resulting n as the floor rather than the target. Independently of that arithmetic, hold
   at least **9 trials per cell** (the OQ-409 interim rule, [SDD §21 open questions](../../sdd/Accretion_SDD_v0.4.md))
   and at least **6 projects per half of the split**, which is what the shipped corpus already
   carries and the minimum at which a project-clustered bootstrap has anything to resample.
-- **Note for the freeze.** The pilot's power table and the ≥ 9 floor are expected to disagree,
+- **Frozen value.** The locked test corpus carries **18 trials per cell** and **12 projects, six per
+  half**: at the pilot's evaluation-half utility σ of 0.0867, δ = 0.02 needs 295 paired units per
+  configuration and 18 tasks × 18 trials gives 324. Binary endpoints (verified success, false
+  acceptance) would need ~6,000 units at δ = 0.02 and are therefore reported as gates with exact
+  intervals, never as powered comparisons. Any live run keeps the ≥ 9 trials per cell floor.
+- **Note recorded at the freeze.** The pilot's power table and the ≥ 9 floor were expected to disagree,
   and by a lot: an effect of two percentage points against the corpus's observed σ needs far
   more than nine repeats. Freezing item 1 means choosing which of the two governs, and saying
   so — either the locked test is sized for δ = 0.02 and is expensive, or δ_min is raised in
@@ -52,12 +59,16 @@ same seed, same designed world, only the repeat count moves.
 
 ### 2. Primary baseline identity
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** The primary baseline is the **best fixed configuration**, chosen by
   `accretion.routing.stats.select_best_fixed` over the `selection_project_ids` of
   [`evals/router/config.v1.json`](../../../evals/router/config.v1.json) and scored only on the
   `evaluation_project_ids`. The primary comparison is **M9 (the full v0.4 guarded router)
   against that baseline**, one comparison, declared before any evaluation-half read.
+- **Frozen value.** The *procedure* is frozen, not a configuration name: the pilot picked
+  `cnf-codex-standard` on the shipped two-trial corpus and `cnf-claude-sonnet-lean` on the nine-trial
+  regeneration of the same seed. The winner on the locked corpus is written into `results.md` after
+  the locked run and nowhere before it.
 - **Why.** The argmax is itself a comparison, and a baseline chosen on the data it is then
   scored on is biased upward by the winner's curse. The two halves are disjoint at the level
   of *lineage* and not merely of project id, which `RouterBenchmarkCorpus.load` proves at load
@@ -65,7 +76,7 @@ same seed, same designed world, only the repeat count moves.
 
 ### 3. Utility normalization
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** `accretion.routing.regret.utility`: `quality − w_cost·cost − w_latency·latency`,
   with quality as the numeraire (`weights.quality` is *not* applied as a fourth multiplier),
   the **corpus weights 1.0 / 0.3 / 0.15** and a latency budget of **60000 ms** per node, both
@@ -80,7 +91,7 @@ same seed, same designed world, only the repeat count moves.
 
 ### 4. δ_min, Δ_NI, α and power
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** `delta_min = 0.02`, `Delta_NI = −0.02`, `alpha = 0.05`, `power = 0.8` — the
   values already registered in [`evals/router/promotion.v1.json`](../../../evals/router/promotion.v1.json)
   for the promotion gate, adopted unchanged so that the number a promotion is gated on and the
@@ -90,7 +101,7 @@ same seed, same designed world, only the repeat count moves.
 
 ### 5. Confidence interval / bootstrap procedure
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** Continuous endpoints: `accretion.routing.stats.hierarchical_bootstrap` with
   **B = 2000** replicates, resampling **projects** and then units within each resampled
   project, seeded from `config.v1.json`'s `seed`. The primary analysis is the paired form,
@@ -104,7 +115,7 @@ same seed, same designed world, only the repeat count moves.
 
 ### 6. Invalid-action penalty
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** **1.0** — one whole unit of quality, so an invalid selection scores below every
   valid one — applied identically whether the configuration was never eligible or was executed
   and flagged invalid by the trace. A policy is not better off for having had its invalid
@@ -112,7 +123,7 @@ same seed, same designed world, only the repeat count moves.
 
 ### 7. Candidate subset used for oracle construction
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** The five configurations registered in `config.v1.json` as
   `oracle_candidate_subset`:
 
@@ -131,7 +142,7 @@ same seed, same designed world, only the repeat count moves.
 
 ### 8. Provider / model / tool version windows
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** Two levels, both already carried by the schema. Coarse: the corpus's
   `labels.provider_era` on each project in `evals/router/projects.v1.json`, which is what the
   era-aware split reads. Fine: `accretion.contracts.routing.ServingWindow` — provider, runtime
@@ -141,7 +152,7 @@ same seed, same designed world, only the repeat count moves.
 
 ### 9. Cache and outage handling
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** *Replay:* none. The corpus grid is complete by construction and its loader
   refuses a hole, so the outage rate on a replay run is **0** and the pilot reports it as a
   measured quantity rather than asserting it. *Live:* register a missingness rule before the
@@ -152,7 +163,7 @@ same seed, same designed world, only the repeat count moves.
 
 ### 10. Critical cohort definitions and thresholds
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** The five cohorts registered in `promotion.v1.json`: `correctness`,
   `high_risk`, `policy`, `secrets`, `verifier_conflict`. Each is a **hard** non-regression
   gate at `Delta_NI`: a cohort whose paired lower bound falls below the margin blocks, and a
@@ -162,7 +173,7 @@ same seed, same designed world, only the repeat count moves.
 
 ### 11. Calibration metric and maximum threshold
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** Expected calibration error over **10 equal-width bins**, ceiling **0.05**
   (`calibration_max_ece` in `promotion.v1.json`), computed on the project-disjoint holdout and
   reported beside the Brier score and the conformal quantile so that a ceiling met by a
@@ -170,7 +181,7 @@ same seed, same designed world, only the repeat count moves.
 
 ### 12. Human adjudication rubric
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** *Replay:* no human adjudication. The corpus's verification verdicts are the
   ground truth, they are committed, and re-adjudicating them per run would make the benchmark
   irreproducible. *Live:* a **blinded** rubric — the adjudicator sees the node, the artefact
@@ -180,7 +191,7 @@ same seed, same designed world, only the repeat count moves.
 
 ### 13. Multiplicity handling
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** `accretion.routing.stats.bonferroni` at `alpha / (K + L)` with **K = 6** (the
   configurations that competed for the baseline slot) and **L = 3** (the policies reported
   against it: oracle, signal-restricted, learned), giving 9 comparisons and an adjusted level
@@ -191,7 +202,7 @@ same seed, same designed world, only the repeat count moves.
 
 ### 14. OPE estimators and clipping
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** Primary: **Logarithmic Smoothing** (`accretion.routing.ope.ls_estimate`) with
   `lambda = 1/sqrt(n)` fixed by rule and never tuned, where `n` is the unit count and not the
   cluster count. Reported beside it as diagnostics and never as the gate: **SNIPS**,
@@ -201,7 +212,7 @@ same seed, same designed world, only the repeat count moves.
 
 ### 15. Promotion shadow duration / evidence requirement
 
-- **Status: TBD**
+- **Status: FROZEN 2026-09-06**
 - **Proposal.** At least **9 paired runs per configuration per node class** — OQ-409's interim
   rule, `shadow_min_paired_runs` in `promotion.v1.json` — plus a non-inferiority pass at
   `Delta_NI` on the paired difference `U(SHADOW) − U(CONTROL)`. Freezing this field is what
@@ -214,26 +225,34 @@ Filled by hand from `scripts/router_pilot.py` at the freeze, on the corpus and s
 the caption. Left empty here on purpose: a table pre-filled by the same change that proposes
 the fields would be a measurement chosen to fit them.
 
-Corpus: _______________  Split: _______________  Trials per cell: _______  Date: ___________
+Corpus: shipped `evals/router` (corpus 6d742e12a95e, traces 320d00a623f6) and a nine-trial
+regeneration of the same seed (traces 92b8ed6b2a64, written outside the repository)  Split: SELECTION / EVALUATION
+Trials per cell: 2 (shipped) / 9 (regenerated)  Seed: 20260905  Date: 2026-09-06  Tool: `scripts/router_pilot.py`
 
-| Quantity | Value | Interval or note |
+Values are from the nine-trial regeneration unless marked; the shipped two-trial corpus is quoted
+where its thinness flag matters. `M9` was not yet available to the pilot (M7.2 and M10c landed after it
+ran), so the variance components are the M0 baseline's.
+
+| Quantity | Value (SELECTION / EVALUATION) | Interval or note |
 |---|---|---|
-| Trial-to-trial σ (utility) | | |
-| Trial-to-trial σ (pass rate) | | |
-| Degrees of freedom behind σ | | |
-| Within-project variance (primary policy) | | |
-| Between-project variance (primary policy) | | |
-| Intraclass correlation | | |
-| Verified-success base rate | | |
-| False-acceptance count | | |
-| Outage rate | | |
-| Runs per configuration at δ = 0.02 | | |
-| Runs per configuration at δ = 0.01 | | |
-| `pass@2` / `pass^2` | | |
+| Trial-to-trial σ (utility) | 0.0827 / 0.0867 | shipped: 0.0752 / 0.0865, flagged (≤ 2 trials per cell) |
+| Trial-to-trial σ (pass rate) | 0.386 / 0.394 | shipped: 0.371 / 0.351, flagged |
+| Degrees of freedom behind σ | 552 / 552 | 69 cells × 8; shipped 69 |
+| Within-project variance (M0) | 0.459 / 0.446 | M6: 0.458 / 0.194 |
+| Between-project variance (M0) | 0.000 / 0.000 | M2: 0.000 / 0.217 (ICC 0.445); M4: 0.104 / 0.000 |
+| Intraclass correlation (M0) | 0.000 / 0.000 | clustering is policy-dependent, so item 5 resamples projects regardless |
+| Verified-success base rate | ORACLE 0.500 / 0.333; M0 0.278 / 0.111 | CP: ORACLE [0.260, 0.740] / [0.133, 0.590]; M0 [0.097, 0.535] / [0.014, 0.347] |
+| False-acceptance count | M0 2 / 2 | CP upper 0.347 / 0.347; ORACLE 5 / 4; M3 6 on selection (upper 0.590) |
+| Outage rate | 0.000 / 0.000 | replay: measured, not asserted |
+| Runs per configuration at δ = 0.02 | utility 269 / 295 | pass rate 5,846 / 6,083 |
+| Runs per configuration at δ = 0.01 | utility 1,073 / 1,180 | pass rate 23,383 / 24,331 |
+| `pass@9` / `pass^9` | M0 0.482 / 0.161; ORACLE 0.832 / 0.624 | shipped `pass@2` / `pass^2`: M0 0.667 / 0.309; ORACLE 0.889 / 0.563 |
+| Best fixed configuration (selection half) | `cnf-claude-sonnet-lean` 5/18 → evaluation 2/18 | CP [0.014, 0.347]; shipped corpus: `cnf-codex-standard` 8/18 → 6/18 [0.133, 0.590] |
 
 ## What this page does not do
 
-It flips no acceptance criterion, changes no threshold in `evals/`, and quotes no result from
+It flips no acceptance criterion, changes no threshold in `evals/` other than pinning its own
+digest there, and quotes no result from
 the evaluation half as a claim. The router benchmark's own numbers are produced by
 `GET /api/v2/benchmarks/router` and by `tests/test_v04_m10_router_benchmark.py`; this page only
 says what will count as evidence once the fields above are frozen.

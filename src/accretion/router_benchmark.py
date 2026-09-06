@@ -212,6 +212,13 @@ class RouterBenchmarkConfig(StrictModel):
     oracle_candidate_subset: list[str] = Field(min_length=1, max_length=64)
     deterministic_v01_table: dict[ExecutionMode, str] = Field(min_length=1)
     ablations_path: str | None = Field(default=None, max_length=256)
+    preregistration_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    """sha256 of ``docs/research/v0.4/preregistration.md`` at the §21 freeze.
+
+    ``None`` means the fields are not frozen and nothing may read the locked test set.
+    Once set, the locked-test runner refuses to start unless the file on disk still
+    hashes to this value: an amended pre-registration is a new pre-registration.
+    """
 
 
 class CorpusCandidate(StrictModel):
