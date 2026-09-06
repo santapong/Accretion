@@ -13,7 +13,7 @@ folder root stays uncluttered.
 
 | Goal | Start here | Continue with |
 |---|---|---|
-| Understand the project and release status | [Project README](../README.md) | [v0.3 release notes](releases/v0.3/notes.md) |
+| Understand the project and release status | [Project README](../README.md) | [v0.4 release notes](releases/v0.4/notes.md) |
 | Run Accretion locally | [Developer guide](guides/developer.md) | [Showcase](guides/showcase.md) |
 | Use or extend the React operator UI | [Frontend guide](guides/frontend.md) | [Developer guide](guides/developer.md), [showcase](guides/showcase.md) |
 | Understand the system | [README architecture](../README.md#architecture) | [v0.1 SDD](sdd/Accretion_SDD_v0.1.md) |
@@ -28,13 +28,13 @@ folder root stays uncluttered.
 | Add or move an operator UI screen | [Operator UI source tree runbook](runbooks/v03-operator-ui.md) | [Frontend guide](guides/frontend.md) |
 | Use the research capability set | [Research runbook](runbooks/v03-research.md) | [Experiments and results](research/README.md) |
 | Enable enterprise-managed authorization | [Enterprise authorization runbook](runbooks/v03-enterprise-auth.md) | [SDD v0.3 §24.9](sdd/Accretion_SDD_v0.3.md) |
-| Check acceptance criteria | [Acceptance baseline](releases/v0.3/acceptance-baseline.md) | [verification policy](acceptance/criteria.toml) |
+| Check acceptance criteria | [Acceptance baseline](releases/v0.4/acceptance-baseline.md) | [verification policy](acceptance/criteria.toml) |
 | Review or reproduce experiments | [Experiments and results](research/README.md) | [ACR-ARCH](research/acr-arch-v0.1.md), [P5](research/p5/benchmark.md), [P6](research/p6/acceptance.md), [P7](research/p7/acceptance.md) |
 | Review security | [Security policy](../SECURITY.md) | [Trust-boundary diagram](assets/trust-boundary.svg) |
-| Review the current release | [v0.3 release notes](releases/v0.3/notes.md) | [frozen v0.3 baseline](releases/v0.3/baseline.md), [release audit](releases/v0.3/audit.md), [acceptance baseline](releases/v0.3/acceptance-baseline.md), [browser and accessibility evidence](releases/v0.3/browser-a11y-evidence.md) |
+| Review the current release | [v0.4 release notes](releases/v0.4/notes.md) | [frozen v0.4 baseline](releases/v0.4/baseline.md), [release audit](releases/v0.4/audit.md), [acceptance baseline](releases/v0.4/acceptance-baseline.md), [research results](research/v0.4/results.md); the v0.3 record stays at [releases/v0.3](releases/v0.3/notes.md) |
 | Reproduce the release gate | [Release-hardening runbook](runbooks/v03-release-hardening.md) | [SDD v0.3 §24.8](sdd/Accretion_SDD_v0.3.md), [`scripts/release_gate.py`](../scripts/release_gate.py) |
 | Review the previous release | [Frozen v0.2 baseline](releases/v0.2/baseline.md) | [release audit](releases/v0.2/audit.md), [release notes](releases/v0.2/notes.md), [delivery plan](releases/v0.2/plan.md) |
-| Plan post-v0.3 work | [v0.3 backlog](releases/v0.3/backlog.md) | [v0.3 SDD](sdd/Accretion_SDD_v0.3.md) |
+| Plan post-v0.4 work | [v0.4 backlog](releases/v0.4/backlog.md) | [v0.4 SDD](sdd/Accretion_SDD_v0.4.md) |
 | Build v0.4 (evidence-aware node configuration routing) | [v0.4 milestone index](releases/v0.4/README.md) | [SDD v0.4](sdd/Accretion_SDD_v0.4.md), [M0 plan](releases/v0.4/m0-plan.md), [v0.4 backlog](releases/v0.4/backlog.md), [forward package](sdd/future/v0.4-v1.0/00_READ_ME_FIRST.md) |
 | Review the v0.4 release preparation | [v0.4 release notes (draft)](releases/v0.4/notes.md) | [release audit (draft)](releases/v0.4/audit.md), [v0.4 milestone index](releases/v0.4/README.md), [router pre-registration](research/v0.4/preregistration.md) |
 
