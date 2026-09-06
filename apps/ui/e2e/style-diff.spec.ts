@@ -17,10 +17,12 @@ import { SEED_FILE, type Seed } from "./global-setup";
 import { openRoute } from "./navigate";
 import { ROUTES, RUN_ID_PLACEHOLDER, type RouteUnderTest } from "./routes";
 import {
+  compareCaptures,
   diffStyles,
   fingerprintsEqual,
   formatDifference,
   nextRetryDelayMs,
+  obligationsFor,
   type ElementCapture,
 } from "./styleDiff";
 
@@ -580,9 +582,10 @@ async function compare(
     const branch = await measure(page, route, width, BRANCH_ORIGIN);
     const base = await measure(page, route, width, BASE_ORIGIN);
 
-    if (fingerprintsEqual(base, branch)) {
+    const comparison = compareCaptures(route, base, branch);
+    if (comparison.aligned) {
       return {
-        differences: diffStyles(base, branch).map((difference) =>
+        differences: comparison.differences.map((difference) =>
           formatDifference(route.path, width, difference),
         ),
         elements: branch.length,
@@ -634,8 +637,16 @@ test.describe("computed-style diff against the pre-migration build", () => {
         shortfalls.push(() => assertAboveFloor(route.path, width, result.elements, floor));
       }
       // Printed on success as well as failure: "0 diffs" is only meaningful next to the
-      // number of elements it was 0 out of.
-      console.log(`style-diff ${route.path} — ${counts.join(", ")} elements (floor ${floor})`);
+      // number of elements it was 0 out of - and on a waived route "0 diffs" means "not
+      // compared", which a reader must never have to infer from a silent log.
+      const waiver = obligationsFor(route).waiver;
+      console.log(
+        `style-diff ${route.path} — ${counts.join(", ")} elements (floor ${floor})` +
+          (waiver
+            ? `; STRUCTURAL CHANGE WAIVED by ${waiver.pr}: ${waiver.reason} — the element ` +
+              "floor above is the only rendering evidence for this route"
+            : ""),
+      );
       for (const assertShortfall of shortfalls) assertShortfall();
       expect(differences, differences.join("\n")).toEqual([]);
     });
@@ -692,17 +703,20 @@ test.describe("computed-style diff against the pre-migration build", () => {
         captures[origin] = [...focused, ...hovered];
       }
 
-      const base = captures[BASE_ORIGIN];
-      const branch = captures[BRANCH_ORIGIN];
-      if (!fingerprintsEqual(base, branch)) {
+      // The same waiver, for the same reason: added markup adds focusable elements, so a
+      // waived route's interaction capture is a different shape too. The floor assertion
+      // above it is NOT waived - it runs before this and is what keeps the pass from being
+      // green over zero focused elements on the one route that skips the comparison.
+      const comparison = compareCaptures(route, captures[BASE_ORIGIN], captures[BRANCH_ORIGIN]);
+      if (!comparison.aligned) {
         differences.push(
-          `${route.path}: the interaction pass found ${base.length} targets on the base ` +
-            `build and ${branch.length} on the branch`,
+          `${route.path}: the interaction pass found ${captures[BASE_ORIGIN].length} targets ` +
+            `on the base build and ${captures[BRANCH_ORIGIN].length} on the branch`,
         );
         continue;
       }
       differences.push(
-        ...diffStyles(base, branch).map((difference) =>
+        ...comparison.differences.map((difference) =>
           formatDifference(`${route.path} (interaction)`, 1440, difference),
         ),
       );
@@ -928,10 +942,20 @@ async function mockApi(
 }
 
 /** The mocked run, addressed by the fixture's own id rather than the seeded one. */
+// The waiver is declared here as well as in `routes.ts`, because this is a different route
+// object over the same page: the mocked pass builds its own and never reads the sweep's. A
+// waiver that covered only one of the two would leave the other reporting the same intended
+// DOM change as a failure, which is the shape that teaches a reader to ignore this gate.
 const MOCKED_RUN_ROUTE: RouteUnderTest = {
   path: `/runs/${FIXTURE_RUN_ID}`,
   heading: /…/,
   settle: "run-events",
+  structuralChange: {
+    pr: "M9a",
+    reason:
+      "the §17.1 node routing panel is mounted in .execution-content beside the dynamic " +
+      "workflow inspector, so the run page renders more elements than the merge-base",
+  },
 };
 
 const MOCKED_TASK_ROUTE: RouteUnderTest = { path: "/tasks/new", heading: "New task" };
@@ -1048,9 +1072,11 @@ test.describe("computed-style diff over fixture-mocked pages", () => {
       );
     }
 
+    const waiver = obligationsFor(MOCKED_RUN_ROUTE).waiver;
     console.log(
       `style-diff mocked run page — ${counts.join(", ")} elements ` +
-        `(floor ${MOCKED_RUN_ELEMENT_FLOOR})`,
+        `(floor ${MOCKED_RUN_ELEMENT_FLOOR})` +
+        (waiver ? `; STRUCTURAL CHANGE WAIVED by ${waiver.pr}: ${waiver.reason}` : ""),
     );
     for (const assertShortfall of shortfalls) assertShortfall();
     expect(unmatched, `endpoints with no fixture:\n${unmatched.join("\n")}`).toEqual([]);

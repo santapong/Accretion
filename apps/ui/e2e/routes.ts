@@ -18,6 +18,26 @@ export interface RouteUnderTest {
   readonly heading: string | RegExp;
   /** Set for routes needing settling beyond load, e.g. an open event stream. */
   readonly settle?: "run-events";
+  /**
+   * This PR deliberately changes this route's DOM; do not compare it to the merge-base.
+   *
+   * The computed-style diff aligns two builds by index over `body *`, so ANY added element
+   * makes the two captures a different shape and the gate reports "the two builds rendered
+   * different DOM" — which is true, intended, and not a finding. Before this field the only
+   * ways past it were to skip the gate or to stop adding markup, and the first is how a
+   * required check quietly stops being read.
+   *
+   * A waiver suspends the structural comparison for ONE route and nothing else. The element
+   * floor, the focus pass and the whole a11y gate still run on it, so a waived route that
+   * renders an error page still fails, and every other route is still compared byte for
+   * byte — `styleDiff.test.ts` pins both halves of that.
+   *
+   * It is deliberately not durable. `pr` names the change that earned it and `reason` says
+   * what was added, so the next PR that touches the route must delete this entry and write
+   * its own — which is the only thing that stops one waiver from becoming a permanent
+   * exemption for the busiest route in the app.
+   */
+  readonly structuralChange?: { readonly pr: string; readonly reason: string };
 }
 
 /** `:runId` is substituted with the id the seeded showcase run reports. */
@@ -26,7 +46,17 @@ export const RUN_ID_PLACEHOLDER = ":runId";
 export const ROUTES: readonly RouteUnderTest[] = [
   { path: "/", heading: /One control plane\./ },
   { path: "/tasks/new", heading: "New task" },
-  { path: `/runs/${RUN_ID_PLACEHOLDER}`, heading: /…/, settle: "run-events" },
+  {
+    path: `/runs/${RUN_ID_PLACEHOLDER}`,
+    heading: /…/,
+    settle: "run-events",
+    structuralChange: {
+      pr: "M9a",
+      reason:
+        "the §17.1 node routing panel is mounted in .execution-content beside the dynamic " +
+        "workflow inspector, so the run page renders more elements than the merge-base",
+    },
+  },
   { path: "/runtimes", heading: "Runtime monitor" },
   { path: "/history", heading: "Run history / trace replay" },
   { path: "/approvals", heading: "Verifiers / approvals" },
