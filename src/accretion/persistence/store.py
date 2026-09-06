@@ -95,7 +95,6 @@ from accretion.contracts.routing import (
     RouterModelVersion,
     RouterPromotionReport,
     RouterScope,
-    RouterStatus,
     RouterTrainingSnapshot,
     RoutingContext,
     RoutingDecisionReceipt,
@@ -564,14 +563,55 @@ def _routing_request_conflict(
     that "repeated requests with identical immutable inputs MUST return the same receipt"
     for every unit test written against it — while the same code in production escapes the
     store as an ``IntegrityError`` out of a poisoned transaction. So the rule is checked
-    before the insert on both backends and raises this one error, exactly as the two
-    partial router indexes are mirrored by ``_guard_active_router_uniqueness``. The
+    before the insert on both backends and raises this one error, exactly as
+    ``uq_router_activations_sequence`` is mirrored by ``_guard_activation_contiguity``. The
     database constraint stays the backstop for the racing second writer.
     """
 
     return ValueError(
         f"routing receipt {contract_id} is immutable: routing request "
         f"{routing_request_id} already has receipt {existing_id}"
+    )
+
+
+def _activation_sequence_conflict(record: RouterActivation, head: int) -> ValueError:
+    """SDD §7.14: the ledger is contiguous, and both backends say so in these words.
+
+    ``uq_router_activations_sequence`` makes a *duplicate* sequence impossible; it says
+    nothing about a *gap*. A ledger with entries 1, 2 and 4 satisfies every database
+    constraint on the table and is nevertheless unreadable as history: entry 4 claims to
+    displace something, entry 3 is where the displacement it claims would have been
+    recorded, and nothing in the schema can tell a reader whether 3 was never written or
+    was written and lost. "Active is the head of the sequence" is only a safe definition
+    while the sequence has no holes.
+
+    ``head`` is the greatest sequence already in the partition, or ``0`` when the partition
+    is empty — which makes the required value ``head + 1`` in both cases and the message one
+    sentence rather than two.
+    """
+
+    return ValueError(
+        f"activation {record.contract_id} has sequence {record.sequence}; the head of "
+        f"({record.workspace_id}, {record.scope.value}, {record.family_key}) is {head}; "
+        f"§7.14 requires {head + 1}"
+    )
+
+
+def _activation_predecessor_conflict(record: RouterActivation) -> ValueError:
+    """The other half of "sequence 1 if and only if there is no predecessor".
+
+    :class:`~accretion.contracts.routing.RouterActivation` already refuses a ``sequence`` of
+    1 that names a ``previous_version_id``: the first entry in a ledger displaces nothing.
+    The converse is a store rule rather than a contract rule, because only the store knows
+    that the partition is non-empty — a later entry that names no predecessor is claiming to
+    be the first activation of a family that has already been activated, and it would leave
+    the version it actually displaced recorded nowhere.
+    """
+
+    return ValueError(
+        f"activation {record.contract_id} has sequence {record.sequence} and names no "
+        "previous_version_id; §7.14 makes sequence 1 the only entry that displaces "
+        "nothing"
     )
 
 
@@ -668,10 +708,6 @@ class _V04MemoryRow(NamedTuple):
 
 
 class StateStore(Protocol):
-    def routing_transaction(self, run_id: str) -> AbstractAsyncContextManager[StateStore]: ...
-    async def list_routing_receipts_for_run_graph(
-        self, *, workspace_id: str, run_graph_id: str
-    ) -> list[RoutingDecisionReceipt]: ...
     async def create_project(self, project: Project) -> Project: ...
     async def get_project(self, project_id: str) -> Project | None: ...
     async def list_projects(self) -> list[Project]: ...
@@ -1112,6 +1148,10 @@ class StateStore(Protocol):
     async def list_routing_overrides(
         self, *, workspace_id: str, project_id: str | None = None
     ) -> list[dict[str, Any]]: ...
+    def routing_transaction(self, run_id: str) -> AbstractAsyncContextManager[StateStore]: ...
+    async def list_routing_receipts_for_run_graph(
+        self, *, workspace_id: str, run_graph_id: str
+    ) -> list[RoutingDecisionReceipt]: ...
     async def put_routing_receipt(
         self, record: RoutingDecisionReceipt
     ) -> RoutingDecisionReceipt: ...
@@ -1214,6 +1254,18 @@ class StateStore(Protocol):
     async def list_router_activations(
         self, *, workspace_id: str, project_id: str | None = None
     ) -> list[RouterActivation]: ...
+    def activation_transaction(
+        self, workspace_id: str
+    ) -> AbstractAsyncContextManager[StateStore]: ...
+    async def activate_router_version(
+        self,
+        *,
+        activation: RouterActivation,
+        versions: Sequence[RouterModelVersion],
+    ) -> RouterActivation: ...
+    async def head_router_activation(
+        self, *, workspace_id: str, scope: RouterScope, family_key: str
+    ) -> RouterActivation | None: ...
 
 
 class MemoryStore:
@@ -1309,8 +1361,23 @@ class MemoryStore:
         self._lock = asyncio.Lock()
 
     @asynccontextmanager
-    async def routing_transaction(self, run_id: str) -> AsyncIterator[StateStore]:
-        """Commit routing records and audit events together; retain subclass test hooks."""
+    async def _scoped_v04_transaction(self) -> AsyncIterator[StateStore]:
+        """Publish v0.4 records and the audit events beside them, or publish neither.
+
+        The body writes into a deep copy and the copy replaces the real dictionaries only
+        after the caller's block has returned. A failure anywhere inside therefore leaves
+        the store byte-identical to what it was, which is what "atomic" has to mean for a
+        backend with no transaction of its own — and it is the same guarantee
+        ``PostgresStore`` gets from ``sessions.begin()``.
+
+        ``copy(self)`` rather than a new ``MemoryStore``: subclasses used as test doubles
+        override ``put_*`` to count or fail, and a scoped store that lost those overrides
+        would silently stop exercising the double half way through a transaction. The
+        scoped copy gets a fresh lock so that nested scopes — an
+        ``activate_router_version`` inside an ``activation_transaction`` — do not deadlock
+        on the one this scope already holds.
+        """
+
         async with self._lock:
             scoped = copy(self)
             scoped._lock = asyncio.Lock()
@@ -1328,6 +1395,28 @@ class MemoryStore:
                     self.runs[key] = self.runs[key].model_copy(
                         update={"last_sequence": events[-1].sequence}
                     )
+
+    @asynccontextmanager
+    async def routing_transaction(self, run_id: str) -> AsyncIterator[StateStore]:
+        """Commit routing records and audit events together; retain subclass test hooks."""
+        async with self._scoped_v04_transaction() as scoped:
+            yield scoped
+
+    @asynccontextmanager
+    async def activation_transaction(self, workspace_id: str) -> AsyncIterator[StateStore]:
+        """Commit a promotion or a rollback — every version row, the ledger entry, the
+        event — as one act, or commit none of it (SDD §10.3).
+
+        Keyed on the workspace rather than on a run because that is the partition the
+        ledger's contiguity rule is stated over: two promotions in one workspace race for
+        the same next ``sequence``, and two promotions in different workspaces never do.
+        ``PostgresStore`` turns the same key into a transaction-scoped advisory lock; here
+        the store's single lock already serialises everything, so the key is documentation
+        of the scope rather than a second mechanism.
+        """
+
+        async with self._scoped_v04_transaction() as scoped:
+            yield scoped
 
     async def create_project(self, project: Project) -> Project:
         self.projects[project.project_id] = project
@@ -3173,15 +3262,20 @@ class MemoryStore:
             )
         ]
 
-    def _guard_active_router_uniqueness(self, record: RouterModelVersion) -> None:
-        """Mirror the two partial unique indexes of §13.1 in Python.
+    def _guard_activation_contiguity(self, record: RouterActivation) -> None:
+        """Mirror §7.14's contiguous ledger in Python (ADR-061).
 
-        PostgreSQL expresses "one ACTIVE workspace router per workspace" and "one ACTIVE
-        adapter per project and algorithm" as partial unique indexes; nothing in an
-        in-memory dict does. Restating the rule here is what keeps the store-parity tests
-        honest, and doing it *before* the insert on both backends is what makes the error
-        a caller sees the same ``ValueError`` either way rather than a ``ValueError`` in
-        one place and an ``IntegrityError`` in the other.
+        This replaces ``_guard_active_router_uniqueness``, which mirrored the two partial
+        unique indexes migration 0019 retired. The rule it enforced — "one active router
+        per workspace" — has not gone anywhere; it moved onto ``router_activations``, where
+        "active" is the head of a sequence and several ``ACTIVE`` ``RouterModelVersion``
+        rows in one workspace are the ordinary residue of a promotion followed by a
+        rollback rather than a violation.
+
+        Two things are checked, and the second is the one a database cannot state.
+        ``uq_router_activations_sequence`` already makes a duplicate ``sequence``
+        impossible, so this guard exists for the *gap* — an entry that skips a number — and
+        for the entry that claims to be first in a partition that is not empty.
 
         It runs through ``_put_v04_contract``'s ``extra_guard`` channel, which means it
         runs inside ``self._lock`` and after the id and digest checks — the same position
@@ -3190,40 +3284,29 @@ class MemoryStore:
         the two backends' guards in different places in the write path.
         """
 
-        if record.status is not RouterStatus.ACTIVE:
-            return
-        for row in self.v04_contracts["router_model_versions"].values():
+        head = 0
+        for row in self.v04_contracts["router_activations"].values():
             if row.contract_id == record.contract_id:
                 continue
             payload = row.payload
-            if payload.get("status") != RouterStatus.ACTIVE.value:
-                continue
-            if record.scope is RouterScope.TEAM_WORKSPACE:
-                if (
-                    payload.get("scope") == RouterScope.TEAM_WORKSPACE.value
-                    and row.workspace_id == record.workspace_id
-                ):
-                    raise ValueError(
-                        f"workspace {record.workspace_id} already has an ACTIVE workspace "
-                        f"router ({row.contract_id}); §13.1 allows exactly one"
-                    )
-            elif (
-                payload.get("scope") == RouterScope.PROJECT_ADAPTER.value
-                and row.project_id == record.project_id
-                and payload.get("algorithm_id") == record.algorithm_id
+            if (
+                row.workspace_id != record.workspace_id
+                or payload.get("scope") != record.scope.value
+                or payload.get("family_key") != record.family_key
             ):
-                raise ValueError(
-                    f"project {record.project_id} already has an ACTIVE "
-                    f"{record.algorithm_id} adapter ({row.contract_id}); §13.1 allows "
-                    "exactly one per project and algorithm"
-                )
+                continue
+            head = max(head, int(payload["sequence"]))
+        if record.sequence != head + 1:
+            raise _activation_sequence_conflict(record, head)
+        if record.sequence > 1 and record.previous_version_id is None:
+            raise _activation_predecessor_conflict(record)
 
     def _guard_receipt_request_uniqueness(
         self, record: RoutingDecisionReceipt
     ) -> None:
         """Mirror ``routing_receipts.routing_request_id UNIQUE`` in Python (§13.1, §8.2).
 
-        The same reasoning as ``_guard_active_router_uniqueness`` above, for the one
+        The same reasoning as ``_guard_activation_contiguity`` above, for the one
         uniqueness rule in this family that is not about a content digest. A receipt whose
         ``contract_id`` already exists is handled by the drift guard on the write path;
         this catches the other shape — a *different* receipt id answering a routing request
@@ -3617,7 +3700,6 @@ class MemoryStore:
             "router_model_versions",
             "router model version",
             record,
-            extra_guard=lambda: self._guard_active_router_uniqueness(record),
         )
 
     async def get_router_model_version(
@@ -3735,7 +3817,10 @@ class MemoryStore:
 
     async def put_router_activation(self, record: RouterActivation) -> RouterActivation:
         return await self._put_v04_contract(
-            "router_activations", "router activation", record
+            "router_activations",
+            "router activation",
+            record,
+            extra_guard=lambda: self._guard_activation_contiguity(record),
         )
 
     async def get_router_activation(self, contract_id: str) -> RouterActivation | None:
@@ -3750,6 +3835,53 @@ class MemoryStore:
             workspace_id=workspace_id,
             project_id=project_id,
         )
+
+    async def activate_router_version(
+        self,
+        *,
+        activation: RouterActivation,
+        versions: Sequence[RouterModelVersion],
+    ) -> RouterActivation:
+        """Write every version row and the ledger entry that names one of them, or none.
+
+        The one door promotion and rollback both go through (SDD §10.3, ADR-061). Both acts
+        write two ``RouterModelVersion`` rows — the row that becomes the head and the row
+        that records what the head displaced — and exactly one ``RouterActivation``, and a
+        database that has the first without the second has no readable answer to "which
+        version is active".
+
+        ``versions`` is written in the caller's order and the activation last, so that the
+        contiguity guard runs against a ledger the version rows are already committed
+        beside. Order is part of the contract with ``PostgresStore``, whose twin is the same
+        four lines, because the store-parity test compares what the two backends contain
+        after the same call.
+        """
+
+        async with self.activation_transaction(activation.workspace_id) as scoped:
+            for version in versions:
+                await scoped.put_router_model_version(version)
+            return await scoped.put_router_activation(activation)
+
+    async def head_router_activation(
+        self, *, workspace_id: str, scope: RouterScope, family_key: str
+    ) -> RouterActivation | None:
+        """The entry with the greatest ``sequence`` in one partition — "active", as a query.
+
+        ``None`` for a family that has never been activated, which is the cold-start case
+        and not an error: a workspace routes deterministically until something is promoted.
+        The ordering is ``(sequence, contract_id)`` and the tie-break can never fire while
+        ``uq_router_activations_sequence`` holds; it is there so that this and its
+        PostgreSQL twin cannot disagree even about a ledger no constraint is protecting.
+        """
+
+        entries = [
+            entry
+            for entry in await self.list_router_activations(workspace_id=workspace_id)
+            if entry.scope is scope and entry.family_key == family_key
+        ]
+        if not entries:
+            return None
+        return max(entries, key=lambda entry: (entry.sequence, entry.contract_id))
 
 class _RoutingSessions:
     """Reuse one transaction for the existing store methods' session scopes."""
@@ -3779,6 +3911,27 @@ class PostgresStore:
         records and events, releases the lock, and allows a safe retry. No DDL needed.
         """
         key = int.from_bytes(sha256(("routing:" + run_id).encode()).digest()[:8],
+                             "big", signed=True)
+        async with self.sessions.begin() as session:
+            await session.execute(select(func.pg_advisory_xact_lock(key)))
+            yield PostgresStore(cast(async_sessionmaker[AsyncSession], _RoutingSessions(session)))
+
+    @asynccontextmanager
+    async def activation_transaction(self, workspace_id: str) -> AsyncIterator[StateStore]:
+        """Serialize promotions and rollbacks for one workspace across API processes.
+
+        The lock is keyed on the workspace and not on a run because that is the partition
+        §7.14's contiguity rule is stated over: two promotions in one workspace race for the
+        same next ``sequence`` and two in different workspaces never do. Taking it here
+        rather than relying on ``uq_router_activations_sequence`` alone turns the loser of
+        that race from an ``IntegrityError`` out of a poisoned transaction into a wait
+        followed by the ordinary ``ValueError`` the pre-check raises.
+
+        Transaction-scoped, like ``routing_transaction``: connection loss rolls back the
+        version rows, the ledger entry and the event together, releases the lock and allows
+        a safe retry. No DDL needed.
+        """
+        key = int.from_bytes(sha256(("activation:" + workspace_id).encode()).digest()[:8],
                              "big", signed=True)
         async with self.sessions.begin() as session:
             await session.execute(select(func.pg_advisory_xact_lock(key)))
@@ -7340,56 +7493,39 @@ class PostgresStore:
             rows = (await session.scalars(query)).all()
         return [_load_v04_contract(model, row.payload, row.id) for row in rows]
 
-    async def _guard_active_router_uniqueness(
-        self, session: AsyncSession, record: RouterModelVersion
+    async def _guard_activation_contiguity(
+        self, session: AsyncSession, record: RouterActivation
     ) -> None:
-        """§13.1's two partial unique indexes, checked before the insert.
+        """§7.14's contiguous ledger, checked before the insert (ADR-061).
 
-        The indexes ``uq_router_versions_active_workspace`` and
-        ``uq_router_versions_active_project_adapter`` enforce this in the database and are
-        what actually holds under concurrency. This query exists so that a single-writer
-        violation — the overwhelmingly common case, and the one a caller can do something
-        about — raises the same ``ValueError`` with the same message as ``MemoryStore``
-        rather than an ``IntegrityError`` naming an index the caller has never heard of.
+        This replaces ``_guard_active_router_uniqueness``, whose two partial unique indexes
+        migration 0019 retired. ``uq_router_activations_sequence`` is what actually holds
+        under concurrency, and it holds against a *duplicate* number only. The gap — an
+        entry that skips one — and the later entry that claims to displace nothing are what
+        this query is for, and the message is built by the same module-level function
+        ``MemoryStore`` calls so the two backends cannot drift a word apart.
 
         It runs on the caller's session, for the reason
         ``_guard_receipt_request_uniqueness`` gives: that is what makes the check and the
         insert one transaction. An earlier draft opened its own session before
         ``_put_v04_contract`` began its transaction, so the rule was checked against a
-        snapshot from a different connection and a second concurrent ACTIVE writer could
-        pass the pre-check and then take the ``IntegrityError`` the pre-check exists to
-        replace.
+        snapshot from a different connection and a second concurrent writer could pass the
+        pre-check and then take the ``IntegrityError`` the pre-check exists to replace.
         """
 
-        if record.status is not RouterStatus.ACTIVE:
-            return
-        query = select(RouterModelVersionRow).where(
-            RouterModelVersionRow.status == RouterStatus.ACTIVE.value,
-            RouterModelVersionRow.id != record.contract_id,
+        head = await session.scalar(
+            select(func.max(RouterActivationRow.sequence)).where(
+                RouterActivationRow.workspace_id == record.workspace_id,
+                RouterActivationRow.scope == record.scope.value,
+                RouterActivationRow.family_key == record.family_key,
+                RouterActivationRow.id != record.contract_id,
+            )
         )
-        if record.scope is RouterScope.TEAM_WORKSPACE:
-            query = query.where(
-                RouterModelVersionRow.scope == RouterScope.TEAM_WORKSPACE.value,
-                RouterModelVersionRow.workspace_id == record.workspace_id,
-            )
-        else:
-            query = query.where(
-                RouterModelVersionRow.scope == RouterScope.PROJECT_ADAPTER.value,
-                RouterModelVersionRow.project_id == record.project_id,
-                RouterModelVersionRow.algorithm_id == record.algorithm_id,
-            )
-        clash = await session.scalar(query)
-        if clash is None:
-            return
-        if record.scope is RouterScope.TEAM_WORKSPACE:
-            raise ValueError(
-                f"workspace {record.workspace_id} already has an ACTIVE workspace router "
-                f"({clash.id}); §13.1 allows exactly one"
-            )
-        raise ValueError(
-            f"project {record.project_id} already has an ACTIVE {record.algorithm_id} "
-            f"adapter ({clash.id}); §13.1 allows exactly one per project and algorithm"
-        )
+        head = 0 if head is None else int(head)
+        if record.sequence != head + 1:
+            raise _activation_sequence_conflict(record, head)
+        if record.sequence > 1 and record.previous_version_id is None:
+            raise _activation_predecessor_conflict(record)
 
     async def _guard_receipt_request_uniqueness(
         self, session: AsyncSession, record: RoutingDecisionReceipt
@@ -7848,9 +7984,6 @@ class PostgresStore:
             RouterModelVersionRow,
             "router model version",
             record,
-            extra_guard=lambda session: self._guard_active_router_uniqueness(
-                session, record
-            ),
             scope=record.scope.value,
             algorithm_id=record.algorithm_id,
             feature_schema_version=record.feature_schema_version,
@@ -8004,6 +8137,9 @@ class PostgresStore:
             RouterActivationRow,
             "router activation",
             record,
+            extra_guard=lambda session: self._guard_activation_contiguity(
+                session, record
+            ),
             scope=record.scope.value,
             family_key=record.family_key,
             sequence=record.sequence,
@@ -8028,6 +8164,53 @@ class PostgresStore:
             workspace_id=workspace_id,
             project_id=project_id,
         )
+
+    async def activate_router_version(
+        self,
+        *,
+        activation: RouterActivation,
+        versions: Sequence[RouterModelVersion],
+    ) -> RouterActivation:
+        """Write every version row and the ledger entry that names one of them, or none.
+
+        Four lines, the same four ``MemoryStore`` runs and in the same order, because the
+        store-parity test compares the two backends' contents after this call: the versions
+        in the caller's order, then the activation, all inside one
+        ``activation_transaction`` and therefore under one advisory lock and one database
+        transaction.
+        """
+
+        async with self.activation_transaction(activation.workspace_id) as scoped:
+            for version in versions:
+                await scoped.put_router_model_version(version)
+            return await scoped.put_router_activation(activation)
+
+    async def head_router_activation(
+        self, *, workspace_id: str, scope: RouterScope, family_key: str
+    ) -> RouterActivation | None:
+        """The entry with the greatest ``sequence`` in one partition — "active", as a query.
+
+        ``ORDER BY sequence DESC, id DESC LIMIT 1`` is the descending spelling of
+        ``MemoryStore``'s ``max`` over ``(sequence, contract_id)``; the tie-break can never
+        fire while ``uq_router_activations_sequence`` holds and is written anyway so the two
+        backends cannot disagree about a ledger no constraint is protecting.
+        """
+
+        query = (
+            select(RouterActivationRow)
+            .where(
+                RouterActivationRow.workspace_id == workspace_id,
+                RouterActivationRow.scope == scope.value,
+                RouterActivationRow.family_key == family_key,
+            )
+            .order_by(RouterActivationRow.sequence.desc(), RouterActivationRow.id.desc())
+            .limit(1)
+        )
+        async with self.sessions() as session:
+            row = (await session.scalars(query)).first()
+        if row is None:
+            return None
+        return _load_v04_contract(RouterActivation, row.payload, row.id)
 
     @staticmethod
     def _row_to_run(row: RunRow) -> Run:

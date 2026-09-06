@@ -28,6 +28,7 @@ from typing import Any
 import pytest
 import sqlalchemy as sa
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncEngine
 
 from accretion.contracts import Project, Provider, Run, RunState, Task, TaskEnvelope, TaskType
 from accretion.contracts.canonical import CanonicalContract
@@ -285,8 +286,17 @@ def contracts_for(
 # be interleaved between the drop and the ``finally: upgrade`` that restores it.
 
 
-async def test_the_two_partial_unique_indexes_exist_in_the_live_database() -> None:
-    """§13.1's conditional rules, as PostgreSQL actually holds them."""
+async def test_the_two_partial_unique_indexes_are_gone_from_the_live_database() -> None:
+    """M8.1's migration 0019, as PostgreSQL actually holds it.
+
+    This test asserted their *presence* until M8.1. They are gone because the rule they
+    expressed — "one active router" — moved onto ``router_activations``, whose
+    ``uq_router_activations_sequence`` states it unconditionally; and they had to go,
+    because with them in place a second ``ACTIVE`` row could never be inserted and §10.3's
+    reversible promotion was unreachable. Read from ``pg_indexes`` rather than from
+    metadata, because only the catalogue can tell "the migration dropped it" from "the model
+    stopped declaring it".
+    """
 
     assert POSTGRES_URL is not None
     engine = create_engine(POSTGRES_URL)
@@ -306,13 +316,12 @@ async def test_the_two_partial_unique_indexes_exist_in_the_live_database() -> No
     finally:
         await engine.dispose()
 
-    workspace = found["uq_router_versions_active_workspace"]
-    assert "UNIQUE INDEX" in workspace
-    assert "WHERE" in workspace and "ACTIVE" in workspace and "TEAM_WORKSPACE" in workspace
-
-    adapter = found["uq_router_versions_active_project_adapter"]
-    assert "UNIQUE INDEX" in adapter
-    assert "WHERE" in adapter and "ACTIVE" in adapter and "PROJECT_ADAPTER" in adapter
+    assert "uq_router_versions_active_workspace" not in found
+    assert "uq_router_versions_active_project_adapter" not in found
+    # 0019 dropped two indexes and nothing else: the ordinary ones are still here, and no
+    # index on this table carries a partial predicate any more.
+    assert "ix_router_versions_workspace_created" in found
+    assert not any("WHERE" in definition for definition in found.values())
 
 
 # ------------------------------------------------------------------ round trip
@@ -595,18 +604,46 @@ async def test_the_database_itself_refuses_a_second_receipt_for_one_routing_requ
         await engine.dispose()
 
 
-# ---------------------------------------------- the partial indexes, unassisted
+# --------------------------------- the retired partial indexes, unassisted
 
 
-async def test_the_database_itself_refuses_a_second_active_workspace_router(
+async def forget_router_versions(engine: AsyncEngine, workspace_id: str) -> None:
+    """Delete the ``router_model_versions`` rows the calling test wrote.
+
+    Two ``ACTIVE`` rows in one family are legal at head and *illegal one revision below
+    it*: ``tests/test_v04_m8_migration.py`` downgrades the live database, and 0019's
+    downgrade recreates ``uq_router_versions_active_workspace`` and
+    ``uq_router_versions_active_project_adapter`` over whatever rows are there at the time.
+    A pair left behind by a module that has already finished would make that ``CREATE
+    UNIQUE INDEX`` fail for a reason that has nothing to do with the migration under test —
+    the ordering hazard that module's docstring describes, arriving from the past rather
+    than from a neighbour running alongside it.
+
+    Every assertion runs before this does, so the cleanup proves nothing and hides nothing;
+    ``workspace_id`` is uuid-suffixed, so nothing but the calling test's own rows can match.
+    """
+
+    async with engine.begin() as connection:
+        await connection.execute(
+            sa.delete(RouterModelVersionRow).where(
+                RouterModelVersionRow.workspace_id == workspace_id
+            )
+        )
+
+
+async def test_the_database_itself_now_accepts_a_second_active_workspace_router(
     tmp_path: Path,
 ) -> None:
-    """Bypasses ``PostgresStore``'s Python guard entirely.
+    """Bypasses ``PostgresStore``'s Python guards entirely, as its predecessor did.
 
-    The store pre-checks so that a caller gets a readable ``ValueError``; the index is
-    what holds when two writers race, and a rule that lived only in the pre-check would
-    look identical in every test until the day it mattered. So this writes rows straight
-    through the session and asserts that PostgreSQL is the one saying no.
+    Until M8.1 this asserted ``IntegrityError(uq_router_versions_active_workspace)`` on the
+    second ``ACTIVE`` row. Migration 0019 dropped that index, so PostgreSQL now accepts the
+    row — which is the whole point: with the index in place the first ``ACTIVE`` row could
+    never be retired (no ``update_`` exists in this family) and a second could never be
+    inserted, so a workspace was activatable exactly once. Writing straight through the
+    session keeps the claim about the *database* rather than about the store's Python guard;
+    it is the same technique, inverted, because the same thing has to stay checkable after
+    the rule moved to ``router_activations``.
     """
 
     assert POSTGRES_URL is not None
@@ -638,22 +675,38 @@ async def test_the_database_itself_refuses_a_second_active_workspace_router(
         async with sessions.begin() as session:
             session.add(raw_row("first"))
 
-        with pytest.raises(IntegrityError, match="uq_router_versions_active_workspace"):
-            async with sessions.begin() as session:
-                session.add(raw_row("second"))
+        async with sessions.begin() as session:
+            session.add(raw_row("second"))
 
-        # A CANDIDATE beside the ACTIVE one is fine: the index is partial.
+        # And a CANDIDATE beside them, as always.
         async with sessions.begin() as session:
             candidate = raw_row("candidate")
             candidate.status = RouterStatus.CANDIDATE.value
             session.add(candidate)
+
+        # Read back through the session, because these payloads are markers rather than
+        # sealed documents: three rows, two of them ACTIVE at once.
+        async with sessions() as session:
+            statuses = sorted(
+                (
+                    await session.scalars(
+                        sa.select(RouterModelVersionRow.status).where(
+                            RouterModelVersionRow.workspace_id == workspace_id
+                        )
+                    )
+                ).all()
+            )
+        assert statuses == ["ACTIVE", "ACTIVE", "CANDIDATE"]
     finally:
+        await forget_router_versions(engine, workspace_id)
         await engine.dispose()
 
 
-async def test_the_database_itself_refuses_a_second_active_project_adapter(
+async def test_the_database_itself_now_accepts_a_second_active_project_adapter(
     tmp_path: Path,
 ) -> None:
+    """The adapter half of the same retirement (migration 0019, ADR-061)."""
+
     assert POSTGRES_URL is not None
     engine = create_engine(POSTGRES_URL)
     sessions = create_session_factory(engine)
@@ -685,23 +738,38 @@ async def test_the_database_itself_refuses_a_second_active_project_adapter(
         async with sessions.begin() as session:
             session.add(raw_row("first", "gradient-boosted-ranker"))
 
-        with pytest.raises(
-            IntegrityError, match="uq_router_versions_active_project_adapter"
-        ):
-            async with sessions.begin() as session:
-                session.add(raw_row("second", "gradient-boosted-ranker"))
+        async with sessions.begin() as session:
+            session.add(raw_row("second", "gradient-boosted-ranker"))
 
-        # A different algorithm for the same project is a comparison, not a conflict.
+        # A different algorithm for the same project was always a comparison, not a
+        # conflict; now the same algorithm twice is one too, and which of them serves the
+        # project is the head of that family's ledger sequence.
         async with sessions.begin() as session:
             session.add(raw_row("other-algorithm", "linear-thompson"))
+
+        async with sessions() as session:
+            count = await session.scalar(
+                sa.select(sa.func.count())
+                .select_from(RouterModelVersionRow)
+                .where(RouterModelVersionRow.workspace_id == workspace_id)
+            )
+        assert count == 3
     finally:
+        await forget_router_versions(engine, workspace_id)
         await engine.dispose()
 
 
-async def test_the_store_guard_and_the_index_agree_about_the_active_router(
+async def test_the_store_lets_two_active_versions_coexist_and_still_refuses_a_rewrite(
     tmp_path: Path,
 ) -> None:
-    """Through the store, the same rule surfaces as the ``MemoryStore`` message."""
+    """Through the store: uniqueness is gone, immutability is not.
+
+    The rule this test used to assert — the second ``ACTIVE`` version raising "already has
+    an ACTIVE workspace router" — was retired with the index (ADR-061). What has *not*
+    changed is the rule that makes an append-only table trustworthy: filing the same sealed
+    row twice is a no-op, and both are asserted here because dropping a guard is exactly the
+    moment a neighbouring guard gets dropped with it by accident.
+    """
 
     assert POSTGRES_URL is not None
     engine = create_engine(POSTGRES_URL)
@@ -715,21 +783,24 @@ async def test_the_store_guard_and_the_index_agree_about_the_active_router(
             status="ACTIVE",
             artifact_digest=digest(f"active-{marker}"),
         )
+        contender = build(
+            RouterModelVersion,
+            workspace_id=workspace_id,
+            status="ACTIVE",
+            artifact_digest=digest(f"contender-{marker}"),
+        )
         await store.put_router_model_version(active)
-
-        with pytest.raises(ValueError, match="already has an ACTIVE workspace router"):
-            await store.put_router_model_version(
-                build(
-                    RouterModelVersion,
-                    workspace_id=workspace_id,
-                    status="ACTIVE",
-                    artifact_digest=digest(f"contender-{marker}"),
-                )
-            )
+        await store.put_router_model_version(contender)
 
         assert await store.put_router_model_version(active) == active
-        assert await store.list_router_model_versions(workspace_id=workspace_id) == [active]
+        assert sorted(
+            version.contract_id
+            for version in await store.list_router_model_versions(
+                workspace_id=workspace_id
+            )
+        ) == sorted([active.contract_id, contender.contract_id])
     finally:
+        await forget_router_versions(engine, workspace_id)
         await engine.dispose()
 
 
