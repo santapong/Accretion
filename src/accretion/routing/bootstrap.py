@@ -24,7 +24,6 @@ from accretion.routing.stages import (
     NoEvidence,
     PostNodeHook,
     PostRouteHook,
-    StatusActiveVersionResolver,
 )
 from accretion.routing.train import LearnedPredictorLoader
 from accretion.services.run_manager import RunManager

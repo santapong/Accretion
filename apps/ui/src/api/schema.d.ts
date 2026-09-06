@@ -7515,6 +7515,25 @@ export interface components {
             version_id: string;
         };
         /**
+         * ShadowSummary
+         * @description SDD §7.13 ``shadow_result``: what shadow evaluation showed before promotion.
+         *
+         *     ``sample_size`` sits beside ``agreement_rate`` because OQ-409 leaves the minimum shadow
+         *     evidence to a power analysis: a 100% agreement rate over four decisions and over four
+         *     thousand are the same number and different evidence, and a report that recorded only the
+         *     rate could not tell them apart afterwards.
+         */
+        ShadowSummary: {
+            /** Agreement Rate */
+            agreement_rate: number;
+            /** Decision Count */
+            decision_count: number;
+            /** Projected Utility Delta */
+            projected_utility_delta: number;
+            /** Sample Size */
+            sample_size: number;
+        };
+        /**
          * SkillRef
          * @description A skill by id, version and package digest.
          *
