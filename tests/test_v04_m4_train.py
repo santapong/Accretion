@@ -654,14 +654,25 @@ def test_no_module_outside_the_loader_assembles_a_learned_predictor() -> None:
     would route on an unevaluated model while every behavioural test here stayed green.
 
     So the invariant is asserted over the source tree: a learned predictor may be assembled
-    in exactly two modules — ``ranker.py``, which defines it, and ``train.py``, which is
-    where :class:`LearnedPredictorLoader` lives. Anywhere else is a second door, and the
-    failure message names it. A module that legitimately needs a predictor calls the loader;
-    a module that legitimately needs to *build* one belongs in this list, and adding it here
-    is the deliberate act this test exists to force.
+    in exactly the modules named below. Anywhere else is a second door, and the failure
+    message names it. A module that legitimately needs a predictor calls the loader; a module
+    that legitimately needs to *build* one belongs in this list, and adding it here is the
+    deliberate act this test exists to force.
+
+    ``routing/baselines.py`` was added by v0.4 M10c and is the deliberate act, not an
+    erosion. What AC4-M4-016 protects is the *routing* path: a predictor loaded from artifact
+    bytes has passed a digest check and nothing else, so letting one reach a live decision
+    would route production traffic on a model no promotion evaluated. The benchmark's
+    comparators cannot reach that path. They fit their own artefact in-process from the
+    frozen replay corpus rather than loading one, they are never given a
+    :class:`~accretion.contracts.routing.RouterModelVersion` and mint none, and the only
+    caller of a :class:`~accretion.routing.baselines.BaselinePolicy` is
+    :class:`~accretion.router_benchmark.RouterBenchmarkRunner`, which refuses any execution
+    source but ``REPLAY``. The mutation this test still kills is the one that matters: a
+    dispatcher, a shadow evaluator or a service module calling the classmethod.
     """
 
-    allowed = {"routing/train.py", "routing/ranker.py"}
+    allowed = {"routing/train.py", "routing/ranker.py", "routing/baselines.py"}
     sites = _predictor_assembly_sites()
 
     # Not vacuous: the trainer really does assemble one, so an empty result would mean the

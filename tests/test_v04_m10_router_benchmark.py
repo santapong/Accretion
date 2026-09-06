@@ -28,11 +28,16 @@ undetermined denominator out of the report.
 **The corpus is what its seed says it is.** ``tests/router_corpus_generator.py`` is rerun and
 its output compared byte for byte with the committed files, so a hand edit to a trace is a
 red test rather than a quiet re-tuning.
+
+**Every requested method is in the table.** Since M10c the three learned comparators run, so
+the §8.2 property is pinned with an id protocol §8.1 does not name: it comes back as a row
+with ``available=False`` instead of aborting the run.
 """
 
 from __future__ import annotations
 
 import json
+import math
 import shutil
 from dataclasses import fields
 from pathlib import Path
@@ -82,6 +87,7 @@ def rewrite(path: Path, mutate: object) -> None:
     path.write_text(json.dumps(document, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
+@pytest.mark.acceptance("AC4-M10-048")
 def test_gates_are_reported_separately_from_utility() -> None:
     corpus = RouterBenchmarkCorpus.load()
     # Every comparator whose *selection* does not read utility. The oracle is excluded here
@@ -318,18 +324,44 @@ def test_the_shipped_corpus_is_exactly_what_its_seed_generates(tmp_path: Path) -
         )
 
 
-def test_every_requested_policy_appears_in_the_result_including_the_unwired_ones() -> None:
-    result = RouterBenchmarkRunner().run(list(BASELINE_ORDER))
-    assert tuple(item.policy_id for item in result.policies) == BASELINE_ORDER
+def test_every_requested_policy_appears_in_the_result_including_the_unrunnable_ones() -> None:
+    """§8.2's table, now that the learned three run, plus the row an unknown id gets.
+
+    Before M10c the interesting case was the placeholder: M7, M8 and M9 came back
+    ``available=False`` because no milestone had built them. All eleven run now, so the
+    property that needs holding is the one §8.2 was actually about — *every requested method
+    appears* — and the way to keep testing it is to request a method that does not exist. An
+    id §8.1 never named comes back as a row saying so, rather than aborting the run: a
+    benchmark that raised on the eleventh of twelve names would report none of the eleven
+    that worked, which is a worse failure than the typo it was reacting to.
+    """
+
+    result = RouterBenchmarkRunner().run([*BASELINE_ORDER, "M42"])
+    assert tuple(item.policy_id for item in result.policies) == (*BASELINE_ORDER, "M42")
     unavailable = [item.policy_id for item in result.policies if not item.available]
-    assert unavailable == ["M7", "M8", "M9"]
+    assert unavailable == ["M42"]
     for item in result.policies:
         if item.available:
             assert item.rows and item.regret is not None and item.gates is not None
+            assert item.mean_utility is not None
         else:
-            assert item.reason_code == "NOT_AVAILABLE"
+            assert item.reason_code == "UNKNOWN_BASELINE"
             assert item.rows == () and item.regret is None and item.gates is None
+
+    # The learned three are wired, are fitted on the selection half alone, and are quoted on
+    # the evaluation half: available, with a finite regret and a real gate report.
+    for policy_id in ("M7", "M8", "M9"):
+        learned = result.policy(policy_id)
+        assert learned.available and learned.reason_code is None
+        assert len(learned.rows) == len(result.reported_task_ids)
+        assert learned.regret is not None and math.isfinite(learned.regret.mean_regret)
+        assert learned.gates is not None and learned.gates.selections == len(learned.rows)
 
     # The oracle is the post-hoc bound, so no method may out-score it and it regrets nothing.
     oracle = result.policy("ORACLE")
     assert oracle.regret is not None and oracle.regret.total_regret == pytest.approx(0.0)
+    assert all(
+        (item.mean_utility or 0.0) <= (oracle.mean_utility or 0.0)
+        for item in result.policies
+        if item.available
+    )

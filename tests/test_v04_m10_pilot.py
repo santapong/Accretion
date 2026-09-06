@@ -305,18 +305,33 @@ def test_the_sizing_uses_the_trial_sigma_and_not_the_pooled_spread() -> None:
 
 
 def test_every_protocol_baseline_keeps_its_line_including_the_unbuilt_ones() -> None:
+    """A line for every requested method, measured or empty, and never a missing row.
+
+    M10c wired M7, M8 and M9, so the unmeasurable line is no longer a placeholder — it is an
+    id protocol §8.1 does not name, requested here on purpose. The claim is unchanged and is
+    the one §21 sizing depends on: a report that dropped the methods it could not size would
+    let a reader count the field wrongly, and the count is the Bonferroni denominator.
+    """
+
     report = pilot_report(
-        RouterBenchmarkRunner(), list(BASELINE_ORDER), split=BenchmarkSplit.EVALUATION
+        RouterBenchmarkRunner(),
+        [*BASELINE_ORDER, "M42"],
+        split=BenchmarkSplit.EVALUATION,
     )
 
-    assert [line.policy_id for line in report.policies] == list(BASELINE_ORDER)
+    assert [line.policy_id for line in report.policies] == [*BASELINE_ORDER, "M42"]
     unbuilt = [line for line in report.policies if not line.available]
-    assert [line.policy_id for line in unbuilt] == ["M7", "M8", "M9"]
+    assert [line.policy_id for line in unbuilt] == ["M42"]
     for line in unbuilt:
-        assert line.reason_code == "NOT_AVAILABLE"
+        assert line.reason_code == "UNKNOWN_BASELINE"
         assert line.rates is None
         assert line.mean_regret is None
         assert line.selections == 0
+
+    # Every method the protocol *does* name is sized, including the three the learned stack
+    # only made runnable in M10c.
+    measured = {line.policy_id for line in report.policies if line.available}
+    assert measured == set(BASELINE_ORDER)
 
 
 def test_an_unavailable_policy_may_not_carry_a_measurement() -> None:

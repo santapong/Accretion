@@ -2,9 +2,15 @@
 
 Protocol §8.1 lists eleven methods and §8.2 requires every one of them to stay in the final
 report. The first test here is the one that keeps that true as milestones land: it walks the
-registry, runs everything that can run, and pins the set that cannot to exactly ``{M7, M8,
-M9}``. Wiring M7 without removing its placeholder, or quietly dropping M4 because it is
-awkward, turns that test red.
+registry, runs everything that can run from a hand-built context, and pins the set that
+cannot to exactly ``{M7, M8, M9}`` — which since M10c is a different statement than it was.
+Those three are *wired*: they are the learned comparators, and what they refuse without is
+the replay corpus they are fitted on, with ``REPLAY_EVIDENCE_REQUIRED`` rather than
+``NOT_AVAILABLE``. The distinction is the whole point of the assertion. "No milestone has
+built this" and "this caller did not say which corpus to learn from" are different facts
+about a benchmark, and a report that printed the second as the first would state that v0.4's
+own router had not been implemented. Quietly dropping M4 because it is awkward turns the same
+test red for the original reason.
 
 The other two are the mutations a reviewer cannot see by reading. **M0 on the union.** The
 strongest fixed configuration is an argmax, and an argmax scored on the data that chose it is
@@ -42,6 +48,7 @@ from accretion.routing.baselines import (
     OracleOutsideReplay,
     PerRunPolicy,
     PolicyNotAvailable,
+    ReplayEvidenceRequired,
     StrongestFixedPolicy,
     UnknownBaseline,
     baseline_for,
@@ -185,7 +192,7 @@ def test_every_protocol_baseline_is_registered_and_runs_or_reports_not_available
 
     context = build_context(observed_utility={"cfg-alpha": 0.5, "cfg-beta": 0.8})
     known_ids = {candidate.candidate_id for candidate in CANDIDATES}
-    unavailable: list[str] = []
+    refused: dict[str, str] = {}
     selected: dict[str, str] = {}
     for policy_id in BASELINE_ORDER:
         registered = BASELINE_REGISTRY[policy_id]
@@ -195,21 +202,53 @@ def test_every_protocol_baseline_is_registered_and_runs_or_reports_not_available
         assert policy is not registered, "a run must never share a stateful policy instance"
         try:
             selection = policy.select(context, CANDIDATES)
-        except PolicyNotAvailable as error:
-            assert error.reason_code == "NOT_AVAILABLE"
-            assert isinstance(BASELINE_REGISTRY[policy_id], NotAvailablePolicy)
-            unavailable.append(policy_id)
+        except BaselineError as error:
+            refused[policy_id] = error.reason_code
             continue
         selected[policy_id] = selection.candidate_id
         assert selection.candidate_id in known_ids
 
-    assert unavailable == ["M7", "M8", "M9"]
+    # The three learned comparators are the three that cannot run from a hand-built context,
+    # and they say why: they were not told which corpus to learn from. None of them claims to
+    # be unbuilt, and none of them is a placeholder any more — the assertion below is what
+    # would fail if a future edit put one back.
+    assert sorted(refused) == ["M7", "M8", "M9"]
+    assert set(refused.values()) == {"REPLAY_EVIDENCE_REQUIRED"}
+    assert not any(
+        isinstance(BASELINE_REGISTRY[policy_id], NotAvailablePolicy) for policy_id in refused
+    )
+    with pytest.raises(ReplayEvidenceRequired):
+        baseline_for("M9").select(context, CANDIDATES)
+
     assert set(selected) == {"M0", "M1", "M2", "M3", "M4", "M5", "M6", "ORACLE"}
     # The eight runnable methods are eight methods and not one method eight times.
     assert len(set(selected.values())) > 1
 
     with pytest.raises(UnknownBaseline):
         baseline_for("M10")
+
+
+def test_an_unwired_protocol_method_reports_itself_rather_than_vanishing() -> None:
+    """§8.2's rule outlives the methods it was written for.
+
+    M10c wired the last three placeholders, so nothing in the registry is a
+    :class:`NotAvailablePolicy` today. The class stays and this test stays with it, because
+    the rule is about the *report* — a method the table names and no milestone has built is
+    reported as unbuilt and never dropped — and the next release that adds a comparator ahead
+    of its implementation needs that path to still work. Deleting the class because the
+    registry no longer uses it is the mutation this kills.
+    """
+
+    placeholder = NotAvailablePolicy(
+        policy_id="M11",
+        milestone="v0.5 M1",
+        description="a comparator whose milestone has not landed",
+    )
+    with pytest.raises(PolicyNotAvailable) as refusal:
+        placeholder.select(build_context(), CANDIDATES)
+    assert refusal.value.reason_code == "NOT_AVAILABLE"
+    assert placeholder.reason_code == "NOT_AVAILABLE"
+    assert "v0.5 M1" in str(refusal.value)
 
 
 def test_strongest_fixed_is_chosen_on_the_selection_split_only() -> None:
