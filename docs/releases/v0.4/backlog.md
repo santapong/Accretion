@@ -430,8 +430,62 @@ guard cannot. Factoring the two store copies into one helper would put the check
 session it has to run in. What should be shared is the *message*, and the parity test that
 compares the two texts is what keeps it so.
 
+## Recorded during M7
+
+Three decisions taken while building the guarded bandit. Each answers a question the SDD asks and
+does not settle, so each is recorded here rather than in the SDD.
+
+**ADR4-M7-001 (OQ-402, what kind of explorer) — a conservative contextual bandit against the
+deterministic router as baseline, with a conformal safety clip on top.** OQ-402's default was
+"some bounded exploration"; ε-greedy is the obvious reading of that and is the wrong one, because
+it spends a fixed fraction of every workspace's traffic on actions it already believes are worse
+whether or not the workspace can afford it. R5 (https://www.alphaxiv.org/abs/2412.06165) gives the
+guarantee an approver can actually read — cumulative explored cost stays within `(1 + α)` of what
+the deterministic router would have spent **at every round** — and `CostLedger` is where that
+inequality is checked, against the candidate's *upper* bound and the baseline's *lower* one. The
+distribution is inverse-gap weighting, because its two properties are exactly the two an
+off-policy estimator needs: every action keeps a strictly positive probability, so nothing is ever
+logged at a propensity of zero, and the probability decays with the utility gap rather than on a
+schedule somebody has to tune. R6's clip sits on top because inverse-gap weighting bounds *regret*
+— an average over rounds — and an average is not a safety property: `β` is one minus the
+split-conformal quantile of the safety losses the workspace has actually logged, exchangeable over
+*projects*, and a workspace with fewer projects than the quantile's index needs gets `β = 0` and
+explores nothing. That last case is the one that matters: `conformal_quantile` returns the vacuous
+1.0 there by design, and reading it as "no constraint" would explore hardest exactly where there
+is least evidence.
+
+**ADR4-M7-002 (OQ-410, where the budget comes from) — α from `ObjectiveContract.exploration_policy`,
+absolute caps per run and per period beside it, and all of it on the receipt.** The router does not
+choose its own exploration rate: the person who approved the goal is the person entitled to say how
+much of its budget may be spent learning, which is why the freeze delta put `ExplorationPolicy` on
+the objective (ADR-062) rather than in a config file. A fraction alone is not a budget — a relative
+bound on an expensive baseline is a large absolute number — so `max_explore_count` and `max_cost`
+bind whatever α says, and the refusal names whichever one bound, because an operator told "the
+inequality would break" when the cap was the binding constraint will go and change the wrong knob.
+An objective sealed before the field existed cannot gain one without breaking the digest its node
+contract pins, so `exploration_policy_for` also reads three `exploration.*` **labels** off a sealed
+revision; all three are required together, because a missing bound is an unstated bound and not a
+generous one. α, the caps, the charged cost, the credited baseline cost and the greedy action's
+propensity all go on the receipt, so the inequality a decision was permitted under can be replayed
+against it.
+
+**ADR4-M7-003 (where the ledger lives) — reconstructed from EXPLORE receipts, with no table in
+v0.4.** Everything the conservative inequality needs is already on the receipt that spent the
+budget, and `upsert_plugin`-style immutability makes the receipt the audit record either way; a
+`cost_ledger` table would be a second durable copy of a derived quantity, and the two disagreeing
+is a class of bug with no external symptom. `LedgerRegistry` therefore replays a workspace's
+`EXPLORE` receipts in `contract_id` order and folds in every one it has not already seen, so a
+decision this process took a moment ago is charged against the next one without anybody being
+told. The one thing a replay cannot rebuild is a *settlement*: `ExplorationSettlement` writes the
+observed cost into the live ledger and a restart forgets it. That is deliberate and it is
+conservative in the only direction a budget may be wrong in — an unsettled exploration keeps its
+upper bound, so a fresh process holds a **tighter** budget than the measured one, never a looser.
+A durable ledger is worth revisiting when a deployment runs long enough for the difference to
+bind; it is not worth a table in v0.4.
+
 ## Parked beside v0.4
 
 The v0.3.1 operator-UI redesign (M9 of the v0.3 ladder) is parked after its stylesheet port
 completed; its remaining steps (Preflight, projection store, cosmic scene, orbit, dashboard,
 release) resume from their plan when the owner reopens it.
+

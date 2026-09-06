@@ -49,6 +49,7 @@ from accretion.routing.rollout import (
     BranchedRolloutExecutor,
     ShadowRoutingHook,
 )
+from accretion.routing.settlement import ExplorationSettlement
 from accretion.workspace import WorkspaceError
 
 _PRISTINE: RunOutcome | None = None
@@ -403,6 +404,14 @@ async def test_the_two_stages_are_attached_together_or_not_at_all(
     attaching the executor without the recorder would look for a decision nothing ever wrote.
     ``BASELINE_ONLY`` attaches neither, which is what makes "shadow evaluation is off" a
     structural fact rather than a branch inside a hook.
+
+    M7 attaches a second post-node hook under ``AUTO`` — the exploration settlement, which is
+    half of its own pair — so the M6 claim is stated as "the recorder is the only post-route
+    hook, and the executor is a post-node hook in both learned modes" rather than as an exact
+    list that any later milestone adding a hook would have to edit. The exact list is still
+    asserted per mode below, so a stage attached in the *wrong* mode is still a failure here:
+    ``SHADOW`` gets the M6 executor alone, and gaining a settlement there would mean crediting
+    a budget for explorations a shadow stage never took.
     """
 
     outcome = await pristine_once(tmp_path_factory)
@@ -415,6 +424,10 @@ async def test_the_two_stages_are_attached_together_or_not_at_all(
         artifacts=artifacts,
     )
     assert off.post_route == () and off.post_node == ()
+    expected_post_node = {
+        RoutingMode.SHADOW: [BranchedRolloutExecutor],
+        RoutingMode.AUTO: [BranchedRolloutExecutor, ExplorationSettlement],
+    }
     for mode in (RoutingMode.SHADOW, RoutingMode.AUTO):
         on = build_node_routing(
             outcome.manager,
@@ -424,5 +437,6 @@ async def test_the_two_stages_are_attached_together_or_not_at_all(
             artifacts=artifacts,
         )
         assert [type(hook) for hook in on.post_route] == [ShadowRoutingHook]
-        assert [type(hook) for hook in on.post_node] == [BranchedRolloutExecutor]
+        assert BranchedRolloutExecutor in [type(hook) for hook in on.post_node]
+        assert [type(hook) for hook in on.post_node] == expected_post_node[mode]
         assert on.default_mode is mode
