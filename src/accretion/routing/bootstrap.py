@@ -9,6 +9,7 @@ from accretion.contracts import Provider, Run, Task
 from accretion.contracts.canonical import content_hash
 from accretion.contracts.refs import EnvironmentRef
 from accretion.contracts.routing import EnvironmentBinding
+from accretion.feedback.evidence import StoreEvidenceRetriever
 from accretion.resolver import CapabilityResolver
 from accretion.routing.artifacts import ArtifactStore
 from accretion.routing.catalog import ConfigurationCatalog, ConfigurationCatalogFactory
@@ -19,7 +20,6 @@ from accretion.routing.snapshot import RegistrySnapshotBuilder, RoutingSnapshot
 from accretion.routing.stages import (
     CandidateScorer,
     DeterministicBehavior,
-    NoEvidence,
     StatusActiveVersionResolver,
 )
 from accretion.routing.train import LearnedPredictorLoader
@@ -116,7 +116,7 @@ def build_node_routing(
         runtimes=manager.runtimes,
         granted_permissions=granted_permissions,
         active_versions=StatusActiveVersionResolver(manager.store),
-        evidence=NoEvidence(),
+        evidence=StoreEvidenceRetriever(manager.store),
         scorer=scorer,
         behavior=DeterministicBehavior(),
         default_mode=mode,

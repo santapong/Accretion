@@ -62,6 +62,47 @@ The M9 ladder is parked after its stylesheet port; the entries below it are v0.4
   required) and `GET /api/v1/router-models`, and the `ACCRETION_ROUTER_ARTIFACT_DIR`
   setting (#TBD).
 
+### v0.4 — M3 experience, feedback and recovery
+
+- Added `src/accretion/feedback/`: `verification.py` seals a v0.1 verdict set into one §7.9
+  `IndependentVerificationResult` with claim-level coverage against the frozen spec, OQ-418's
+  structural producer ≠ verifier check and PASS-versus-FAIL conflict detection between records;
+  `failures.py` types a failure through an ordered §7.11 rule table and assigns the owning
+  layer; `recovery.py` answers §9.7 with a fixed authority scope per owner, a hard attempt cap
+  and a Wilson lower bound on expected value of information; `attribution.py` derives §9.6
+  credit append-only; `experience.py` projects the §7.10 record over the v0.2 P7 experience it
+  is keyed by (ADR-054 b); `service.py` is the four-method `FeedbackPipeline`; `evidence.py` is
+  the store-backed §9.4 retriever that `routing/bootstrap.py` now installs in place of
+  `NoEvidence` (#TBD).
+- Changed `src/accretion/services/run_manager.py`: the three seams the pure modules could not
+  take. A routed verifier node records one §7.9 result per verifier against the *producer's*
+  execution instance, and an unadjudicated material conflict leaves the node `WAITING` and
+  pauses the run instead of accepting the failing side — `AC4-M3-027` (material verifier
+  conflict blocks acceptance until resolved), with `RunManager.resolve_verification_contradiction`
+  as the adjudication. A node that fails, or a dispatch that raises, is classified and handed to
+  §9.7: a `CONFIGURATION` failure re-enters the node under a new attempt with the failed
+  configuration excluded (`ATTEMPTED_WITHOUT_NEW_EVIDENCE`), a `STRUCTURAL` one is left to the
+  template's own repair edge, and neither widens the policy snapshot or the capability set. The
+  run terminal projects one experience record per routed node (ADR-048). A node re-entered
+  after a retry edge or a restart is re-frozen under the next attempt number rather than
+  re-claiming a dispatched receipt, which is what makes a paused routed run resumable (#TBD).
+- Fixed `src/accretion/feedback/experience.py`: the §7.10 key a projection is written under is
+  now derived by `record_signature_for`, which delegates to `routing/stages.py`'s
+  `node_signature` — the derivation the router retrieves with. The projector previously used
+  `routing/identity.py`'s `contract_signature_for`, and the two disagreed in two of five fields
+  (the objective digest was over the node's prose rather than the approved objective contract's
+  hash, and the capability digest excluded `required_scope`), so no projection this milestone
+  writes could ever have been retrieved by the router that wrote it and nothing would have
+  raised. `feedback/service.py`'s prior-success lookup reads through the same derivation (#TBD).
+- Added `src/accretion/api/feedback.py`: SDD §11.2's five routes —
+  `POST /api/v1/node-executions/{execution_instance_id}/verification-results` (idempotent by the
+  v0.1 verification id), `POST /api/v1/runs/{run_id}/final-verification`,
+  `GET /api/v1/experiences/search`, `GET /api/v1/experiences/{id}` and
+  `POST /api/v1/experiences/{id}/resolve-contradiction`. Cross-workspace reads answer 404 rather
+  than 403, and every route refuses with `FEEDBACK_PIPELINE_UNAVAILABLE` when no pipeline is
+  wired (#TBD).
+- Flipped the thirteen M3 acceptance rows (`AC4-M3-003`, `-023`..`-034`) (#TBD).
+
 ### v0.4 — M1 compatibility engine
 
 - Added `src/accretion/routing/` with the deterministic compatibility engine: a versioned
