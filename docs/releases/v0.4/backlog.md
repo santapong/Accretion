@@ -1,6 +1,6 @@
 # v0.4 prioritized backlog
 
-Status: **M1 and M4 delivered; M2 locally verified, awaiting remote review.** The normative contract is [SDD v0.4](../../sdd/Accretion_SDD_v0.4.md);
+Status: **M1, M3, M4 and M5 delivered; M2 locally verified, awaiting remote review.** The normative contract is [SDD v0.4](../../sdd/Accretion_SDD_v0.4.md);
 its §19 orders the milestones and its §20 owns the criteria. This ledger records status only.
 
 ## Delivery order
@@ -10,9 +10,9 @@ its §19 orders the milestones and its §20 owns the criteria. This ledger recor
 | 1 | M0 contract and feature freeze | none (ADR-052) | delivered (#123) ([plan](m0-plan.md), [freeze record](m0-freeze.md)) |
 | 2 | M1 compatibility engine | 005-008 | delivered ([plan](m1-plan.md)) |
 | 3 | M2 hierarchical deterministic selector | 001, 002, 004, 009-015, 022 | locally verified; remote review pending ([evidence](m2-plan.md), [runbook](m2-runbook.md)) |
-| 4 | M3 experience and feedback pipeline | 003, 023-034 | not started |
+| 4 | M3 experience and feedback pipeline | 003, 023-034 | delivered ([plan](m3-plan.md), [runbook](../../runbooks/v04-feedback.md)) |
 | 5 | M4 offline ranker and calibration | 016 | delivered ([plan](m4-plan.md)); activation remains disabled |
-| 6 | M5 project adapter and cold start | 021 | not started |
+| 6 | M5 project adapter and cold start | 021 | delivered ([plan](m5-plan.md)) |
 | 7 | M6 shadow routing | 017, 041 | not started |
 | 8 | M7 guarded bandit | 018-020 | not started |
 | 9 | M8 promotion and rollback | 035-039, 042 | not started |
@@ -329,6 +329,51 @@ its interval — a lower bound computed from four pairs can clear any floor, and
 pass would make the count gate decorative. The real number is a power analysis over the first
 stage's variance and belongs to whichever milestone closes OQ-409; until then the constant is the
 place to change it, and both consumers read it from there.
+## Recorded during M3
+
+Four decisions M3 had to make that the SDD does not settle, and one earlier decision this
+milestone supersedes.
+
+**ADR4-M3-001 (OQ-407, attribution) — the dependency heuristic is v1 and is versioned so it can
+be replaced without rewriting history.** §9.6 asks for credit assignment and names no method.
+`feedback/attribution.py` derives credit from the graph's own dependency structure and the
+node's local verdict, stamps `method_version` on every `AttributionSummary`, and writes a
+*revision* when it recomputes rather than editing the row it recomputed. The heuristic will be
+wrong for some graphs; the design decision is that being wrong is recoverable, because the
+method that was wrong is named on every record it produced and a better one appends rather than
+overwrites. A learned attributor is a later milestone's work and needs no schema change.
+
+**ADR4-M3-002 (OQ-414, retention) — experience records inherit the P7 experience's retention and
+declare none of their own.** §7.10's projection is keyed by the experience it projects (ADR-054
+b), so a record whose P7 row has been retracted or aged out is already ineligible by
+dereference. Giving the projection its own `retention_class` would have created two clocks over
+one fact, and the shorter of the two would silently decide — which is the failure mode registry
+§21 exists to prevent. The consequence is deliberate: retention policy is set once, on the P7
+experience, and the routing projection cannot outlive its subject.
+
+**ADR4-M3-003 (materiality) — a material conflict is PASS *versus* FAIL on one REQUIRED claim,
+and it blocks acceptance rather than deciding it.** The alternative readings were "any
+disagreement blocks" and "the worst verdict wins". The first deadlocks every run with an
+INCONCLUSIVE check — a verdict that declined to decide is information, not a contradiction. The
+second states a verdict the record is itself evidence against, and it is the reading that would
+let one failing verifier overrule an independent PASS with no adjudication. The conflict is
+therefore recorded, the node waits, and a human resolves it
+(`RunManager.resolve_verification_contradiction`, `AC4-M3-027`).
+
+**ADR4-M3-004 (projection) — a §7.10 record requires the P7 project features, so the run manager
+materialises through `ExperienceService` and never around it.** The projection is a view over a
+v0.2 experience and the foreign key is `RESTRICT` in both store backends; a scheduler that wrote
+a projection without materialising would produce rows PostgreSQL refuses. The cost is that a
+deployment with the P7 retrieval gate closed projects nothing, and that is the right failure: a
+routing memory assembled without the experience layer's redaction and moderation would be a
+second, unreviewed copy of the trajectory record.
+
+**ADR4-M2-001 (the executing-provider constraint) is superseded by the M2 seam.** M2 recorded
+that a routed AGENT configuration carrying tool bindings could not be dispatched, because the
+session boundary carried capability ids rather than exact bindings. The executing-provider seam
+landed with that milestone's later PRs and the golden-trace test pins the flag-off path
+byte-for-byte; M3's dispatch path reaches the runtime through the same seam and adds no
+provider constraint of its own.
 ## Recorded during M8
 
 Five decisions taken while building the activation ledger and the promotion gate. Each answers a

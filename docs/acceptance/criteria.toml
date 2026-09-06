@@ -139,22 +139,9 @@ AC3-UI-03 = { verification = "test", frontend_evidence = "apps/ui/src/pages/McpS
 # criterion; the first flips arrive with M1. M1's four rows (005-008) are deleted rather
 # than set to `test`: `test` is the default for a criterion with no policy row, and a row
 # that restated the default would be one more place to keep in step with the SDD.
-AC4-M3-003 = { verification = "not_yet_due", reason = "v0.4 M3" }
 AC4-M7-018 = { verification = "not_yet_due", reason = "v0.4 M7" }
 AC4-M7-019 = { verification = "not_yet_due", reason = "v0.4 M7" }
 AC4-M7-020 = { verification = "not_yet_due", reason = "v0.4 M7" }
-AC4-M3-023 = { verification = "not_yet_due", reason = "v0.4 M3" }
-AC4-M3-024 = { verification = "not_yet_due", reason = "v0.4 M3" }
-AC4-M3-025 = { verification = "not_yet_due", reason = "v0.4 M3" }
-AC4-M3-026 = { verification = "not_yet_due", reason = "v0.4 M3" }
-AC4-M3-027 = { verification = "not_yet_due", reason = "v0.4 M3" }
-AC4-M3-028 = { verification = "not_yet_due", reason = "v0.4 M3" }
-AC4-M3-029 = { verification = "not_yet_due", reason = "v0.4 M3" }
-AC4-M3-030 = { verification = "not_yet_due", reason = "v0.4 M3" }
-AC4-M3-031 = { verification = "not_yet_due", reason = "v0.4 M3" }
-AC4-M3-032 = { verification = "not_yet_due", reason = "v0.4 M3" }
-AC4-M3-033 = { verification = "not_yet_due", reason = "v0.4 M3" }
-AC4-M3-034 = { verification = "not_yet_due", reason = "v0.4 M3" }
 AC4-M9-040 = { verification = "not_yet_due", reason = "v0.4 M9" }
 AC4-M9-043 = { verification = "not_yet_due", reason = "v0.4 M9" }
 AC4-M9-044 = { verification = "not_yet_due", reason = "v0.4 M9" }

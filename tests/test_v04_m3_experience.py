@@ -79,6 +79,7 @@ from accretion.feedback.experience import (
     RESOLUTION_LABEL,
     ContradictionDetector,
     ExperienceProjector,
+    record_signature_for,
 )
 from accretion.ids import new_id
 from accretion.persistence.store import MemoryStore
@@ -229,7 +230,12 @@ async def seed_experience(store: MemoryStore, run: Run, marker: str) -> Experien
 
 
 def make_node(
-    run: Run, *, node_key: str, attempt: int = 1, objective: str | None = None
+    run: Run,
+    *,
+    node_key: str,
+    attempt: int = 1,
+    objective: str | None = None,
+    verification_spec_hash: str | None = None,
 ) -> NodeContract:
     """A frozen node contract with the three labels ``routing/freeze.py`` writes onto every one.
 
@@ -246,6 +252,11 @@ def make_node(
     }
     if objective is not None:
         overrides["objective"] = objective
+    if verification_spec_hash is not None:
+        overrides["verification_spec_ref"] = {
+            **FIXTURE["verification_spec_ref"],
+            "content_hash": verification_spec_hash,
+        }
     return build(NodeContract, **overrides)
 
 
@@ -981,6 +992,11 @@ async def test_an_experience_frozen_against_another_spec_is_not_retrievable() ->
     incompatible record must not raise, must not be silently dropped, and must not contribute to
     a single mean — it must be *counted somewhere it cannot influence anything*, which is what
     ``n_cross_domain`` is for.
+
+    The incompatibility is the verification spec hash, which is what "frozen against another
+    spec" means and what :func:`~accretion.feedback.experience.record_signature_for` — the
+    derivation the projector writes under and the router reads with — is sensitive to. Varying
+    anything the signature ignores would make this pass for a record that *is* retrievable.
     """
 
     store, projector, _, run, _, node, configuration, receipt = await setup_projection()
@@ -995,11 +1011,11 @@ async def test_an_experience_frozen_against_another_spec_is_not_retrievable() ->
     )
 
     incompatible = make_node(
-        run, node_key="implement-migration", objective="A different objective entirely."
+        run, node_key="implement-migration", verification_spec_hash="e" * 64
     )
     summary = summarize_evidence(
         await store.list_experience_records(workspace_id=WORKSPACE_ID),
-        signature=contract_signature_for(incompatible),
+        signature=record_signature_for(incompatible),
         configuration_hash=configuration.configuration_hash,
         as_of=VERIFIED_AT,
     )

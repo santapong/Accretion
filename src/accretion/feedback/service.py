@@ -81,6 +81,7 @@ from accretion.feedback.attribution import AttributionInput, DependencyAttributo
 from accretion.feedback.experience import (
     ExperienceMaterializer,
     ExperienceProjector,
+    record_signature_for,
 )
 from accretion.feedback.failures import FailureClassifier, FailureSignals
 from accretion.feedback.recovery import (
@@ -92,7 +93,7 @@ from accretion.feedback.recovery import (
 from accretion.feedback.verification import IndependentVerificationRecorder
 from accretion.persistence.store import StateStore
 from accretion.routing.features import summarize_evidence
-from accretion.routing.identity import contract_signature_for, workspace_for_run
+from accretion.routing.identity import workspace_for_run
 from accretion.routing.protocols import FeedbackPipeline
 from accretion.runtimes.common import make_event
 
@@ -497,7 +498,7 @@ class DefaultFeedbackPipeline:
         if node is not None:
             summary = summarize_evidence(
                 records,
-                signature=contract_signature_for(node),
+                signature=record_signature_for(node),
                 configuration_hash=candidate_hashes[0] if candidate_hashes else "",
                 as_of=self.clock(),
             )
