@@ -68,12 +68,13 @@ const VIEWPORT_HEIGHT = 1000;
  * The fewest elements the focus half of the interaction pass may capture on a route.
  *
  * Every route renders the operator nav: the brand link plus one link per labelled route,
- * sixteen `a[href]` today, all matched by `FOCUSABLE_SELECTOR`. A capture below that means
- * the selector matched nothing - measured once while this gate was audited: with
- * `FOCUSABLE_SELECTOR` set to a selector no element carries, the pass still reported
- * "0 differences" over zero captures on all seventeen routes. PR9b adds a nav entry and
- * bumps this to seventeen.
+ * seventeen `a[href]` since M9c added the Router entry, all matched by `FOCUSABLE_SELECTOR`.
+ * A capture below that means the selector matched nothing - measured once while this gate
+ * was audited: with `FOCUSABLE_SELECTOR` set to a selector no element carries, the pass
+ * still reported "0 differences" over zero captures on all seventeen routes.
  */
+// A lower bound, so it must hold on BOTH builds: the merge-base build renders sixteen nav
+// links and this branch seventeen (M9c added Router); the floor stays at what the base provides.
 const NAV_FOCUS_FLOOR = 16;
 
 const BASE_DIST = process.env.STYLE_DIFF_BASE_DIST;
@@ -158,6 +159,17 @@ const ROUTE_ELEMENT_FLOOR: Record<string, number> = {
   "/admin/mcp": 47,
   "/admin/capabilities/inspect": 48,
   "/admin/identity": 81,
+  // M9c, and the one floor in this table that is not a browser measurement: the route is
+  // new, so no sweep has ever opened it, and the seeder creates no router version - the
+  // page the sweep meets is its empty state, with the nav, the heading, the version card,
+  // the lineage and report placeholders and (the local principal is a workspace OWNER) both
+  // administration controls. Counted as DOM rather than as layout, in jsdom, over exactly
+  // that state: 75 elements under `body *`. Layout is what jsdom cannot answer and this
+  // number does not depend on it. Pinned five below the count, which is the margin between
+  // "the shell rendered" and "the page rendered": losing the version card, either
+  // placeholder or the admin controls costs more than five elements and fails here. The
+  // first green sweep prints the live count in its own log line; raise it to that.
+  "/admin/router": 70,
   "/benchmarks/acr-arch": 1046,
   "/benchmarks/dynamic": 118,
   "/benchmarks/search": 204,
@@ -572,12 +584,22 @@ async function settle(page: Page, route: RouteUnderTest, width: number, origin: 
  * Branch first, then base, back to back, so a poll landing between them lands in the
  * smallest possible window. Throws only when the structure still disagrees after the retry
  * budget: that is not a style finding and must not be reported as one.
+ *
+ * A route the merge-base build does not serve is measured on the branch alone. Opening it
+ * on the base origin would not produce a comparison to discard: `openRoute` asserts the
+ * route's own `h1` and the base build renders its 404 page there, so the sweep would fail
+ * on a branch that is entirely correct. The branch measurement still happens and its
+ * element floor is still enforced by the caller.
  */
 async function compare(
   page: Page,
   route: RouteUnderTest,
   width: number,
 ): Promise<{ differences: string[]; elements: number }> {
+  if (!obligationsFor(route).measureBase) {
+    const branch = await measure(page, route, width, BRANCH_ORIGIN);
+    return { differences: [], elements: branch.length };
+  }
   for (let attempt = 1; ; attempt += 1) {
     const branch = await measure(page, route, width, BRANCH_ORIGIN);
     const base = await measure(page, route, width, BASE_ORIGIN);
@@ -639,12 +661,13 @@ test.describe("computed-style diff against the pre-migration build", () => {
       // Printed on success as well as failure: "0 diffs" is only meaningful next to the
       // number of elements it was 0 out of - and on a waived route "0 diffs" means "not
       // compared", which a reader must never have to infer from a silent log.
-      const waiver = obligationsFor(route).waiver;
+      const { waiver, measureBase } = obligationsFor(route);
       console.log(
         `style-diff ${route.path} — ${counts.join(", ")} elements (floor ${floor})` +
           (waiver
-            ? `; STRUCTURAL CHANGE WAIVED by ${waiver.pr}: ${waiver.reason} — the element ` +
-              "floor above is the only rendering evidence for this route"
+            ? `; ${measureBase ? "STRUCTURAL CHANGE WAIVED" : "NOT IN THE BASE BUILD"} by ` +
+              `${waiver.pr}: ${waiver.reason} — the element floor above is the only ` +
+              "rendering evidence for this route"
             : ""),
       );
       for (const assertShortfall of shortfalls) assertShortfall();
@@ -673,7 +696,12 @@ test.describe("computed-style diff against the pre-migration build", () => {
 
     for (const route of ROUTES) {
       const captures: Record<string, ElementCapture[]> = {};
-      for (const origin of [BRANCH_ORIGIN, BASE_ORIGIN]) {
+      // A route the base build does not serve is opened on the branch alone, for the reason
+      // `compare` gives: the base renders its 404 page there and `openRoute` fails on it.
+      const origins = obligationsFor(route).measureBase
+        ? [BRANCH_ORIGIN, BASE_ORIGIN]
+        : [BRANCH_ORIGIN];
+      for (const origin of origins) {
         await page.setViewportSize({ width: 1440, height: VIEWPORT_HEIGHT });
         await openRoute(page, route, seed, origin);
         await page.evaluate(() => document.fonts.ready);
@@ -707,7 +735,11 @@ test.describe("computed-style diff against the pre-migration build", () => {
       // waived route's interaction capture is a different shape too. The floor assertion
       // above it is NOT waived - it runs before this and is what keeps the pass from being
       // green over zero focused elements on the one route that skips the comparison.
-      const comparison = compareCaptures(route, captures[BASE_ORIGIN], captures[BRANCH_ORIGIN]);
+      const comparison = compareCaptures(
+        route,
+        captures[BASE_ORIGIN] ?? [],
+        captures[BRANCH_ORIGIN],
+      );
       if (!comparison.aligned) {
         differences.push(
           `${route.path}: the interaction pass found ${captures[BASE_ORIGIN].length} targets ` +
@@ -946,6 +978,19 @@ async function mockApi(
 // object over the same page: the mocked pass builds its own and never reads the sweep's. A
 // waiver that covered only one of the two would leave the other reporting the same intended
 // DOM change as a failure, which is the shape that teaches a reader to ignore this gate.
+/**
+ * The mocked planning review and the mocked benchmarks address exactly the paths the sweep
+ * does, so they read the sweep's waiver for that path instead of restating it: a change that
+ * adds one element to every page (M9c's Router nav entry) is one declaration per route in
+ * `routes.ts`, and a mocked pass that ignored it would report the same intended DOM change
+ * the sweep already waived. The mocked run page keeps its own declaration because its path
+ * (the fixture's run id) is not the sweep's.
+ */
+function sweepWaiverFor(path: string) {
+  const declared = ROUTES.find((route) => route.path === path);
+  return declared ? obligationsFor(declared).waiver : undefined;
+}
+
 const MOCKED_RUN_ROUTE: RouteUnderTest = {
   path: `/runs/${FIXTURE_RUN_ID}`,
   heading: /…/,
@@ -1125,6 +1170,7 @@ test.describe("computed-style diff over fixture-mocked pages", () => {
           MOCKED_PLANNING_ELEMENT_FLOOR,
         ),
       );
+      if (sweepWaiverFor("/tasks/new")) continue;
       if (!fingerprintsEqual(base, branch)) {
         differences.push(
           `/tasks/new @ ${width}: base rendered ${base.length} elements, branch ` +
@@ -1139,9 +1185,13 @@ test.describe("computed-style diff over fixture-mocked pages", () => {
       );
     }
 
+    const planningWaiver = sweepWaiverFor("/tasks/new");
     console.log(
       `style-diff mocked planning review — ${counts.join(", ")} elements ` +
-        `(floor ${MOCKED_PLANNING_ELEMENT_FLOOR})`,
+        `(floor ${MOCKED_PLANNING_ELEMENT_FLOOR})` +
+        (planningWaiver
+          ? `; STRUCTURAL CHANGE WAIVED by ${planningWaiver.pr}: ${planningWaiver.reason}`
+          : ""),
     );
     for (const assertShortfall of shortfalls) assertShortfall();
     expect(unmatched, `endpoints with no fixture:\n${unmatched.join("\n")}`).toEqual([]);
@@ -1206,6 +1256,7 @@ test.describe("computed-style diff over fixture-mocked pages", () => {
               "is a WEAKER measurement than the sweep beside it and would still diff clean.",
           ).toBeGreaterThan(seeded);
         });
+        if (sweepWaiverFor(route.path)) continue;
         if (!fingerprintsEqual(base, branch)) {
           differences.push(
             `${route.path} @ ${width}: base rendered ${base.length} elements, branch ` +
@@ -1220,9 +1271,13 @@ test.describe("computed-style diff over fixture-mocked pages", () => {
         );
       }
 
+      const benchmarkWaiver = sweepWaiverFor(route.path);
       console.log(
         `style-diff mocked ${route.path} — ${counts.join(", ")} elements ` +
-          `(floor ${floor}, seeded ${seeded})`,
+          `(floor ${floor}, seeded ${seeded})` +
+          (benchmarkWaiver
+            ? `; STRUCTURAL CHANGE WAIVED by ${benchmarkWaiver.pr}: ${benchmarkWaiver.reason}`
+            : ""),
       );
       for (const assertShortfall of shortfalls) assertShortfall();
       expect(unmatched, `endpoints with no fixture:\n${unmatched.join("\n")}`).toEqual([]);

@@ -219,6 +219,16 @@ const WAIVED: WaivableRoute = {
 /** Any other route in the same sweep, which changed nothing and is still compared. */
 const COMPARED: WaivableRoute = { path: "/history" };
 
+/** A route this PR adds, which the merge-base build answers with its 404 page. */
+const NEW_ROUTE: WaivableRoute = {
+  path: "/admin/router",
+  structuralChange: {
+    pr: "M9c",
+    reason: "new route: the router administration page did not exist in the merge-base build",
+    absentFromBase: true,
+  },
+};
+
 describe("the structural-change waiver", () => {
   test("a waived route skips the structural comparison and reports no difference", () => {
     // Both a shape change and a style change at once, which is the real case: the branch
@@ -259,13 +269,40 @@ describe("the structural-change waiver", () => {
     expect(obligationsFor(WAIVED)).toEqual({
       compareStructure: false,
       enforceFloor: true,
+      measureBase: true,
       waiver: WAIVED.structuralChange,
     });
     expect(obligationsFor(COMPARED)).toEqual({
       compareStructure: true,
       enforceFloor: true,
+      measureBase: true,
       waiver: null,
     });
+  });
+
+  test("a route absent from the base build is not measured there, and still owes the floor", () => {
+    // The case M9a's waiver did not cover. `/admin/router` is new, so the merge-base build
+    // answers it with the `*` fallback and `openRoute` fails on the base origin at the
+    // heading assertion — before any style is read, on a branch that is entirely correct.
+    // The mutation this kills is the natural spelling `enforceFloor: !waiver.absentFromBase`
+    // (or a spec that simply skips a new route): the branch measurement and its floor are
+    // the ONLY rendering evidence a new route brings to this gate, so a page that 500s or
+    // renders an empty state has to fail here.
+    expect(obligationsFor(NEW_ROUTE)).toEqual({
+      compareStructure: false,
+      enforceFloor: true,
+      measureBase: false,
+      waiver: NEW_ROUTE.structuralChange,
+    });
+  });
+
+  test("a route the base build does serve is still measured there, waiver or not", () => {
+    // `measureBase: !route.structuralChange` would pass every other case in this file and
+    // quietly stop opening the base build for the run page, which is where the interaction
+    // pass asserts its focus floor on BOTH origins. Only `absentFromBase` suspends it.
+    expect(obligationsFor(WAIVED).measureBase).toBe(true);
+    expect(obligationsFor(COMPARED).measureBase).toBe(true);
+    expect(obligationsFor(NEW_ROUTE).measureBase).toBe(false);
   });
 
   test("an unwaived route with a different shape is not aligned, and reports nothing yet", () => {

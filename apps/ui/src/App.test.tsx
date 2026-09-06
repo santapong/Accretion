@@ -129,7 +129,7 @@ test("renders the runtime dashboard and operator navigation", async () => {
   expect(screen.getByRole("link", { name: "Identity" })).toBeInTheDocument();
   // Brand link plus one link per navigation entry; a route added without a way to
   // reach it, or a nav entry added without a route, moves this count.
-  expect(within(screen.getByRole("navigation")).getAllByRole("link")).toHaveLength(16);
+  expect(within(screen.getByRole("navigation")).getAllByRole("link")).toHaveLength(17);
   expect(screen.getByText("No runs yet. Create and profile a task.")).toBeInTheDocument();
 });
 

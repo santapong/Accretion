@@ -7,9 +7,9 @@ lives and why.
 
 ## One table, two consumers
 
-`src/routes.tsx` exports `RouteEntry` and `ROUTES`: sixteen declared paths plus the `*`
-fallback, in the order the router matches them. Fifteen carry a `label`, which is the
-navigation text.
+`src/routes.tsx` exports `RouteEntry` and `ROUTES`: seventeen declared paths plus the `*`
+fallback, in the order the router matches them, since v0.4 M9c added `/admin/router`.
+Sixteen carry a `label`, which is the navigation text.
 
 `src/OperatorShell.tsx` is the only consumer. It derives the navigation bar from
 `ROUTES.filter((route) => route.label)` and the router's children from all of `ROUTES`.

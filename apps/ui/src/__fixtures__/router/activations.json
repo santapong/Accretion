@@ -1,0 +1,72 @@
+[
+  {
+    "approved_by": {
+      "display_name": "Priya Raman",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "cause": null,
+    "content_hash": "",
+    "contract_id": "rac_JX2M8QT5B0NKV96HZWD3CP7RFA",
+    "contract_type": "accretion.router-activation",
+    "created_at": "2026-03-06T10:00:00Z",
+    "created_by": {
+      "display_name": "Priya Raman",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "family_key": "gradient-boosted-ranker",
+    "kind": "PROMOTE",
+    "labels": {
+      "owner": "routing-platform",
+      "drill_digest": "7be4210c9d53fa8617e0b39c4d52786af13096bcd428e5f7a1930b6c25de4f18"
+    },
+    "objective_contract_ref": null,
+    "previous_version_id": "rmv_6HND5PVA2Y7KQ3XT9RJZ0CWMEB",
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "promotion_report_id": "rpr_P5ZJB9X8T0JM655SQFCBNJQ4T7",
+    "retention_class": "STANDARD",
+    "rollback_target_version_id": "rmv_6HND5PVA2Y7KQ3XT9RJZ0CWMEB",
+    "router_version_id": "rmv_7CJEP8EAB33CNS3R0N4CRPN18G",
+    "schema_version": "1.0.0",
+    "scope": "PROJECT_ADAPTER",
+    "sequence": 5,
+    "supersedes_contract_id": null,
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  {
+    "approved_by": {
+      "display_name": "Priya Raman",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "cause": "False acceptance rose on the verifier-conflict cohort in production.",
+    "content_hash": "",
+    "contract_id": "rac_QZ7VD3H8M4KTX50NRB29CJWYFP",
+    "contract_type": "accretion.router-activation",
+    "created_at": "2026-03-06T10:05:00Z",
+    "created_by": {
+      "display_name": "Priya Raman",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "family_key": "gradient-boosted-ranker",
+    "kind": "ROLLBACK",
+    "labels": {
+      "owner": "routing-platform",
+      "drill_digest": "5d0a97f3c6b21e84759fd3021ba6c48e7f1930d5ac2b6e478190cf3d24be7a06"
+    },
+    "objective_contract_ref": null,
+    "previous_version_id": "rmv_4WQ8ZC1TN5KDR7YJ2HMB03XVGA",
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "promotion_report_id": null,
+    "retention_class": "STANDARD",
+    "rollback_target_version_id": "rmv_73BPF68NW342QGTDNRRFYDCH6B",
+    "router_version_id": "rmv_73BPF68NW342QGTDNRRFYDCH6B",
+    "schema_version": "1.0.0",
+    "scope": "PROJECT_ADAPTER",
+    "sequence": 5,
+    "supersedes_contract_id": null,
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  }
+]

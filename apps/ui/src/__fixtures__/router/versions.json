@@ -1,0 +1,147 @@
+[
+  {
+    "algorithm_id": "gradient-boosted-ranker",
+    "artifact_digest": "c30ae8a610457ec1599e9b3ee961dae19db1e94b162c58ab52c3dd66f353bce0",
+    "calibration_artifact_digest": "6522b871b0b575d19232eb6a3e24b462df52ff40aa28c608fa5c546d912c4bc1",
+    "content_hash": "",
+    "contract_id": "rmv_73BPF68NW342QGTDNRRFYDCH6B",
+    "contract_type": "accretion.router-model-version",
+    "created_at": "2026-02-20T09:00:00Z",
+    "created_by": {
+      "display_name": "Priya Raman",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "feature_schema_version": "1.0.0",
+    "labels": {
+      "owner": "routing-platform",
+      "purpose": "fitted"
+    },
+    "objective_contract_ref": null,
+    "parent_version_id": null,
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": "STANDARD",
+    "schema_version": "1.0.0",
+    "scope": "PROJECT_ADAPTER",
+    "status": "ACTIVE",
+    "supersedes_contract_id": null,
+    "training_snapshot_id": "rts_EDB22B93VQVFFB77KJCXN83MCB",
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  {
+    "algorithm_id": "gradient-boosted-ranker",
+    "artifact_digest": "9f1b4d0e6c2a7385bb41d8f0925ce6a743d1c85fb0e27a4699cd3168f2b57e04",
+    "calibration_artifact_digest": "6522b871b0b575d19232eb6a3e24b462df52ff40aa28c608fa5c546d912c4bc1",
+    "content_hash": "",
+    "contract_id": "rmv_2KPQMJ4VCETFFK2Z973NZSM3NV",
+    "contract_type": "accretion.router-model-version",
+    "created_at": "2026-03-01T09:00:00Z",
+    "created_by": {
+      "display_name": "Priya Raman",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "feature_schema_version": "1.0.0",
+    "labels": {
+      "owner": "routing-platform",
+      "purpose": "promoted"
+    },
+    "objective_contract_ref": null,
+    "parent_version_id": "rmv_73BPF68NW342QGTDNRRFYDCH6B",
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": "STANDARD",
+    "schema_version": "1.0.0",
+    "scope": "PROJECT_ADAPTER",
+    "status": "ACTIVE",
+    "supersedes_contract_id": null,
+    "training_snapshot_id": "rts_EDB22B93VQVFFB77KJCXN83MCB",
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  {
+    "algorithm_id": "gradient-boosted-ranker",
+    "artifact_digest": "9f1b4d0e6c2a7385bb41d8f0925ce6a743d1c85fb0e27a4699cd3168f2b57e04",
+    "calibration_artifact_digest": "6522b871b0b575d19232eb6a3e24b462df52ff40aa28c608fa5c546d912c4bc1",
+    "content_hash": "",
+    "contract_id": "rmv_4WQ8ZC1TN5KDR7YJ2HMB03XVGA",
+    "contract_type": "accretion.router-model-version",
+    "created_at": "2026-03-04T11:30:00Z",
+    "created_by": {
+      "display_name": "Priya Raman",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "feature_schema_version": "1.0.0",
+    "labels": {
+      "owner": "routing-platform",
+      "purpose": "rolled-back"
+    },
+    "objective_contract_ref": null,
+    "parent_version_id": "rmv_2KPQMJ4VCETFFK2Z973NZSM3NV",
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": "STANDARD",
+    "schema_version": "1.0.0",
+    "scope": "PROJECT_ADAPTER",
+    "status": "ROLLED_BACK",
+    "supersedes_contract_id": null,
+    "training_snapshot_id": "rts_EDB22B93VQVFFB77KJCXN83MCB",
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  {
+    "algorithm_id": "gradient-boosted-ranker",
+    "artifact_digest": "c30ae8a610457ec1599e9b3ee961dae19db1e94b162c58ab52c3dd66f353bce0",
+    "calibration_artifact_digest": "6522b871b0b575d19232eb6a3e24b462df52ff40aa28c608fa5c546d912c4bc1",
+    "content_hash": "",
+    "contract_id": "rmv_6HND5PVA2Y7KQ3XT9RJZ0CWMEB",
+    "contract_type": "accretion.router-model-version",
+    "created_at": "2026-03-04T11:30:00Z",
+    "created_by": {
+      "display_name": "Priya Raman",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "feature_schema_version": "1.0.0",
+    "labels": {
+      "owner": "routing-platform",
+      "purpose": "restored"
+    },
+    "objective_contract_ref": null,
+    "parent_version_id": "rmv_73BPF68NW342QGTDNRRFYDCH6B",
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": "STANDARD",
+    "schema_version": "1.0.0",
+    "scope": "PROJECT_ADAPTER",
+    "status": "ACTIVE",
+    "supersedes_contract_id": null,
+    "training_snapshot_id": "rts_EDB22B93VQVFFB77KJCXN83MCB",
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  },
+  {
+    "algorithm_id": "gradient-boosted-ranker",
+    "artifact_digest": "2a7c93e1b48fd50c6e19a3720b8d4f6152cc9807ae3b41d5f0629748bc31ea6d",
+    "calibration_artifact_digest": "6522b871b0b575d19232eb6a3e24b462df52ff40aa28c608fa5c546d912c4bc1",
+    "content_hash": "",
+    "contract_id": "rmv_7CJEP8EAB33CNS3R0N4CRPN18G",
+    "contract_type": "accretion.router-model-version",
+    "created_at": "2026-03-05T08:15:00Z",
+    "created_by": {
+      "display_name": "Priya Raman",
+      "principal_id": "usr_4CF33CQ2YNVSFEK71H8ETSCYE0",
+      "status": "ACTIVE"
+    },
+    "feature_schema_version": "1.0.0",
+    "labels": {
+      "owner": "routing-platform",
+      "purpose": "fitted"
+    },
+    "objective_contract_ref": null,
+    "parent_version_id": "rmv_2KPQMJ4VCETFFK2Z973NZSM3NV",
+    "project_id": "prj_8W5DH3HW6DPAFFPBHQ47R21DK9",
+    "retention_class": "STANDARD",
+    "schema_version": "1.0.0",
+    "scope": "PROJECT_ADAPTER",
+    "status": "SHADOW",
+    "supersedes_contract_id": null,
+    "training_snapshot_id": "rts_TR41NDVX8Q0KM7ZJ5HB2WCPY63",
+    "workspace_id": "wks_8G33T24F686H6EJPBHRSFYCC3C"
+  }
+]
