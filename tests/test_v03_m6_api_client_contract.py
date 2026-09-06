@@ -65,6 +65,14 @@ M6_CLIENT_FUNCTIONS: dict[str, tuple[str, str]] = {
     "mcpServerCapabilities": ("get", "Capability[]"),
     "mcpServerDiscovery": ("get", "McpDiscoverySnapshot"),
     "resolveCapability": ("post", "ResolvedCapability"),
+    # v0.4 M9a — the §17.1 node routing panel. Registered here rather than in a new file
+    # because the property being checked is unchanged: the four routing calls build their
+    # paths from template literals, and only the live app can say whether those paths exist
+    # and return the contract the client names.
+    "routingDecision": ("get", "RoutingDecisionReceipt"),
+    "routingCandidates": ("get", "ConfigurationCandidate[]"),
+    "overrideRoutingDecision": ("post", "RoutingDecisionReceipt"),
+    "cancelRoutingDecision": ("post", "RoutingDecisionReceipt"),
 }
 
 _ENTRY = re.compile(

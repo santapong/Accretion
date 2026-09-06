@@ -2,15 +2,18 @@ import { describe, expect, test } from "vitest";
 
 import {
   ABSENT,
+  compareCaptures,
   DEFAULT_RETRY_POLICY,
   diffStyles,
   equivalentValues,
   fingerprintsEqual,
   formatDifference,
   nextRetryDelayMs,
+  obligationsFor,
   SUBPIXEL_EPSILON,
   type ElementCapture,
   type StructuralFingerprint,
+  type WaivableRoute,
 } from "./styleDiff";
 
 /**
@@ -190,5 +193,90 @@ describe("the retry decision", () => {
     // undefined milliseconds", which `setTimeout` treats as zero.
     expect(() => nextRetryDelayMs(2, { attempts: 5, delaysMs: [100] })).toThrow(/one fewer delay/);
     expect(() => nextRetryDelayMs(0)).toThrow(/1-based/);
+  });
+});
+
+/* ------------------------------------------------------------------------------------- */
+/* The structural-change waiver.                                                           */
+/* ------------------------------------------------------------------------------------- */
+
+/**
+ * The waiver is the one part of this gate that exists to make it report LESS.
+ *
+ * Everything else here is tested by showing the comparator a difference and requiring it to
+ * be named. These cases are the inverse: they show it a waiver and require the exemption to
+ * stop exactly where it is supposed to. Neither failure mode is visible from a Playwright
+ * run, because a waiver that leaked would show up as "0 differences" - which is what a
+ * healthy branch prints anyway.
+ */
+
+/** The route under review: one added element, so its fingerprint cannot match the base. */
+const WAIVED: WaivableRoute = {
+  path: "/runs/:runId",
+  structuralChange: { pr: "M9a", reason: "the node routing panel is mounted on the run page" },
+};
+
+/** Any other route in the same sweep, which changed nothing and is still compared. */
+const COMPARED: WaivableRoute = { path: "/history" };
+
+describe("the structural-change waiver", () => {
+  test("a waived route skips the structural comparison and reports no difference", () => {
+    // Both a shape change and a style change at once, which is the real case: the branch
+    // added an element AND that element brought a colour with it.
+    const branch = [...capture({ color: "rgb(255, 0, 0)" }), { tag: "b", children: 0, styles: {} }];
+    const comparison = compareCaptures(WAIVED, capture(), branch);
+
+    expect(comparison.aligned).toBe(true);
+    expect(comparison.differences).toEqual([]);
+    expect(comparison.waiver?.pr).toBe("M9a");
+  });
+
+  test("a waiver on one route does not silence a style difference on another", () => {
+    // The mutation: a waiver held in module state, or read as "does any route declare one",
+    // would pass this file's other cases and disable the comparator for the whole sweep.
+    // The waived route is compared FIRST here, so a latch set by it would still be set.
+    expect(compareCaptures(WAIVED, capture(), capture({ color: "rgb(255, 0, 0)" })).differences)
+      .toEqual([]);
+
+    const leaked = compareCaptures(COMPARED, capture(), capture({ color: "rgb(255, 0, 0)" }));
+    expect(leaked.waiver).toBeNull();
+    expect(leaked.differences).toEqual([
+      {
+        index: 1,
+        tag: "span",
+        property: "color",
+        base: "rgb(137, 147, 139)",
+        branch: "rgb(255, 0, 0)",
+      },
+    ]);
+  });
+
+  test("a waived route still enforces the element floor", () => {
+    // The floor is the only rendering evidence left once the structural comparison is off,
+    // so `enforceFloor` is true for both. The mutation this kills is the natural spelling
+    // `enforceFloor: !route.structuralChange`, which turns "changed on purpose" into
+    // "unmeasured" and lets a waived route render an error page and still pass.
+    expect(obligationsFor(WAIVED)).toEqual({
+      compareStructure: false,
+      enforceFloor: true,
+      waiver: WAIVED.structuralChange,
+    });
+    expect(obligationsFor(COMPARED)).toEqual({
+      compareStructure: true,
+      enforceFloor: true,
+      waiver: null,
+    });
+  });
+
+  test("an unwaived route with a different shape is not aligned, and reports nothing yet", () => {
+    // A shape mismatch is the spec's retry condition, not a finding: reporting differences
+    // here as well would make the sweep print a page of misaligned noise on every poll that
+    // landed between the two measurements.
+    const comparison = compareCaptures(COMPARED, capture(), [
+      ...capture(),
+      { tag: "b", children: 0, styles: {} },
+    ]);
+    expect(comparison.aligned).toBe(false);
+    expect(comparison.differences).toEqual([]);
   });
 });

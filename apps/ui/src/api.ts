@@ -37,6 +37,9 @@ import type {
   ProjectFeatureSettings,
   ReplanOutcome,
   ReplanRequest,
+  ConfigurationCandidate,
+  RoutingDecisionReceipt,
+  RoutingOverrideCreate,
   Run,
   RunAudit,
   RunCreate,
@@ -201,6 +204,20 @@ export const api = {
       reason,
       evidence_refs: evidenceRefs,
     }),
+  // v0.4 M2 — one routing receipt, read and amended by its own id. There is deliberately no
+  // "receipts of a run" call: the run page discovers receipt ids from the audit it already
+  // fetches (`routingIndex.ts`), so the panel costs no request until a receipt is selected.
+  routingDecision: (receiptId: string) =>
+    getJson<RoutingDecisionReceipt>(`/api/v1/routing-decisions/${receiptId}`),
+  routingCandidates: (receiptId: string) =>
+    getJson<ConfigurationCandidate[]>(`/api/v1/routing-decisions/${receiptId}/candidates`),
+  overrideRoutingDecision: (receiptId: string, payload: RoutingOverrideCreate) =>
+    postJson<RoutingDecisionReceipt>(
+      `/api/v1/routing-decisions/${receiptId}/override`,
+      payload,
+    ),
+  cancelRoutingDecision: (receiptId: string) =>
+    postJson<RoutingDecisionReceipt>(`/api/v1/routing-decisions/${receiptId}/cancel`, {}),
   createSearch: (runId: string, payload: SearchCreate) =>
     postJson<SearchRecord>(`/api/v2/runs/${runId}/search`, payload),
   searches: (runId: string) =>
