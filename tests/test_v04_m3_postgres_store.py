@@ -584,9 +584,15 @@ async def test_an_open_contradiction_survives_the_round_trip_as_an_ineligible_ro
     try:
         project = await setup_project(store, tmp_path, marker)
         experience, segment, embedding, run = await setup_experience(store, project, marker)
-        memory, roots, _ = await project_in_memory(
+        memory, roots, revisions = await project_in_memory(
             project, experience, segment, embedding, run, workspace_id
         )
+        # The projector wrote to MemoryStore only; give PostgreSQL the same rows first, so the
+        # parity claim below compares two stores holding the same history.
+        for record in [*roots, *revisions]:
+            await store.put_experience_record(
+                record, experience_id=experience.experience_id
+            )
         payload = roots[0].model_dump(mode="python")
         payload.pop("content_hash")
         payload["contract_id"] = new_id("experience")
