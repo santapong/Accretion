@@ -1,6 +1,6 @@
 # v0.4 — Evidence-Aware Node Configuration Routing
 
-Status: **M0, M1, M3, M4, M5, M6, and M8 delivered; M2 locally verified, awaiting remote review (2026-09-06).**
+Status: **M0, M1, M3, M4, M5, M6, M7, and M8 delivered; M2 locally verified, awaiting remote review (2026-09-06).**
 
 | Document | Purpose |
 |---|---|
@@ -15,6 +15,7 @@ Status: **M0, M1, M3, M4, M5, M6, and M8 delivered; M2 locally verified, awaitin
 | [M4 plan](m4-plan.md) | The offline ranker, the calibration report, and why nothing learned loads without a holdout evaluation |
 | [M5 plan](m5-plan.md) | Cold start, the capped cross-domain prior, and the five routing-stage collaborators M6-M8 plug into |
 | [M6 plan](m6-plan.md) | Shadow evaluation by branched live rollout: what a shadow decision is, why it is never a replay, and the gates a fork passes |
+| [M7 plan](m7-plan.md) | The guarded bandit: the nine gates exploration passes, inverse-gap weighting under a conformal safety clip, and the cost ledger reconstructed from receipts |
 | [M8 plan](m8-plan.md) | The activation ledger, the rollback drill, and the CSPI-MT promotion gate over the Logarithmic-Smoothing estimator |
 | [Backlog](backlog.md) | Milestone order and the v0.3 deferrals carried into v0.4 |
 | [Forward package](../../sdd/future/v0.4-v1.0/00_READ_ME_FIRST.md) | Golden Direction, the cross-release contract registry, the research protocol, and the v0.5-v1.0 designs |

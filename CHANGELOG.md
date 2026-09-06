@@ -9,6 +9,36 @@ the three milestone PRs that merged before this file was updated.
 
 The M9 ladder is parked after its stylesheet port; the entries below it are v0.4 work.
 
+### v0.4 — M7 the guarded bandit, and the breakers that have authority over it
+
+- Added `src/accretion/routing/bandit.py`: `GuardedBandit` implements `stages.BehaviorPolicy` and
+  is the first thing in this repository that takes an action the deterministic selector would not
+  have taken. It explores only inside `A_safe` — hard-eligible candidates over the objective's
+  verified-success floor — and only on a `LOW_DIGITAL`, `WORKTREE`-isolated, reversible,
+  verifier-bound node whose ACTIVE router version has cleared `shadow_gate` and whose objective
+  authorises a budget (`AC4-M7-018`). The distribution is inverse-gap weighting,
+  `p(a) = 1/(K + gamma_t * (U(a_hat) - U(a)))` with `gamma_t = gamma_0 * sqrt(t)` counted per
+  `(workspace, node class)`, under R6's conformal clip `p(a) <= beta * p_safe` against the
+  epsilon-smoothed baseline; every drawn decision is an `EXPLORE` receipt carrying its **real**
+  propensity, including one that drew the greedy action, because the field records that an action
+  was drawn and not that it differed (`AC4-M7-019`) (#TBD).
+- Added `src/accretion/routing/breaker_inputs.py`: `BreakerSampler` turns a workspace's stored
+  evidence into one frozen `BreakerInput` — the node class's own recent false-acceptance rate and
+  claim coverage, the ACTIVE version's sealed calibration ECE read through
+  `LearnedPredictorLoader`, the critical cohorts of the latest promotion report as lower bounds,
+  and the training snapshot's provider windows against the snapshot's serving versions. Every
+  absence fails closed, and a store that will not answer returns an input that trips five of the
+  six breakers rather than only the availability one (`AC4-M7-020`) (#TBD).
+- Added `src/accretion/routing/settlement.py`: `ExplorationSettlement` implements
+  `stages.PostNodeHook` and replaces an exploration's charged upper bound with the cost its
+  experience record actually recorded, normalised against the node's own `resource_cap`. It
+  cannot raise: a node that ran and was verified is not failed by its own bookkeeping (#TBD).
+- Changed `src/accretion/routing/bootstrap.py`: under `AUTO` the behaviour policy is the
+  `GuardedBandit` and `ExplorationSettlement` joins the post-node hooks, sharing one
+  `LedgerRegistry` so the budget the bandit checks is the one the settlements moved. Under
+  `SHADOW` and `BASELINE_ONLY` the deterministic behaviour is unchanged, so exploration is a
+  structural property of the assembly rather than a branch inside the policy (#TBD).
+
 ### v0.4 — M6 shadow evaluation by branched live rollout
 
 - Added `src/accretion/routing/rollout.py`: `ShadowRoutingHook` re-scores the executed slate under
