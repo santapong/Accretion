@@ -31,6 +31,11 @@ import type {
   PluginDetail,
   PluginInstallation,
   ResolvedCapability,
+  RollbackCreate,
+  RouterActivation,
+  RouterLineage,
+  RouterModelVersion,
+  RouterPromotionReport,
   WorkspaceEntity,
   Project,
   ProjectCreate,
@@ -104,11 +109,27 @@ async function getJson<T>(path: string): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-async function postJson<T>(path: string, payload: unknown): Promise<T> {
+/**
+ * `headers` exists for one requirement and is empty for every other call.
+ *
+ * SDD §11 refuses `POST /api/v1/router-promotions/{id}/promote` and
+ * `POST /api/v1/router-models/{id}/rollback` without an `Idempotency-Key`, so those two
+ * calls have to send a header that no other client function needs. The alternative — a
+ * second `postJsonWithKey` helper beside this one — would have put a mutating request path
+ * outside the function every other request goes through, and `tests/
+ * test_v03_m6_api_client_contract.py` reads `postJson<T>(` followed by the path literal to
+ * check that path against the live app, so a call through a differently named helper is a
+ * call the contract test cannot see.
+ */
+async function postJson<T>(
+  path: string,
+  payload: unknown,
+  headers: Readonly<Record<string, string>> = {},
+): Promise<T> {
   const response = await fetch(`${API_ROOT}${path}`, {
     method: "POST",
     credentials: "include",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...headers },
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
@@ -218,6 +239,39 @@ export const api = {
     ),
   cancelRoutingDecision: (receiptId: string) =>
     postJson<RoutingDecisionReceipt>(`/api/v1/routing-decisions/${receiptId}/cancel`, {}),
+  // v0.4 M8 — the §17.3 router administration surface. Every call names the workspace
+  // because the server does: the two reads require membership of it, the two writes require
+  // administering it, and a resource belonging to another workspace is a 404 rather than a
+  // 403 so that these paths cannot be used to enumerate ids across a tenancy boundary.
+  //
+  // `POST /api/v1/router-promotions` (evaluate) is deliberately absent. Producing a sealed
+  // report is what a later promotion accepts as its authorisation, and in v0.4 that act
+  // stays API-only; the page promotes reports that already exist and never mints one.
+  routerModels: (workspaceId: string) =>
+    getJson<RouterModelVersion[]>(`/api/v1/router-models?workspace_id=${workspaceId}`),
+  routerLineage: (versionId: string, workspaceId: string) =>
+    getJson<RouterLineage>(
+      `/api/v1/router-models/${versionId}/lineage?workspace_id=${workspaceId}`,
+    ),
+  routerPromotion: (reportId: string, workspaceId: string) =>
+    getJson<RouterPromotionReport>(
+      `/api/v1/router-promotions/${reportId}?workspace_id=${workspaceId}`,
+    ),
+  // The key is derived from the natural key of the act rather than generated per attempt,
+  // which is what the server's own reasoning asks for: a report authorises one release and
+  // a version is withdrawn once, so a retry of either must replay rather than write again.
+  promoteRouter: (reportId: string, workspaceId: string) =>
+    postJson<RouterActivation>(
+      `/api/v1/router-promotions/${reportId}/promote?workspace_id=${workspaceId}`,
+      {},
+      { "Idempotency-Key": `promote-${reportId}` },
+    ),
+  rollbackRouter: (versionId: string, workspaceId: string, payload: RollbackCreate) =>
+    postJson<RouterActivation>(
+      `/api/v1/router-models/${versionId}/rollback?workspace_id=${workspaceId}`,
+      payload,
+      { "Idempotency-Key": `rollback-${versionId}` },
+    ),
   createSearch: (runId: string, payload: SearchCreate) =>
     postJson<SearchRecord>(`/api/v2/runs/${runId}/search`, payload),
   searches: (runId: string) =>

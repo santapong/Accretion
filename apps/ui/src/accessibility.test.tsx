@@ -57,6 +57,7 @@ const ROUTES: Array<[string, string | RegExp]> = [
   ["/history", "Run history / trace replay"],
   ["/approvals", "Verifiers / approvals"],
   ["/capabilities", "Capabilities, skills, and plugins"],
+  ["/admin/router", "Router administration"],
   ["/benchmarks/acr-arch", "ACR-ARCH"],
   ["/benchmarks/dynamic", "Dynamic workflow gate"],
   ["/benchmarks/search", "Quality vs compute"],

@@ -2,8 +2,9 @@
  * Every route the accessibility gate sweeps, with the `h1` each must render.
  *
  * The authority is `ROUTES` in `src/routes.tsx`, which the shell turns into both the
- * navigation bar and the router. Sixteen declared paths plus the `*` fallback is the
- * "seventeen routes" the release evidence and the README both claim.
+ * navigation bar and the router. Seventeen declared paths plus the `*` fallback since M9c
+ * added `/admin/router`; the "seventeen routes" the v0.3 release evidence claims was the
+ * sixteen-plus-fallback this file swept before it.
  *
  * This is a SUPERSET of `src/accessibility.test.tsx`'s ROUTES, which covers ten. The seven
  * it cannot reach - the five `/admin/*` pages, `/runs/:runId`, and `h1` *uniqueness* on the
@@ -36,8 +37,19 @@ export interface RouteUnderTest {
    * what was added, so the next PR that touches the route must delete this entry and write
    * its own — which is the only thing that stops one waiver from becoming a permanent
    * exemption for the busiest route in the app.
+   *
+   * `absentFromBase` is the stronger case a NEW route needs: the merge-base build has no
+   * such route at all, so its SPA answers with the `*` fallback and `openRoute` fails the
+   * base measurement on the heading assertion before any style is read. It suspends the
+   * BASE MEASUREMENT and nothing else — `styleDiff.ts` owns that decision and
+   * `styleDiff.test.ts` pins that the element floor survives it, which is what keeps a new
+   * route from being merged unmeasured.
    */
-  readonly structuralChange?: { readonly pr: string; readonly reason: string };
+  readonly structuralChange?: {
+    readonly pr: string;
+    readonly reason: string;
+    readonly absentFromBase?: boolean;
+  };
 }
 
 /** `:runId` is substituted with the id the seeded showcase run reports. */
@@ -66,6 +78,17 @@ export const ROUTES: readonly RouteUnderTest[] = [
   { path: "/admin/mcp", heading: "MCP servers" },
   { path: "/admin/capabilities/inspect", heading: "Capability inspector" },
   { path: "/admin/identity", heading: "Identity and roles" },
+  {
+    path: "/admin/router",
+    heading: "Router administration",
+    structuralChange: {
+      pr: "M9c",
+      reason:
+        "new route: the §17.3 router administration page did not exist in the merge-base " +
+        "build, which answers /admin/router with the 404 page",
+      absentFromBase: true,
+    },
+  },
   { path: "/benchmarks/acr-arch", heading: "ACR-ARCH" },
   { path: "/benchmarks/dynamic", heading: "Dynamic workflow gate" },
   { path: "/benchmarks/search", heading: "Quality vs compute" },
