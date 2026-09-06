@@ -525,4 +525,3 @@ bind; it is not worth a table in v0.4.
 The v0.3.1 operator-UI redesign (M9 of the v0.3 ladder) is parked after its stylesheet port
 completed; its remaining steps (Preflight, projection store, cosmic scene, orbit, dashboard,
 release) resume from their plan when the owner reopens it.
-
