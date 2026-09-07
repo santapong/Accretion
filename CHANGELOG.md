@@ -4,7 +4,20 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
-Nothing yet.
+### v0.4.1 — hardening
+
+- Made the router benchmark's pooling rule a registered field instead of a constant: a corpus
+  may now declare `pooling` in its `config.v1.json` and have each safety gate read either the
+  frozen conjunction (`verified` on every trial, a false acceptance on any) or the per-trial
+  rate, against unchanged thresholds. Every pooled cell now carries both readings —
+  `Outcome.verified_rate` and `Outcome.false_accept_rate` beside the booleans — and every
+  `GateReport` names the rule that produced it. The field is additive and optional, no shipped
+  corpus declares it, and an absent rule is the conjunction, so every corpus digest, every run
+  id and every table in `docs/research/v0.4/results.md` is byte-identical to v0.4.0. This is the
+  mechanism `ADR4-M10-005` asked for; `docs/research/v0.4/amendment-1.md` is the **draft**
+  amendment that would apply it to the v0.4 corpora, with the floor (0.70) and ceiling (0.05)
+  untouched and its expected outcome stated before any re-read, and no locked corpus is read
+  (`ADR4.1-003`) (#TBD).
 
 ## [0.4.0] - 2026-09-07
 

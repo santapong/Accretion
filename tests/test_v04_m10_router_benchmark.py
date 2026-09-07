@@ -156,8 +156,9 @@ def test_gates_are_reported_separately_from_utility() -> None:
         1 for row in oracle_cheap.rows if row.verified
     )
 
-    # And the gate report carries verdict counts and thresholds only. A field named for the
-    # objective would be the first step back towards one combined score.
+    # And the gate report carries verdict counts, thresholds and the pooling rule that
+    # produced them. A field named for the objective would be the first step back towards one
+    # combined score.
     gate_fields = {field.name for field in fields(GateReport)}
     assert gate_fields == {
         "selections",
@@ -169,6 +170,7 @@ def test_gates_are_reported_separately_from_utility() -> None:
         "false_acceptance_rate",
         "false_acceptance_ceiling",
         "false_acceptance_met",
+        "pooling",
     }
 
 
