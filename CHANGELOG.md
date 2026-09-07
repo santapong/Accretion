@@ -4,7 +4,12 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
-Nothing yet.
+### v0.4.1 — hardening
+
+- Changed CI so a `release/*` branch's own push skips the computed-style diff's base build the
+  way a `main`-base pull request already did: the v0.4.0 bridge's first push ran the diff against
+  the repository's initial commit and went red before its pull request existed to carry
+  `base_ref`. `STYLE_DIFF_SKIP=release-bridge` is set for the same case, so the skip is never silent (#TBD).
 
 ## [0.4.0] - 2026-09-07
 
