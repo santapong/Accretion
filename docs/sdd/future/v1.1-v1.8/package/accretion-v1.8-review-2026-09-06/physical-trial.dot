@@ -1,0 +1,31 @@
+digraph PhysicalTrial {
+  graph [rankdir=TB, bgcolor="#ffffff", pad="0.35", nodesep="0.5", ranksep="0.4", splines=polyline, fontname="Arial", fontsize=28, label="Accretion v1.8 - Physical preparation and trial\nTARGET DESIGN | EXISTING v0.6 PHYSICAL AUTHORITY", labelloc=t, labeljust=l];
+  node [shape=box, style="rounded,filled", fillcolor="#edf5ff", color="#3170a3", penwidth=1.6, fontname="Arial", fontsize=18, fontcolor="#172a3c", margin="0.22,0.14"];
+  edge [fontname="Arial", fontsize=13, color="#50677d", fontcolor="#31475b", penwidth=1.6, arrowsize=0.8];
+  task [label="Supported task and physical cell\nApproved safety envelope; compatible artifacts"];
+  advice [label="v1.8: rank allowed preparation choices\nDigital compute, harness, perception and planning"];
+  sim [label="Shadow and target simulation\nCompare the governed static baseline"];
+  preflight [label="Independent complete preflight\nConfiguration, calibration, safety and stop path", fillcolor="#dcf5e9", color="#26835d"];
+  freeze [label="Freeze the complete configuration\nManifest -> trial -> preflight -> audit receipt", fillcolor="#f3ecff", color="#8955b0"];
+  approval [label="Human approves the exact trial\nTime-bounded, single-use approval through v0.6", fillcolor="#fff1d5", color="#aa771b"];
+  gateway [label="v0.6 gateway: consume and arm\nRecheck digests, revocation and safety; issue lease", fillcolor="#fff1d5", color="#aa771b"];
+  execute [label="Execute once under deterministic control\nSafety supervisor + independent stop path", fillcolor="#fff1d5", color="#aa771b"];
+  outcome [label="Independent verification + outcome record\nTask success and safety reported separately", fillcolor="#dcf5e9", color="#26835d"];
+  static [label="Advice uncertain or unavailable\nUse governed static preparation\nor pause", fillcolor="#f4f4f4", color="#66717d"];
+  blocked [label="Record the reached stage and pause\nRejected preflight, denied/expired approval,\nmismatch, revocation or incident", fillcolor="#ffeded", color="#b64949"];
+  invalid [label="Any material change after freeze\nInvalidates the chain: new manifest, trial,\npreflight and exact approval required", fillcolor="#ffeded", color="#b64949"];
+  task -> advice -> sim -> preflight;
+  preflight -> freeze [label="PASS"];
+  freeze -> approval [label="immutable trial + preflight hashes"];
+  approval -> gateway [label="valid exact approval"];
+  gateway -> execute [label="bound lease + final gates"];
+  execute -> outcome [label="actual execution, including stops"];
+  advice -> static [label="fallback / abstain", style=dashed];
+  static -> sim [label="governed static candidate", style=dashed];
+  preflight -> blocked [label="FAIL / inconclusive", color="#b64949"];
+  approval -> blocked [label="denied / expired", color="#b64949"];
+  gateway -> blocked [label="mismatch / revoked", color="#b64949"];
+  freeze -> invalid [label="material change", color="#b64949"];
+  {rank=same; advice; static}
+  {rank=same; gateway; blocked; invalid}
+}

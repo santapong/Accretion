@@ -1,0 +1,30 @@
+{
+  "date": "2026-09-07",
+  "scope": "REPOSITORY_DOCUMENTATION_SETUP_ONLY",
+  "base_commit": "f023a67df33c2155cb282def9338c1821df84127",
+  "branch": "docs/v1x-design-package",
+  "source_archive": "Accretion_Latest_Complete_Package_2026-09-07.zip",
+  "source_archive_sha256": "b041618ba73a28bed61dcdde50b23e1fd04856030958487aa8e49ff13cce5450",
+  "imported_files": 187,
+  "all_original_bytes_preserved": true,
+  "validation": {
+    "make docs-check": "PASS; tracked Markdown plus full imported package integrity",
+    "make future-sdd-check": "PASS; 24 schemas, 183 synthetic cases, 101 events, 174 pending acceptance rows, 8 SDDs",
+    "full_markdown_inventory": "PASS; 221 files including untracked import; exact-hash exceptions for 3 historical references",
+    "html_navigation": "PASS; 52 relative links",
+    "uv run --no-sync ruff check .": "PASS; frozen imported code excluded from rewriting/linting",
+    "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync pytest -p pytest_asyncio.plugin tests/test_future_sdd_package.py": "PASS; 6 tests including modified, missing and extra payload rejection, manifest tampering and scoped historical-link exemption",
+    "uv lock --check": "PASS",
+    "git diff --check": "PASS"
+  },
+  "limits": {
+    "runtime_implementation": "NOT_CHANGED",
+    "full_application_tests": "NOT_RUN",
+    "research_experiments": "NOT_RUN",
+    "physical_trials": "NOT_RUN",
+    "new_browser_visual_audit": "NOT_RUN; original diagram files and receipts preserved",
+    "remote_refresh": "NOT_PERFORMED",
+    "commit_or_push": "NOT_PERFORMED",
+    "skill_installation": "NOT_CHANGED; original skill snapshots included for reference"
+  }
+}

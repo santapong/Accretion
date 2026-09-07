@@ -1,0 +1,410 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Accretion v1.8 | Target architecture",
+    "locale": "en",
+    "animation": "none",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "digital",
+        "label": "Digital run",
+        "focus": [
+          "studio",
+          "governance",
+          "orchestration",
+          "selection",
+          "execution",
+          "verification",
+          "evidence"
+        ],
+        "note": "Cumulative target design. Existing capabilities and future v1.x extensions are distinguished in the review."
+      },
+      {
+        "id": "learning",
+        "label": "Evidence and improvement",
+        "focus": [
+          "state",
+          "evidence",
+          "improvement",
+          "transfer",
+          "selection"
+        ],
+        "note": "Offline proposal, independent evaluation and human promotion govern all learned artifacts."
+      },
+      {
+        "id": "robotics",
+        "label": "Physical boundary",
+        "focus": [
+          "transfer",
+          "advisory",
+          "physical",
+          "verification"
+        ],
+        "note": "See the companion physical-trial diagram for preflight, freeze, approval and stop-path detail."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "studio",
+      "type": "frontend",
+      "label": "Experiment Studio",
+      "sublabel": "Goals, approvals, live evidence",
+      "pos": [
+        44,
+        64
+      ],
+      "size": [
+        224,
+        76
+      ],
+      "tag": "Human control"
+    },
+    {
+      "id": "governance",
+      "type": "security",
+      "label": "Project control",
+      "sublabel": "Contracts, policy, risk, budgets",
+      "pos": [
+        352,
+        64
+      ],
+      "size": [
+        224,
+        76
+      ],
+      "tag": "Authoritative backend"
+    },
+    {
+      "id": "orchestration",
+      "type": "backend",
+      "label": "Workflow and recovery",
+      "sublabel": "Graph plans; bounded recovery",
+      "pos": [
+        660,
+        64
+      ],
+      "size": [
+        224,
+        76
+      ],
+      "tag": "v0.8 / v0.9 / v1.3"
+    },
+    {
+      "id": "selection",
+      "type": "backend",
+      "label": "Configuration router",
+      "sublabel": "Compute + promoted harness",
+      "pos": [
+        968,
+        64
+      ],
+      "size": [
+        224,
+        76
+      ],
+      "tag": "v0.4 + v1.1 / v1.2"
+    },
+    {
+      "id": "state",
+      "type": "database",
+      "label": "Guarded state views",
+      "sublabel": "Beliefs, progress, experience",
+      "pos": [
+        44,
+        300
+      ],
+      "size": [
+        224,
+        76
+      ],
+      "tag": "v1.4"
+    },
+    {
+      "id": "evidence",
+      "type": "database",
+      "label": "Evidence and artifacts",
+      "sublabel": "Outcomes, cost, contradictions",
+      "pos": [
+        352,
+        300
+      ],
+      "size": [
+        224,
+        76
+      ],
+      "tag": "Append-only lineage"
+    },
+    {
+      "id": "verification",
+      "type": "security",
+      "label": "Independent verification",
+      "sublabel": "Predefined acceptance checks",
+      "pos": [
+        660,
+        300
+      ],
+      "size": [
+        224,
+        76
+      ],
+      "tag": "Producer cannot self-accept"
+    },
+    {
+      "id": "execution",
+      "type": "backend",
+      "label": "Isolated execution",
+      "sublabel": "Agent runtimes + scoped tools",
+      "pos": [
+        968,
+        300
+      ],
+      "size": [
+        224,
+        76
+      ],
+      "tag": "Final policy gate"
+    },
+    {
+      "id": "improvement",
+      "type": "backend",
+      "label": "Offline improvement",
+      "sublabel": "Harness search; optional adapters",
+      "pos": [
+        44,
+        544
+      ],
+      "size": [
+        224,
+        76
+      ],
+      "tag": "v1.5 / optional v1.6"
+    },
+    {
+      "id": "transfer",
+      "type": "backend",
+      "label": "Target simulation",
+      "sublabel": "Compatible weak-prior transfer",
+      "pos": [
+        352,
+        544
+      ],
+      "size": [
+        224,
+        76
+      ],
+      "tag": "v0.5 / v0.7 + v1.7"
+    },
+    {
+      "id": "advisory",
+      "type": "backend",
+      "label": "Physical preparation",
+      "sublabel": "Finite, compatible recommendations",
+      "pos": [
+        660,
+        544
+      ],
+      "size": [
+        224,
+        76
+      ],
+      "tag": "v1.8: before freeze"
+    },
+    {
+      "id": "physical",
+      "type": "security",
+      "label": "Governed physical trial",
+      "sublabel": "Exact trial gateway + safety path",
+      "pos": [
+        968,
+        544
+      ],
+      "size": [
+        224,
+        76
+      ],
+      "tag": "v0.6 execution + safety"
+    }
+  ],
+  "connections": [
+    {
+      "id": "studio_governance",
+      "from": "studio",
+      "to": "governance",
+      "label": "typed commands",
+      "variant": "emphasis"
+    },
+    {
+      "id": "governance_orchestration",
+      "from": "governance",
+      "to": "orchestration",
+      "label": "approved objective",
+      "variant": "emphasis",
+      "labelAt": [
+        618,
+        60
+      ]
+    },
+    {
+      "id": "orchestration_selection",
+      "from": "orchestration",
+      "to": "selection",
+      "label": "node contract",
+      "variant": "emphasis"
+    },
+    {
+      "id": "selection_execution",
+      "from": "selection",
+      "to": "execution",
+      "label": "one bound dispatch",
+      "variant": "emphasis",
+      "labelAt": [
+        1080,
+        154
+      ]
+    },
+    {
+      "id": "execution_verification",
+      "from": "execution",
+      "to": "verification",
+      "label": "candidate + trace",
+      "variant": "emphasis",
+      "labelAt": [
+        926,
+        296
+      ]
+    },
+    {
+      "id": "verification_evidence",
+      "from": "verification",
+      "to": "evidence",
+      "label": "verdict + evidence",
+      "variant": "emphasis",
+      "labelAt": [
+        618,
+        390
+      ]
+    },
+    {
+      "id": "evidence_governance",
+      "from": "evidence",
+      "to": "governance",
+      "label": "status projections"
+    },
+    {
+      "id": "evidence_state",
+      "from": "evidence",
+      "to": "state",
+      "label": "validated read views",
+      "labelAt": [
+        310,
+        296
+      ]
+    },
+    {
+      "id": "evidence_improvement",
+      "from": "evidence",
+      "to": "improvement",
+      "label": "eligible traces",
+      "variant": "dashed"
+    },
+    {
+      "id": "improvement_transfer",
+      "from": "improvement",
+      "to": "transfer",
+      "label": "promoted candidates",
+      "variant": "dashed",
+      "labelAt": [
+        310,
+        634
+      ]
+    },
+    {
+      "id": "transfer_advisory",
+      "from": "transfer",
+      "to": "advisory",
+      "label": "target evidence",
+      "variant": "dashed"
+    },
+    {
+      "id": "advisory_physical",
+      "from": "advisory",
+      "to": "physical",
+      "label": "preparation proposal",
+      "variant": "security",
+      "labelAt": [
+        926,
+        634
+      ]
+    },
+    {
+      "id": "physical_verification",
+      "from": "physical",
+      "to": "verification",
+      "label": "task + safety records",
+      "variant": "security"
+    },
+    {
+      "id": "improvement_selection",
+      "from": "improvement",
+      "to": "selection",
+      "label": "reviewed registry artifacts",
+      "variant": "dashed",
+      "fromSide": "left",
+      "toSide": "top",
+      "via": [
+        [
+          16,
+          582
+        ],
+        [
+          16,
+          20
+        ],
+        [
+          1080,
+          20
+        ]
+      ],
+      "labelAt": [
+        560,
+        15
+      ]
+    },
+    {
+      "id": "verification_orchestration",
+      "from": "verification",
+      "to": "orchestration",
+      "label": "typed digital failure",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Run and verify",
+      "items": [
+        "Dispatch and tools retain policy and approval checks.",
+        "Bounded digital recovery; unresolved results pause."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Learn through review",
+      "items": [
+        "State views need validated writes and fresh sources.",
+        "Offline candidates need independent tests and human promotion."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Physical authority",
+      "items": [
+        "v1.8 advises preparation; v0.6 controls exact trials.",
+        "Deterministic safety and an independent stop path remain mandatory."
+      ]
+    }
+  ]
+}

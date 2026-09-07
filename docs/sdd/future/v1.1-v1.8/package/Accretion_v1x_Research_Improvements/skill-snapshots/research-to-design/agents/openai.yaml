@@ -1,0 +1,4 @@
+interface:
+  display_name: "Research to Design"
+  short_description: "Read papers and turn evidence into testable designs"
+  default_prompt: "Use $research-to-design to verify relevant papers and adapt their methods into my project with a clear evidence map and experiment plan."

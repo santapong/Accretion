@@ -1,0 +1,323 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Accretion through v1.8 | User journey",
+    "locale": "en",
+    "animation": "none",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "you",
+      "label": "YOU"
+    },
+    {
+      "id": "system",
+      "label": "ACCRETION"
+    },
+    {
+      "id": "review",
+      "label": "EVIDENCE + REVIEW"
+    },
+    {
+      "id": "exceptions",
+      "label": "WHEN WORK NEEDS HELP",
+      "variant": "exception"
+    }
+  ],
+  "mainPath": [
+    "goal",
+    "contract",
+    "approve",
+    "plan",
+    "run",
+    "verify",
+    "result"
+  ],
+  "nodes": [
+    {
+      "id": "goal",
+      "lane": "you",
+      "col": 0,
+      "type": "frontend",
+      "label": "Describe your goal",
+      "sublabel": "Project, paper, task or experiment",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "contract",
+      "lane": "system",
+      "col": 0,
+      "type": "backend",
+      "label": "Make it testable",
+      "sublabel": "Scope, success checks and budget",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "approve",
+      "lane": "you",
+      "col": 1,
+      "type": "security",
+      "label": "Approve the scope",
+      "sublabel": "Approve scope and required actions",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "plan",
+      "lane": "system",
+      "col": 1,
+      "type": "backend",
+      "label": "Build the workflow",
+      "sublabel": "Choose compatible agents and tools",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "run",
+      "lane": "system",
+      "col": 2,
+      "type": "backend",
+      "label": "Run bounded work",
+      "sublabel": "Code, research, experiments or sim",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "verify",
+      "lane": "review",
+      "col": 3,
+      "type": "security",
+      "label": "Check the result",
+      "sublabel": "Independent tests and evidence",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "result",
+      "lane": "you",
+      "col": 4,
+      "type": "frontend",
+      "label": "Inspect the outcome",
+      "sublabel": "Artifacts, verdict, costs and limits",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "reuse",
+      "lane": "review",
+      "col": 5,
+      "type": "database",
+      "label": "Export or reuse",
+      "sublabel": "Reproducible bundle; eligible history",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "improve",
+      "lane": "system",
+      "col": 5,
+      "type": "backend",
+      "label": "Propose improvements",
+      "sublabel": "Offline tests and human promotion",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "recover",
+      "lane": "exceptions",
+      "col": 2,
+      "type": "backend",
+      "label": "Try a bounded repair",
+      "sublabel": "Eligible digital failures only",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "pause",
+      "lane": "exceptions",
+      "col": 4,
+      "type": "security",
+      "label": "Pause for a decision",
+      "sublabel": "Uncertain, unsafe or over budget",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "physical",
+      "lane": "system",
+      "col": 3,
+      "type": "security",
+      "label": "Physical trial gate",
+      "sublabel": "See detailed approval workflow",
+      "width": 184,
+      "height": 70,
+      "tag": "Optional physical branch"
+    }
+  ],
+  "edges": [
+    {
+      "id": "goal_contract",
+      "from": "goal",
+      "to": "contract",
+      "label": "clarify",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "contract_approve",
+      "from": "contract",
+      "to": "approve",
+      "label": "review",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "approve_plan",
+      "from": "approve",
+      "to": "plan",
+      "label": "authorized",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "plan_run",
+      "from": "plan",
+      "to": "run",
+      "label": "execute",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "run_verify",
+      "from": "run",
+      "to": "verify",
+      "label": "digital result",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "verify_result",
+      "from": "verify",
+      "to": "result",
+      "label": "PASS",
+      "role": "main",
+      "variant": "emphasis",
+      "route": "auto",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "result_reuse",
+      "from": "result",
+      "to": "reuse",
+      "label": "save evidence",
+      "role": "branch"
+    },
+    {
+      "id": "reuse_improve",
+      "from": "reuse",
+      "to": "improve",
+      "label": "eligible traces",
+      "role": "branch",
+      "variant": "dashed"
+    },
+    {
+      "id": "verify_recover",
+      "from": "verify",
+      "to": "recover",
+      "label": "eligible digital FAIL",
+      "role": "error",
+      "variant": "security"
+    },
+    {
+      "id": "recover_run",
+      "from": "recover",
+      "to": "run",
+      "label": "new budgeted attempt",
+      "role": "return",
+      "variant": "dashed"
+    },
+    {
+      "id": "verify_pause",
+      "from": "verify",
+      "to": "pause",
+      "label": "unresolved / blocked",
+      "role": "error",
+      "variant": "security"
+    },
+    {
+      "id": "pause_result",
+      "from": "pause",
+      "to": "result",
+      "label": "record non-success",
+      "role": "branch"
+    },
+    {
+      "id": "run_physical",
+      "from": "run",
+      "to": "physical",
+      "label": "supported physical task",
+      "role": "branch",
+      "variant": "security"
+    },
+    {
+      "id": "physical_verify",
+      "from": "physical",
+      "to": "verify",
+      "label": "trial evidence",
+      "role": "branch",
+      "variant": "security"
+    }
+  ],
+  "semanticChecks": {
+    "allowedRoots": [
+      "goal"
+    ],
+    "allowedTerminals": [
+      "improve"
+    ],
+    "requiredPaths": [
+      {
+        "from": "goal",
+        "to": "verify"
+      },
+      {
+        "from": "physical",
+        "to": "result"
+      }
+    ]
+  },
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "What you receive",
+      "items": [
+        "A visible workflow with reasons for each choice.",
+        "Code, reports, experiment outputs and reproducible evidence.",
+        "Costs and failures remain visible alongside successful work."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Where you decide",
+      "items": [
+        "Review workflow choices and approve consequential actions.",
+        "Resolve uncertainty; promotion needs human review.",
+        "Every physical trial needs its own exact approval."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "What success means",
+      "items": [
+        "An agent saying done is insufficient for acceptance.",
+        "PASS requires the predefined independent checks.",
+        "FAIL, INCONCLUSIVE and stopped trials stay visible."
+      ]
+    }
+  ]
+}

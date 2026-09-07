@@ -1,0 +1,30 @@
+digraph UserJourney {
+  graph [rankdir=TB, bgcolor="#ffffff", pad="0.35", nodesep="0.42", ranksep="0.48", splines=polyline, fontname="Arial", fontsize=28, label="Accretion through v1.8 - User journey\nPLANNED CAPABILITIES", labelloc=t, labeljust=l];
+  node [shape=box, style="rounded,filled", fillcolor="#ecf6ff", color="#3170a3", penwidth=1.6, fontname="Arial", fontsize=19, fontcolor="#172a3c", margin="0.22,0.14"];
+  edge [fontname="Arial", fontsize=13, color="#50677d", fontcolor="#31475b", penwidth=1.6, arrowsize=0.8];
+  goal [label="1  Describe your goal\nChoose a project, paper or experiment", fillcolor="#e8e9ff", color="#6460a9"];
+  scope [label="2  Make the goal testable\nAccretion defines scope, checks and budget"];
+  review [label="3  Review objective and workflow\nApprove scope and consequential actions", fillcolor="#e8e9ff", color="#6460a9"];
+  run [label="4  Execute bounded work\nCompatible agents, tools and simulation"];
+  verify [label="5  Verify independently\nPredefined tests inspect the actual result", fillcolor="#dcf5e9", color="#26835d"];
+  result [label="6  Inspect the recorded outcome\nArtifacts + verdict + costs + limitations", fillcolor="#e8e9ff", color="#6460a9"];
+  export [label="7  Export or reuse evidence\nReports, reproducible bundle, eligible history"];
+  learn [label="Optional offline improvement\nTest candidates; human approves promotion", style="rounded,dashed,filled", fillcolor="#f3ecff", color="#8955b0"];
+  recover [label="Bounded digital recovery\nRepair, reroute or request replan\nwithin the remaining budget", fillcolor="#fff1d5", color="#aa771b"];
+  pause [label="Pause / fail / human review\nPreserve evidence and reasons\nNo automatic acceptance", fillcolor="#ffeded", color="#b64949"];
+  physical [label="Optional physical task\nAdvisory -> preflight -> freeze\n-> exact approval -> one trial\n(see physical-trial detail)", fillcolor="#fff1d5", color="#aa771b"];
+  goal [group=spine]; scope [group=spine]; review [group=spine]; run [group=spine]; verify [group=spine]; result [group=spine]; export [group=spine]; learn [group=spine];
+  goal -> scope -> review -> run;
+  run -> verify [label="digital result"];
+  verify -> result [label="PASS"];
+  result -> export;
+  export -> learn [label="eligible evidence only", style=dashed];
+  verify -> recover [label="eligible DIGITAL failure", color="#aa771b"];
+  recover -> run [label="new budgeted attempt", style=dashed, constraint=false, color="#aa771b"];
+  verify -> pause [label="unresolved / blocked", color="#b64949"];
+  pause -> result [label="non-success outcome", color="#b64949"];
+  run -> physical [label="supported physical task", color="#aa771b"];
+  physical -> verify [label="task + safety evidence", color="#aa771b"];
+  {rank=same; run; physical}
+  {rank=same; recover; verify; pause; recover -> verify [style=invis, weight=100]; verify -> pause [style=invis, weight=100]}
+}

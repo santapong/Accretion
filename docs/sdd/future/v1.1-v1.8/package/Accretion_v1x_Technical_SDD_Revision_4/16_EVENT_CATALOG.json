@@ -1,0 +1,1019 @@
+{
+  "document_revision": 4,
+  "events": [
+    {
+      "name": "compute.profile.registered",
+      "owner_release": "v1.1.0",
+      "source_file": "04_Accretion_SDD_v1.1.0.md",
+      "subject_contract": "ComputeProfile",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "compute.compiler.started",
+      "owner_release": "v1.1.0",
+      "source_file": "04_Accretion_SDD_v1.1.0.md",
+      "subject_contract": "ComputeCompilerRun",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "compute.portfolio.compiled",
+      "owner_release": "v1.1.0",
+      "source_file": "04_Accretion_SDD_v1.1.0.md",
+      "subject_contract": "ComputePortfolio",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "compute.portfolio.validation_failed",
+      "owner_release": "v1.1.0",
+      "source_file": "04_Accretion_SDD_v1.1.0.md",
+      "subject_contract": "ComputePortfolio",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "compute.decision.recorded",
+      "owner_release": "v1.1.0",
+      "source_file": "04_Accretion_SDD_v1.1.0.md",
+      "subject_contract": "ComputeDecisionReceipt",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "compute.decision.abstained",
+      "owner_release": "v1.1.0",
+      "source_file": "04_Accretion_SDD_v1.1.0.md",
+      "subject_contract": "ComputeDecisionReceipt",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "compute.execution.started",
+      "owner_release": "v1.1.0",
+      "source_file": "04_Accretion_SDD_v1.1.0.md",
+      "subject_contract": "ComputeDispatchBinding",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "compute.outcome.recorded",
+      "owner_release": "v1.1.0",
+      "source_file": "04_Accretion_SDD_v1.1.0.md",
+      "subject_contract": "TTVSOutcome",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "compute.policy.promoted",
+      "owner_release": "v1.1.0",
+      "source_file": "04_Accretion_SDD_v1.1.0.md",
+      "subject_contract": "PromotionDecision",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "compute.policy.rolled_back",
+      "owner_release": "v1.1.0",
+      "source_file": "04_Accretion_SDD_v1.1.0.md",
+      "subject_contract": "PromotionDecision",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness.bundle.registered",
+      "owner_release": "v1.2.0",
+      "source_file": "05_Accretion_SDD_v1.2.0.md",
+      "subject_contract": "HarnessLifecycleRecord",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness.bundle.packaged",
+      "owner_release": "v1.2.0",
+      "source_file": "05_Accretion_SDD_v1.2.0.md",
+      "subject_contract": "HarnessLifecycleRecord",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness.bundle.validation_failed",
+      "owner_release": "v1.2.0",
+      "source_file": "05_Accretion_SDD_v1.2.0.md",
+      "subject_contract": "HarnessLifecycleRecord",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness.regime.registered",
+      "owner_release": "v1.2.0",
+      "source_file": "05_Accretion_SDD_v1.2.0.md",
+      "subject_contract": "HarnessRegime",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness.portfolio.compile_started",
+      "owner_release": "v1.2.0",
+      "source_file": "05_Accretion_SDD_v1.2.0.md",
+      "subject_contract": "HarnessPortfolio",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness.portfolio.compiled",
+      "owner_release": "v1.2.0",
+      "source_file": "05_Accretion_SDD_v1.2.0.md",
+      "subject_contract": "HarnessPortfolio",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness.portfolio.promoted",
+      "owner_release": "v1.2.0",
+      "source_file": "05_Accretion_SDD_v1.2.0.md",
+      "subject_contract": "HarnessPortfolio",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness.selection.recorded",
+      "owner_release": "v1.2.0",
+      "source_file": "05_Accretion_SDD_v1.2.0.md",
+      "subject_contract": "HarnessSelectionReceipt",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness.selection.fallback",
+      "owner_release": "v1.2.0",
+      "source_file": "05_Accretion_SDD_v1.2.0.md",
+      "subject_contract": "HarnessSelectionReceipt",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness.bundle.promoted",
+      "owner_release": "v1.2.0",
+      "source_file": "05_Accretion_SDD_v1.2.0.md",
+      "subject_contract": "HarnessLifecycleRecord",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness.bundle.revoked",
+      "owner_release": "v1.2.0",
+      "source_file": "05_Accretion_SDD_v1.2.0.md",
+      "subject_contract": "HarnessLifecycleRecord",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness.portfolio.rolled_back",
+      "owner_release": "v1.2.0",
+      "source_file": "05_Accretion_SDD_v1.2.0.md",
+      "subject_contract": "HarnessPortfolio",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "failure.ownership.resolved",
+      "owner_release": "v1.3.0",
+      "source_file": "06_Accretion_SDD_v1.3.0.md",
+      "subject_contract": "FailureEvent",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "failure.ownership.unknown",
+      "owner_release": "v1.3.0",
+      "source_file": "06_Accretion_SDD_v1.3.0.md",
+      "subject_contract": "FailureEvent",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "recovery.candidates.generated",
+      "owner_release": "v1.3.0",
+      "source_file": "06_Accretion_SDD_v1.3.0.md",
+      "subject_contract": "RecoveryContext",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "recovery.decision.recorded",
+      "owner_release": "v1.3.0",
+      "source_file": "06_Accretion_SDD_v1.3.0.md",
+      "subject_contract": "RecoveryDecisionReceipt",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "recovery.decision.stopped",
+      "owner_release": "v1.3.0",
+      "source_file": "06_Accretion_SDD_v1.3.0.md",
+      "subject_contract": "RecoveryDecisionReceipt",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "recovery.budget.reserved",
+      "owner_release": "v1.3.0",
+      "source_file": "06_Accretion_SDD_v1.3.0.md",
+      "subject_contract": "RecoveryReservation",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "recovery.action.dispatched",
+      "owner_release": "v1.3.0",
+      "source_file": "06_Accretion_SDD_v1.3.0.md",
+      "subject_contract": "RecoveryDecisionReceipt",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "recovery.attempt.completed",
+      "owner_release": "v1.3.0",
+      "source_file": "06_Accretion_SDD_v1.3.0.md",
+      "subject_contract": "AttemptChain",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "recovery.outcome.recorded",
+      "owner_release": "v1.3.0",
+      "source_file": "06_Accretion_SDD_v1.3.0.md",
+      "subject_contract": "RecoveryOutcome",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "recovery.policy.rolled_back",
+      "owner_release": "v1.3.0",
+      "source_file": "06_Accretion_SDD_v1.3.0.md",
+      "subject_contract": "PromotionDecision",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "state.view.materialized",
+      "owner_release": "v1.4.0",
+      "source_file": "07_Accretion_SDD_v1.4.0.md",
+      "subject_contract": "RuntimeStateView",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "state.view.redacted",
+      "owner_release": "v1.4.0",
+      "source_file": "07_Accretion_SDD_v1.4.0.md",
+      "subject_contract": "RuntimeStateView",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "state.action.requested",
+      "owner_release": "v1.4.0",
+      "source_file": "07_Accretion_SDD_v1.4.0.md",
+      "subject_contract": "StateAccessAction",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "state.action.selected",
+      "owner_release": "v1.4.0",
+      "source_file": "07_Accretion_SDD_v1.4.0.md",
+      "subject_contract": "StateAccessAction",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "state.action.denied",
+      "owner_release": "v1.4.0",
+      "source_file": "07_Accretion_SDD_v1.4.0.md",
+      "subject_contract": "StateAccessAction",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "state.proposal.submitted",
+      "owner_release": "v1.4.0",
+      "source_file": "07_Accretion_SDD_v1.4.0.md",
+      "subject_contract": "StateCommitProposal",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "state.proposal.validated",
+      "owner_release": "v1.4.0",
+      "source_file": "07_Accretion_SDD_v1.4.0.md",
+      "subject_contract": "StateValidationReceipt",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "state.proposal.rejected",
+      "owner_release": "v1.4.0",
+      "source_file": "07_Accretion_SDD_v1.4.0.md",
+      "subject_contract": "StateValidationReceipt",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "state.revision.committed",
+      "owner_release": "v1.4.0",
+      "source_file": "07_Accretion_SDD_v1.4.0.md",
+      "subject_contract": "StateCoordinationReceipt",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "state.coordination.completed",
+      "owner_release": "v1.4.0",
+      "source_file": "07_Accretion_SDD_v1.4.0.md",
+      "subject_contract": "StateCoordinationOutcome",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "state.policy.promoted",
+      "owner_release": "v1.4.0",
+      "source_file": "07_Accretion_SDD_v1.4.0.md",
+      "subject_contract": "PromotionDecision",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "state.policy.rolled_back",
+      "owner_release": "v1.4.0",
+      "source_file": "07_Accretion_SDD_v1.4.0.md",
+      "subject_contract": "PromotionDecision",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "trace_cohort.frozen",
+      "owner_release": "v1.5.0",
+      "source_file": "08_Accretion_SDD_v1.5.0.md",
+      "subject_contract": "TraceCohort",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "trace_cohort.redaction_failed",
+      "owner_release": "v1.5.0",
+      "source_file": "08_Accretion_SDD_v1.5.0.md",
+      "subject_contract": "TraceCohort",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness_optimization.started",
+      "owner_release": "v1.5.0",
+      "source_file": "08_Accretion_SDD_v1.5.0.md",
+      "subject_contract": "HarnessOptimizationRun",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness_optimization.diagnostic_completed",
+      "owner_release": "v1.5.0",
+      "source_file": "08_Accretion_SDD_v1.5.0.md",
+      "subject_contract": "HarnessDiagnostic",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness_candidate.proposed",
+      "owner_release": "v1.5.0",
+      "source_file": "08_Accretion_SDD_v1.5.0.md",
+      "subject_contract": "CapabilityChangeProposal",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness_candidate.screen_failed",
+      "owner_release": "v1.5.0",
+      "source_file": "08_Accretion_SDD_v1.5.0.md",
+      "subject_contract": "CapabilityChangeProposal",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness_candidate.evaluated",
+      "owner_release": "v1.5.0",
+      "source_file": "08_Accretion_SDD_v1.5.0.md",
+      "subject_contract": "CandidateEvaluationReport",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness_finalists.frozen",
+      "owner_release": "v1.5.0",
+      "source_file": "08_Accretion_SDD_v1.5.0.md",
+      "subject_contract": "HarnessOptimizationRun",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness_hidden_evaluation.completed",
+      "owner_release": "v1.5.0",
+      "source_file": "08_Accretion_SDD_v1.5.0.md",
+      "subject_contract": "HarnessComparisonReport",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness_optimization.run.completed",
+      "owner_release": "v1.5.0",
+      "source_file": "08_Accretion_SDD_v1.5.0.md",
+      "subject_contract": "HarnessOptimizationRun",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "harness_candidate.promotion_decided",
+      "owner_release": "v1.5.0",
+      "source_file": "08_Accretion_SDD_v1.5.0.md",
+      "subject_contract": "PromotionDecision",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "policy_adaptation.eligibility_decided",
+      "owner_release": "v1.6.0",
+      "source_file": "09_Accretion_SDD_v1.6.0.md",
+      "subject_contract": "PolicyAdaptationExperiment",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "policy_adaptation.protocol_frozen",
+      "owner_release": "v1.6.0",
+      "source_file": "09_Accretion_SDD_v1.6.0.md",
+      "subject_contract": "PolicyAdaptationExperiment",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "policy_adaptation.rollout_completed",
+      "owner_release": "v1.6.0",
+      "source_file": "09_Accretion_SDD_v1.6.0.md",
+      "subject_contract": "PolicyAdaptationExperiment",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "policy_adaptation.pseudo_labels_validated",
+      "owner_release": "v1.6.0",
+      "source_file": "09_Accretion_SDD_v1.6.0.md",
+      "subject_contract": "PseudoLabelCohort",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "policy_adaptation.training_started",
+      "owner_release": "v1.6.0",
+      "source_file": "09_Accretion_SDD_v1.6.0.md",
+      "subject_contract": "PolicyAdaptationExperiment",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "policy_adaptation.training_completed",
+      "owner_release": "v1.6.0",
+      "source_file": "09_Accretion_SDD_v1.6.0.md",
+      "subject_contract": "PolicyAdaptationExperiment",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "policy_adaptation.experiment.completed",
+      "owner_release": "v1.6.0",
+      "source_file": "09_Accretion_SDD_v1.6.0.md",
+      "subject_contract": "PolicyAdaptationExperiment",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "adapter.artifact.registered",
+      "owner_release": "v1.6.0",
+      "source_file": "09_Accretion_SDD_v1.6.0.md",
+      "subject_contract": "AdapterArtifact",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "adapter.evaluation.completed",
+      "owner_release": "v1.6.0",
+      "source_file": "09_Accretion_SDD_v1.6.0.md",
+      "subject_contract": "AdaptationEvaluationReport",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "adapter.promotion_decided",
+      "owner_release": "v1.6.0",
+      "source_file": "09_Accretion_SDD_v1.6.0.md",
+      "subject_contract": "AdaptationPromotionReceipt",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "adapter.canary_started",
+      "owner_release": "v1.6.0",
+      "source_file": "09_Accretion_SDD_v1.6.0.md",
+      "subject_contract": "AdapterArtifact",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "adapter.rolled_back",
+      "owner_release": "v1.6.0",
+      "source_file": "09_Accretion_SDD_v1.6.0.md",
+      "subject_contract": "AdapterArtifact",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "adapter.revoked",
+      "owner_release": "v1.6.0",
+      "source_file": "09_Accretion_SDD_v1.6.0.md",
+      "subject_contract": "AdapterArtifact",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "efficiency_domain.signature.registered",
+      "owner_release": "v1.7.0",
+      "source_file": "10_Accretion_SDD_v1.7.0.md",
+      "subject_contract": "EfficiencyDomainSignature",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "efficiency_transfer.study.frozen",
+      "owner_release": "v1.7.0",
+      "source_file": "10_Accretion_SDD_v1.7.0.md",
+      "subject_contract": "EfficiencyTransferDecision",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "efficiency_transfer.compatibility.decided",
+      "owner_release": "v1.7.0",
+      "source_file": "10_Accretion_SDD_v1.7.0.md",
+      "subject_contract": "EfficiencyTransferDecision",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "efficiency_transfer.shadow.started",
+      "owner_release": "v1.7.0",
+      "source_file": "10_Accretion_SDD_v1.7.0.md",
+      "subject_contract": "EfficiencyTransferDecision",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "efficiency_transfer.target_observation.recorded",
+      "owner_release": "v1.7.0",
+      "source_file": "10_Accretion_SDD_v1.7.0.md",
+      "subject_contract": "EfficiencyTransferOutcome",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "efficiency_transfer.negative_detected",
+      "owner_release": "v1.7.0",
+      "source_file": "10_Accretion_SDD_v1.7.0.md",
+      "subject_contract": "EfficiencyTransferOutcome",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "efficiency_transfer.threshold_reached",
+      "owner_release": "v1.7.0",
+      "source_file": "10_Accretion_SDD_v1.7.0.md",
+      "subject_contract": "EfficiencyTransferOutcome",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "efficiency_transfer.outcome.recorded",
+      "owner_release": "v1.7.0",
+      "source_file": "10_Accretion_SDD_v1.7.0.md",
+      "subject_contract": "EfficiencyTransferOutcome",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "efficiency_transfer.promotion_decided",
+      "owner_release": "v1.7.0",
+      "source_file": "10_Accretion_SDD_v1.7.0.md",
+      "subject_contract": "PromotionDecision",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "efficiency_transfer.rolled_back",
+      "owner_release": "v1.7.0",
+      "source_file": "10_Accretion_SDD_v1.7.0.md",
+      "subject_contract": "PromotionDecision",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "physical_optimization.eligibility.decided",
+      "owner_release": "v1.8.0",
+      "source_file": "11_Accretion_SDD_v1.8.0.md",
+      "subject_contract": "PhysicalOptimizationAdvisory",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "physical_optimization.candidates.frozen",
+      "owner_release": "v1.8.0",
+      "source_file": "11_Accretion_SDD_v1.8.0.md",
+      "subject_contract": "PhysicalOptimizationAdvisory",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "physical_optimization.advisory.created",
+      "owner_release": "v1.8.0",
+      "source_file": "11_Accretion_SDD_v1.8.0.md",
+      "subject_contract": "PhysicalOptimizationAdvisory",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "physical_optimization.shadow.completed",
+      "owner_release": "v1.8.0",
+      "source_file": "11_Accretion_SDD_v1.8.0.md",
+      "subject_contract": "PhysicalOptimizationAdvisory",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "physical_optimization.simulation.completed",
+      "owner_release": "v1.8.0",
+      "source_file": "11_Accretion_SDD_v1.8.0.md",
+      "subject_contract": "PhysicalOptimizationAdvisory",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "physical_optimization.preflight.requested",
+      "owner_release": "v1.8.0",
+      "source_file": "11_Accretion_SDD_v1.8.0.md",
+      "subject_contract": "PhysicalOptimizationAdvisory",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "physical_optimization.preflight.completed",
+      "owner_release": "v1.8.0",
+      "source_file": "11_Accretion_SDD_v1.8.0.md",
+      "subject_contract": "PhysicalPreflightReceipt",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "physical_execution.configuration.frozen",
+      "owner_release": "v1.8.0",
+      "source_file": "11_Accretion_SDD_v1.8.0.md",
+      "subject_contract": "PhysicalExecutionFreezeReceipt",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "physical_execution.freeze.invalidated",
+      "owner_release": "v1.8.0",
+      "source_file": "11_Accretion_SDD_v1.8.0.md",
+      "subject_contract": "FreezeInvalidation",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "physical_optimization.drift.detected",
+      "owner_release": "v1.8.0",
+      "source_file": "11_Accretion_SDD_v1.8.0.md",
+      "subject_contract": "PhysicalOptimizationAdvisory",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "physical_efficiency.outcome.recorded",
+      "owner_release": "v1.8.0",
+      "source_file": "11_Accretion_SDD_v1.8.0.md",
+      "subject_contract": "PhysicalEfficiencyOutcome",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "physical_optimization.advisory.revoked",
+      "owner_release": "v1.8.0",
+      "source_file": "11_Accretion_SDD_v1.8.0.md",
+      "subject_contract": "PhysicalOptimizationAdvisory",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "research.study.frozen",
+      "owner_release": "shared",
+      "source_file": "03_SHARED_RESEARCH_EVALUATION_PROTOCOL.md",
+      "subject_contract": "ResearchStudyPlan",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "research.verifier.qualified",
+      "owner_release": "shared",
+      "source_file": "03_SHARED_RESEARCH_EVALUATION_PROTOCOL.md",
+      "subject_contract": "VerifierQualificationReport",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "research.adaptive_observation.recorded",
+      "owner_release": "shared",
+      "source_file": "03_SHARED_RESEARCH_EVALUATION_PROTOCOL.md",
+      "subject_contract": "AdaptiveEvaluationStep",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "research.intervention.recorded",
+      "owner_release": "shared",
+      "source_file": "03_SHARED_RESEARCH_EVALUATION_PROTOCOL.md",
+      "subject_contract": "ObservableInterventionRecord",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "research.evidence_derivation.recorded",
+      "owner_release": "shared",
+      "source_file": "03_SHARED_RESEARCH_EVALUATION_PROTOCOL.md",
+      "subject_contract": "EvidenceDerivationRecord",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "research.drift.assessed",
+      "owner_release": "shared",
+      "source_file": "03_SHARED_RESEARCH_EVALUATION_PROTOCOL.md",
+      "subject_contract": "DriftEvaluationPlan",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "research.data_roles.frozen",
+      "owner_release": "shared",
+      "source_file": "03_SHARED_RESEARCH_EVALUATION_PROTOCOL.md",
+      "subject_contract": "ResearchDataRolePlan",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "research.uncertainty.recorded",
+      "owner_release": "shared",
+      "source_file": "03_SHARED_RESEARCH_EVALUATION_PROTOCOL.md",
+      "subject_contract": "UncertaintyStatement",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "research.comparison.frozen",
+      "owner_release": "shared",
+      "source_file": "03_SHARED_RESEARCH_EVALUATION_PROTOCOL.md",
+      "subject_contract": "ResearchComparisonPlan",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "research.setting_observation.recorded",
+      "owner_release": "shared",
+      "source_file": "03_SHARED_RESEARCH_EVALUATION_PROTOCOL.md",
+      "subject_contract": "EffectiveSettingObservation",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    },
+    {
+      "name": "state.view.consumption_decided",
+      "owner_release": "v1.4.0",
+      "source_file": "07_Accretion_SDD_v1.4.0.md",
+      "subject_contract": "StateConsumptionReceipt",
+      "payload_schema": "EventPayload",
+      "envelope_owner": "existing EventEnvelope",
+      "delivery": "AT_LEAST_ONCE_DEDUPLICATE_BY_EVENT_ID",
+      "authority": "OBSERVATION_ONLY"
+    }
+  ],
+  "retired_draft_names": {
+    "harness_optimization.completed": "harness_optimization.run.completed"
+  },
+  "rule": "No live aliases without an explicitly registered versioned migration. Requested, selected and completed are distinct lifecycle events."
+}

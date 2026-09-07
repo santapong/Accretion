@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "validate",
+  "stage": "render",
+  "type": "workflow",
+  "input": "/mnt/data/accretion-v1.8-review-2026-09-06/user-journey.json",
+  "error": "Workflow edge \"verify_result\" has explicit geometry that violates readable route feasibility with authored endpoint sides.",
+  "diagnostics": [
+    {
+      "code": "workflow/explicit-pin-conflict",
+      "severity": "error",
+      "message": "Workflow edge \"verify_result\" has explicit geometry that violates readable route feasibility with authored endpoint sides.",
+      "subject": {
+        "diagramType": "workflow",
+        "edge": "verify_result",
+        "from": "verify",
+        "to": "result"
+      },
+      "evidence": {
+        "invariant": "readable route feasibility with authored endpoint sides",
+        "conflictingPins": [
+          {
+            "edge": "verify_result",
+            "field": "fromSide",
+            "path": "/edges/5/fromSide",
+            "value": "right"
+          },
+          {
+            "edge": "verify_result",
+            "field": "toSide",
+            "path": "/edges/5/toSide",
+            "value": "bottom"
+          }
+        ],
+        "actualCoordinates": {
+          "sourceAnchor": [
+            972,
+            401
+          ],
+          "targetAnchor": [
+            986,
+            156
+          ]
+        },
+        "fromSide": "right",
+        "toSide": "bottom",
+        "attemptedCandidateFamilies": [
+          "facing-straight",
+          "horizontal-then-vertical",
+          "vertical-then-horizontal",
+          "lane-gap-corridor",
+          "column-gap-corridor",
+          "outside-left",
+          "outside-right",
+          "top-corridor",
+          "bottom-corridor"
+        ],
+        "candidateCount": 9
+      },
+      "supportedFixes": []
+    }
+  ]
+}

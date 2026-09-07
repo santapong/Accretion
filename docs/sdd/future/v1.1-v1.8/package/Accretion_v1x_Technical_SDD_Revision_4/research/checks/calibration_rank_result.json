@@ -1,0 +1,41 @@
+{
+  "scope": "EXACT_MATHEMATICAL_CHECK_ONLY",
+  "cases": [
+    {
+      "calibration_n": 6,
+      "target_coverage": 0.95,
+      "required_rank": 7,
+      "clamped_rank": 6,
+      "clamped_exact_coverage": 0.8571428571428571,
+      "conservative_exact_coverage": 1.0,
+      "needs_full_support_set": true
+    },
+    {
+      "calibration_n": 15,
+      "target_coverage": 0.95,
+      "required_rank": 16,
+      "clamped_rank": 15,
+      "clamped_exact_coverage": 0.9375,
+      "conservative_exact_coverage": 1.0,
+      "needs_full_support_set": true
+    },
+    {
+      "calibration_n": 19,
+      "target_coverage": 0.95,
+      "required_rank": 19,
+      "clamped_rank": 19,
+      "clamped_exact_coverage": 0.95,
+      "conservative_exact_coverage": 0.95,
+      "needs_full_support_set": false
+    },
+    {
+      "calibration_n": 99,
+      "target_coverage": 0.95,
+      "required_rank": 95,
+      "clamped_rank": 95,
+      "clamped_exact_coverage": 0.95,
+      "conservative_exact_coverage": 0.95,
+      "needs_full_support_set": false
+    }
+  ]
+}

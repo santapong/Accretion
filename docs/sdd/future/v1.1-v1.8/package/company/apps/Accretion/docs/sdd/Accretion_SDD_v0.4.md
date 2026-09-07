@@ -1,0 +1,1326 @@
+# Accretion v0.4 Software Design Description
+
+## Evidence-Aware Node Configuration Routing
+
+**Document type:** Implementation-ready Software Design Description  
+**Status:** Normative for v0.4. Unlocked 2026-09-05: the v0.1-v0.3 release gates are evidenced on `develop` (`scripts/release_gate.py` 5/5, `in scope: 117 proven: 111 unmet MUST: 0`) and the Golden Direction was accepted by the owner. Where an illustrative schema here differs from the Cross-Release Contract Registry, the registry wins (ADR-051..059).  
+**Date:** 2026-08-20  
+**Depends on:** Accretion v0.1, v0.2, v0.3, and the Golden Direction charter  
+**Primary domain:** Software engineering and AI research  
+**Explicitly excluded:** Learned graph planning and physical Robotics
+
+---
+
+## 1. Purpose
+
+Accretion v0.4 adds a learned, evidence-governed router that selects a complete execution configuration for every workflow graph node:
+
+\[
+a_i=(Runtime, Model, Tools, Skills, VerifierImplementation, Environment)
+\]
+
+The router must reduce constrained configuration regret on unseen Software/AI projects while preserving the approved verified-success floor and all policy, risk, permission, and verification invariants.
+
+This SDD specifies how to build v0.4. The separate research protocol specifies how to evaluate the scientific claim.
+
+---
+
+## 2. Normative language
+
+`MUST`, `MUST NOT`, `SHOULD`, `SHOULD NOT`, and `MAY` are normative.
+
+- **Planner:** the governed v0.2 workflow planner.
+- **Router:** the v0.4 node configuration router.
+- **Producer:** the runtime/configuration that creates the node artifact.
+- **Verifier:** an independent implementation of the frozen verification specification.
+- **Configuration:** the complete routed execution tuple.
+- **Experience:** a permission-preserving record derived from verified execution.
+- **Workspace prior:** the team-workspace outcome model.
+- **Project adapter:** project-specific residual adaptation over the workspace prior.
+
+---
+
+## 3. Scope
+
+### 3.1 Included
+
+- Typed `NodeContract` and frozen `VerificationSpec`;
+- Full node execution configuration schema;
+- Capability and environment compatibility engine;
+- Hierarchical candidate construction with beam/Pareto pruning;
+- Offline outcome prediction and ranking;
+- Uncertainty calibration and lower-confidence gates;
+- Conservative cold-start routing;
+- Shadow routing;
+- Guarded contextual-bandit exploration for eligible digital nodes;
+- Local and final-run feedback capture;
+- Typed failure classification and recovery ownership;
+- Team-workspace prior and project adapter;
+- Offline router promotion, rollback, and lineage;
+- Routing explanation and bounded human override;
+- REST/SSE contracts, persistence, observability, frontend, and tests.
+
+### 3.2 Excluded
+
+- Learning workflow topology or graph revisions;
+- Joint planner-router training;
+- End-to-end reinforcement learning;
+- Physical or high-risk online exploration;
+- Autonomous modification of policies, permissions, contracts, or verifiers;
+- Cross-workspace data pooling by default;
+- Robotics execution or cross-embodiment claims;
+- Self-modifying plugins, skills, or production code.
+
+---
+
+## 4. Inherited invariants
+
+v0.4 MUST preserve all earlier release invariants:
+
+1. Backend state is authoritative.
+2. Claude, Codex, and future runtimes remain replaceable workers.
+3. Mutable runs use isolated workspaces/worktrees/containers.
+4. Plugins request capabilities; they do not grant authority.
+5. Policy and connection resolution occur before credential injection.
+6. Agents receive capability references, never raw OAuth or service tokens.
+7. Producers cannot self-accept.
+8. React Flow is a projection, not workflow authority.
+9. Graph revisions are versioned and validated by v0.2.
+10. Inconclusive verification pauses rather than silently passing.
+11. Experience preserves provenance, visibility, and contradiction state.
+12. Physical/high-risk trials require individual approval when Robotics is later enabled.
+
+---
+
+## 5. System context
+
+```mermaid
+flowchart TD
+    A["v0.2 Workflow Planner"] --> B["Frozen NodeContract"]
+    B --> C["Node Routing Service"]
+    C --> D["Compatibility Engine"]
+    D --> E["Hierarchical Selector"]
+    E --> F["Policy and Risk Gate"]
+    F --> G["Runtime Executor"]
+    G --> H["Independent Verifier"]
+    H --> I["Evidence and Experience"]
+    I --> J["Project Adapter"]
+    J --> C
+    I --> K["Offline Promotion Pipeline"]
+    K --> C
+```
+
+### 5.1 Separation of responsibilities
+
+| Component | Owns | MUST NOT own |
+|---|---|---|
+| Workflow Planner | Node decomposition, dependencies, graph revision | Runtime/model/tool selection policy |
+| Node Router | Compatible execution configuration selection | Node objective or graph topology |
+| Policy Engine | Permission, risk, approval decision | Utility optimization |
+| Capability Registry | Normalized capability metadata and bindings | User authorization |
+| Runtime Executor | Artifact production | Acceptance decision |
+| Verifier Engine | Contract-based verification | Contract mutation |
+| Evidence Store | Immutable evidence/provenance | Learned policy activation |
+| Promotion Pipeline | Offline candidate evaluation and model versioning | Live self-promotion |
+| Human | Contract approval, bounded override, inconclusive resolution | Retroactive evidence mutation |
+
+---
+
+## 6. Component architecture
+
+### 6.1 `NodeRoutingService`
+
+Responsibilities:
+
+- Accept an immutable routing request;
+- Resolve the exact model/registry/contract snapshots;
+- Request compatible candidates;
+- Run hierarchical selection;
+- Apply policy and confidence gates;
+- Persist the receipt before dispatch;
+- Support deterministic replay;
+- Return fallback or human-review status when routing is unsafe.
+
+### 6.2 `CompatibilityEngine`
+
+Responsibilities:
+
+- Validate contract schemas and versions;
+- Check required capability coverage;
+- Check tool/skill/runtime/environment compatibility;
+- Validate verifier equivalence to the frozen specification;
+- Validate risk and policy preconditions;
+- Emit machine-readable rejection reasons;
+- Never use semantic similarity to bypass a hard constraint.
+
+### 6.3 `CandidateBuilder`
+
+Responsibilities:
+
+- Construct partial configurations in ordered stages;
+- Use capability bindings and provider/runtime projections;
+- Retain a bounded beam and Pareto frontier;
+- Deduplicate behaviorally equivalent configurations;
+- Preserve at least one audited fallback when available.
+
+### 6.4 `OutcomePredictor`
+
+Predicts a vector rather than a single reward:
+
+\[
+\hat{\mathbf y}(x,a)=
+(\hat Q,\hat C,\hat L,\hat P_{node},\hat P_{run},\hat U)
+\]
+
+where \(\hat U\) is predictive uncertainty.
+
+### 6.5 `ProjectAdapter`
+
+- Applies a conservative project residual over the workspace model;
+- Starts near zero influence for a new project;
+- Increases influence only from compatible resolved outcomes;
+- Is versioned independently from the workspace model;
+- Cannot modify policy, risk, capability, or verification rules.
+
+### 6.6 `GuardedBandit`
+
+- Operates only after shadow validation;
+- Explores only among hard-eligible low-risk digital candidates;
+- Logs selection propensity and policy version;
+- Uses conservative uncertainty bounds;
+- Falls back when evidence or eligibility is insufficient;
+- MUST NOT operate on physical/high-risk nodes.
+
+### 6.7 `FeedbackAttributor`
+
+- Preserves local and final-run verification as separate labels;
+- Maps downstream outcomes through graph dependencies;
+- Records retries, branches, and alternative configurations;
+- Produces provisional attribution with confidence;
+- Treats unresolved outcomes as censored;
+- Does not overwrite raw execution or verifier evidence.
+
+### 6.8 `RouterPromotionService`
+
+- Builds an immutable experience snapshot;
+- Trains/evaluates candidate models offline;
+- Runs holdout, cohort, calibration, and shadow evaluation;
+- Produces a promotion report;
+- Activates a model only through an explicit promotion transaction;
+- Maintains an immediate rollback target.
+
+---
+
+## 7. Core data contracts
+
+All records MUST include `schema_version`, stable IDs, timestamps, and provenance.
+
+### 7.1 `ObjectiveContractRef`
+
+```yaml
+ObjectiveContractRef:
+  project_id: uuid
+  objective_contract_id: uuid
+  version: integer
+  content_hash: sha256
+  verified_success_floor: number
+  utility_profile_id: uuid
+  risk_policy_id: uuid
+  approved_by: principal_id
+  approved_at: timestamp
+```
+
+### 7.2 `NodeContract`
+
+```yaml
+NodeContract:
+  schema_version: accretion.node-contract/v1
+  node_contract_id: uuid
+  project_id: uuid
+  run_graph_id: uuid
+  graph_revision: integer
+  node_id: string
+  execution_instance_id: uuid
+  objective_contract_ref: ObjectiveContractRef
+  objective: string
+  node_type: enum
+  input_schema: json_schema
+  output_schema: json_schema
+  required_capabilities:
+    - capability_id: string
+      version_range: semver_range
+      required_scope: string
+  evidence_requirements: [EvidenceRequirement]
+  environment_constraints: [EnvironmentConstraint]
+  risk_class: LOW | MEDIUM | HIGH | PHYSICAL
+  budget:
+    maximum_cost: decimal
+    maximum_latency_ms: integer
+    maximum_attempts: integer
+    maximum_tool_calls: integer
+  verification_spec: VerificationSpec
+  immutable_hash: sha256
+  created_at: timestamp
+```
+
+### 7.3 `VerificationSpec`
+
+```yaml
+VerificationSpec:
+  spec_id: uuid
+  version: integer
+  claims:
+    - claim_id: string
+      description: string
+      criticality: REQUIRED | SUPPORTING
+      required_evidence_types: [string]
+  metrics:
+    - metric_id: string
+      operator: GTE | LTE | EQ | CUSTOM
+      threshold: number | string
+      evaluator_contract: string
+  independence:
+    producer_cannot_self_accept: true
+    separate_context_required: true
+    distinct_runtime_preferred: true
+  accepted_outcomes: [PASS, FAIL, INCONCLUSIVE]
+  content_hash: sha256
+```
+
+### 7.4 `RoutingContext`
+
+```yaml
+RoutingContext:
+  routing_request_id: uuid
+  node_contract_ref: uuid
+  task_features: object
+  graph_features:
+    parent_node_types: [string]
+    child_node_types: [string]
+    depth: integer
+    critical_path: boolean
+    retry_number: integer
+  project_features: object
+  available_runtime_snapshot_id: uuid
+  capability_registry_snapshot_id: uuid
+  connection_availability_snapshot_id: uuid
+  policy_snapshot_id: uuid
+  workspace_router_version: string
+  project_adapter_version: string | null
+  historical_experience_refs: [uuid]
+  requested_at: timestamp
+```
+
+### 7.5 `ExecutionConfiguration`
+
+```yaml
+ExecutionConfiguration:
+  configuration_id: uuid
+  runtime:
+    runtime_id: string
+    adapter_version: string
+  model:
+    model_id: string
+    provider_id: string
+    inference_profile: object
+  tools:
+    - capability_id: string
+      binding_id: string
+      binding_version: string
+  skills:
+    - skill_id: string
+      version: string
+  verifier:
+    implementation_id: string
+    version: string
+    verification_spec_hash: sha256
+  environment:
+    environment_profile_id: string
+    image_digest: string | null
+    workspace_isolation: string
+  configuration_hash: sha256
+```
+
+### 7.6 `ConfigurationCandidate`
+
+```yaml
+ConfigurationCandidate:
+  candidate_id: uuid
+  configuration: ExecutionConfiguration
+  construction_stage: enum
+  hard_eligible: boolean
+  compatibility_decision_refs: [uuid]
+  predicted:
+    quality: DistributionEstimate
+    cost: DistributionEstimate
+    latency: DistributionEstimate
+    node_verified_success: DistributionEstimate
+    run_verified_success: DistributionEstimate
+  uncertainty_score: number
+  lower_confidence_success: number
+  utility_score: number | null
+  pareto_dominated: boolean
+  fallback_eligible: boolean
+```
+
+### 7.7 `CompatibilityDecision`
+
+```yaml
+CompatibilityDecision:
+  decision_id: uuid
+  subject_type: RUNTIME | MODEL | TOOL | SKILL | VERIFIER | ENVIRONMENT | CONFIGURATION
+  subject_ref: string
+  status: COMPATIBLE | INCOMPATIBLE | UNKNOWN
+  rule_id: string
+  rule_version: string
+  reason_code: string
+  evidence_refs: [uuid]
+  evaluated_at: timestamp
+```
+
+`UNKNOWN` MUST NOT be treated as compatible for a required constraint.
+
+### 7.8 `RoutingDecisionReceipt`
+
+```yaml
+RoutingDecisionReceipt:
+  receipt_id: uuid
+  routing_request_id: uuid
+  node_contract_hash: sha256
+  selected_configuration_id: uuid | null
+  selected_configuration_hash: sha256 | null
+  decision_type: EXPLOIT | EXPLORE | FALLBACK | HUMAN_OVERRIDE | HUMAN_REVIEW_REQUIRED
+  selection_propensity: number | null
+  predicted_outcomes: object
+  uncertainty: object
+  candidate_summary_refs: [uuid]
+  rejected_candidate_reasons: [object]
+  experience_refs: [uuid]
+  workspace_router_version: string
+  project_adapter_version: string | null
+  objective_contract_version: integer
+  capability_registry_snapshot_id: uuid
+  policy_snapshot_id: uuid
+  fallback_configuration_id: uuid | null
+  explanation: StructuredExplanation
+  created_at: timestamp
+```
+
+### 7.9 `VerificationResult`
+
+```yaml
+VerificationResult:
+  verification_result_id: uuid
+  execution_instance_id: uuid
+  verification_spec_hash: sha256
+  verifier_implementation_id: string
+  verifier_version: string
+  status: PASS | FAIL | INCONCLUSIVE
+  claim_results:
+    - claim_id: string
+      status: PASS | FAIL | INCONCLUSIVE
+      evidence_refs: [uuid]
+      coverage: number
+      confidence: number | null
+      limitations: [string]
+  deterministic_evidence_refs: [uuid]
+  model_review_refs: [uuid]
+  conflict_refs: [uuid]
+  signed_at: timestamp
+```
+
+**Code name.** The v0.1 `VerificationResult` (run/iteration verifier outcome, table `verifications`) is API-exposed and keeps its name; this contract is implemented as `IndependentVerificationResult` in `accretion.contracts.routing`, stored in the §13 table `verification_results`, and links a producing v0.1 result through `source_verification_id` (ADR-054). Its `status` uses the registry §5.1 `VerificationState` enum.
+
+### 7.10 `ExperienceRecord`
+
+```yaml
+ExperienceRecord:
+  experience_id: uuid
+  visibility: PROJECT | TEAM_WORKSPACE
+  source_project_id: uuid
+  source_run_id: uuid
+  source_node_execution_id: uuid
+  contract_signature: object
+  configuration_hash: sha256
+  local_verification_status: PASS | FAIL | INCONCLUSIVE
+  final_run_status: PASS | FAIL | INCONCLUSIVE | NOT_AVAILABLE
+  attribution:
+    score: number | null
+    confidence: number
+    method_version: string
+  outcomes:
+    quality: number | null
+    cost: decimal
+    latency_ms: integer
+  failure_type: string | null
+  contradiction_status: NONE | OPEN | RESOLVED
+  evidence_refs: [uuid]
+  permission_provenance: object
+  eligible_for_learning: boolean
+  created_at: timestamp
+```
+
+**Relation to v0.2.** This record is a routing-scoped projection over the v0.2 P7 `Experience` (`accretion.experience.models`, table `experiences`, id prefix `exp`): it is keyed by that `experience_id`, adds the routing signature, attribution and eligibility fields, and never re-declares the P7 record (ADR-054).
+
+### 7.11 `FailureEvent`
+
+```yaml
+FailureEvent:
+  failure_event_id: uuid
+  execution_instance_id: uuid
+  failure_type: TRANSIENT | CONFIGURATION | CAPABILITY | EVIDENCE | VERIFICATION_CONFLICT | STRUCTURAL | POLICY_RISK | OBJECTIVE
+  affected_layer: string
+  retryable: boolean
+  classification_confidence: number
+  evidence_refs: [uuid]
+  attempted_configuration_hashes: [sha256]
+  assigned_owner: RECOVERY_CONTROLLER | ROUTER | CAPABILITY_RESOLVER | EVIDENCE_RESOLVER | PLANNER | HUMAN
+  recommended_action: object
+```
+
+### 7.12 `RouterModelVersion`
+
+```yaml
+RouterModelVersion:
+  router_version_id: string
+  scope: TEAM_WORKSPACE | PROJECT_ADAPTER
+  workspace_id: uuid
+  project_id: uuid | null
+  algorithm_id: string
+  feature_schema_version: string
+  training_snapshot_id: uuid
+  artifact_digest: sha256
+  calibration_artifact_digest: sha256
+  parent_version_id: string | null
+  status: CANDIDATE | SHADOW | ACTIVE | RETIRED | ROLLED_BACK
+  created_at: timestamp
+```
+
+### 7.13 `RouterPromotionReport`
+
+```yaml
+RouterPromotionReport:
+  report_id: uuid
+  candidate_version: string
+  baseline_version: string
+  training_snapshot_id: uuid
+  holdout_definition_id: uuid
+  primary_metric_result: object
+  verified_success_non_regression: object
+  false_acceptance_non_regression: object
+  calibration_result: object
+  cohort_results: [object]
+  shadow_result: object
+  critical_regressions: [object]
+  noncritical_tradeoffs: [object]
+  rollback_target: string
+  decision: PROMOTE | REJECT | REQUIRE_REVIEW
+  approved_by: principal_id | null
+  created_at: timestamp
+```
+
+### 7.13a `ShadowRolloutResult`
+
+Added by the freeze delta of 2026-09-05 (ADR-060). `ShadowDecision` (§11.4, §13) records the
+configuration a candidate router *would* have selected and the utility it *projected*; §10.2
+gates the shadow stage on evidence, and a projection is not evidence. A shadow choice is
+therefore scored by branching the live run: the candidate's configuration executes in one
+isolated sandbox and the executed configuration re-runs in a sibling sandbox under the same
+seed policy and resource cap, and each fork writes one of these records. The score is
+`U(SHADOW) - U(CONTROL)` over a complete pair. Two records and not one, because a pair whose
+second arm failed still contains a real measurement.
+
+```yaml
+ShadowRolloutResult:
+  rollout_result_id: uuid
+  shadow_decision_id: uuid
+  kind: SHADOW | CONTROL
+  fork_execution_id: uuid
+  configuration_hash: sha256
+  serving:
+    provider: enum
+    runtime_version: string
+    model_id: string
+    serving_labels: {string: string}   # quantization, temperature, seed (OQ-415)
+  verification_result_id: uuid | null
+  observed:
+    quality: float                     # normalized to [0, 1]
+    cost: float
+    latency_ms: float
+    verified: bool
+    false_accept: bool | null          # discovered, not measured; null when unknown
+  budget_consumed: float
+  trial_index: integer
+  seed: integer
+  completed_at: timestamp
+  created_at: timestamp
+```
+
+`configuration_hash` is the configuration executed *in this fork*, which on the `CONTROL`
+arm is not the one the candidate recommended. `observed.verified` MUST name the
+`verification_result_id` that produced it: §8.4 makes verification independent of the
+executor, so a fork that scored itself is a self-report.
+
+### 7.14 `RouterActivation`
+
+Added by the freeze delta of 2026-09-05 (ADR-061). §10.3 makes promotion atomic and
+reversible; §13.1's "one active workspace router per workspace" is expressed as an
+append-only ledger rather than as a mutable status. The active router for a
+`(workspace, scope, family)` is **the entry with the greatest `sequence`**. Promotion
+appends, rollback appends, nothing is edited, and the record of who released what and why is
+the table itself.
+
+```yaml
+RouterActivation:
+  activation_id: uuid
+  scope: TEAM_WORKSPACE | PROJECT_ADAPTER
+  workspace_id: uuid
+  project_id: uuid | null
+  family_key: string
+  sequence: integer                    # contiguous from 1; unique per (workspace, scope, family)
+  kind: PROMOTE | ROLLBACK
+  router_version_id: uuid
+  previous_version_id: uuid | null     # null if and only if sequence = 1
+  rollback_target_version_id: uuid | null
+  promotion_report_id: uuid | null     # null for a rollback: an incident authorises it
+  approved_by: principal_id
+  cause: string | null
+  created_at: timestamp
+```
+
+A `ROLLBACK` MUST carry both `cause` and `rollback_target_version_id`: reversibility that
+records a withdrawal without recording what it restored or why is not auditable.
+`approved_by` is required on every entry, rollbacks included (OQ-411).
+
+---
+
+## 8. Routing lifecycle
+
+### 8.1 Decision state machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> Received
+    Received --> Validated
+    Validated --> CandidatesBuilt
+    CandidatesBuilt --> Scored
+    Scored --> Selected
+    Scored --> Fallback: no confident candidate
+    Scored --> HumanReview: no safe fallback
+    Selected --> Dispatched
+    Fallback --> Dispatched
+    Dispatched --> Verified
+    Verified --> Recorded
+    HumanReview --> Selected: approved compatible choice
+    HumanReview --> Cancelled
+```
+
+### 8.2 Idempotency
+
+- `routing_request_id` is the idempotency key.
+- Repeated requests with identical immutable inputs MUST return the same receipt.
+- A changed registry/model/policy/contract snapshot MUST use a new request ID.
+- Dispatch MUST reference a persisted receipt.
+- Outcome ingestion MUST be idempotent by `verification_result_id`.
+
+### 8.3 Snapshot consistency
+
+Routing MUST use exact snapshots for:
+
+- NodeContract and ObjectiveContract;
+- Capability Registry;
+- Runtime/model availability;
+- Connection availability without token content;
+- Policy;
+- Workspace router and project adapter;
+- Utility profile.
+
+Live changes do not mutate an in-progress routing decision.
+
+---
+
+## 9. Routing algorithms
+
+### 9.1 Candidate construction stages
+
+1. Validate NodeContract.
+2. Resolve required capability and environment constraints.
+3. Enumerate compatible runtime/model pairs.
+4. Bind compatible tool backends and skills.
+5. Bind independent verifier implementations.
+6. Construct complete configuration tuples.
+7. Re-run joint compatibility and policy checks.
+8. Predict outcome vector and uncertainty.
+9. Apply verified-success lower-confidence gate.
+10. Rank feasible candidates by project utility.
+11. Select exploration/exploitation/fallback behavior.
+
+### 9.2 Beam and Pareto pruning
+
+- Each stage retains at most `beam_width` partial candidates.
+- Hard-incompatible candidates are removed immediately.
+- Behaviorally equivalent candidates are canonicalized by configuration signature.
+- Partial candidates dominated on quality, cost, latency, and uncertainty MAY be removed.
+- At least one audited fallback MUST be retained when compatible.
+- Final selection always operates on complete tuples.
+
+### 9.3 Outcome estimation
+
+The predictor MUST emit calibrated distributions or intervals for:
+
+- Local verified success;
+- Final-run contribution or success estimate;
+- Quality metric vector;
+- Cost;
+- Latency;
+- Epistemic uncertainty.
+
+Training SHOULD begin with interpretable ranking/calibration baselines before complex neural policies.
+
+### 9.4 Cold-start policy
+
+```text
+permission filter
+→ typed compatibility filter
+→ verified experience retrieval
+→ similarity/evidence ranking
+→ confidence check
+→ ranked choice OR audited fallback OR human review
+```
+
+Cross-domain evidence receives a capped prior weight and cannot directly enable live routing.
+
+### 9.5 Guarded exploration
+
+Define:
+
+\[
+\mathcal A_{safe}(x)=\{a:\text{hard eligible}\land LCB[P(V=1)]\ge\tau\}
+\]
+
+Exploration is allowed only when:
+
+```text
+risk_class == LOW
+AND digital == true
+AND reversible == true
+AND isolated == true
+AND verifier_available == true
+AND shadow_policy_passed == true
+AND exploration_budget_remaining == true
+```
+
+The router MUST log behavior propensity for offline policy evaluation.
+
+### 9.6 Feedback and attribution
+
+Raw signals remain immutable:
+
+- Local claim-level verification;
+- Final-run verification;
+- Resource consumption;
+- Failure taxonomy;
+- Graph dependencies;
+- Retry and branch histories.
+
+Attribution is a derived, versioned view. Initial v0.4 SHOULD use conservative dependency-aware heuristics and paired retry deltas before advanced causal attribution.
+
+### 9.7 Recovery decision
+
+Configuration failures route back to the router. Structural failures route to the planner. Verification conflicts route to evidence resolution. Policy/risk failures route to human authority.
+
+Automatic recovery continues only when hard caps remain and:
+
+\[
+LCB[EVI(a)]>\epsilon
+\]
+
+Equivalent failed configurations MUST NOT repeat without new evidence.
+
+---
+
+## 10. Offline training and promotion
+
+### 10.1 Training snapshot
+
+The snapshot MUST record:
+
+- Included experience IDs;
+- Permission and visibility proof;
+- Contract/feature schema versions;
+- Contradiction treatment;
+- Deduplication rules;
+- Time/provider/model version boundaries;
+- Training, validation, and holdout project groups.
+
+### 10.2 Candidate evaluation
+
+Before promotion, evaluate:
+
+- Constrained configuration regret;
+- Verified-success lower confidence bound;
+- False-acceptance rate;
+- Calibration error;
+- Cost and latency;
+- Cold-start projects;
+- Provider/tool version cohorts;
+- Failure and contradiction cohorts;
+- Critical risk cohorts;
+- Shadow-decision agreement and projected utility.
+
+### 10.3 Promotion transaction
+
+Promotion MUST atomically:
+
+1. Mark the candidate `ACTIVE`;
+2. Mark the prior active model `RETIRED` but rollback-eligible;
+3. Record the promotion report and approver;
+4. Update the active workspace pointer;
+5. Emit `router.version.promoted`;
+6. Preserve the exact rollback target.
+
+Critical correctness/safety regression blocks promotion. Non-critical tradeoffs require explicit bounds and disclosure.
+
+---
+
+## 11. API contracts
+
+All mutating endpoints require authentication, workspace/project authorization, idempotency, and audit metadata.
+
+### 11.1 Routing
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/v1/projects/{project_id}/node-executions/{id}/route` | Create or replay a routing decision |
+| GET | `/api/v1/routing-decisions/{receipt_id}` | Retrieve full decision receipt |
+| GET | `/api/v1/routing-decisions/{receipt_id}/candidates` | Retrieve compatible/rejected candidate summaries |
+| POST | `/api/v1/routing-decisions/{receipt_id}/override` | Select another policy-compatible candidate |
+| POST | `/api/v1/routing-decisions/{receipt_id}/cancel` | Cancel before dispatch |
+
+Routing request:
+
+```json
+{
+  "routing_request_id": "uuid",
+  "node_contract_id": "uuid",
+  "expected_node_contract_hash": "sha256",
+  "mode": "AUTO|SHADOW|BASELINE_ONLY",
+  "expected_registry_snapshot_id": "uuid"
+}
+```
+
+Override request:
+
+```json
+{
+  "candidate_id": "uuid",
+  "reason_code": "EXPERIMENTAL_COMPARISON",
+  "reason": "Testing a compatible lower-cost runtime",
+  "expected_receipt_version": 1
+}
+```
+
+The override endpoint MUST reject candidates absent from the receipt's eligible set.
+
+### 11.2 Feedback and experience
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/v1/node-executions/{id}/verification-results` | Ingest independent result |
+| POST | `/api/v1/runs/{run_id}/final-verification` | Ingest final-run result |
+| GET | `/api/v1/experiences/search` | Retrieve permission-compatible experience |
+| GET | `/api/v1/experiences/{id}` | Inspect evidence/provenance |
+| POST | `/api/v1/experiences/{id}/resolve-contradiction` | Record authorized resolution |
+
+### 11.3 Router models and promotion
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/api/v1/router-models` | List workspace/project versions |
+| POST | `/api/v1/router-models/train-candidate` | Start offline candidate job |
+| GET | `/api/v1/router-promotions/{id}` | Retrieve promotion report |
+| POST | `/api/v1/router-promotions/{id}/promote` | Promote an eligible candidate |
+| POST | `/api/v1/router-models/{id}/rollback` | Roll back to recorded version |
+
+### 11.4 Shadow evaluation
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/api/v1/shadow-policies` | Register candidate shadow policy |
+| GET | `/api/v1/shadow-policies/{id}/report` | Compare shadow and executed decisions |
+
+---
+
+## 12. Event contracts
+
+SSE is the v0.4 UI transport. Durable events are also written to the event store.
+
+| Event | Required fields |
+|---|---|
+| `routing.requested` | request, node, contract hash |
+| `routing.candidates.built` | counts by rejection/eligibility |
+| `routing.decision.created` | receipt, selected config, decision type |
+| `routing.override.recorded` | prior choice, new choice, principal, reason |
+| `routing.fallback.selected` | fallback and cause |
+| `routing.human_review.required` | blocking reasons |
+| `verification.result.recorded` | status, claim coverage, conflicts |
+| `experience.created` | experience ID and visibility |
+| `router.candidate.trained` | candidate and snapshot |
+| `router.promotion.evaluated` | report and decision |
+| `router.version.promoted` | new, previous, rollback target |
+| `router.version.rolled_back` | failed version, restored version, cause |
+
+Events MUST exclude tokens, secrets, hidden provider payloads, and private reasoning.
+
+---
+
+## 13. Persistence model
+
+Recommended persistence remains relational for authoritative state plus object storage for artifacts.
+
+| Table | Key fields |
+|---|---|
+| `node_contracts` | ID, project, graph revision, hash, JSON, immutable flag |
+| `verification_specs` | ID, version, hash, JSON |
+| `routing_requests` | ID, node execution, snapshot refs, status |
+| `configuration_candidates` | candidate, request, config hash, predictions, eligibility |
+| `compatibility_decisions` | candidate, rule, status, reason |
+| `routing_receipts` | receipt, selected config, versions, propensity, decision type |
+| `routing_overrides` | receipt, principal, candidate, reason |
+| `verification_results` | execution, spec hash, status, claim results |
+| `experience_records` | source lineage, signatures, outcomes, visibility, eligibility |
+| `failure_events` | execution, taxonomy, owner, evidence |
+| `router_model_versions` | scope, artifact digest, lineage, status |
+| `router_training_snapshots` | included experience manifest and split definition |
+| `router_promotion_reports` | candidate/baseline metrics, cohorts, decision |
+| `shadow_decisions` | executed receipt, shadow receipt, comparison |
+| `shadow_rollout_results` | shadow decision, arm, executed configuration, serving window, observed outcome |
+| `router_activations` | scope, family, sequence, kind, activated/previous/rollback-target version, approver |
+
+The last two are added by the freeze delta of 2026-09-05 (§7.13a, §7.14, ADR-060, ADR-061)
+and are created by migration `0018_v04_freeze_delta`; the fourteen above them plus
+`objective_contracts` are created by `0017_v04_m0_routing_contracts`.
+
+### 13.1 Database constraints
+
+- Contract hash/version tuples are unique.
+- One immutable receipt per routing request ID.
+- One active workspace router per workspace. From M8 onward this is **the head of the
+  activation ledger** (§7.14): the `router_activations` entry with the greatest `sequence`
+  for a `(workspace_id, scope, family_key)`, enforced by
+  `UNIQUE (workspace_id, scope, family_key, sequence)`. It is stated this way because the
+  partial unique index over `router_model_versions.status` cannot express it in an
+  append-only store — with no update path the first ACTIVE row can never be retired and a
+  second can never be inserted, so a workspace could be activated exactly once. The partial
+  index remains in force until M8's migration retires it, and a database between the two
+  migrations satisfies both statements of the rule.
+- One active adapter per project/router family. Same rule, same ledger, keyed by the
+  project-and-algorithm `family_key`.
+- Promotion reports are append-only.
+- Evidence/experience deletion follows existing retention policy and must not orphan provenance silently.
+
+---
+
+## 14. Security and threat model
+
+### 14.1 Threats
+
+- Candidate configuration requests unauthorized tools;
+- Plugin manifest attempts permission expansion;
+- Model selects its own permissive verifier;
+- Experience leaks private content across projects;
+- Poisoned or misverified experience alters the workspace prior;
+- Router learns to optimize verifier weaknesses;
+- Human override bypasses policy;
+- Registry/model versions change between decision and execution;
+- Shadow or training pipelines receive secrets;
+- Model artifact substitution or rollback tampering.
+
+### 14.2 Controls
+
+- Hard policy and capability checks after routing and immediately before execution;
+- Token Broker injection only after authorization;
+- VerificationSpec frozen before routing;
+- Verifier compatibility and independence checks;
+- Permission-preserving experience projections;
+- Contradiction and evidence-quality gates;
+- Immutable snapshots, hashes, and signed model artifacts;
+- Offline promotion with holdout and rollback;
+- Override only within eligible candidate set;
+- Redaction and structured telemetry schemas;
+- Audit logging for every decision, override, promotion, and rollback.
+
+### 14.3 Reward-hacking controls
+
+- Router cannot choose verification thresholds;
+- Training uses claim-level coverage and false acceptance, not producer self-ratings;
+- Verifier implementation performance is independently calibrated;
+- Critical claims cannot be averaged away;
+- Suspicious sudden utility gains trigger review;
+- Promotion compares failure and contradiction cohorts.
+
+---
+
+## 15. Reliability and recovery
+
+### 15.1 Availability behavior
+
+- Runtime unavailable before dispatch: rebuild candidates from the same snapshots only if availability snapshot revision is explicit; otherwise create a new routing request.
+- Runtime unavailable after dispatch: emit transient failure and apply bounded recovery.
+- Router model unavailable: use audited deterministic baseline.
+- Project adapter unavailable: use workspace prior with reduced confidence.
+- Workspace model unavailable: use deterministic baseline.
+- Evidence retrieval unavailable: do not fabricate history; use baseline or review.
+- Verifier unavailable: do not execute unless another equivalent verifier is already eligible.
+
+### 15.2 Rollback
+
+Router rollback changes new decisions only. Existing receipts and runs remain pinned to their original versions.
+
+### 15.3 Circuit breakers
+
+Automatic exploration is disabled when:
+
+- False-acceptance alert fires;
+- Calibration exceeds threshold;
+- Critical cohort regression appears;
+- Provider/model version drift is unvalidated;
+- Verification coverage drops;
+- Policy or audit service is unavailable.
+
+---
+
+## 16. Observability
+
+### 16.1 Metrics
+
+- Routing request latency;
+- Candidate counts by pruning stage;
+- Fallback and human-review rates;
+- Exploration rate and budget;
+- Node verified-success rate;
+- Final-run verified-success rate;
+- False-acceptance and inconclusive rates;
+- Quality/cost/latency prediction error;
+- Calibration error;
+- Configuration switching cost;
+- Recovery attempts and EVI termination;
+- Experience retrieval coverage;
+- Cross-domain prior influence;
+- Override rate and verified override outcome;
+- Workspace/project adapter drift;
+- Promotion and rollback counts;
+- Constrained configuration regret in benchmark mode.
+
+### 16.2 Traces
+
+Each trace correlates:
+
+```text
+project → run → graph revision → node execution
+→ routing request → receipt → runtime execution
+→ verification → experience → promotion snapshot
+```
+
+---
+
+## 17. Experiment Studio requirements
+
+### 17.1 Node routing panel
+
+Display:
+
+- Selected full configuration;
+- Decision type and confidence;
+- Predicted quality, cost, and latency intervals;
+- Verified-success lower bound;
+- Relevant experiences and contradiction status;
+- Compatible alternatives;
+- Rejected candidates with structured reasons;
+- Frozen verifier requirement and implementation;
+- Router/adapter/registry/contract versions;
+- Override control for eligible alternatives.
+
+### 17.2 Shadow mode
+
+Show executed baseline versus shadow recommendation, predicted/observed outcomes, accumulated non-inferiority evidence, and remaining promotion gates.
+
+### 17.3 Router administration
+
+Show model lineage, training snapshot, holdout definition, cohort results, promotion report, active version, and rollback target.
+
+### 17.4 React Flow projection
+
+Each graph node may show:
+
+- Runtime/model badge;
+- Tool/skill count;
+- Exploit/explore/fallback status;
+- Verification status;
+- Retry/configuration revision history;
+- Cost/latency accumulation;
+- Human-review or override marker.
+
+Layout interactions do not change backend routing or graph authority.
+
+---
+
+## 18. Testing strategy
+
+### 18.1 Unit tests
+
+- Schema validation and immutable hashes;
+- Compatibility rules and reason codes;
+- Candidate canonicalization;
+- Beam/Pareto pruning;
+- Utility normalization;
+- Confidence-bound gates;
+- Cold-start fallback;
+- Exploration eligibility;
+- EVI stopping;
+- Failure taxonomy;
+- Experience visibility;
+- Promotion gate calculations.
+
+### 18.2 Property tests
+
+- Ineligible candidates are never selected;
+- Adding an unauthorized capability never increases eligibility;
+- Lowering evidence coverage cannot convert inconclusive to pass;
+- Replaying an immutable request returns the same receipt;
+- Contract/registry/model version changes alter the routing identity;
+- Physical/high-risk nodes never enter the bandit;
+- Critical regression always blocks promotion.
+
+### 18.3 Integration tests
+
+- Planner to frozen NodeContract;
+- Router to capability/policy services;
+- Router to Claude/Codex runtimes;
+- MCP/plugin binding and Token Broker isolation;
+- Executor to independent verifier;
+- Local/final feedback to experience;
+- Promotion and rollback;
+- SSE/UI consistency;
+- Workspace/project permission boundaries.
+
+### 18.4 Adversarial tests
+
+- Prompt requests weaker verifier;
+- Plugin claims undeclared capability;
+- Semantically similar but schema-incompatible experience;
+- Poisoned high-score experience;
+- Contradictory evidence hidden from retrieval;
+- Human override targets rejected candidate;
+- Model artifact digest mismatch;
+- Provider version changes during routing;
+- Repeated equivalent recovery loop;
+- Apparent mean improvement hides critical cohort regression.
+
+### 18.5 End-to-end tests
+
+1. New project cold start uses workspace prior/fallback.
+2. Known project adapts after verified runs.
+3. Low-risk node moves from shadow to guarded exploration.
+4. Material verifier conflict becomes inconclusive and pauses.
+5. Configuration failure reroutes without graph mutation.
+6. Structural failure replans without router authority expansion.
+7. Promotion passes and rollback restores prior model.
+8. Project-disjoint benchmark produces reproducible receipts and regret.
+
+---
+
+## 19. Implementation milestones
+
+| Milestone | Deliverable | Exit condition |
+|---|---|---|
+| M0 | Contract and feature freeze | Schemas, hashes, migrations, fixtures approved |
+| M1 | Compatibility engine | Hard rules, reason codes, snapshot replay pass |
+| M2 | Hierarchical deterministic selector | Complete tuple, pruning, fallback, receipts pass |
+| M3 | Experience and feedback pipeline | Local/final outcomes, contradictions, visibility pass |
+| M4 | Offline ranker and calibration | Holdout predictions and calibration report pass |
+| M5 | Project adapter and cold start | Workspace/project blending and fallback tests pass |
+| M6 | Shadow routing | UI/reporting and non-inferiority evidence pass |
+| M7 | Guarded bandit | Low-risk gates, propensity logging, circuit breakers pass |
+| M8 | Promotion/rollback | Versioned offline pipeline and rollback drill pass |
+| M9 | Experiment Studio | Routing, alternatives, override, shadow, admin views pass |
+| M10 | Research benchmark integration | Baselines, ablations, artifacts, reproducibility pass |
+
+No milestone may enable online exploration before M0-M6 release gates pass.
+
+---
+
+## 20. Release acceptance criteria
+
+Every criterion is MUST (the specification states no lower priority). The `Owner` column names the
+milestone of §19 whose exit proves the criterion; the acceptance harness reads these rows and
+gates each milestone by `--stage v0.4-M<n>` (ADR-052). Ids keep the original numbering:
+`AC-0NN` became `AC4-M<owner>-0NN`. M0 (the contract freeze) owns no criterion: it lays the
+schemas the later milestones prove against.
+
+### Contracts and authority
+
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M2-001 | MUST | Every routed execution references an immutable NodeContract hash. | M2 |
+| AC4-M2-002 | MUST | VerificationSpec is frozen before candidate generation. | M2 |
+| AC4-M3-003 | MUST | Producer and verifier cannot be the same acceptance authority. | M3 |
+| AC4-M2-004 | MUST | Contract revisions create new versions and do not mutate active runs. | M2 |
+| AC4-M1-005 | MUST | Policy/risk/permission gates remain outside the learned router. | M1 |
+
+### Candidate construction
+
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M1-006 | MUST | All complete tuples pass joint compatibility validation. | M1 |
+| AC4-M1-007 | MUST | Unknown required compatibility is treated as ineligible. | M1 |
+| AC4-M1-008 | MUST | Candidate rejection exposes stable reason codes. | M1 |
+| AC4-M2-009 | MUST | Equivalent configurations are deduplicated. | M2 |
+| AC4-M2-010 | MUST | An audited fallback is retained when one exists. | M2 |
+
+### Routing and replay
+
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M2-011 | MUST | Identical immutable requests replay the same receipt. | M2 |
+| AC4-M2-012 | MUST | Every receipt pins router, adapter, contract, registry, and policy versions. | M2 |
+| AC4-M2-013 | MUST | Decision receipts exclude secrets and private reasoning. | M2 |
+| AC4-M2-014 | MUST | Dispatch cannot occur without a persisted receipt. | M2 |
+| AC4-M2-015 | MUST | Human override is restricted to eligible candidates and records a reason. | M2 |
+
+### Learning and exploration
+
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M4-016 | MUST | Offline ranking precedes any shadow or live learned policy. | M4 |
+| AC4-M6-017 | MUST | Shadow decisions never alter execution. | M6 |
+| AC4-M7-018 | MUST | Guarded exploration operates only on eligible low-risk digital nodes. | M7 |
+| AC4-M7-019 | MUST | Every explored decision records propensity. | M7 |
+| AC4-M7-020 | MUST | Circuit breakers disable exploration on safety/calibration alerts. | M7 |
+| AC4-M5-021 | MUST | Cross-domain evidence cannot directly enable live routing. | M5 |
+| AC4-M2-022 | MUST | Insufficient evidence selects fallback or human review. | M2 |
+
+### Verification and feedback
+
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M3-023 | MUST | Claim-level evidence coverage is persisted. | M3 |
+| AC4-M3-024 | MUST | Inconclusive outcomes are not positive/negative labels. | M3 |
+| AC4-M3-025 | MUST | Local and final-run results remain separately queryable. | M3 |
+| AC4-M3-026 | MUST | Attribution is versioned and cannot overwrite raw outcomes. | M3 |
+| AC4-M3-027 | MUST | Material verifier conflict blocks acceptance until resolved. | M3 |
+
+### Recovery
+
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M3-028 | MUST | Failure taxonomy deterministically assigns the recovery owner when rules are conclusive. | M3 |
+| AC4-M3-029 | MUST | Configuration failures cannot grant planner authority to change policy. | M3 |
+| AC4-M3-030 | MUST | Structural failures cannot be disguised as repeated configuration attempts. | M3 |
+| AC4-M3-031 | MUST | Hard caps and EVI thresholds stop recovery loops. | M3 |
+| AC4-M3-032 | MUST | Equivalent failed configurations do not repeat without new evidence. | M3 |
+
+### Experience and promotion
+
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M3-033 | MUST | Experience visibility and permission provenance are enforced. | M3 |
+| AC4-M3-034 | MUST | Contradictory evidence remains retrievable. | M3 |
+| AC4-M8-035 | MUST | Training snapshots are immutable and reproducible. | M8 |
+| AC4-M8-036 | MUST | Promotion uses project-disjoint holdout evaluation. | M8 |
+| AC4-M8-037 | MUST | Critical correctness/safety regression blocks promotion. | M8 |
+| AC4-M8-038 | MUST | Every active router has a tested rollback target. | M8 |
+| AC4-M8-039 | MUST | Rollback affects new decisions without rewriting old receipts. | M8 |
+
+### Frontend and observability
+
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M9-040 | MUST | Node panel shows selected configuration, uncertainty, alternatives, and rejection reasons. | M9 |
+| AC4-M6-041 | MUST | Shadow view compares recommendations with executed outcomes. | M6 |
+| AC4-M8-042 | MUST | Router lineage and promotion report are inspectable. | M8 |
+| AC4-M9-043 | MUST | React Flow remains a projection only. | M9 |
+| AC4-M9-044 | MUST | All routing/recovery/promotion events are correlated end to end. | M9 |
+
+### Scientific integration
+
+| ID | Priority | Acceptance criterion | Owner |
+|---|---|---|---|
+| AC4-M10-045 | MUST | Project-disjoint benchmark split is enforced mechanically. | M10 |
+| AC4-M10-046 | MUST | Strongest fixed, deterministic, per-run, model-only, planner-LLM, and oracle baselines run. | M10 |
+| AC4-M10-047 | MUST | Constrained configuration regret is reproducible from stored artifacts. | M10 |
+| AC4-M10-048 | MUST | Verified-success and false-acceptance gates are reported separately from utility. | M10 |
+| AC4-M10-049 | MUST | Required ablations are executable from configuration. | M10 |
+| AC4-M10-050 | MUST | Pre-registered effect-size, confidence, and non-regression gates pass before a superiority claim. | M10 |
+
+---
+## 21. Architecture decisions
+
+- ADR-041: One graph-node execution instance is one routable action.
+- ADR-042: The router selects a complete configuration tuple.
+- ADR-043: Configuration construction is hierarchical, but final validation is joint.
+- ADR-044: Verification semantics are frozen before routing.
+- ADR-045: Outcome models predict a vector, not one permanent scalar reward.
+- ADR-046: v0.4 begins offline, then shadow, then guarded bandit.
+- ADR-047: Team-workspace prior plus project adapter is the learning scope.
+- ADR-048: Cross-domain evidence is a weak prior only.
+- ADR-049: Router promotion is an offline, versioned, reversible release.
+- ADR-050: Learned graph planning and Robotics are excluded from v0.4.
+- ADR-051: v0.4 is unlocked (2026-09-05). This SDD lives at `docs/sdd/Accretion_SDD_v0.4.md`; the governance package under `docs/sdd/future/v0.4-v1.0/` stays the forward reference for v0.5+ and records the unlock in its read-me.
+- ADR-052: Acceptance ids are `AC4-M<owner>-0NN`, all MUST, owner = the §19 milestone whose exit proves the criterion; harness stages are `v0.4-M<n>` so a v0.4 stage can never be confused with a v0.3 milestone of the same number. M0 owns no criterion: a contract freeze proves nothing about behaviour, and AC-004's "do not mutate active runs" clause is testable only once M2 pins a contract hash in a routing request.
+- ADR-053: `accretion.contracts` becomes a package (`__init__.py` is the former `contracts.py`, byte-identical) with `canonical.py`, `refs.py` and `routing.py`; v0.4 names are imported explicitly from `routing.py` and never re-exported through the package root.
+- ADR-054: Name reconciliation under registry §21, complete inventory: (a) the v0.4 verification outcome is `IndependentVerificationResult` in code, table `verification_results` (§13); registry §5.1 becomes the `VerificationState` enum while v0.1's `VerificationStatus` stays on v0.1-v0.3 paths; (b) `ExperienceRecord` is a projection keyed by the v0.2 P7 `experience_id` (§7.10 note) - one `Experience` schema line, no duplicate; `ExperienceTrust`/`ExperiencePolarity` remain the P7 vocabulary and map onto `eligible_for_learning` and the outcome fields explicitly; (c) v0.2 `CompatibilityAssessment` (is a past experience compatible with this task) and v0.4 `CompatibilityDecision` (is a configuration candidate admissible) are distinct concepts and both stay; (d) v0.1 `RiskLevel` (`LOW|MEDIUM|HIGH|CRITICAL`, the human-approval path in planning and governance) and registry §5.3 `RiskClass` both stay, joined by a total mapping `risk_level_for(RiskClass)` with a test: `LOW_DIGITAL→LOW`, `MEDIUM_DIGITAL→MEDIUM`, `HIGH_DIGITAL→HIGH`, `SIMULATION→HIGH`, `PHYSICAL_HIGH→CRITICAL`, `PROHIBITED` raises; (e) the M5 `EvidenceClass` already equals registry §5.2 and is reused; the §7.11 taxonomy stays as `FailureType` beside registry §5.4 `FailureOwner`; (f) `ArtifactRef` keeps its required `run_id` (it is persisted inside execution traces); approval receipts use a new `ApprovalArtifactRef`; `PrincipalRef`, `PluginRef`, `ConnectionRef` are reused, never redefined.
+- ADR-055: "uuid" reads as "globally unique opaque id": v0.4 records use the repository's prefixed base32 ids from `ids.py` (`obj`, `nct`, `vsp`, `rrq`, `cfg`, `ccd` for candidates - `cnd` is already the connector definition - `cmp`, `rcp`, `ivr`, `flr`, `rmv`, `rts`, `rpr`, `shd`); a test asserts every prefix is unique. Registry §18 permits layout adaptation; identity semantics are unchanged.
+- ADR-056: Canonical serialization (registry §3.1, §20.2) is implemented once in `contracts/canonical.py`: sorted keys, no whitespace, UTF-8, integers as integers, floats as shortest round-trip, decimals as strings, RFC 3339 UTC `Z` timestamps, `content_hash` omitted from its own input; golden hash vectors are committed and read by the tests, and a TypeScript twin is owed by the M9 Studio work.
+- ADR-057: Every v0.4 record carries the registry §3 header through a `CanonicalContract` base with semver `schema_version`. Registry §19's "unknown-version" case is discharged at v0.4 entry by fail-closed rejection of an unknown major, with the fixture and test that prove it. Registry §20.5 read-boundary upcasting is scheduled for M8, the first milestone with a second writer, and tracked in the v0.4 backlog; until then `extra="forbid"` stands.
+- ADR-058: M0 creates all fifteen §13 tables additively in one reversible migration (key columns + JSON payload + §13.1 constraints); the two partial unique indexes ("one ACTIVE workspace router", "one ACTIVE adapter per project and algorithm") are the repository's first and are mirrored in `MemoryStore` so the parity tests hold; registry §20 defaults 1, 2, 5, 6 and 8 are adopted. Store methods are append-only and refuse to overwrite an id or a hash.
+- ADR-059: OQ-420 is decided as "no reserved embodiment slot": v0.5 adds optional fields as a minor schema version; nothing robotics-shaped enters the v0.4 backlog (§23 item 7).
+- ADR-060: Shadow decisions are scored by **branched rollouts**, not by replay, and the evidence is a new contract `ShadowRolloutResult` (§7.13a, table `shadow_rollout_results`, id prefix `shr`). For a sampled shadow decision on a LOW_DIGITAL, isolated node the run is forked twice - the candidate's configuration in one sandbox, the executed configuration in a sibling sandbox under the same seed policy, cap and deadline - and each fork writes one record carrying its arm (`SHADOW`/`CONTROL`), the configuration it actually executed, the OQ-415 serving window (provider, runtime version, model, and the quantization/temperature/seed labels), the observed quality, cost, latency, verification verdict and false-acceptance flag, the budget it consumed and the shared seed. The paired difference `U(SHADOW) - U(CONTROL)` is the unit of evidence, and an arm claiming `observed.verified` must name the `IndependentVerificationResult` that produced it (§8.4). Replay was rejected: a counterfactual configuration cannot be evaluated against a trajectory produced by a different one, and `ShadowDecision.projected_utility_delta` is the model's opinion of itself. M0 froze no such record, so this is one of the three changes the freeze delta of 2026-09-05 makes.
+- ADR-061: "One active router" is **the head of an append-only activation ledger**, not a mutable status: new contract `RouterActivation` (§7.14, table `router_activations`, id prefix `rac`) with `UNIQUE (workspace_id, scope, family_key, sequence)`. M0's partial unique index over `router_model_versions.status` states the rule correctly and cannot implement it: this family has no `update_` method on any table (ADR-058), so the first ACTIVE row can never be retired and a second can never be inserted. Promotion appends an entry, rollback appends another, a `ROLLBACK` must record both its cause and its restore target, and `approved_by` is required on every entry including rollbacks (OQ-411). The freeze delta adds the contract and the table; M8's migration retires the two partial indexes, so a database between them satisfies both statements of §13.1 at once and each migration is independently reversible.
+- ADR-062: The M7 exploration budget is a **safety inequality with an explicit alpha source**. Exploration is admissible for candidate `a` only while `sum(cost_ucb over unresolved explorations) + cost_ucb(a) <= (1 + alpha) * sum(cost_lcb(a_0))` per `(workspace, node class)`, where `a_0` is the deterministic baseline's choice and unresolved explorations are held at their upper bound until settled; absolute per-run and per-day caps bind beside the fraction, because a proportional bound alone scales with traffic while the approver's intent does not. Alpha comes from `ObjectiveContract.exploration_policy` (`alpha`, `max_explore_count`, `max_cost`) - an additive, optional, registry §3.2 **Minor** field added by the freeze delta - falling back to `labels["exploration.*"]` where a project has not been re-approved, and absent both the posture is no exploration. This settles OQ-410. The field is on the objective and not on the router because the person who approved the goal is the one entitled to say how much of its budget may be spent on information.
+- ADR-063: A promotion is gated on **calibrated safe policy improvement**, not on a point estimate. The primary off-policy estimator is Logarithmic Smoothing with clipping at `lambda = 1/sqrt(n)`, with SNIPS, doubly-robust, effective sample size and clipped-mass reported as diagnostics; the gate is a CSPI-MT style simultaneous lower band across the threshold grid, built by project bootstrap on a project-disjoint holdout, and promotion requires the band at or above zero at confidence gamma **and** the mandatory §10.2 non-regression gates, the calibration ceiling, no critical cohort regression, a shadow pass and a successful rollback drill. Gamma, the non-inferiority margin `Delta_NI`, `delta_min`, the split, the threshold grid, the bootstrap count, the critical cohorts and the multiplicity correction are declared in `evals/router/config.v1.json` and pinned before any holdout read. This settles OQ-413's gate half and constrains OQ-405's use at promotion time.
+- ADR-064: The research artefacts are **repository artefacts with an access rule**, not prose. `evals/router/` holds the frozen configuration, the split definitions and the estimator implementations; `docs/research/v0.4/preregistration.md` holds the §21 protocol fields, frozen before any test-set read. The locked test set is readable **once**, after the pre-registration is frozen and the development pilot has closed, and every read is recorded; validation projects carry all tuning, including beam width, Pareto tolerance and the best fixed baseline. A benchmark whose test set can be read while the method is still moving measures the method's authors.
+
+---
+
+## 22. Open questions with proposed defaults
+
+The `Decision` column is filled where the decision has been taken and records the ADR or the
+milestone plan that took it; where it is `-` the SDD default stands and the deadline applies.
+
+| ID | Question | Proposed default | Decision | Decision deadline |
+|---|---|---|---|---|
+| OQ-401 | Initial outcome model? | Gradient-boosted ranking/calibration baseline before neural models | Gradient-boosted baseline (LightGBM or scikit-learn HistGradientBoosting, chosen by the dependency-weight check in M4's first PR); no neural model in v0.4 | M4 design |
+| OQ-402 | Initial bandit? | Conservative contextual bandit over eligible candidates | Conservative contextual bandit against the deterministic router as baseline, inverse-gap weighting over the M4 regression oracle, safety loss held by conformal policy control (ADR-062) | M7 design |
+| OQ-403 | Beam width? | Tune on validation; hard cap by node class | Default cap 8 per node class, configurable in a versioned catalog; tuned on validation projects only, by the N = 1/2/4 curve method | M2 design |
+| OQ-404 | Pareto pruning tolerance? | Preserve near-frontier candidates within epsilon | epsilon = 0.02 on normalized utility axes, recorded on the receipt so a replay is byte-identical | M2 design |
+| OQ-405 | Success lower-bound method? | Calibrated conformal or bootstrap interval selected empirically | Conformal risk control on a project-grouped calibration split, with bootstrap as the sensitivity check; both reported in the M4 calibration report | M4 design |
+| OQ-406 | Project-adapter form? | Regularized residual/calibration layer | Regularized residual on the workspace prior's logit with L2 toward zero | M5 design |
+| OQ-407 | Attribution method? | Dependency heuristic plus paired retry deltas | Dependency heuristic plus paired retry deltas; attribution rows carry `attribution_version` and are never the raw outcome | M3 design |
+| OQ-408 | Cross-domain prior cap? | Small fixed cap, tuned only on validation | Cap 0.15 of prior weight, with a property test proving the cap alone cannot lift an LCB over tau | M5 design |
+| OQ-409 | Minimum shadow evidence? | Determined by protocol power/non-inferiority analysis | Open - blocked on the §21 freeze. Interim rule: at least 9 paired runs per configuration per node class | M6 gate |
+| OQ-410 | Exploration budget? | ObjectiveContract percentage plus absolute cap | `ObjectiveContract.exploration_policy` (alpha plus absolute per-run and per-day caps), `labels["exploration.*"]` as fallback, both recorded on the receipt (ADR-062) | M7 design |
+| OQ-411 | Promotion approval? | Workspace admin/research owner | Workspace admin or research owner; the approver principal is recorded on the report and on every activation entry, rollbacks included (ADR-061) | M8 design |
+| OQ-412 | Promotion cadence? | Manual batch initially | Manual batch | M8 design |
+| OQ-413 | Critical cohorts? | Correctness, policy, secrets, high-risk, verifier conflict | Correctness, policy, secrets, high-risk and verifier-conflict cohorts, declared in `evals/router/config.v1.json`; the gate is the ADR-063 safe-improvement test | M8 design |
+| OQ-414 | Experience retention? | Follow workspace policy; preserve aggregate lineage | Follow workspace policy; deletion marks `retention_class` and keeps the aggregate lineage rows (§13.1) | M3 design |
+| OQ-415 | Provider/model drift window? | Require revalidation on behaviorally material version change | Revalidate on a behaviourally material version change, and record the serving configuration - quantization, temperature, seed - in the provider version window (`ShadowRolloutResult.serving`, §7.13a) | M4 design |
+| OQ-416 | Fallback catalog ownership? | Versioned admin-managed configuration bundles | A `fallback_catalogs` document pinned by digest in the receipt's registry snapshot; edits create versions, append-only | M2 design |
+| OQ-417 | Override reason taxonomy? | Structured code plus optional explanation | - | M9 design |
+| OQ-418 | Model verifier independence score? | Separate context mandatory; different runtime preferred | - | M0 design |
+| OQ-419 | Public benchmark name? | Decide during protocol publication preparation | - | M10 |
+| OQ-420 | v0.5 interface hooks? | Reserve generic embodiment metadata without robotics behavior | - | M0 design |
+
+---
+
+## 23. Handoff rule
+
+Codex may implement v0.4 only after:
+
+1. Every v0.1, v0.2, and v0.3 release acceptance gate is evidenced on the actual repository baseline;
+2. The Golden Direction is accepted;
+3. M0 schemas and invariants are reviewed against the cross-release contract registry;
+4. The separate research protocol freezes primary metrics and split rules;
+5. v0.1-v0.3 interface names and persisted schemas are aligned to Accretion through explicit migrations rather than duplicate contracts;
+6. The deterministic router remains an operational fallback and rollback target;
+7. No v0.5 Robotics or v0.8 learned-graph requirements are added to the v0.4 backlog.

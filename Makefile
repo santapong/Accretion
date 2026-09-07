@@ -1,4 +1,4 @@
-.PHONY: dev-db migrate api ui check docs-check test acceptance anchors release-gate style-diff-base
+.PHONY: dev-db migrate api ui check docs-check future-sdd-check test acceptance anchors release-gate style-diff-base
 
 dev-db:
 	docker compose up -d postgres
@@ -22,6 +22,9 @@ check:
 
 docs-check:
 	uv run --no-sync python scripts/check_docs.py
+
+future-sdd-check:
+	uv run --no-sync python scripts/validate_future_sdd_package.py
 
 test:
 	PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync pytest -p pytest_asyncio.plugin

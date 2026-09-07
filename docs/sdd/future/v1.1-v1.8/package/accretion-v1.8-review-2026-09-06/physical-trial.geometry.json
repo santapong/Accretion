@@ -1,0 +1,2066 @@
+{
+  "name": "PhysicalTrial",
+  "directed": true,
+  "strict": false,
+  "_draw_": 
+  [
+    {
+      "op": "c",
+      "grad": "none",
+      "color": "#fffffe00"
+    },
+    {
+      "op": "C",
+      "grad": "none",
+      "color": "#ffffff"
+    },
+    {
+      "op": "P",
+      "points": [[-25.200,-25.200],[-25.200,1049.440],[1388.570,1049.440],[1388.570,-25.200]]
+    }
+  ],
+  "_ldraw_": 
+  [
+    {
+      "op": "F",
+      "size": 28.000,
+      "face": "Arial"
+    },
+    {
+      "op": "c",
+      "grad": "none",
+      "color": "#000000"
+    },
+    {
+      "op": "T",
+      "pt": [387.370,995.040],
+      "align": "c",
+      "width": 563.390,
+      "text": "Accretion v1.8 - Physical preparation and trial"
+    },
+    {
+      "op": "F",
+      "size": 28.000,
+      "face": "Arial"
+    },
+    {
+      "op": "c",
+      "grad": "none",
+      "color": "#000000"
+    },
+    {
+      "op": "T",
+      "pt": [387.370,961.440],
+      "align": "c",
+      "width": 758.750,
+      "text": "TARGET DESIGN | EXISTING v0.6 PHYSICAL AUTHORITY"
+    }
+  ],
+  "bb": "0,0,1363.4,1024.2",
+  "bgcolor": "#ffffff",
+  "fontname": "Arial",
+  "fontsize": "28",
+  "label": "Accretion v1.8 - Physical preparation and trial\\nTARGET DESIGN | EXISTING v0.6 PHYSICAL AUTHORITY",
+  "labeljust": "l",
+  "labelloc": "t",
+  "lheight": "0.93",
+  "lp": "387.37,986.64",
+  "lwidth": "10.54",
+  "nodesep": "0.5",
+  "pad": "0.35",
+  "rankdir": "TB",
+  "ranksep": "0.4",
+  "splines": "polyline",
+  "xdotversion": "1.7",
+  "_subgraph_cnt": 2,
+  "objects": [
+    {
+      "name": "%29",
+      "bgcolor": "#ffffff",
+      "fontname": "Arial",
+      "fontsize": "28",
+      "label": "Accretion v1.8 - Physical preparation and trial\\nTARGET DESIGN | EXISTING v0.6 PHYSICAL AUTHORITY",
+      "labeljust": "l",
+      "labelloc": "t",
+      "nodesep": "0.5",
+      "pad": "0.35",
+      "rank": "same",
+      "rankdir": "TB",
+      "ranksep": "0.4",
+      "splines": "polyline",
+      "_gvid": 0,
+      "nodes": [
+        3,11
+      ]
+    },
+    {
+      "name": "%31",
+      "bgcolor": "#ffffff",
+      "fontname": "Arial",
+      "fontsize": "28",
+      "label": "Accretion v1.8 - Physical preparation and trial\\nTARGET DESIGN | EXISTING v0.6 PHYSICAL AUTHORITY",
+      "labeljust": "l",
+      "labelloc": "t",
+      "nodesep": "0.5",
+      "pad": "0.35",
+      "rank": "same",
+      "rankdir": "TB",
+      "ranksep": "0.4",
+      "splines": "polyline",
+      "_gvid": 1,
+      "nodes": [
+        8,12,13
+      ]
+    },
+    {
+      "_gvid": 2,
+      "name": "task",
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#3170a3"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#edf5ff"
+        },
+        {
+          "op": "B",
+          "points": [[894.370,949.040],[894.370,949.040],[513.480,949.040],[513.480,949.040],[507.480,949.040],[501.480,943.040],[501.480,937.040],[501.480,937.040],[501.480,897.680],[501.480,897.680],[501.480,891.680],[507.480,885.680],[513.480,885.680],[513.480,885.680],[894.370,885.680],[894.370,885.680],[900.370,885.680],[906.370,891.680],[906.370,897.680],[906.370,897.680],[906.370,937.040],[906.370,937.040],[906.370,943.040],[900.370,949.040],[894.370,949.040]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [703.920,922.760],
+          "align": "c",
+          "width": 258.150,
+          "text": "Supported task and physical cell"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [703.920,901.160],
+          "align": "c",
+          "width": 373.210,
+          "text": "Approved safety envelope; compatible artifacts"
+        }
+      ],
+      "color": "#3170a3",
+      "fillcolor": "#edf5ff",
+      "fontcolor": "#172a3c",
+      "fontname": "Arial",
+      "fontsize": "18",
+      "height": "0.88",
+      "label": "Supported task and physical cell\\nApproved safety envelope; compatible artifacts",
+      "margin": "0.22,0.14",
+      "penwidth": "1.6",
+      "pos": "703.92,917.36",
+      "shape": "box",
+      "style": "rounded,filled",
+      "width": "5.6235"
+    },
+    {
+      "_gvid": 3,
+      "name": "advice",
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#3170a3"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#edf5ff"
+        },
+        {
+          "op": "B",
+          "points": [[907.890,843.880],[907.890,843.880],[499.960,843.880],[499.960,843.880],[493.960,843.880],[487.960,837.880],[487.960,831.880],[487.960,831.880],[487.960,792.520],[487.960,792.520],[487.960,786.520],[493.960,780.520],[499.960,780.520],[499.960,780.520],[907.890,780.520],[907.890,780.520],[913.890,780.520],[919.890,786.520],[919.890,792.520],[919.890,792.520],[919.890,831.880],[919.890,831.880],[919.890,837.880],[913.890,843.880],[907.890,843.880]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [703.920,817.600],
+          "align": "c",
+          "width": 307.180,
+          "text": "v1.8: rank allowed preparation choices"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [703.920,796.000],
+          "align": "c",
+          "width": 400.250,
+          "text": "Digital compute, harness, perception and planning"
+        }
+      ],
+      "color": "#3170a3",
+      "fillcolor": "#edf5ff",
+      "fontcolor": "#172a3c",
+      "fontname": "Arial",
+      "fontsize": "18",
+      "height": "0.88",
+      "label": "v1.8: rank allowed preparation choices\\nDigital compute, harness, perception and planning",
+      "margin": "0.22,0.14",
+      "penwidth": "1.6",
+      "pos": "703.92,812.2",
+      "shape": "box",
+      "style": "rounded,filled",
+      "width": "5.9991"
+    },
+    {
+      "_gvid": 4,
+      "name": "sim",
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#3170a3"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#edf5ff"
+        },
+        {
+          "op": "B",
+          "points": [[1105.350,724.120],[1105.350,724.120],[794.490,724.120],[794.490,724.120],[788.490,724.120],[782.490,718.120],[782.490,712.120],[782.490,712.120],[782.490,672.760],[782.490,672.760],[782.490,666.760],[788.490,660.760],[794.490,660.760],[794.490,660.760],[1105.350,660.760],[1105.350,660.760],[1111.350,660.760],[1117.350,666.760],[1117.350,672.760],[1117.350,672.760],[1117.350,712.120],[1117.350,712.120],[1117.350,718.120],[1111.350,724.120],[1105.350,724.120]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [949.920,697.840],
+          "align": "c",
+          "width": 237.150,
+          "text": "Shadow and target simulation"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [949.920,676.240],
+          "align": "c",
+          "width": 303.180,
+          "text": "Compare the governed static baseline"
+        }
+      ],
+      "color": "#3170a3",
+      "fillcolor": "#edf5ff",
+      "fontcolor": "#172a3c",
+      "fontname": "Arial",
+      "fontsize": "18",
+      "height": "0.88",
+      "label": "Shadow and target simulation\\nCompare the governed static baseline",
+      "margin": "0.22,0.14",
+      "penwidth": "1.6",
+      "pos": "949.92,692.44",
+      "shape": "box",
+      "style": "rounded,filled",
+      "width": "4.6508"
+    },
+    {
+      "_gvid": 5,
+      "name": "preflight",
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#26835d"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#dcf5e9"
+        },
+        {
+          "op": "B",
+          "points": [[1139.380,629.760],[1139.380,629.760],[760.470,629.760],[760.470,629.760],[754.470,629.760],[748.470,623.760],[748.470,617.760],[748.470,617.760],[748.470,578.400],[748.470,578.400],[748.470,572.400],[754.470,566.400],[760.470,566.400],[760.470,566.400],[1139.380,566.400],[1139.380,566.400],[1145.380,566.400],[1151.380,572.400],[1151.380,578.400],[1151.380,578.400],[1151.380,617.760],[1151.380,617.760],[1151.380,623.760],[1145.380,629.760],[1139.380,629.760]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [949.920,603.480],
+          "align": "c",
+          "width": 247.170,
+          "text": "Independent complete preflight"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [949.920,581.880],
+          "align": "c",
+          "width": 371.230,
+          "text": "Configuration, calibration, safety and stop path"
+        }
+      ],
+      "color": "#26835d",
+      "fillcolor": "#dcf5e9",
+      "fontcolor": "#172a3c",
+      "fontname": "Arial",
+      "fontsize": "18",
+      "height": "0.88",
+      "label": "Independent complete preflight\\nConfiguration, calibration, safety and stop path",
+      "margin": "0.22,0.14",
+      "penwidth": "1.6",
+      "pos": "949.92,598.08",
+      "shape": "box",
+      "style": "rounded,filled",
+      "width": "5.596"
+    },
+    {
+      "_gvid": 6,
+      "name": "freeze",
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#8955b0"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#f3ecff"
+        },
+        {
+          "op": "B",
+          "points": [[935.090,520.800],[935.090,520.800],[588.760,520.800],[588.760,520.800],[582.760,520.800],[576.760,514.800],[576.760,508.800],[576.760,508.800],[576.760,469.440],[576.760,469.440],[576.760,463.440],[582.760,457.440],[588.760,457.440],[588.760,457.440],[935.090,457.440],[935.090,457.440],[941.090,457.440],[947.090,463.440],[947.090,469.440],[947.090,469.440],[947.090,508.800],[947.090,508.800],[947.090,514.800],[941.090,520.800],[935.090,520.800]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [761.920,494.520],
+          "align": "c",
+          "width": 272.150,
+          "text": "Freeze the complete configuration"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [761.920,472.920],
+          "align": "c",
+          "width": 338.650,
+          "text": "Manifest -> trial -> preflight -> audit receipt"
+        }
+      ],
+      "color": "#8955b0",
+      "fillcolor": "#f3ecff",
+      "fontcolor": "#172a3c",
+      "fontname": "Arial",
+      "fontsize": "18",
+      "height": "0.88",
+      "label": "Freeze the complete configuration\\nManifest -> trial -> preflight -> audit receipt",
+      "margin": "0.22,0.14",
+      "penwidth": "1.6",
+      "pos": "761.92,489.12",
+      "shape": "box",
+      "style": "rounded,filled",
+      "width": "5.1435"
+    },
+    {
+      "_gvid": 7,
+      "name": "approval",
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#aa771b"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#fff1d5"
+        },
+        {
+          "op": "B",
+          "points": [[959.380,411.840],[959.380,411.840],[564.460,411.840],[564.460,411.840],[558.460,411.840],[552.460,405.840],[552.460,399.840],[552.460,399.840],[552.460,360.480],[552.460,360.480],[552.460,354.480],[558.460,348.480],[564.460,348.480],[564.460,348.480],[959.380,348.480],[959.380,348.480],[965.380,348.480],[971.380,354.480],[971.380,360.480],[971.380,360.480],[971.380,399.840],[971.380,399.840],[971.380,405.840],[965.380,411.840],[959.380,411.840]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [761.920,385.560],
+          "align": "c",
+          "width": 249.130,
+          "text": "Human approves the exact trial"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [761.920,363.960],
+          "align": "c",
+          "width": 387.240,
+          "text": "Time-bounded, single-use approval through v0.6"
+        }
+      ],
+      "color": "#aa771b",
+      "fillcolor": "#fff1d5",
+      "fontcolor": "#172a3c",
+      "fontname": "Arial",
+      "fontsize": "18",
+      "height": "0.88",
+      "label": "Human approves the exact trial\\nTime-bounded, single-use approval through v0.6",
+      "margin": "0.22,0.14",
+      "penwidth": "1.6",
+      "pos": "761.92,380.16",
+      "shape": "box",
+      "style": "rounded,filled",
+      "width": "5.8183"
+    },
+    {
+      "_gvid": 8,
+      "name": "gateway",
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#aa771b"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#fff1d5"
+        },
+        {
+          "op": "B",
+          "points": [[824.380,292.080],[824.380,292.080],[403.470,292.080],[403.470,292.080],[397.470,292.080],[391.470,286.080],[391.470,280.080],[391.470,280.080],[391.470,240.720],[391.470,240.720],[391.470,234.720],[397.470,228.720],[403.470,228.720],[403.470,228.720],[824.380,228.720],[824.380,228.720],[830.380,228.720],[836.380,234.720],[836.380,240.720],[836.380,240.720],[836.380,280.080],[836.380,280.080],[836.380,286.080],[830.380,292.080],[824.380,292.080]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [613.920,265.800],
+          "align": "c",
+          "width": 260.140,
+          "text": "v0.6 gateway: consume and arm"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [613.920,244.200],
+          "align": "c",
+          "width": 413.230,
+          "text": "Recheck digests, revocation and safety; issue lease"
+        }
+      ],
+      "color": "#aa771b",
+      "fillcolor": "#fff1d5",
+      "fontcolor": "#172a3c",
+      "fontname": "Arial",
+      "fontsize": "18",
+      "height": "0.88",
+      "label": "v0.6 gateway: consume and arm\\nRecheck digests, revocation and safety; issue lease",
+      "margin": "0.22,0.14",
+      "penwidth": "1.6",
+      "pos": "613.92,260.4",
+      "shape": "box",
+      "style": "rounded,filled",
+      "width": "6.1793"
+    },
+    {
+      "_gvid": 9,
+      "name": "execute",
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#aa771b"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#fff1d5"
+        },
+        {
+          "op": "B",
+          "points": [[786.630,172.320],[786.630,172.320],[441.220,172.320],[441.220,172.320],[435.220,172.320],[429.220,166.320],[429.220,160.320],[429.220,160.320],[429.220,120.960],[429.220,120.960],[429.220,114.960],[435.220,108.960],[441.220,108.960],[441.220,108.960],[786.630,108.960],[786.630,108.960],[792.630,108.960],[798.630,114.960],[798.630,120.960],[798.630,120.960],[798.630,160.320],[798.630,160.320],[798.630,166.320],[792.630,172.320],[786.630,172.320]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [613.920,146.040],
+          "align": "c",
+          "width": 325.170,
+          "text": "Execute once under deterministic control"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [613.920,124.440],
+          "align": "c",
+          "width": 337.730,
+          "text": "Safety supervisor + independent stop path"
+        }
+      ],
+      "color": "#aa771b",
+      "fillcolor": "#fff1d5",
+      "fontcolor": "#172a3c",
+      "fontname": "Arial",
+      "fontsize": "18",
+      "height": "0.88",
+      "label": "Execute once under deterministic control\\nSafety supervisor + independent stop path",
+      "margin": "0.22,0.14",
+      "penwidth": "1.6",
+      "pos": "613.92,140.64",
+      "shape": "box",
+      "style": "rounded,filled",
+      "width": "5.1307"
+    },
+    {
+      "_gvid": 10,
+      "name": "outcome",
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#26835d"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#dcf5e9"
+        },
+        {
+          "op": "B",
+          "points": [[796.350,63.360],[796.350,63.360],[431.490,63.360],[431.490,63.360],[425.490,63.360],[419.490,57.360],[419.490,51.360],[419.490,51.360],[419.490,12.000],[419.490,12.000],[419.490,6.000],[425.490,0.000],[431.490,0.000],[431.490,0.000],[796.350,0.000],[796.350,0.000],[802.350,0.000],[808.350,6.000],[808.350,12.000],[808.350,12.000],[808.350,51.360],[808.350,51.360],[808.350,57.360],[802.350,63.360],[796.350,63.360]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [613.920,37.080],
+          "align": "c",
+          "width": 336.710,
+          "text": "Independent verification + outcome record"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [613.920,15.480],
+          "align": "c",
+          "width": 357.180,
+          "text": "Task success and safety reported separately"
+        }
+      ],
+      "color": "#26835d",
+      "fillcolor": "#dcf5e9",
+      "fontcolor": "#172a3c",
+      "fontname": "Arial",
+      "fontsize": "18",
+      "height": "0.88",
+      "label": "Independent verification + outcome record\\nTask success and safety reported separately",
+      "margin": "0.22,0.14",
+      "penwidth": "1.6",
+      "pos": "613.92,31.68",
+      "shape": "box",
+      "style": "rounded,filled",
+      "width": "5.4008"
+    },
+    {
+      "_gvid": 11,
+      "name": "static",
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#66717d"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#f4f4f4"
+        },
+        {
+          "op": "B",
+          "points": [[1327.340,854.680],[1327.340,854.680],[1064.510,854.680],[1064.510,854.680],[1058.510,854.680],[1052.510,848.680],[1052.510,842.680],[1052.510,842.680],[1052.510,781.720],[1052.510,781.720],[1052.510,775.720],[1058.510,769.720],[1064.510,769.720],[1064.510,769.720],[1327.340,769.720],[1327.340,769.720],[1333.340,769.720],[1339.340,775.720],[1339.340,781.720],[1339.340,781.720],[1339.340,842.680],[1339.340,842.680],[1339.340,848.680],[1333.340,854.680],[1327.340,854.680]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [1195.920,828.400],
+          "align": "c",
+          "width": 250.150,
+          "text": "Advice uncertain or unavailable"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [1195.920,806.800],
+          "align": "c",
+          "width": 255.150,
+          "text": "Use governed static preparation"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [1195.920,785.200],
+          "align": "c",
+          "width": 70.050,
+          "text": "or pause"
+        }
+      ],
+      "color": "#66717d",
+      "fillcolor": "#f4f4f4",
+      "fontcolor": "#172a3c",
+      "fontname": "Arial",
+      "fontsize": "18",
+      "height": "1.18",
+      "label": "Advice uncertain or unavailable\\nUse governed static preparation\\nor pause",
+      "margin": "0.22,0.14",
+      "penwidth": "1.6",
+      "pos": "1195.9,812.2",
+      "shape": "box",
+      "style": "rounded,filled",
+      "width": "3.9837"
+    },
+    {
+      "_gvid": 12,
+      "name": "blocked",
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#b64949"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#ffeded"
+        },
+        {
+          "op": "B",
+          "points": [[1351.370,302.880],[1351.370,302.880],[996.470,302.880],[996.470,302.880],[990.470,302.880],[984.470,296.880],[984.470,290.880],[984.470,290.880],[984.470,229.920],[984.470,229.920],[984.470,223.920],[990.470,217.920],[996.470,217.920],[996.470,217.920],[1351.370,217.920],[1351.370,217.920],[1357.370,217.920],[1363.370,223.920],[1363.370,229.920],[1363.370,229.920],[1363.370,290.880],[1363.370,290.880],[1363.370,296.880],[1357.370,302.880],[1351.370,302.880]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [1173.920,276.600],
+          "align": "c",
+          "width": 296.210,
+          "text": "Record the reached stage and pause"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [1173.920,255.000],
+          "align": "c",
+          "width": 347.220,
+          "text": "Rejected preflight, denied\/expired approval,"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [1173.920,233.400],
+          "align": "c",
+          "width": 258.110,
+          "text": "mismatch, revocation or incident"
+        }
+      ],
+      "color": "#b64949",
+      "fillcolor": "#ffeded",
+      "fontcolor": "#172a3c",
+      "fontname": "Arial",
+      "fontsize": "18",
+      "height": "1.18",
+      "label": "Record the reached stage and pause\\nRejected preflight, denied\/expired approval,\\nmismatch, revocation or incident",
+      "margin": "0.22,0.14",
+      "penwidth": "1.6",
+      "pos": "1173.9,260.4",
+      "shape": "box",
+      "style": "rounded,filled",
+      "width": "5.2625"
+    },
+    {
+      "_gvid": 13,
+      "name": "invalid",
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#b64949"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#ffeded"
+        },
+        {
+          "op": "B",
+          "points": [[343.850,302.880],[343.850,302.880],[12.000,302.880],[12.000,302.880],[6.000,302.880],[0.000,296.880],[0.000,290.880],[0.000,290.880],[0.000,229.920],[0.000,229.920],[0.000,223.920],[6.000,217.920],[12.000,217.920],[12.000,217.920],[343.850,217.920],[343.850,217.920],[349.850,217.920],[355.850,223.920],[355.850,229.920],[355.850,229.920],[355.850,290.880],[355.850,290.880],[355.850,296.880],[349.850,302.880],[343.850,302.880]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [177.920,276.600],
+          "align": "c",
+          "width": 260.140,
+          "text": "Any material change after freeze"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [177.920,255.000],
+          "align": "c",
+          "width": 324.170,
+          "text": "Invalidates the chain: new manifest, trial,"
+        },
+        {
+          "op": "F",
+          "size": 18.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#172a3c"
+        },
+        {
+          "op": "T",
+          "pt": [177.920,233.400],
+          "align": "c",
+          "width": 292.180,
+          "text": "preflight and exact approval required"
+        }
+      ],
+      "color": "#b64949",
+      "fillcolor": "#ffeded",
+      "fontcolor": "#172a3c",
+      "fontname": "Arial",
+      "fontsize": "18",
+      "height": "1.18",
+      "label": "Any material change after freeze\\nInvalidates the chain: new manifest, trial,\\npreflight and exact approval required",
+      "margin": "0.22,0.14",
+      "penwidth": "1.6",
+      "pos": "177.92,260.4",
+      "shape": "box",
+      "style": "rounded,filled",
+      "width": "4.9423"
+    }
+  ],
+  "edges": [
+    {
+      "_gvid": 0,
+      "tail": 2,
+      "head": 3,
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "b",
+          "points": [[703.920,885.130],[703.920,875.530],[703.920,864.820],[703.920,854.650]]
+        }
+      ],
+      "_hdraw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "solid"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "P",
+          "points": [[706.720,854.750],[703.920,846.750],[701.120,854.750]]
+        }
+      ],
+      "arrowsize": "0.8",
+      "color": "#50677d",
+      "fontcolor": "#31475b",
+      "fontname": "Arial",
+      "fontsize": "13",
+      "label": "",
+      "penwidth": "1.6",
+      "pos": "e,703.92,844.33 703.92,885.13 703.92,875.53 703.92,864.82 703.92,854.65"
+    },
+    {
+      "_gvid": 1,
+      "tail": 3,
+      "head": 4,
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "b",
+          "points": [[769.520,779.800],[802.050,764.230],[841.480,745.350],[875.170,729.230]]
+        }
+      ],
+      "_hdraw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "solid"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "P",
+          "points": [[876.310,731.780],[882.320,725.800],[873.900,726.730]]
+        }
+      ],
+      "arrowsize": "0.8",
+      "color": "#50677d",
+      "fontcolor": "#31475b",
+      "fontname": "Arial",
+      "fontsize": "13",
+      "label": "",
+      "penwidth": "1.6",
+      "pos": "e,884.51,724.76 769.52,779.8 802.05,764.23 841.48,745.35 875.17,729.23"
+    },
+    {
+      "_gvid": 3,
+      "tail": 4,
+      "head": 5,
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "b",
+          "points": [[949.920,660.170],[949.920,653.850],[949.920,647.120],[949.920,640.510]]
+        }
+      ],
+      "_hdraw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "solid"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "P",
+          "points": [[952.720,640.740],[949.920,632.740],[947.120,640.740]]
+        }
+      ],
+      "arrowsize": "0.8",
+      "color": "#50677d",
+      "fontcolor": "#31475b",
+      "fontname": "Arial",
+      "fontsize": "13",
+      "label": "",
+      "penwidth": "1.6",
+      "pos": "e,949.92,630.32 949.92,660.17 949.92,653.85 949.92,647.12 949.92,640.51"
+    },
+    {
+      "_gvid": 4,
+      "tail": 5,
+      "head": 6,
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "b",
+          "points": [[894.790,565.710],[873.170,553.410],[848.230,539.220],[825.830,526.480]]
+        }
+      ],
+      "_hdraw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "solid"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "P",
+          "points": [[827.500,524.210],[819.160,522.690],[824.730,529.080]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 13.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#31475b"
+        },
+        {
+          "op": "T",
+          "pt": [884.520,539.700],
+          "align": "c",
+          "width": 34.680,
+          "text": "PASS"
+        }
+      ],
+      "arrowsize": "0.8",
+      "color": "#50677d",
+      "fontcolor": "#31475b",
+      "fontname": "Arial",
+      "fontsize": "13",
+      "label": "PASS",
+      "lp": "884.52,543.6",
+      "penwidth": "1.6",
+      "pos": "e,817.06,521.49 894.79,565.71 873.17,553.41 848.23,539.22 825.83,526.48"
+    },
+    {
+      "_gvid": 6,
+      "tail": 6,
+      "head": 7,
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "b",
+          "points": [[761.920,456.900],[761.920,446.230],[761.920,434.120],[761.920,422.760]]
+        }
+      ],
+      "_hdraw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "solid"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "P",
+          "points": [[764.720,423.030],[761.920,415.030],[759.120,423.030]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 13.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#31475b"
+        },
+        {
+          "op": "T",
+          "pt": [857.480,430.740],
+          "align": "c",
+          "width": 191.120,
+          "text": "immutable trial + preflight hashes"
+        }
+      ],
+      "arrowsize": "0.8",
+      "color": "#50677d",
+      "fontcolor": "#31475b",
+      "fontname": "Arial",
+      "fontsize": "13",
+      "label": "immutable trial + preflight hashes",
+      "lp": "857.48,434.64",
+      "penwidth": "1.6",
+      "pos": "e,761.92,412.61 761.92,456.9 761.92,446.23 761.92,434.12 761.92,422.76"
+    },
+    {
+      "_gvid": 8,
+      "tail": 7,
+      "head": 8,
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "b",
+          "points": [[722.650,347.910],[703.830,332.940],[681.140,314.890],[661.370,299.150]]
+        }
+      ],
+      "_hdraw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "solid"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "P",
+          "points": [[663.280,297.090],[655.270,294.300],[659.790,301.470]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 13.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#31475b"
+        },
+        {
+          "op": "T",
+          "pt": [758.630,321.780],
+          "align": "c",
+          "width": 114.900,
+          "text": "valid exact approval"
+        }
+      ],
+      "arrowsize": "0.8",
+      "color": "#50677d",
+      "fontcolor": "#31475b",
+      "fontname": "Arial",
+      "fontsize": "13",
+      "label": "valid exact approval",
+      "lp": "758.63,325.68",
+      "penwidth": "1.6",
+      "pos": "e,653.38,292.79 722.65,347.91 703.83,332.94 681.14,314.89 661.37,299.15"
+    },
+    {
+      "_gvid": 10,
+      "tail": 8,
+      "head": 9,
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "b",
+          "points": [[613.920,228.150],[613.920,214.440],[613.920,198.150],[613.920,183.420]]
+        }
+      ],
+      "_hdraw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "solid"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "P",
+          "points": [[616.720,183.460],[613.920,175.460],[611.120,183.460]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 13.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#31475b"
+        },
+        {
+          "op": "T",
+          "pt": [686.380,191.220],
+          "align": "c",
+          "width": 144.920,
+          "text": "bound lease + final gates"
+        }
+      ],
+      "arrowsize": "0.8",
+      "color": "#50677d",
+      "fontcolor": "#31475b",
+      "fontname": "Arial",
+      "fontsize": "13",
+      "label": "bound lease + final gates",
+      "lp": "686.38,195.12",
+      "penwidth": "1.6",
+      "pos": "e,613.92,173.03 613.92,228.15 613.92,214.44 613.92,198.15 613.92,183.42"
+    },
+    {
+      "_gvid": 12,
+      "tail": 9,
+      "head": 10,
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "b",
+          "points": [[613.920,108.420],[613.920,97.750],[613.920,85.640],[613.920,74.280]]
+        }
+      ],
+      "_hdraw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "solid"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "P",
+          "points": [[616.720,74.550],[613.920,66.550],[611.120,74.550]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 13.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#31475b"
+        },
+        {
+          "op": "T",
+          "pt": [707.510,82.260],
+          "align": "c",
+          "width": 187.170,
+          "text": "actual execution, including stops"
+        }
+      ],
+      "arrowsize": "0.8",
+      "color": "#50677d",
+      "fontcolor": "#31475b",
+      "fontname": "Arial",
+      "fontsize": "13",
+      "label": "actual execution, including stops",
+      "lp": "707.51,86.16",
+      "penwidth": "1.6",
+      "pos": "e,613.92,64.129 613.92,108.42 613.92,97.746 613.92,85.638 613.92,74.283"
+    },
+    {
+      "_gvid": 2,
+      "tail": 3,
+      "head": 11,
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "dashed"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "b",
+          "points": [[920.440,812.200],[961.260,812.200],[1003.180,812.200],[1041.620,812.200]]
+        }
+      ],
+      "_hdraw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "solid"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "P",
+          "points": [[1041.420,815.000],[1049.420,812.200],[1041.420,809.400]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 13.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#31475b"
+        },
+        {
+          "op": "T",
+          "pt": [986.200,819.100],
+          "align": "c",
+          "width": 96.830,
+          "text": "fallback \/ abstain"
+        }
+      ],
+      "arrowsize": "0.8",
+      "color": "#50677d",
+      "fontcolor": "#31475b",
+      "fontname": "Arial",
+      "fontsize": "13",
+      "label": "fallback \/ abstain",
+      "lp": "986.2,823",
+      "penwidth": "1.6",
+      "pos": "e,1051.8,812.2 920.44,812.2 961.26,812.2 1003.2,812.2 1041.6,812.2",
+      "style": "dashed"
+    },
+    {
+      "_gvid": 13,
+      "tail": 11,
+      "head": 4,
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "dashed"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "b",
+          "points": [[1107.810,769.020],[1080.550,755.970],[1050.810,741.730],[1024.560,729.170]]
+        }
+      ],
+      "_hdraw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "solid"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#50677d"
+        },
+        {
+          "op": "P",
+          "points": [[1026.040,726.770],[1017.610,725.840],[1023.620,731.820]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 13.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#31475b"
+        },
+        {
+          "op": "T",
+          "pt": [1147.000,743.020],
+          "align": "c",
+          "width": 148.150,
+          "text": "governed static candidate"
+        }
+      ],
+      "arrowsize": "0.8",
+      "color": "#50677d",
+      "fontcolor": "#31475b",
+      "fontname": "Arial",
+      "fontsize": "13",
+      "label": "governed static candidate",
+      "lp": "1147,746.92",
+      "penwidth": "1.6",
+      "pos": "e,1015.4,724.8 1107.8,769.02 1080.6,755.97 1050.8,741.73 1024.6,729.17",
+      "style": "dashed"
+    },
+    {
+      "_gvid": 5,
+      "tail": 5,
+      "head": 12,
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#b64949"
+        },
+        {
+          "op": "b",
+          "points": [[970.800,565.800],[1009.620,507.620],[1093.250,382.300],[1140.190,311.950]]
+        }
+      ],
+      "_hdraw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "solid"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#b64949"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#b64949"
+        },
+        {
+          "op": "P",
+          "points": [[1142.270,313.870],[1144.390,305.670],[1137.620,310.770]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 13.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#31475b"
+        },
+        {
+          "op": "T",
+          "pt": [1116.480,430.740],
+          "align": "c",
+          "width": 109.100,
+          "text": "FAIL \/ inconclusive"
+        }
+      ],
+      "arrowsize": "0.8",
+      "color": "#b64949",
+      "fontcolor": "#31475b",
+      "fontname": "Arial",
+      "fontsize": "13",
+      "label": "FAIL \/ inconclusive",
+      "lp": "1116.5,434.64",
+      "penwidth": "1.6",
+      "pos": "e,1145.7,303.65 970.8,565.8 1009.6,507.62 1093.2,382.3 1140.2,311.95"
+    },
+    {
+      "_gvid": 9,
+      "tail": 7,
+      "head": 12,
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#b64949"
+        },
+        {
+          "op": "b",
+          "points": [[871.790,347.760],[916.060,335.100],[967.960,320.270],[1016.140,306.500]]
+        }
+      ],
+      "_hdraw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "solid"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#b64949"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#b64949"
+        },
+        {
+          "op": "P",
+          "points": [[1016.790,309.230],[1023.710,304.340],[1015.250,303.840]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 13.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#31475b"
+        },
+        {
+          "op": "T",
+          "pt": [1014.180,321.780],
+          "align": "c",
+          "width": 92.510,
+          "text": "denied \/ expired"
+        }
+      ],
+      "arrowsize": "0.8",
+      "color": "#b64949",
+      "fontcolor": "#31475b",
+      "fontname": "Arial",
+      "fontsize": "13",
+      "label": "denied \/ expired",
+      "lp": "1014.2,325.68",
+      "penwidth": "1.6",
+      "pos": "e,1026,303.67 871.79,347.76 916.06,335.1 967.96,320.27 1016.1,306.5"
+    },
+    {
+      "_gvid": 11,
+      "tail": 8,
+      "head": 12,
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#b64949"
+        },
+        {
+          "op": "b",
+          "points": [[836.860,260.400],[881.990,260.400],[929.190,260.400],[973.490,260.400]]
+        }
+      ],
+      "_hdraw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "solid"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#b64949"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#b64949"
+        },
+        {
+          "op": "P",
+          "points": [[973.370,263.200],[981.370,260.400],[973.370,257.600]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 13.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#31475b"
+        },
+        {
+          "op": "T",
+          "pt": [910.420,267.300],
+          "align": "c",
+          "width": 112.700,
+          "text": "mismatch \/ revoked"
+        }
+      ],
+      "arrowsize": "0.8",
+      "color": "#b64949",
+      "fontcolor": "#31475b",
+      "fontname": "Arial",
+      "fontsize": "13",
+      "label": "mismatch \/ revoked",
+      "lp": "910.42,271.2",
+      "penwidth": "1.6",
+      "pos": "e,983.79,260.4 836.86,260.4 881.99,260.4 929.19,260.4 973.49,260.4"
+    },
+    {
+      "_gvid": 7,
+      "tail": 6,
+      "head": 13,
+      "_draw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#b64949"
+        },
+        {
+          "op": "b",
+          "points": [[630.130,456.650],[542.120,435.640],[442.430,411.840],[442.430,411.840],[442.430,411.840],[338.380,352.660],[260.800,308.540]]
+        }
+      ],
+      "_hdraw_": 
+      [
+        {
+          "op": "S",
+          "style": "setlinewidth(1.6)"
+        },
+        {
+          "op": "S",
+          "style": "solid"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#b64949"
+        },
+        {
+          "op": "C",
+          "grad": "none",
+          "color": "#b64949"
+        },
+        {
+          "op": "P",
+          "points": [[262.400,306.220],[254.060,304.700],[259.630,311.090]]
+        }
+      ],
+      "_ldraw_": 
+      [
+        {
+          "op": "F",
+          "size": 13.000,
+          "face": "Arial"
+        },
+        {
+          "op": "c",
+          "grad": "none",
+          "color": "#31475b"
+        },
+        {
+          "op": "T",
+          "pt": [488.670,376.260],
+          "align": "c",
+          "width": 92.500,
+          "text": "material change"
+        }
+      ],
+      "arrowsize": "0.8",
+      "color": "#b64949",
+      "fontcolor": "#31475b",
+      "fontname": "Arial",
+      "fontsize": "13",
+      "label": "material change",
+      "lp": "488.67,380.16",
+      "penwidth": "1.6",
+      "pos": "e,251.95,303.51 630.13,456.65 542.12,435.64 442.43,411.84 442.43,411.84 442.43,411.84 338.38,352.66 260.8,308.54"
+    }
+  ]
+}

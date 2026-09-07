@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "ok": false,
+  "command": "validate",
+  "stage": "render",
+  "type": "workflow",
+  "input": "/mnt/data/accretion-v1.8-review-2026-09-06/physical-trial.json",
+  "error": "Workflow edge \"approve_blocked\" cannot satisfy route preset \"bottom-channel\" under readable-v2 constraints (minimum 8px endpoint stubs, 16px interior turns, and 28px direct clearance).",
+  "diagnostics": [
+    {
+      "code": "workflow/route-preset-conflict",
+      "severity": "error",
+      "message": "Workflow edge \"approve_blocked\" cannot satisfy route preset \"bottom-channel\" under readable-v2 constraints (minimum 8px endpoint stubs, 16px interior turns, and 28px direct clearance).",
+      "subject": {
+        "diagramType": "workflow",
+        "edge": "approve_blocked",
+        "from": "approve",
+        "to": "blocked",
+        "route": "bottom-channel"
+      },
+      "evidence": {
+        "attemptedCandidateFamily": "bottom-channel",
+        "points": [
+          [
+            1308.8000000000002,
+            249
+          ],
+          [
+            1308.8000000000002,
+            572
+          ],
+          [
+            659.2,
+            572
+          ],
+          [
+            659.2,
+            540
+          ]
+        ],
+        "fromSide": "right",
+        "toSide": "bottom",
+        "requiredEndpointStubPx": 8,
+        "requiredInteriorSegmentPx": 16,
+        "requiredDirectClearancePx": 28
+      },
+      "supportedFixes": []
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+[
+  {
+    "repo": "https://github.com/krafton-ai/WHALE",
+    "commit": "fbe125eb7abea7f760c99ab9acc1a6261e708fc6",
+    "path": "run/lib/alternate.sh",
+    "sha256": "41170c5852ec22384af0b715dbbabf71845e5914405ec94938a723baa559b650",
+    "local_file": "WHALE-run_lib_alternate.sh"
+  },
+  {
+    "repo": "https://github.com/krafton-ai/WHALE",
+    "commit": "fbe125eb7abea7f760c99ab9acc1a6261e708fc6",
+    "path": "docs/reproducing.md",
+    "sha256": "1170856c7360a51e6035efb9c2537d1eb565f10dca87ef9751edd7f4393966d2",
+    "local_file": "WHALE-docs_reproducing.md"
+  },
+  {
+    "repo": "https://github.com/ethz-spylab/agentdojo",
+    "commit": "089ed468cf3ed0322acc66b0211f26d9d90dbf60",
+    "path": "src/agentdojo/task_suite/task_suite.py",
+    "sha256": "2e69da06f7e150dd6d238c53a74845b56eebeb224e07f694e1051a6e0c6a2bc1",
+    "local_file": "agentdojo-src_agentdojo_task_suite_task_suite.py"
+  }
+]

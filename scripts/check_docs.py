@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 import subprocess
 import sys
@@ -15,6 +16,19 @@ MARKDOWN_LINK = re.compile(r"\]\(([^\s)]+)\)")
 HTML_TARGET = re.compile(r'(?:src|href)="([^"]+)"')
 EXTERNAL_TARGET = re.compile(r"^[A-Za-z][A-Za-z0-9+.-]*:")
 LOWERCASE_MARKDOWN = re.compile(r"[a-z0-9]+(?:[.-][a-z0-9]+)*\.md")
+
+# These three byte-preserved review sources refer to files outside the historical
+# documentation subset. Their links are historical, not live checkout navigation.
+# Exempt only the exact imported identities; all other Markdown is checked normally.
+FROZEN_REFERENCE_ROOT = DOCS / "sdd/future/v1.1-v1.8/package/company/apps/Accretion"
+FROZEN_REFERENCE_DOCUMENTS = {
+    FROZEN_REFERENCE_ROOT / "README.md":
+        "4134935108685b5aa453b757ba858962409286f453fe75bfe6d2e8f4095a945d",
+    FROZEN_REFERENCE_ROOT / "docs/runbooks/p0-runtime.md":
+        "89bf92d45df7debb255a3aeac0340a8919d2dd484ce7ab526552d230a8d1c269",
+    FROZEN_REFERENCE_ROOT / "docs/releases/v0.4/backlog.md":
+        "e19ccaee254918a48187c6b123eb8e80ff440029653be2aea77a0ca4267b6a7c",
+}
 
 
 def tracked_paths(pattern: str) -> list[Path]:
@@ -44,6 +58,10 @@ def validate_markdown(files: list[Path]) -> list[str]:
 
     for path in files:
         relative = path.relative_to(ROOT)
+        if path in FROZEN_REFERENCE_DOCUMENTS:
+            if hashlib.sha256(path.read_bytes()).hexdigest() != FROZEN_REFERENCE_DOCUMENTS[path]:
+                failures.append(f"{relative}: frozen reference identity changed")
+            continue
         if DOCS in path.parents and path.name != "README.md" and DOCS / "sdd" not in path.parents:
             if not LOWERCASE_MARKDOWN.fullmatch(path.name):
                 failures.append(f"{relative}: use a lowercase kebab-case Markdown filename")
@@ -93,6 +111,13 @@ def validate_svgs(files: list[Path]) -> list[str]:
 
 
 def main() -> int:
+    integrity = subprocess.run(
+        [sys.executable, str(ROOT / "scripts/validate_future_sdd_package.py"), "--integrity-only"],
+        cwd=ROOT,
+        check=False,
+    )
+    if integrity.returncode:
+        return integrity.returncode
     markdown = tracked_paths("*.md")
     svgs = tracked_paths("docs/assets/*.svg")
     failures = [*validate_markdown(markdown), *validate_svgs(svgs)]

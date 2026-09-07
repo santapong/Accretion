@@ -1,0 +1,206 @@
+[
+  {
+    "paper_version": "2406.13352v3",
+    "retrieved_pages": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      16,
+      20
+    ],
+    "evidence_sha256": "47b7fb1d8b83a504267614735f262725912c5ec34b6e3f14430420996fad4546",
+    "reading_status": "SELECTIVE_PRIMARY_TEXT; see source-register.md for inspected scope"
+  },
+  {
+    "paper_version": "2505.00212v3",
+    "retrieved_pages": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      8,
+      12,
+      15
+    ],
+    "evidence_sha256": "98c1cf2a7d132cdaf6dab946f19349ae46d7e6ca2a1bee8bb916be246112a82a",
+    "reading_status": "SELECTIVE_PRIMARY_TEXT; see source-register.md for inspected scope"
+  },
+  {
+    "paper_version": "2605.25338v1",
+    "retrieved_pages": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      8,
+      9,
+      12,
+      13,
+      16,
+      23
+    ],
+    "evidence_sha256": "2d1d1a1a914d29379acc97d222d4e02dfb3fb8ef05b5b151e32804249473973c",
+    "reading_status": "SELECTIVE_PRIMARY_TEXT; see source-register.md for inspected scope"
+  },
+  {
+    "paper_version": "2607.02942v1",
+    "retrieved_pages": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      9
+    ],
+    "evidence_sha256": "78ed9734de8a13a69788e45b0771fc4a862a12674cb9306f7c93f2b09c6198d4",
+    "reading_status": "SELECTIVE_PRIMARY_TEXT; see source-register.md for inspected scope"
+  },
+  {
+    "paper_version": "2608.01347v5",
+    "retrieved_pages": [
+      1,
+      2,
+      6,
+      7,
+      10,
+      11,
+      13,
+      30,
+      33,
+      34,
+      35
+    ],
+    "evidence_sha256": "604013a39389d7957f8b6a5ea7c6684b0b25ff71bae0699113add5a7c981cd88",
+    "reading_status": "SELECTIVE_PRIMARY_TEXT; see source-register.md for inspected scope"
+  },
+  {
+    "paper_version": "2608.06301v1",
+    "retrieved_pages": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      10,
+      11,
+      12,
+      19,
+      25,
+      27
+    ],
+    "evidence_sha256": "0c8341d686eca406ef3e51968c481d53f524b35f15d0e7acdc0ea191447eca3c",
+    "reading_status": "SELECTIVE_PRIMARY_TEXT; see source-register.md for inspected scope"
+  },
+  {
+    "paper_version": "2608.11588v1",
+    "retrieved_pages": [
+      1,
+      2,
+      3,
+      5,
+      6,
+      7,
+      16
+    ],
+    "evidence_sha256": "5086da342a45e78adbe9212eb9425e3ffbab4cbc3a8b729b01ffab31137250c4",
+    "reading_status": "SELECTIVE_PRIMARY_TEXT; see source-register.md for inspected scope"
+  },
+  {
+    "paper_version": "2608.19425v1",
+    "retrieved_pages": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      9,
+      13,
+      14,
+      15
+    ],
+    "evidence_sha256": "a9d68c221cdee85aae6fdbc4499d3e563bce185253763fc14af4870a81582ef1",
+    "reading_status": "SELECTIVE_PRIMARY_TEXT; see source-register.md for inspected scope"
+  },
+  {
+    "paper_version": "2608.23041v1",
+    "retrieved_pages": [
+      1,
+      2,
+      4,
+      5,
+      6,
+      10,
+      16,
+      17,
+      34,
+      44
+    ],
+    "evidence_sha256": "ca325bbd6a1e1901d69130a593162bd36e67cc3ba88565d10799df2af996a384",
+    "reading_status": "SELECTIVE_PRIMARY_TEXT; see source-register.md for inspected scope"
+  },
+  {
+    "paper_version": "2608.27311v1",
+    "retrieved_pages": [
+      1,
+      2,
+      4,
+      5,
+      6,
+      7,
+      8,
+      13,
+      16
+    ],
+    "evidence_sha256": "8e04dc82205cde73b8ed5383513caaff1d6e9d818f06bb99716ded5afe0cc5fc",
+    "reading_status": "SELECTIVE_PRIMARY_TEXT; see source-register.md for inspected scope"
+  },
+  {
+    "paper_version": "2609.00196v1",
+    "retrieved_pages": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      9,
+      14,
+      15
+    ],
+    "evidence_sha256": "ae026d39254d9a56bd788aa0530ec8b20244492d944da62884fa7e89ded27345",
+    "reading_status": "SELECTIVE_PRIMARY_TEXT; see source-register.md for inspected scope"
+  },
+  {
+    "paper_version": "2106.00170v3",
+    "retrieved_pages": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      10,
+      16,
+      21,
+      22
+    ],
+    "evidence_sha256": "2133364a94dae3ba8a53026ceb3cb7b172a3e47dcc4587b608367014ef95c274",
+    "reading_status": "SELECTIVE_PRIMARY_TEXT; see source-register.md for inspected scope"
+  }
+]

@@ -1,0 +1,98 @@
+{
+  "evidenceKind": "manual-browser-automation",
+  "checks": [
+    {
+      "name": "user-journey",
+      "width": 1440,
+      "height": 900,
+      "innerWidth": 1440,
+      "innerHeight": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "textOutsideSvg": []
+    },
+    {
+      "name": "user-journey",
+      "width": 1600,
+      "height": 1000,
+      "innerWidth": 1600,
+      "innerHeight": 1000,
+      "scrollWidth": 1600,
+      "scrollHeight": 1000,
+      "textOutsideSvg": []
+    },
+    {
+      "name": "user-journey",
+      "width": 1920,
+      "height": 1080,
+      "innerWidth": 1920,
+      "innerHeight": 1080,
+      "scrollWidth": 1920,
+      "scrollHeight": 1080,
+      "textOutsideSvg": []
+    },
+    {
+      "name": "user-journey",
+      "width": 2048,
+      "height": 1320,
+      "innerWidth": 2048,
+      "innerHeight": 1320,
+      "scrollWidth": 2048,
+      "scrollHeight": 1320,
+      "textOutsideSvg": []
+    },
+    {
+      "name": "physical-trial",
+      "width": 1440,
+      "height": 900,
+      "innerWidth": 1440,
+      "innerHeight": 900,
+      "scrollWidth": 1440,
+      "scrollHeight": 900,
+      "textOutsideSvg": []
+    },
+    {
+      "name": "physical-trial",
+      "width": 1600,
+      "height": 1000,
+      "innerWidth": 1600,
+      "innerHeight": 1000,
+      "scrollWidth": 1600,
+      "scrollHeight": 1000,
+      "textOutsideSvg": []
+    },
+    {
+      "name": "physical-trial",
+      "width": 1920,
+      "height": 1080,
+      "innerWidth": 1920,
+      "innerHeight": 1080,
+      "scrollWidth": 1920,
+      "scrollHeight": 1080,
+      "textOutsideSvg": []
+    },
+    {
+      "name": "physical-trial",
+      "width": 2048,
+      "height": 1320,
+      "innerWidth": 2048,
+      "innerHeight": 1320,
+      "scrollWidth": 2048,
+      "scrollHeight": 1320,
+      "textOutsideSvg": []
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "user-journey.html",
+      "sha256": "8cb66c7ffc48f22e49953beb7b826f2b5fd21209dd83e056958a07986535b4e9",
+      "bytes": 17808
+    },
+    {
+      "path": "physical-trial.html",
+      "sha256": "ca31691038683f0663bdb44e355bd39592ae96a53959c310b66b1b012975a0ab",
+      "bytes": 19390
+    }
+  ],
+  "status": "pass"
+}
