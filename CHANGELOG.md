@@ -16,6 +16,19 @@ All notable changes to Accretion are documented in this file.
   snapshot instead of being refused as an empty window; the manifest still names records, and
   retraction is still read from the experience the label points at (ADR4.1-001). (#TBD)
 
+#### Changed
+
+- The shipped selector now optimises the utility the benchmark measured:
+  `accretion.routing.selector.DEFAULT_UTILITY_WEIGHTS` moves from quality/cost/latency
+  `1.0 / 0.25 / 0.15` to the corpus weights `1.0 / 0.3 / 0.15` that pre-registration item 3
+  froze and every `evals/router` corpus declares, and the M2 objective minter in
+  `routing/freeze.py` imports that one constant instead of restating a second literal, so the
+  two cannot drift apart again. A new test pins the constant against the literal *and* against
+  the `weights` block of all three registered corpora — shipped, locked and drift. No M10
+  number is re-measured (the corpora, seeds and traces are untouched), no persisted objective
+  contract is rewritten, and an `ObjectiveContract` may still declare its own
+  `utility_weights`; `ADR4.1-002` records the decision and its two limits (#TBD).
+
 ## [0.4.0] - 2026-09-07
 
 Theme: **Evidence-aware node configuration routing**. Full notes in

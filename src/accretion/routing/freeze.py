@@ -31,13 +31,13 @@ from accretion.contracts.routing import (
     ObjectiveContractRef,
     ResourceBudget,
     RiskClass,
-    UtilityWeights,
     VerificationSpecRef,
 )
 from accretion.ids import derived_id
 from accretion.persistence.store import StateStore
 from accretion.routing.identity import VerificationSpecBuilder, execution_instance_id
 from accretion.routing.protocols import FrozenNode
+from accretion.routing.selector import DEFAULT_UTILITY_WEIGHTS
 
 VERIFIED_SUCCESS_FLOOR = 0.5
 FALSE_ACCEPTANCE_CEILING = 0.5
@@ -104,7 +104,9 @@ class ObjectiveContractMinter:
                 ],
                 verified_success_floor=VERIFIED_SUCCESS_FLOOR,
                 false_acceptance_ceiling=FALSE_ACCEPTANCE_CEILING,
-                utility_weights=UtilityWeights(quality=1.0, cost=0.25, latency=0.15),
+                # Copied, not aliased: the minted contract is persisted and a caller
+                # editing its weights must never rewrite the process-wide default.
+                utility_weights=DEFAULT_UTILITY_WEIGHTS.model_copy(),
                 risk_policy_ref=risk_policy,
                 resource_budget=ResourceBudget(
                     maximum_cost=Decimal("0"),

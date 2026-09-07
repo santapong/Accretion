@@ -208,7 +208,7 @@ async def test_objective_is_one_persisted_revision_per_task() -> None:
     assert len(objectives) == 1
     assert objectives[0].utility_weights.model_dump() == {
         "quality": 1.0,
-        "cost": 0.25,
+        "cost": 0.3,
         "latency": 0.15,
     }
     assert objectives[0].verified_success_floor == 0.5
