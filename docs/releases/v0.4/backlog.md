@@ -697,6 +697,37 @@ by this change. **Old contracts keep their weights:** objective contracts are im
 hashed records, so nothing rewrites a persisted `0.25`; a task frozen before this release keeps the
 utility it was approved under, and only newly minted contracts carry the new default. There is no
 migration and no backfill, and there is nothing to reverse but the constant.
+**ADR4.1-003 (the pooling rule is registered, not assumed) — `PoolingRule` on
+`RouterBenchmarkConfig`, absent everywhere it has ever been absent.** `ADR4-M10-005` recorded
+that the corpus reduces a cell's eighteen trials with a conjunction and a disjunction chosen when
+a cell held two, and that the gate thresholds were registered on the per-trial scale and read on
+the pooled one. The repair it named is pooling as a *rate* with thresholds registered against it.
+This release lands the mechanism and changes no reported number: `pooling` is an additive optional
+field of `config.v1.json`, no shipped corpus carries it, and an absent rule is the frozen
+conjunction, so every corpus digest, every run id and every table in `docs/research/v0.4/results.md`
+is byte-identical to the release. `pooled_cells` now computes *both* readings unconditionally —
+`Outcome` carries `verified_rate` and `false_accept_rate` beside the booleans — because a run that
+produced only the reading its corpus registered could not be compared with one that registered the
+other, and the comparison is the finding. `GateReport` carries the rule that produced it: two rates
+and two thresholds with no reduction named is two reports wearing one shape.
+
+The alternative was to change `pooled_cells` outright. That would have edited the analysis of rows
+already seen, which is the one thing the pre-registration exists to prevent, and it would have
+moved `results.md` — a page whose every table is regenerated and compared byte for byte. Making the
+rule a registered field moves the decision into the document a reviewer diffs and leaves the
+release's numbers where the release put them.
+
+**The amendment this ADR also covers is a draft, and the re-read is not this pull request.**
+`docs/research/v0.4/amendment-1.md` proposes reading both gates as rates with the floor (0.70) and
+the ceiling (0.05) unchanged, and states its expected outcome *before* any re-read: the
+false-acceptance gate is expected to pass at ≈ 0.04 and the verified-success gate is expected to
+still fail at ≈ 0.51 against 0.70. Writing the expectation down first is what keeps the amendment
+from being a threshold chosen to pass — an amendment whose expected outcome is "both gates now
+pass" is a result, not a protocol. The page is `PROPOSED` and pins nothing; the locked corpora are
+not read here, `access-log.jsonl` still carries exactly the two rows the v0.4.0 read wrote, and the
+procedure for the re-read (pin the amendment's sha256 beside the pre-registration's, one locked
+read and one drift read, an appended "Amendment 1" section in `results.md`) is written on the page
+so that the confirming pull request has nothing left to decide.
 
 ## Parked beside v0.4
 

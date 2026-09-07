@@ -92,6 +92,16 @@ class Outcome:
     carried so a report can quote a duration rather than a ratio. ``verified``,
     ``false_accept`` and ``invalid`` are outside utility entirely: they feed the gates and
     the safety counters, which are reported separately.
+
+    ``verified_rate`` and ``false_accept_rate`` are the *other* reading of the same trials:
+    the fraction of the cell's trials that verified, and the fraction that accepted wrongly.
+    The booleans are a conjunction and a disjunction over those trials, which is a different
+    statistic and not a rounder one — ADR4-M10-005 records a corpus where the two readings sit
+    an order of magnitude apart at eighteen trials per cell. Both are carried so that a gate
+    can be read against whichever of them a corpus registered, and so that a report which
+    quotes one can be checked against the other. They default to ``0.0`` because an outcome
+    built from a single observation — a shadow trace, a pilot trial — has no cell of trials to
+    take a fraction over; every outcome that comes out of pooling populates them.
     """
 
     quality: float
@@ -101,6 +111,8 @@ class Outcome:
     verified: bool
     false_accept: bool
     invalid: bool
+    verified_rate: float = 0.0
+    false_accept_rate: float = 0.0
 
 
 @dataclass(frozen=True, slots=True)
