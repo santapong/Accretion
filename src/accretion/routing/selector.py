@@ -22,7 +22,16 @@ from accretion.ids import derived_id
 from accretion.routing.catalog import PARETO_EPSILON
 
 COLD_START_PRIOR_METHOD = "cold-start-prior/1"
-DEFAULT_UTILITY_WEIGHTS = UtilityWeights(quality=1.0, cost=0.25, latency=0.15)
+DEFAULT_UTILITY_WEIGHTS = UtilityWeights(quality=1.0, cost=0.3, latency=0.15)
+"""The one default utility vector: quality as numeraire, then cost and latency prices.
+
+These are the corpus weights registered in ``evals/router/config.v1.json`` and frozen by
+pre-registration item 3, so the shipped selector optimises the utility the M10 benchmark
+measured rather than a neighbouring one nobody ran (ADR4.1-002). The M2 objective minter
+imports this object rather than restating it, which is what keeps the two equal by
+construction; an :class:`~accretion.contracts.routing.ObjectiveContract` may still declare
+its own weights, and the selector honours those over this default.
+"""
 DETERMINISTIC_PROPENSITY = 1.0
 
 
