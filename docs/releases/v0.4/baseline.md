@@ -67,3 +67,18 @@ backed by [live-acceptance-2026-09-01.md](../v0.3/evidence/live-acceptance-2026-
 and **expire on 2027-02-28**. After that date `make acceptance` fails against
 this tree until `scripts/live_acceptance.py` is re-run and `last_verified` is
 moved. That is deliberate: this baseline records what was true on one day.
+
+## v0.4.1 (2026-09-07)
+
+A hardening release on the same acceptance line; the v0.4.0 identifiers above are unchanged.
+
+| Item | Frozen value |
+|---|---|
+| Release tag | `v0.4.1` |
+| Annotated tag object | `3674ab717f0fd10a71f71140be29137955a491eb` |
+| Release commit | `f60c7faae68a4ebae7ad4e15696746957690ce7b` |
+| Release tree | `2e61bcc7b34de7ac56be9fdd66b9eececd19cddd` |
+| Authorized `develop` commit | `59b8efdafd0adcedf2955eacfe9b2b9fb4445da3` (PR #165) |
+| Protected bridge head | `8a58c9a0fa1755830fdcf9c32a03886b99c3b2f7` (PR #166) |
+| Amendment 1 digest | `139f60692de5e9faa545d3e169fcf92e8aab3e45ac41a7ec1b0891cdae4e3914` (pinned beside the pre-registration's in every corpus config) |
+| Access log | four rows: the v0.4.0 read and the amendment-1 re-read |
