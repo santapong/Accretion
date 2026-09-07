@@ -34,9 +34,19 @@ would always be zero and would say nothing.
 
 **Retraction and revision are read from the v0.2 record, never copied.** ADR-054 b makes
 :class:`~accretion.contracts.routing.ExperienceRecord` a projection: it declares no
-``retracted`` and no ``revision`` field because the ``Experience`` of the same id already
-has both. So the builder dereferences, which is also what makes "highest revision" a rule
-it can actually apply.
+``retracted`` and no ``revision`` field because the ``Experience`` it projects already has
+both. So the builder dereferences, which is also what makes "highest revision" a rule it
+can actually apply.
+
+**Which experience a record projects is asked, not assumed** (ADR4.1-001). A record the M3
+pipeline writes for a real run carries a derived ``contract_id`` — one run materialises one
+experience and projects one record per routed node, so the two ids cannot be equal — and
+names its parent in the ``experience_id`` label. A record built by hand or by a fixture is
+its own experience. :func:`_experience_id_of` reads the label and falls back to the id, so
+both shapes dereference and a live run's evidence is admissible rather than being reported
+as an empty window. The manifest still names *records*: ``included_experience_ids`` holds
+``ExperienceRecord.contract_id``, which is what :func:`materialize` and M8's evaluator read
+back.
 
 Nothing here trains, ranks or predicts.
 """
@@ -61,6 +71,7 @@ from accretion.contracts.routing import (
     Visibility,
 )
 from accretion.experience.models import Experience
+from accretion.feedback.experience import EXPERIENCE_ID_LABEL
 
 # `_PREFIXES` and `_encode_base32` are private to `accretion.ids`, and importing them is a
 # deliberate, temporary borrow rather than an oversight. A derived id must carry the same
@@ -358,6 +369,27 @@ def _narrowest_permission_proof(
     )
 
 
+def _experience_id_of(record: ExperienceRecord) -> str:
+    """The P7 experience ``record`` projects: its ``experience_id`` label, else its own id.
+
+    Two writers produce experience records and they key them differently. The M3 pipeline
+    derives ``contract_id`` from the experience, the execution instance and the projection
+    revision, because one run materialises one experience and projects one record per routed
+    node — so the record id CANNOT be the experience id — and it records the parent in the
+    header's ``experience_id`` label for exactly this lookup
+    (:data:`~accretion.feedback.experience.EXPERIENCE_ID_LABEL`). A record written directly
+    against the contract, as the M4 and M8 fixtures write one, has no such label and IS its
+    own experience under ADR-054 b's original reading.
+
+    The label wins where it exists because it is a statement by the writer, and the fallback
+    is the older convention rather than a guess: a record carrying neither resolves to an id
+    the store does not hold, and the caller treats an absent experience as retracted, which
+    is the same refusal it always was.
+    """
+
+    return record.labels.get(EXPERIENCE_ID_LABEL, record.contract_id)
+
+
 def _training_row(
     record: ExperienceRecord, experience: Experience, vocab: Vocabulary
 ) -> TrainingRow:
@@ -458,9 +490,11 @@ class SnapshotBuilder:
             if not window_start <= record.created_at < window_end:
                 continue
             # ADR-054 b: the projection declares no `retracted`, so retraction is read from
-            # the P7 experience whose id this record *is*. A projection whose experience is
-            # gone is a record of nothing and is treated as retracted rather than trusted.
-            experience = await self.store.get_experience(record.contract_id)
+            # the P7 experience this record projects — named by its `experience_id` label
+            # where the M3 pipeline wrote one, and its own id otherwise (ADR4.1-001). A
+            # projection whose experience is gone is a record of nothing and is treated as
+            # retracted rather than trusted.
+            experience = await self.store.get_experience(_experience_id_of(record))
             if experience is None or experience.retracted:
                 continue
             considered.append((record, experience))
