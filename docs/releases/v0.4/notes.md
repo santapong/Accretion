@@ -232,3 +232,26 @@ in the benchmark configuration, and it names both digests when it refuses.
 - [Router pre-registration](../../research/v0.4/preregistration.md)
 - [SDD v0.4](../../sdd/Accretion_SDD_v0.4.md)
 - [Acceptance verification policy](../../acceptance/criteria.toml)
+
+## v0.4.1 addendum (2026-09-07)
+
+A hardening release on the same acceptance line. Four changes, each recorded as an
+`ADR4.1-00k` in [backlog.md](backlog.md):
+
+- **Training snapshots include what a real run produces** (#161). `SnapshotBuilder` joins a
+  run-projected experience record to its experience through the `experience_id` label, so a live
+  routed run's evidence enters a snapshot instead of being refused as an empty window.
+- **The selector optimises the utility the benchmark measured** (#162). The default weights move
+  from 1.0 / 0.25 / 0.15 to the pre-registered corpus weights 1.0 / 0.3 / 0.15; persisted objective
+  contracts keep the vector they were minted with.
+- **The safety gates' pooling rule is registered, not assumed** (#163). `PoolingRule` on the
+  benchmark config, absent everywhere, so every v0.4.0 number is unchanged; every cell carries both
+  the conjunction and the per-trial rate; `docs/research/v0.4/amendment-1.md` proposes the rate
+  reading with thresholds unchanged and its expected outcome stated before any re-read. The
+  maintainer confirmed the amendment on 2026-09-07; it is frozen, pinned beside the
+  pre-registration in every corpus config, and one re-read (access-log rows 3–4) is reported
+  under "Amendment 1" in `docs/research/v0.4/results.md` beside the v0.4.0 tables. Two of its
+  four written expectations did not hold: per policy the learned comparators clear the
+  verified-success floor and exceed the false-acceptance ceiling, and M9 passes both gates on the
+  drift holdout by a hair (ADR4.1-004).
+- **CI** (#160): a `release/*` push skips the computed-style diff's base build, never silently.

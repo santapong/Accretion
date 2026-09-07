@@ -219,3 +219,21 @@ version of this list is in [notes.md](notes.md).
 All required CI checks — `backend`, `frontend`, `browser` and `clean-checkout` — passed on
 both pull requests. The `v0.1.0`, `v0.2.0` and `v0.3.0` tag objects and peeled commits are
 unchanged from the values recorded in their own baselines.
+
+## v0.4.1 addendum (2026-09-07)
+
+Measured on 2026-09-07 on `develop` at `cbefe2eea6e7e7165c96bc10fc3ce483e6762629` (#164, the last v0.4.1 change), the base the release commit sits on.
+The SDD §24.8 gate and the acceptance line are unchanged from v0.4.0; the four hardening
+changes touch no contract or migration. Amendment 1 was confirmed and frozen on 2026-09-07
+(sha256 pinned beside the pre-registration's in every corpus config, so the three corpus config
+files and their digests moved); one re-read was made under it, so `access-log.jsonl` holds four
+rows, and `docs/research/v0.4/results.md` reports it under "Amendment 1" beside the v0.4.0 tables.
+
+| Check | Result |
+|---|---|
+| `ruff check .` / `mypy src` / contract schemas / `check_docs.py` | PASS / PASS (149 source files) / PASS (21 schemas) / PASS (111 Markdown files, 18 SVGs) |
+| `alembic upgrade head` → `downgrade base` → `upgrade head` (clean database) | PASS |
+| `pytest` (with PostgreSQL) | PASS — 3411 passed, 6 skipped, 2 deselected; Postgres twins re-run: 47 passed |
+| `make acceptance` / `make release-gate` | PASS — `in scope: 167   proven: 159   unmet MUST: 0`; five of five conditions PASS |
+| `npm run check` / `npm run test` / `npm run build` / `api:generate` diff / `uv lock --check` | PASS / PASS (286 passed) / PASS (initial JS  595,379 B raw / 175,178 B gzip   initial CSS  53,181 B raw / 10,638 B gzip) / PASS / PASS |
+| Audited base (develop, #164) / tree / release commit / tag | `cbefe2eea6e7e7165c96bc10fc3ce483e6762629` / `f8d3465fc66e8ab2ba56c292fa46d85bc81e51f9` / *filled after the bridge* / *filled after the tag* |
