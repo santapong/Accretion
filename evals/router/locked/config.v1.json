@@ -1,5 +1,6 @@
 {
   "ablations_path": "evals/router/ablations.v1.json",
+  "amendment_1_sha256": "139f60692de5e9faa545d3e169fcf92e8aab3e45ac41a7ec1b0891cdae4e3914",
   "configuration_version": "router-baselines-v1",
   "deterministic_v01_table": {
     "DIRECT": "cnf-codex-mini",
@@ -17,6 +18,10 @@
     "cnf-codex-standard",
     "cnf-deterministic-scripted"
   ],
+  "pooling": {
+    "false_accept": "rate",
+    "verified": "rate"
+  },
   "preregistration_sha256": "6b45998b3a9847298ba878a6414211ce38d64c775e5addd587509fdd70cf04ea",
   "seed": 20260906,
   "selection_split": {

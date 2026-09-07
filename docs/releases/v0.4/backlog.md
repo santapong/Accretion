@@ -729,6 +729,20 @@ procedure for the re-read (pin the amendment's sha256 beside the pre-registratio
 read and one drift read, an appended "Amendment 1" section in `results.md`) is written on the page
 so that the confirming pull request has nothing left to decide.
 
+**ADR4.1-004 (amendment 1 confirmed and re-read once) — the gates read as per-trial rates, and
+the finding is not the one the amendment expected.** The maintainer confirmed
+`docs/research/v0.4/amendment-1.md` on 2026-09-07; its sha256 is pinned as `amendment_1_sha256`
+in all three corpus configs beside `preregistration_sha256`, the locked and drift corpora register
+`pooling: {verified: rate, false_accept: rate}`, and `LockedTestRunner` checks both digests before
+a read. One re-read followed (access-log rows 3 and 4). The amendment expected the false-acceptance
+gate to pass at about 0.04 and the verified-success gate to fail at about 0.51; both numbers were
+corpus-wide rates, and per policy the picture inverts: the fixed comparators meet the ceiling and
+fail the floor, the learned ones (M7, M8, M9, the oracle) clear the floor and exceed the ceiling,
+and M9 passes both on the drift corpus by 0.007 and 0.0006. `results.md` quotes the expectations
+beside the outcome under "Amendment 1" and keeps the v0.4.0 tables in place, tagged `text-v0.4.0`;
+the regeneration test requires both sets. Whether a 0.05 ceiling is the right registration for a
+per-trial reading is left to the next pre-registration.
+
 ## Parked beside v0.4
 
 The v0.3.1 operator-UI redesign (M9 of the v0.3 ladder) is parked after its stylesheet port

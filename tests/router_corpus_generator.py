@@ -97,6 +97,10 @@ nothing reads and agree in the level everything does."""
 SUITE_VERSION = "v1"
 CONFIGURATION_VERSION = "router-baselines-v1"
 PREREGISTRATION_SHA256 = "6b45998b3a9847298ba878a6414211ce38d64c775e5addd587509fdd70cf04ea"
+AMENDMENT_1_SHA256 = "139f60692de5e9faa545d3e169fcf92e8aab3e45ac41a7ec1b0891cdae4e3914"
+"""sha256 of ``docs/research/v0.4/amendment-1.md`` at its freeze (2026-09-07), pinned beside the
+pre-registration's digest in every corpus config; the locked and drift corpora also register the
+amendment's pooling rule."""
 
 ABLATIONS_PATH = "evals/router/ablations.v1.json"
 """Where protocol §14's registered ablation table lives, relative to the repository root.
@@ -542,6 +546,7 @@ def build(
     trials_per_cell: int | None = None,
     project_prefix: str | None = None,
     provider_era: str | None = None,
+    pooling: Mapping[str, str] | None = None,
     runtime_minor_bump: int = 0,
 ) -> dict[str, dict[str, Any]]:
     """The corpus documents, as a mapping from file stem to document.
@@ -592,7 +597,10 @@ def build(
         "deterministic_v01_table": dict(DETERMINISTIC_V01_TABLE),
         "ablations_path": ABLATIONS_PATH,
         "preregistration_sha256": PREREGISTRATION_SHA256,
+        "amendment_1_sha256": AMENDMENT_1_SHA256,
     }
+    if pooling is not None:
+        config["pooling"] = dict(pooling)
     candidates_document = {
         "suite_version": SUITE_VERSION,
         "candidates": [
@@ -636,6 +644,7 @@ LOCKED_OPTIONS: Mapping[str, Any] = {
     "seed": LOCKED_SEED,
     "trials_per_cell": FROZEN_TRIALS_PER_CELL,
     "project_prefix": "locked",
+    "pooling": {"verified": "rate", "false_accept": "rate"},
 }
 """Exactly what makes the locked corpus: a new seed, the frozen size, a new set of names.
 
@@ -649,6 +658,7 @@ DRIFT_OPTIONS: Mapping[str, Any] = {
     "project_prefix": "drift",
     "provider_era": DRIFT_PROVIDER_ERA,
     "runtime_minor_bump": DRIFT_RUNTIME_MINOR_BUMP,
+    "pooling": {"verified": "rate", "false_accept": "rate"},
 }
 """The holdout: the locked corpus's size at a third seed, one provider era, later runtimes."""
 
