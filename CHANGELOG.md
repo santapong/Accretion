@@ -4,7 +4,13 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
-Nothing yet.
+### v0.4.1 — hardening
+
+- The training snapshot builder joins a run-projected experience record to the experience it
+  projects through that record's `experience_id` label, falling back to its `contract_id` for a
+  record that is its own experience, so the evidence a real routed run produces enters a training
+  snapshot instead of being refused as an empty window; the manifest still names records, and
+  retraction is still read from the experience the label points at (ADR4.1-001). (#TBD)
 
 ## [0.4.0] - 2026-09-07
 
