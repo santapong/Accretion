@@ -673,6 +673,30 @@ same label, so retracting the experience a run materialised still removes every 
 from the window. M9's pinned test is now the positive
 `test_the_snapshot_builder_includes_a_run_projected_record` — `docs/releases/v0.4/m9-plan.md`
 records it under its old name, as the historical account of what M9 measured.
+**ADR4.1-002 (the selector's default utility weights are the registered corpus weights) —
+reconciled, in the direction the pre-registration named.** Until v0.4.1 the M2 objective minter
+and `DeterministicSelector` defaulted to quality/cost/latency `1.0 / 0.25 / 0.15` while every
+corpus under `evals/router` — the development corpus, the locked test set and the drift replica —
+scores utility at `1.0 / 0.3 / 0.15`, the vector pre-registration item 3 froze. The two are close,
+which is exactly what made the gap survivable for a whole milestone: every M10 number was computed
+under weights the shipped selector did not optimise, so the benchmark described a neighbouring
+policy rather than the one that runs. Item 3 refused to close the gap itself, because moving the
+*corpus* after the rows were generated would have been the post-hoc change the pre-registration
+exists to prevent, and it named the reconciliation as a separate decision. This is that decision,
+and it moves the code: `accretion.routing.selector.DEFAULT_UTILITY_WEIGHTS` becomes
+`1.0 / 0.3 / 0.15` and `routing/freeze.py` imports it instead of restating a second literal, so
+the two sites are equal by construction. Nothing is re-measured — the M10 results stand unchanged,
+because the corpus, the seeds and the traces they were computed from are untouched; what changes
+is that the policy they describe is now the policy that ships.
+
+Two limits are deliberate. **A default is not a mandate:** an `ObjectiveContract` may still declare
+its own `utility_weights`, and both the minter's contract and `DeterministicSelector.select` honour
+the declared vector over this constant — the fixtures under `tests/fixtures/contracts/v0.4/` carry a
+different vector precisely because that freedom is part of the contract, and they are not touched
+by this change. **Old contracts keep their weights:** objective contracts are immutable, content-
+hashed records, so nothing rewrites a persisted `0.25`; a task frozen before this release keeps the
+utility it was approved under, and only newly minted contracts carry the new default. There is no
+migration and no backfill, and there is nothing to reverse but the constant.
 **ADR4.1-003 (the pooling rule is registered, not assumed) — `PoolingRule` on
 `RouterBenchmarkConfig`, absent everywhere it has ever been absent.** `ADR4-M10-005` recorded
 that the corpus reduces a cell's eighteen trials with a conjunction and a disjunction chosen when
