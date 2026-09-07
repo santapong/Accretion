@@ -236,4 +236,4 @@ rows, and `docs/research/v0.4/results.md` reports it under "Amendment 1" beside 
 | `pytest` (with PostgreSQL) | PASS — 3411 passed, 6 skipped, 2 deselected; Postgres twins re-run: 47 passed |
 | `make acceptance` / `make release-gate` | PASS — `in scope: 167   proven: 159   unmet MUST: 0`; five of five conditions PASS |
 | `npm run check` / `npm run test` / `npm run build` / `api:generate` diff / `uv lock --check` | PASS / PASS (286 passed) / PASS (initial JS  595,379 B raw / 175,178 B gzip   initial CSS  53,181 B raw / 10,638 B gzip) / PASS / PASS |
-| Audited base (develop, #164) / tree / release commit / tag | `cbefe2eea6e7e7165c96bc10fc3ce483e6762629` / `f8d3465fc66e8ab2ba56c292fa46d85bc81e51f9` / *filled after the bridge* / *filled after the tag* |
+| Audited base (develop, #164) / tree / release commit / tag | `cbefe2eea6e7e7165c96bc10fc3ce483e6762629` / `f8d3465fc66e8ab2ba56c292fa46d85bc81e51f9` / `f60c7faae68a4ebae7ad4e15696746957690ce7b` / `3674ab717f0fd10a71f71140be29137955a491eb` |
