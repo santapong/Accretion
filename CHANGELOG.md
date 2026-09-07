@@ -9,7 +9,12 @@ All notable changes to Accretion are documented in this file.
 - Changed CI so a `release/*` branch's own push skips the computed-style diff's base build the
   way a `main`-base pull request already did: the v0.4.0 bridge's first push ran the diff against
   the repository's initial commit and went red before its pull request existed to carry
-  `base_ref`. `STYLE_DIFF_SKIP=release-bridge` is set for the same case, so the skip is never silent (#TBD).
+  `base_ref`. `STYLE_DIFF_SKIP=release-bridge` is set for the same case, so the skip is never silent (#160).
+- The training snapshot builder joins a run-projected experience record to the experience it
+  projects through that record's `experience_id` label, falling back to its `contract_id` for a
+  record that is its own experience, so the evidence a real routed run produces enters a training
+  snapshot instead of being refused as an empty window; the manifest still names records, and
+  retraction is still read from the experience the label points at (ADR4.1-001). (#TBD)
 
 ## [0.4.0] - 2026-09-07
 

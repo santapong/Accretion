@@ -29,17 +29,18 @@ evidence produced is announced on the event stream of the run that produced the 
 operator holding a run id can reach the promotion and an auditor holding a promotion report can
 reach the run.
 
-**One link is not walkable through the shipped writer, and this file pins the reason rather than
-routing around it.** ``SnapshotBuilder`` dereferences ``ExperienceRecord.contract_id`` through
-``get_experience`` (``routing/training_snapshot.py``), which resolves only for a record whose
-contract id IS a P7 experience id; the M3 pipeline mints ``derived_id("experience",
-experience_id, execution_instance_id, "1")`` for every node of a run and files it under the
-experience id in the store's own column. So no experience a real routed run produces can enter a
-training snapshot today, and the builder reports it as "nothing eligible" rather than as a join
-that missed. ``test_the_snapshot_builder_cannot_yet_include_a_run_projected_record`` states that
-precisely; the chain test seals its training snapshot from the run's records directly, through
-the same contract the builder would have written, so that the rest of the chain is still proven
-end to end and the gap is one named test rather than a silent hole.
+**The training-snapshot link is walked through the shipped builder** (ADR4.1-001, v0.4.1). It was
+not, until v0.4.1: ``SnapshotBuilder`` dereferenced ``ExperienceRecord.contract_id`` through
+``get_experience``, which resolves only for a record whose contract id IS a P7 experience id,
+while the M3 pipeline mints ``derived_id("experience", experience_id,
+execution_instance_id, "1")`` for every node of a run and carries the experience id as the
+``experience_id`` label. The builder now asks the label first, so the chain test below seals its
+training snapshot with ``SnapshotBuilder`` over the run's own window rather than assembling one
+from the records by hand — the manifest is the shipped writer's, and the hop from the record to
+the snapshot is proven rather than assumed.
+``test_the_snapshot_builder_includes_a_run_projected_record`` states that join on its own, and
+``test_a_run_projected_record_whose_experience_was_retracted_is_refused`` states that the
+retraction read (ADR-054 b) follows the same label rather than being lost with the old identity.
 """
 
 from __future__ import annotations
@@ -65,7 +66,6 @@ from test_v04_m8_evaluator import (
     seed_node,
     snapshot_over,
 )
-from test_v04_m8_promotion import build as build_free
 
 from accretion.contracts import (
     ApprovalDecisionValue,
@@ -77,7 +77,8 @@ from accretion.contracts import (
     RunState,
     VerificationStatus,
 )
-from accretion.contracts.routing import RouterStatus, RouterTrainingSnapshot
+from accretion.contracts.routing import RouterStatus, SnapshotSplit
+from accretion.experience.models import ModerationAction
 from accretion.feedback.experience import EXPERIENCE_ID_LABEL
 from accretion.ids import new_id
 from accretion.persistence.store import MemoryStore
@@ -302,24 +303,29 @@ async def test_the_chain_from_the_task_to_the_promotion_report_is_walkable_by_id
         dispatched_receipts
     )
 
-    # -> training snapshot manifest
+    # -> training snapshot manifest, sealed by the SHIPPED builder over the run's own window.
+    # The holdout evidence is seeded in February and the window is the day around this run, so
+    # the split the snapshot declares is also the split its manifest contains.
     corpus = await _seed_holdout(walked)
     holdout = await snapshot_over(corpus, HOLDOUT_WINDOW)
+    now = datetime.now(UTC)
     training = await store.put_router_training_snapshot(
-        build_free(
-            RouterTrainingSnapshot,
+        await SnapshotBuilder(store).build(
             workspace_id=walked.workspace_id,
-            included_experience_ids=[record.contract_id for record in learnable],
-            split={
-                "training_project_ids": [run.project_id],
-                "holdout_project_ids": sorted(corpus.holdout_projects),
-                "validation_project_ids": [],
-            },
-            window_start="2026-01-01T00:00:00Z",
-            window_end="2026-02-01T00:00:00Z",
+            window=(now - timedelta(days=1), now + timedelta(days=1)),
+            split=SnapshotSplit(
+                training_project_ids=[run.project_id],
+                holdout_project_ids=sorted(corpus.holdout_projects),
+            ),
+            rules=SnapshotRules(),
+            created_by=OPERATOR,
+            clock=lambda: now,
         )
     )
     assert verified.contract_id in training.included_experience_ids
+    assert set(training.included_experience_ids) == {
+        item.contract_id for item in learnable
+    }
     manifest_projects = set()
     for experience_id in training.included_experience_ids:
         named = await store.get_experience_record(experience_id)
@@ -438,51 +444,109 @@ async def _evaluate(walked: Walked, corpus: Corpus, training, holdout, tmp_path:
     )
 
 
-async def test_the_snapshot_builder_cannot_yet_include_a_run_projected_record(
+async def test_the_snapshot_builder_includes_a_run_projected_record(
     tmp_path: Path,
 ) -> None:
-    """The one link of §16.2 that the shipped writers do not join, pinned with its cause.
+    """The §16.2 hop from a real run's evidence into a training snapshot, through the builder.
 
-    ``SnapshotBuilder.build`` reads ``get_experience(record.contract_id)`` and skips a record
-    whose experience is missing, treating it as retracted (ADR-054 b: the projection "is keyed
-    by the same experience_id — carried as the header's contract_id"). That holds for a record
-    built by the M4 and M8 fixtures, whose ``contract_id`` IS an experience id. It cannot hold
-    for a real run: one run materialises ONE P7 experience and projects one record per routed
-    node, so ``feedback/experience.py`` mints ``derived_id("experience", experience_id,
-    execution_instance_id, "1")`` and passes the experience id to the store separately.
-
-    The consequence is not a smaller snapshot, it is an empty one: the builder refuses the whole
+    Until v0.4.1 this test was its own negation. ``SnapshotBuilder.build`` read
+    ``get_experience(record.contract_id)`` and skipped a record whose experience was missing,
+    treating it as retracted (ADR-054 b: the projection "is keyed by the same experience_id —
+    carried as the header's contract_id"). That holds for a record built by the M4 and M8
+    fixtures, whose ``contract_id`` IS an experience id. It cannot hold for a real run: one run
+    materialises ONE P7 experience and projects one record per routed node, so
+    ``feedback/experience.py`` derives the record id and passes the experience id to the store
+    separately — and records it in the ``experience_id`` label for exactly this lookup. The
+    consequence was not a smaller snapshot but an empty one: the builder refused the whole
     window with "no experience record ... is eligible for learning", which reads as "this run
     produced no evidence" when what happened is that its evidence could not be dereferenced.
 
-    Deliberately unmarked. It claims no criterion because it is not a property anyone wants;
-    it is the seam, stated where the next person to touch either module will see it. When the
-    join is repaired this test goes red, and the chain test above should then seal its training
-    snapshot with ``SnapshotBuilder`` instead.
+    ADR4.1-001 makes the builder resolve the label first and the contract id second, and this
+    test is the positive statement of that join over a run nothing here assembled.
+
+    The mutation it is written against: making the resolution ignore the label — i.e.
+    ``_experience_id_of`` returning ``record.contract_id`` unconditionally — which puts the old
+    "is eligible for learning" refusal back and reddens the build below.
     """
 
     walked = await _routed_run(tmp_path)
-    records = await walked.store.list_experience_records(workspace_id=walked.workspace_id)
+    store = walked.store
+    records = await store.list_experience_records(workspace_id=walked.workspace_id)
     learnable = _learnable(records)
     assert learnable, "the run must produce at least one learnable projection"
     record = learnable[0]
 
-    # The record is eligible, and its evidence is in the store — under the experience id it
-    # carries as a LABEL, not under its own contract id.
+    # The join is not the identity. The record is eligible, and its evidence is in the store —
+    # under the experience id it carries as a LABEL, not under its own contract id.
     assert record.eligible_for_learning
-    assert await walked.store.get_experience(record.contract_id) is None
-    assert await walked.store.get_experience(record.labels[EXPERIENCE_ID_LABEL]) is not None
+    assert await store.get_experience(record.contract_id) is None
+    assert await store.get_experience(record.labels[EXPERIENCE_ID_LABEL]) is not None
+
+    now = datetime.now(UTC)
+    snapshot = await SnapshotBuilder(store).build(
+        workspace_id=walked.workspace_id,
+        window=(now - timedelta(days=1), now + timedelta(days=1)),
+        split=SnapshotSplit(
+            training_project_ids=[walked.run.project_id],
+            holdout_project_ids=[new_id("project")],
+        ),
+        rules=SnapshotRules(),
+        created_by=OPERATOR,
+        clock=lambda: now,
+    )
+
+    assert record.contract_id in snapshot.included_experience_ids
+    assert snapshot.labels["row_count"] == str(len(snapshot.included_experience_ids))
+    # The manifest names RECORDS and not experiences, which is the half of ADR4.1-001 that is
+    # a promise to every reader of a manifest: `materialize` and the M8 evaluator both look
+    # each id up with `get_experience_record`.
+    for experience_id in snapshot.included_experience_ids:
+        assert await store.get_experience_record(experience_id) is not None
+
+
+async def test_a_run_projected_record_whose_experience_was_retracted_is_refused(
+    tmp_path: Path,
+) -> None:
+    """Retraction is still read from the P7 experience — now through the label that names it.
+
+    ADR-054 b's rule is that a projection declares no ``retracted`` and so cannot be trusted
+    alone. Joining through the ``experience_id`` label could have quietly cost that rule its
+    teeth, because a join that resolved the *wrong* experience, or that stopped dereferencing
+    at all, would look identical on the positive test above. Retracting the one experience the
+    run materialised must therefore take every projection of it out of the window, and leave
+    the builder with nothing to seal.
+
+    The mutation it is written against: dropping the ``experience.retracted`` check from the
+    membership loop, which would train on evidence a moderator withdrew.
+    """
+
+    walked = await _routed_run(tmp_path)
+    store = walked.store
+    learnable = _learnable(await store.list_experience_records(workspace_id=walked.workspace_id))
+    assert learnable, "the run must produce at least one learnable projection"
+    experience = await store.get_experience(learnable[0].labels[EXPERIENCE_ID_LABEL])
+    assert experience is not None
+
+    await store.retract_experience(
+        ModerationAction(
+            action_id=new_id("moderation_action"),
+            experience_id=experience.experience_id,
+            reason="withdrawn by a moderator while this window was still open",
+            expected_revision=experience.revision,
+            resulting_revision=experience.revision + 1,
+            actor=OPERATOR.principal_id,
+        )
+    )
 
     now = datetime.now(UTC)
     with pytest.raises(ValueError) as refusal:
-        await SnapshotBuilder(walked.store).build(
+        await SnapshotBuilder(store).build(
             workspace_id=walked.workspace_id,
             window=(now - timedelta(days=1), now + timedelta(days=1)),
-            split=build_free(
-                RouterTrainingSnapshot,
-                workspace_id=walked.workspace_id,
-                included_experience_ids=[record.contract_id],
-            ).split,
+            split=SnapshotSplit(
+                training_project_ids=[walked.run.project_id],
+                holdout_project_ids=[new_id("project")],
+            ),
             rules=SnapshotRules(),
             created_by=OPERATOR,
             clock=lambda: now,
