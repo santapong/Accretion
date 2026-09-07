@@ -4,7 +4,15 @@ All notable changes to Accretion are documented in this file.
 
 ## [Unreleased]
 
-### v0.4.1 — hardening
+Nothing yet.
+
+## [0.4.1] - 2026-09-07
+
+Hardening after the v0.4.0 release: the training-snapshot join, the selector's utility weights,
+a registered pooling rule, the confirmed amendment 1 with its one re-read, and a CI guard for
+release branches. The acceptance line is unchanged (`in scope: 167   proven: 159   unmet MUST: 0`); notes and audit
+addenda are in [docs/releases/v0.4/notes.md](docs/releases/v0.4/notes.md) and
+[docs/releases/v0.4/audit.md](docs/releases/v0.4/audit.md).
 
 - Confirmed and froze [amendment 1](docs/research/v0.4/amendment-1.md): its sha256 is pinned as
   `amendment_1_sha256` in every corpus config beside the pre-registration's, the locked and drift
@@ -13,7 +21,7 @@ All notable changes to Accretion are documented in this file.
   `docs/research/v0.4/results.md` beside the v0.4.0 tables it does not replace. The expectations
   the amendment wrote down before the read are quoted next to the outcome, and two of the four did
   not hold: per policy the learned comparators clear the verified-success floor and exceed the
-  false-acceptance ceiling, and M9 passes both gates on the drift corpus by a hair (ADR4.1-004) (#TBD).
+  false-acceptance ceiling, and M9 passes both gates on the drift corpus by a hair (ADR4.1-004) (#164).
 - Changed CI so a `release/*` branch's own push skips the computed-style diff's base build the
   way a `main`-base pull request already did: the v0.4.0 bridge's first push ran the diff against
   the repository's initial commit and went red before its pull request existed to carry
@@ -34,7 +42,7 @@ All notable changes to Accretion are documented in this file.
   mechanism `ADR4-M10-005` asked for; `docs/research/v0.4/amendment-1.md` is the **draft**
   amendment that would apply it to the v0.4 corpora, with the floor (0.70) and ceiling (0.05)
   untouched and its expected outcome stated before any re-read, and no locked corpus is read
-  (`ADR4.1-003`) (#TBD).
+  (`ADR4.1-003`) (#163).
 
 #### Changed
 
@@ -47,7 +55,7 @@ All notable changes to Accretion are documented in this file.
   the `weights` block of all three registered corpora — shipped, locked and drift. No M10
   number is re-measured (the corpora, seeds and traces are untouched), no persisted objective
   contract is rewritten, and an `ObjectiveContract` may still declare its own
-  `utility_weights`; `ADR4.1-002` records the decision and its two limits (#TBD).
+  `utility_weights`; `ADR4.1-002` records the decision and its two limits (#162).
 
 ## [0.4.0] - 2026-09-07
 
@@ -550,7 +558,7 @@ are kept together under their own sub-heading at the end of this section.
   package boundary is the claim: no module under `src/projection/` may name `../api`,
   `@tanstack/react-query`, `fetch(` or `EventSource(`, and driving the rendered canvas — controls,
   wheel, nodes, badges — issues no request and exposes no interactive role inside a badge.
-  `AC4-M9-043` is now proven (#TBD).
+  `AC4-M9-043` is now proven (#153).
 - Added `apps/ui/src/routingBadges.ts` (M9d): the §17.1 badges a node shows — routed, shadowed,
   overridden, explore, fallback or human review, with the runtime, model, tool count, verification
   state, receipt revision, predicted cost and predicted latency behind them. Pure, importing no
@@ -558,30 +566,30 @@ are kept together under their own sub-heading at the end of this section.
   `RunExecution.tsx` observes those panels' query keys with react-query's `skipToken`, which reads
   a cache entry and can never fetch one, so the canvas gains badges without gaining a request
   (ADR4-M9-006). The markup reuses the pinned stylesheet's `.node-badge*` classes: no CSS rule was
-  added anywhere (ADR4-M9-003) (#TBD).
+  added anywhere (ADR4-M9-003) (#153).
 - Added `apps/ui/src/contracts/canonical.ts` (M9d): a TypeScript twin of
   `src/accretion/contracts/canonical.py` that replays all nineteen committed hash vectors from
   `tests/fixtures/contracts/v0.4/hash_vectors.json` byte for byte, so a browser can verify a
   `content_hash` instead of trusting the field beside it. Keys sort by Unicode **code point**
   (RFC 8785's UTF-16 order would put `😀` before `ｽ`), an integral float still prints `1.0`, an
   integer past 2^53 must be a `bigint`, decimals keep their trailing zeros, and a datetime without
-  an offset is refused. It verifies and never writes a digest (ADR4-M9-005) (#TBD).
+  an offset is refused. It verifies and never writes a digest (ADR4-M9-005) (#153).
 - Added `tests/test_v04_m9_correlation.py` (M9d): the §16.2 chain walked end to end by ids over
   one real routed run — task, run, graph revision, node contract, routing request, receipt, the
   `RUNTIME_CALL_STARTED` stamp and the `ROUTING_DECISION_CREATED` causation, verification result,
   experience record, training-snapshot manifest, promotion report, and back to the run through the
-  `ROUTER_PROMOTION_EVALUATED` event. `AC4-M9-044` is now proven (#TBD).
+  `ROUTER_PROMOTION_EVALUATED` event. `AC4-M9-044` is now proven (#153).
 - Recorded a gap rather than working around it: `SnapshotBuilder` resolves an experience record by
   its `contract_id`, which is an experience id only for records the M4/M8 fixtures build. The M3
   pipeline derives a per-node id and files the record under the experience id separately, so **no
   experience a live routed run produces can currently enter a training snapshot** — the builder
   refuses the window as "nothing eligible". `test_the_snapshot_builder_cannot_yet_include_a_run_projected_record`
   pins the behaviour and its cause; the repair belongs to the milestone owning
-  `routing/training_snapshot.py` and `feedback/experience.py` (#TBD).
+  `routing/training_snapshot.py` and `feedback/experience.py` (#153).
 - Changed `apps/ui/e2e/cssPort.test.ts` (M9d): the xyflow-stylesheet importer scan walks `src/`
   recursively and the adjacency assertion computes the expected specifier from the importer's own
   directory, so the invariant stays "one component imports the sheet and imports ours on the next
-  line" rather than "that component sits at the root of `src`" (#TBD).
+  line" rather than "that component sits at the root of `src`" (#153).
 
 ### v0.4 — M10 the research instrument
 
@@ -640,7 +648,7 @@ are kept together under their own sub-heading at the end of this section.
   resolved at call time; the shipped development corpus regenerates byte-identically. The drift
   holdout carries `labels.provider_era = "2026-H2"` on every lineage and a later
   `runtime_version` on every configuration, so it differs at both levels item 8 names, and no
-  lineage is shared between the three corpora (#TBD).
+  lineage is shared between the three corpora (#156).
 - Added `src/accretion/routing/locked_test.py` and `scripts/router_locked_test.py`: the one door
   onto the locked corpora. `LockedTestRunner` refuses unless
   `docs/research/v0.4/preregistration.md` still hashes to the `preregistration_sha256` the corpus
@@ -649,7 +657,7 @@ are kept together under their own sub-heading at the end of this section.
   in **any** of its three groups (`SplitViolation`). The development corpus cannot be read through
   it at all. Every released read appends one `TestSetAccessEntry.to_rows()` row to the committed
   append-only `docs/research/v0.4/access-log.jsonl` — a file and not a `BenchmarkRun` row, because
-  `BenchmarkRun.suite` is a frozen `Literal["ACR-ARCH"]` (ADR4-M10-003) (#TBD).
+  `BenchmarkRun.suite` is a frozen `Literal["ACR-ARCH"]` (ADR4-M10-003) (#156).
 - Added `docs/research/v0.4/results.md`: the release's one locked read, generated by the script
   and diffed against it by a test rather than typed. It reports the three estimands with exact
   Clopper–Pearson intervals at the α/(K + L) = 0.05/9 level, the safety gates in a different table
@@ -662,19 +670,19 @@ are kept together under their own sub-heading at the end of this section.
   fails both gates at the frozen size because the corpus's conservative trial pooling
   (`all` for verified, `any` for false acceptance) is near-degenerate at 18 trials — reported, not
   repaired, because repairing it after seeing the rows is the post-hoc change the pre-registration
-  exists to prevent (#TBD).
+  exists to prevent (#156).
 - Changed `src/accretion/router_benchmark.py` so a corpus root is not assumed to be at a fixed
   depth (ADR4-M10-006): a relative `ablations_path` resolves against a `REPOSITORY_ROOT` derived
   from the package's location rather than against `root.parents[1]`, and `_validate_split` reads
   the registry beside the corpus with the shipped one as fallback, through the new
   `RouterBenchmarkCorpus.project_registry()`. Both leave every development-corpus resolution
-  byte-identical (#TBD).
+  byte-identical (#156).
 - Flipped `AC4-M10-045` … `AC4-M10-050`, closing M10 and the v0.4 acceptance program: the
   locked-test door and its access log, all eleven §8.1 comparators available on the locked
   evaluation half, regret recomputed from a cold store, the gates reported apart from utility,
   the ablations executable from configuration, and the pre-registered effect-size, confidence and
   multiplicity gates checked before a superiority claim — including the negative control that
-  reports nothing and its non-vacuous twin that does (#TBD).
+  reports nothing and its non-vacuous twin that does (#156).
 
 ### v0.4 — canonical digest convergence
 
