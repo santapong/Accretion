@@ -587,11 +587,22 @@ def test_the_results_page_quotes_the_blocks_the_locked_run_generates() -> None:
     # generated too. Splitting on the fence marker rather than parsing markdown keeps the
     # extraction as dumb as the thing it is checking.
     page = RESULTS_PATH.read_text(encoding="utf-8")
+    fences = [block for index, block in enumerate(page.split("```")) if index % 2 == 1]
     fenced = [
-        block.removeprefix("text\n").strip("\n")
-        for index, block in enumerate(page.split("```"))
-        if index % 2 == 1 and block.startswith("text\n")
+        block.removeprefix("text\n").strip("\n") for block in fences if block.startswith("text\n")
     ]
+    # The v0.4.0 read's seven tables stay on the page under their own run ids, tagged
+    # ``text-v0.4.0`` so that they are history rather than a claim the current corpora make:
+    # amendment 1 moved the corpus configs, so the current run cannot regenerate them. They
+    # must still be there, and there must still be exactly seven of them.
+    historical = [
+        block.removeprefix("text-v0.4.0\n").strip("\n")
+        for block in fences
+        if block.startswith("text-v0.4.0\n")
+    ]
+    assert sorted(block_key(text) for text in historical) == sorted(generated), (
+        "the v0.4.0 tables must stay on the page, one per generated key, tagged text-v0.4.0"
+    )
     quoted = {block_key(text): text for text in fenced}
     assert len(quoted) == len(fenced), "results.md quotes one block twice"
     assert quoted == generated, (
@@ -607,21 +618,29 @@ def test_the_results_page_quotes_the_blocks_the_locked_run_generates() -> None:
     assert generated["estimands-drift"] != generated["estimands-locked"]
 
 
-def test_the_committed_access_log_holds_the_release_read_and_nothing_else() -> None:
-    """The audited quantity: two rows, one per locked corpus, both against the frozen digest.
+def test_the_committed_access_log_holds_exactly_the_two_recorded_reads() -> None:
+    """The audited quantity: four rows — the v0.4.0 release read (one per locked corpus) and the
+    amendment-1 re-read (one per locked corpus), all against the frozen pre-registration digest.
 
-    Two and not one because the drift holdout is a locked corpus too and reading it is a read.
-    A row whose ``protocol_digest`` is not the current pin would mean the page was produced
-    under a pre-registration that has since been amended, which is the finding this file exists
-    to make visible rather than to prevent.
+    Two per read and not one because the drift holdout is a locked corpus too and reading it is
+    a read. Every row carries the pre-registration's digest: the amendment sits beside the
+    registration, not in place of it, and the second pair is told apart by a reason that names
+    the amendment. A fifth row would mean the locked set was read again without a recorded
+    amendment, which is the finding this file exists to make visible rather than to prevent.
     """
 
     rows = read_access_log(ACCESS_LOG_PATH)
-    assert len(rows) == 2, f"{ACCESS_LOG_PATH} holds {len(rows)} rows; the release read is two"
+    assert len(rows) == 4, (
+        f"{ACCESS_LOG_PATH} holds {len(rows)} rows; the two recorded reads are four"
+    )
     digest = preregistration_digest()
     for row in rows:
         assert row["protocol_digest"] == digest
         assert row["schema_version"] == "1.0"
         assert datetime.fromisoformat(row["accessed_at"]).tzinfo is not None
         assert row["principal"] and row["reason"]
-    assert sorted(row["reason"] for row in rows) != [rows[0]["reason"], rows[0]["reason"]]
+    release, amendment = rows[:2], rows[2:]
+    assert all("amendment-1" not in row["reason"] for row in release)
+    assert all("amendment-1" in row["reason"] for row in amendment)
+    for pair in (release, amendment):
+        assert pair[0]["reason"] != pair[1]["reason"], "one row per corpus, told apart by reason"

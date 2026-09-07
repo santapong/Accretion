@@ -84,6 +84,9 @@ PREREGISTRATION_PATH = REPOSITORY_ROOT / "docs" / "research" / "v0.4" / "preregi
 """The frozen §21 page whose sha256 every locked corpus pins."""
 
 ACCESS_LOG_PATH = REPOSITORY_ROOT / "docs" / "research" / "v0.4" / "access-log.jsonl"
+AMENDMENT_1_PATH = REPOSITORY_ROOT / "docs" / "research" / "v0.4" / "amendment-1.md"
+"""The first protocol amendment. A corpus that pins ``amendment_1_sha256`` runs under it, and the
+runner checks that pin the way it checks the pre-registration's: both documents, before any read."""
 """The committed append-only log. One JSON object per line, in the order reads happened."""
 
 ACCESS_LOG_FIELDS: tuple[str, ...] = (
@@ -149,6 +152,12 @@ def preregistration_digest(path: Path = PREREGISTRATION_PATH) -> str:
     strict: the alternative is a normalisation nobody can restate exactly, and a digest whose
     definition is negotiable is not a freeze.
     """
+
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def amendment_1_digest(path: Path = AMENDMENT_1_PATH) -> str:
+    """sha256 of the amendment page's bytes, computed the way the pre-registration's is."""
 
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
@@ -321,6 +330,7 @@ class LockedTestRunner:
         *,
         preregistration_path: Path = PREREGISTRATION_PATH,
         access_log_path: Path = ACCESS_LOG_PATH,
+        amendment_path: Path = AMENDMENT_1_PATH,
         settings: Settings | None = None,
     ) -> None:
         allowed = (LOCKED_CORPUS_ROOT.resolve(), DRIFT_CORPUS_ROOT.resolve())
@@ -333,6 +343,7 @@ class LockedTestRunner:
         self.corpus_root = corpus_root
         self.preregistration_path = preregistration_path
         self.access_log_path = access_log_path
+        self.amendment_path = amendment_path
         # A freshly constructed Settings, not the process-wide ``get_settings()`` cache. The
         # release flag has to describe *this* run: a cache populated by an import that happened
         # before the operator exported the variable would release or refuse the read for a
@@ -376,6 +387,15 @@ class LockedTestRunner:
                 f"{self.corpus_root} was frozen against {pinned}; an amended pre-registration "
                 "is a new pre-registration with a new pin, not an edit"
             )
+        amended = corpus.config.amendment_1_sha256
+        if amended is not None:
+            amendment_on_disk = amendment_1_digest(self.amendment_path)
+            if amended != amendment_on_disk:
+                raise PreregistrationDrift(
+                    f"{self.amendment_path} hashes to {amendment_on_disk}, but the corpus at "
+                    f"{self.corpus_root} was frozen against amendment digest {amended}; an "
+                    "amended protocol is two documents and both must still be the ones pinned"
+                )
         if not self.settings.router_locked_test:
             raise LockedTestNotReleased(
                 "reading the locked test set requires ACCRETION_ROUTER_LOCKED_TEST=1 "
