@@ -640,6 +640,39 @@ before a nested corpus could be loaded at all.
 
 ## Recorded during v0.4.1
 
+Decisions taken while hardening the released v0.4, each one recorded where the milestone
+sections above are, and numbered `ADR4.1-00k` so a reader can tell a post-release decision from
+a milestone one.
+
+**ADR4.1-001 — an experience record is joined to its experience by the `experience_id` label,
+and the manifest still names records.** `SnapshotBuilder.build` dereferenced
+`get_experience(record.contract_id)`, on ADR-054 b's reading that a projection "is keyed by the
+same experience_id — carried as the header's contract_id". That reading is true of a record built
+directly against the contract, as the M4 and M8 fixtures build one, and cannot be true of a record
+a real run projects: one run materialises ONE P7 experience and projects one record per routed
+node, so `feedback/experience.py` mints `derived_id("experience", experience_id,
+execution_instance_id, "1")` and the two ids are necessarily different. The consequence was not a
+smaller snapshot but an empty one — the builder refused a live run's whole window with "no
+experience record ... is eligible for learning", which reads as "this run produced no evidence"
+when what happened is that its evidence could not be dereferenced. M9 pinned it as an unmarked
+test rather than routing around it.
+
+The join now reads `EXPERIENCE_ID_LABEL` where the projector wrote one and falls back to
+`contract_id` where it did not (`_experience_id_of`), so both writers resolve and no fixture had
+to be rewritten. Three alternatives were rejected: a `parent_experience_id` field on
+`ExperienceRecord` (a v0.4 contract is frozen, and the label is already inside the record's
+digest); a new `list_experience_records_for_experience` store surface (three implementations and
+a Postgres twin to answer a question the record already answers); and changing the projector's
+derived id to be the experience id (it cannot be — one experience, many nodes).
+
+What did NOT change is the meaning of the manifest. `included_experience_ids` still holds
+`ExperienceRecord.contract_id`, because `materialize`, the M8 evaluator's `_manifest_projects`
+and the leakage check all read each id back with `get_experience_record`; the label is a join key
+on the way in, not a rename of what a snapshot names. The retraction read (ADR-054 b) follows the
+same label, so retracting the experience a run materialised still removes every projection of it
+from the window. M9's pinned test is now the positive
+`test_the_snapshot_builder_includes_a_run_projected_record` — `docs/releases/v0.4/m9-plan.md`
+records it under its old name, as the historical account of what M9 measured.
 **ADR4.1-002 (the selector's default utility weights are the registered corpus weights) —
 reconciled, in the direction the pre-registration named.** Until v0.4.1 the M2 objective minter
 and `DeterministicSelector` defaulted to quality/cost/latency `1.0 / 0.25 / 0.15` while every
