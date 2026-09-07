@@ -42,7 +42,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
@@ -195,6 +195,38 @@ load_project_registry` makes about the registry.
         return self
 
 
+class PoolingRule(StrictModel):
+    """How a cell's trials become one verdict, registered rather than assumed.
+
+    A cell holds several trials and a gate wants one number, so something has to reduce the
+    trials — and *which* reduction is not a detail. ``"all"`` and ``"any"`` are the
+    conservative conjunction the corpus has always used: a configuration verified a node only
+    if it verified it every time, and one wrong acceptance among the trials is a wrong
+    acceptance. ``"rate"`` is the per-trial fraction. At two trials per cell the two readings
+    are close; at the eighteen pre-registration item 1 froze they are not, and ADR4-M10-005
+    records a corpus where the verified reading moves from 0.5121 to 0.0870 and the
+    false-acceptance reading from 0.0390 to 0.4348 depending on which is used.
+
+    So the rule is a registered field of the corpus and not a constant in this module. A
+    threshold is only meaningful beside the reduction it was set against, and a benchmark
+    whose pooling could be changed after the rows were seen has one free parameter per
+    surprising result — the same argument the rest of ``config.v1.json`` exists to make.
+    Absent from a corpus, the field is ``None`` and the conjunction applies unchanged, so
+    every corpus written before this rule existed reads exactly as it did before.
+
+    The two gates carry their own field because they are two criteria and not one: a corpus
+    may register the rate reading for false acceptance and keep the conjunction for verified
+    success, and forcing them to move together would be a third choice nobody made.
+    """
+
+    schema_version: Literal["1.0"] = "1.0"
+    verified: Literal["all", "rate"] = "all"
+    """``"all"`` — verified on every trial. ``"rate"`` — the fraction of trials that verified."""
+
+    false_accept: Literal["any", "rate"] = "any"
+    """``"any"`` — a wrong acceptance on any trial. ``"rate"`` — the fraction of trials."""
+
+
 class RouterBenchmarkConfig(StrictModel):
     """``config.v1.json``: the registered constants a run is not allowed to choose.
 
@@ -228,7 +260,25 @@ class RouterBenchmarkConfig(StrictModel):
     oracle_candidate_subset: list[str] = Field(min_length=1, max_length=64)
     deterministic_v01_table: dict[ExecutionMode, str] = Field(min_length=1)
     ablations_path: str | None = Field(default=None, max_length=256)
+    pooling: PoolingRule | None = Field(default=None)
+    """How this corpus's trials pool, and which reading each gate is read against.
+
+    ``None`` — the frozen conjunction: *verified* means verified on every trial, and a false
+    acceptance on any trial is a false acceptance. Additive and optional so that every corpus
+    generated before ADR4-M10-005 was written still validates under a model that forbids
+    extras, and so that a run over one of them reports exactly the numbers it always did. A
+    corpus that wants the rate reading says so here, in the document a reviewer diffs, and the
+    thresholds beside it are then read against the reading the same document names.
+    """
+
     preregistration_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    amendment_1_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    """sha256 of ``docs/research/v0.4/amendment-1.md`` for a corpus that runs under it.
+
+    Pinned *beside* the pre-registration's digest, never in place of it: an amended protocol
+    is two documents, and the locked-test runner checks both before a read starts. ``None``
+    means the corpus runs under the original registration alone.
+    """
     """sha256 of ``docs/research/v0.4/preregistration.md`` at the §21 freeze.
 
     ``None`` means the fields are not frozen and nothing may read the locked test set.
@@ -536,6 +586,13 @@ class RouterBenchmarkCorpus:
         verified it every time it was asked, and one false acceptance in two trials is a
         false acceptance.
 
+        Both readings are computed, always: every outcome also carries ``verified_rate`` and
+        ``false_accept_rate``, the per-trial fractions the booleans reduce. Computing them
+        unconditionally rather than under the corpus's :class:`PoolingRule` keeps this method
+        a description of the cell rather than of the gate — the rule decides which reading a
+        *gate* is read against, and a rule that also decided which numbers exist would make
+        the two readings impossible to compare in one run.
+
         Keyed by the tuple rather than by a string so that the two string keyings below are
         both projections of one table. Deriving one of them from the other by taking a key
         apart would make the encoding reversible, which it is not obliged to be.
@@ -560,6 +617,13 @@ class RouterBenchmarkCorpus:
             verified=all(trace.verified for trace in ordered),
             false_accept=any(trace.false_accept for trace in ordered),
             invalid=any(trace.invalid for trace in ordered),
+            # Nine places and not the six the utility inputs use: these two are gate inputs,
+            # and GateReport quotes a rate at nine. Pooling them at six would round a rate
+            # before the gate that reads it had a chance to.
+            verified_rate=round(sum(1 for trace in ordered if trace.verified) / count, 9),
+            false_accept_rate=round(
+                sum(1 for trace in ordered if trace.false_accept) / count, 9
+            ),
         )
 
     def first_trial_cells(self) -> dict[tuple[str, str], Outcome]:
@@ -635,6 +699,13 @@ class GateReport:
     score and there deliberately is not one: a method that raised verified success by
     accepting more wrongly would move both numbers, and a single figure would let the two
     movements cancel.
+
+    ``pooling`` is the third thing a reader needs and the one a table of two rates and two
+    thresholds silently omits: which reduction over a cell's trials produced them. The same
+    rows read as a conjunction and as a per-trial rate give different numbers against the same
+    unchanged thresholds (ADR4-M10-005), so a gate report that did not name its rule would be
+    two reports wearing one shape. It is a value on the report and not a lookup back into the
+    corpus, because a stored report outlives the corpus object that produced it.
     """
 
     selections: int
@@ -646,6 +717,8 @@ class GateReport:
     false_acceptance_rate: float
     false_acceptance_ceiling: float
     false_acceptance_met: bool
+    pooling: PoolingRule = field(default_factory=PoolingRule)
+    """Defaulted to the frozen conjunction, which is what an absent rule means everywhere else."""
 
     @property
     def both_met(self) -> bool:
@@ -1096,7 +1169,7 @@ class RouterBenchmarkRunner:
             reason_code=None,
             rows=tuple(rows),
             regret=report,
-            gates=self._gates(rows),
+            gates=self._gates(rows, outcomes),
             mean_utility=(
                 round(sum(row.selected_utility for row in report.rows) / len(report.rows), 9)
                 if report.rows
@@ -1128,30 +1201,78 @@ class RouterBenchmarkRunner:
             regret_interval=None,
         )
 
-    def _gates(self, rows: Sequence[BenchmarkRow]) -> GateReport:
+    def _gates(
+        self, rows: Sequence[BenchmarkRow], outcomes: Mapping[str, Outcome]
+    ) -> GateReport:
         """The two safety rates, read off the recorded verdicts alone.
 
         Not one weight and not one utility appears in this method, which is the whole reason
         it is a method: a gate that shared an expression with the objective would move when
         the objective was re-weighted, and a safety criterion that a project can re-weight is
         not a safety criterion.
+
+        What *does* appear is the corpus's registered :class:`PoolingRule`. Under the default
+        rule each selection contributes the pooled boolean it always did — verified on every
+        trial, a false acceptance on any — and the report is bit for bit the one this method
+        produced before the rule existed. Under ``"rate"`` the selection contributes its cell's
+        per-trial fraction instead, and the reported rate is the mean of those fractions: the
+        same quantity, counted over trials rather than over conjunctions. The thresholds are
+        untouched in both cases. Choosing a *reading* is a registered protocol decision; moving
+        a threshold to meet a reading would be the post-hoc change the registration forbids.
+
+        ``outcomes`` is the same mapping the rows were built from — the pooled grid, or the
+        first-trial grid under the A10 ablation — so the rates a gate reads and the booleans a
+        row carries are two projections of one cell and cannot drift apart.
         """
 
+        pooling = self.corpus.config.pooling or PoolingRule()
         selections = len(rows)
-        verified = sum(1 for row in rows if row.verified)
-        false_accepts = sum(1 for row in rows if row.false_accept)
-        verified_rate = round(verified / selections, 9) if selections else 0.0
-        false_rate = round(false_accepts / selections, 9) if selections else 0.0
+        if pooling.verified == "rate":
+            verified_total = sum(self._cell(row, outcomes).verified_rate for row in rows)
+        else:
+            verified_total = float(sum(1 for row in rows if row.verified))
+        if pooling.false_accept == "rate":
+            false_total = sum(self._cell(row, outcomes).false_accept_rate for row in rows)
+        else:
+            false_total = float(sum(1 for row in rows if row.false_accept))
+        verified_rate = round(verified_total / selections, 9) if selections else 0.0
+        false_rate = round(false_total / selections, 9) if selections else 0.0
         return GateReport(
             selections=selections,
-            verified_successes=verified,
+            # Trial-weighted under the rate reading, where a cell contributes a fraction of a
+            # verdict rather than a verdict: the count stays the numerator of the rate the row
+            # beside it quotes, which is the one property a reader recomputing it will check.
+            verified_successes=round(verified_total),
             verified_success_rate=verified_rate,
             verified_success_floor=self.corpus.config.verified_success_floor,
             verified_success_met=verified_rate >= self.corpus.config.verified_success_floor,
-            false_acceptances=false_accepts,
+            false_acceptances=round(false_total),
             false_acceptance_rate=false_rate,
             false_acceptance_ceiling=self.corpus.config.false_acceptance_ceiling,
             false_acceptance_met=false_rate <= self.corpus.config.false_acceptance_ceiling,
+            pooling=pooling,
+        )
+
+    @staticmethod
+    def _cell(row: BenchmarkRow, outcomes: Mapping[str, Outcome]) -> Outcome:
+        """The pooled cell one row selected, or an empty one when the corpus has no such cell.
+
+        A missing cell is already how a row comes to carry ``verified=False``; the rates agree
+        with that reading rather than raising, so the two pooling rules refuse and accept the
+        same rows.
+        """
+
+        return outcomes.get(
+            outcome_key(row.task_id, row.selected_candidate_id),
+            Outcome(
+                quality=0.0,
+                cost=0.0,
+                latency=0.0,
+                latency_ms=0,
+                verified=False,
+                false_accept=False,
+                invalid=True,
+            ),
         )
 
     def _estimands(self, choice: Mapping[str, str]) -> Estimands | None:

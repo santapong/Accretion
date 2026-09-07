@@ -1,6 +1,6 @@
 [project]
 name = "accretion"
-version = "0.4.0"
+version = "0.4.1"
 description = "Observable local-first multi-runtime meta-harness"
 readme = "README.md"
 requires-python = ">=3.12"

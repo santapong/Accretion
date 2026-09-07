@@ -638,6 +638,111 @@ corpus with the shipped one as the fallback. Neither changes a single byte of wh
 corpus resolves to, which is why the shipped corpus's own tests are untouched; both were necessary
 before a nested corpus could be loaded at all.
 
+## Recorded during v0.4.1
+
+Decisions taken while hardening the released v0.4, each one recorded where the milestone
+sections above are, and numbered `ADR4.1-00k` so a reader can tell a post-release decision from
+a milestone one.
+
+**ADR4.1-001 — an experience record is joined to its experience by the `experience_id` label,
+and the manifest still names records.** `SnapshotBuilder.build` dereferenced
+`get_experience(record.contract_id)`, on ADR-054 b's reading that a projection "is keyed by the
+same experience_id — carried as the header's contract_id". That reading is true of a record built
+directly against the contract, as the M4 and M8 fixtures build one, and cannot be true of a record
+a real run projects: one run materialises ONE P7 experience and projects one record per routed
+node, so `feedback/experience.py` mints `derived_id("experience", experience_id,
+execution_instance_id, "1")` and the two ids are necessarily different. The consequence was not a
+smaller snapshot but an empty one — the builder refused a live run's whole window with "no
+experience record ... is eligible for learning", which reads as "this run produced no evidence"
+when what happened is that its evidence could not be dereferenced. M9 pinned it as an unmarked
+test rather than routing around it.
+
+The join now reads `EXPERIENCE_ID_LABEL` where the projector wrote one and falls back to
+`contract_id` where it did not (`_experience_id_of`), so both writers resolve and no fixture had
+to be rewritten. Three alternatives were rejected: a `parent_experience_id` field on
+`ExperienceRecord` (a v0.4 contract is frozen, and the label is already inside the record's
+digest); a new `list_experience_records_for_experience` store surface (three implementations and
+a Postgres twin to answer a question the record already answers); and changing the projector's
+derived id to be the experience id (it cannot be — one experience, many nodes).
+
+What did NOT change is the meaning of the manifest. `included_experience_ids` still holds
+`ExperienceRecord.contract_id`, because `materialize`, the M8 evaluator's `_manifest_projects`
+and the leakage check all read each id back with `get_experience_record`; the label is a join key
+on the way in, not a rename of what a snapshot names. The retraction read (ADR-054 b) follows the
+same label, so retracting the experience a run materialised still removes every projection of it
+from the window. M9's pinned test is now the positive
+`test_the_snapshot_builder_includes_a_run_projected_record` — `docs/releases/v0.4/m9-plan.md`
+records it under its old name, as the historical account of what M9 measured.
+**ADR4.1-002 (the selector's default utility weights are the registered corpus weights) —
+reconciled, in the direction the pre-registration named.** Until v0.4.1 the M2 objective minter
+and `DeterministicSelector` defaulted to quality/cost/latency `1.0 / 0.25 / 0.15` while every
+corpus under `evals/router` — the development corpus, the locked test set and the drift replica —
+scores utility at `1.0 / 0.3 / 0.15`, the vector pre-registration item 3 froze. The two are close,
+which is exactly what made the gap survivable for a whole milestone: every M10 number was computed
+under weights the shipped selector did not optimise, so the benchmark described a neighbouring
+policy rather than the one that runs. Item 3 refused to close the gap itself, because moving the
+*corpus* after the rows were generated would have been the post-hoc change the pre-registration
+exists to prevent, and it named the reconciliation as a separate decision. This is that decision,
+and it moves the code: `accretion.routing.selector.DEFAULT_UTILITY_WEIGHTS` becomes
+`1.0 / 0.3 / 0.15` and `routing/freeze.py` imports it instead of restating a second literal, so
+the two sites are equal by construction. Nothing is re-measured — the M10 results stand unchanged,
+because the corpus, the seeds and the traces they were computed from are untouched; what changes
+is that the policy they describe is now the policy that ships.
+
+Two limits are deliberate. **A default is not a mandate:** an `ObjectiveContract` may still declare
+its own `utility_weights`, and both the minter's contract and `DeterministicSelector.select` honour
+the declared vector over this constant — the fixtures under `tests/fixtures/contracts/v0.4/` carry a
+different vector precisely because that freedom is part of the contract, and they are not touched
+by this change. **Old contracts keep their weights:** objective contracts are immutable, content-
+hashed records, so nothing rewrites a persisted `0.25`; a task frozen before this release keeps the
+utility it was approved under, and only newly minted contracts carry the new default. There is no
+migration and no backfill, and there is nothing to reverse but the constant.
+**ADR4.1-003 (the pooling rule is registered, not assumed) — `PoolingRule` on
+`RouterBenchmarkConfig`, absent everywhere it has ever been absent.** `ADR4-M10-005` recorded
+that the corpus reduces a cell's eighteen trials with a conjunction and a disjunction chosen when
+a cell held two, and that the gate thresholds were registered on the per-trial scale and read on
+the pooled one. The repair it named is pooling as a *rate* with thresholds registered against it.
+This release lands the mechanism and changes no reported number: `pooling` is an additive optional
+field of `config.v1.json`, no shipped corpus carries it, and an absent rule is the frozen
+conjunction, so every corpus digest, every run id and every table in `docs/research/v0.4/results.md`
+is byte-identical to the release. `pooled_cells` now computes *both* readings unconditionally —
+`Outcome` carries `verified_rate` and `false_accept_rate` beside the booleans — because a run that
+produced only the reading its corpus registered could not be compared with one that registered the
+other, and the comparison is the finding. `GateReport` carries the rule that produced it: two rates
+and two thresholds with no reduction named is two reports wearing one shape.
+
+The alternative was to change `pooled_cells` outright. That would have edited the analysis of rows
+already seen, which is the one thing the pre-registration exists to prevent, and it would have
+moved `results.md` — a page whose every table is regenerated and compared byte for byte. Making the
+rule a registered field moves the decision into the document a reviewer diffs and leaves the
+release's numbers where the release put them.
+
+**The amendment this ADR also covers is a draft, and the re-read is not this pull request.**
+`docs/research/v0.4/amendment-1.md` proposes reading both gates as rates with the floor (0.70) and
+the ceiling (0.05) unchanged, and states its expected outcome *before* any re-read: the
+false-acceptance gate is expected to pass at ≈ 0.04 and the verified-success gate is expected to
+still fail at ≈ 0.51 against 0.70. Writing the expectation down first is what keeps the amendment
+from being a threshold chosen to pass — an amendment whose expected outcome is "both gates now
+pass" is a result, not a protocol. The page is `PROPOSED` and pins nothing; the locked corpora are
+not read here, `access-log.jsonl` still carries exactly the two rows the v0.4.0 read wrote, and the
+procedure for the re-read (pin the amendment's sha256 beside the pre-registration's, one locked
+read and one drift read, an appended "Amendment 1" section in `results.md`) is written on the page
+so that the confirming pull request has nothing left to decide.
+
+**ADR4.1-004 (amendment 1 confirmed and re-read once) — the gates read as per-trial rates, and
+the finding is not the one the amendment expected.** The maintainer confirmed
+`docs/research/v0.4/amendment-1.md` on 2026-09-07; its sha256 is pinned as `amendment_1_sha256`
+in all three corpus configs beside `preregistration_sha256`, the locked and drift corpora register
+`pooling: {verified: rate, false_accept: rate}`, and `LockedTestRunner` checks both digests before
+a read. One re-read followed (access-log rows 3 and 4). The amendment expected the false-acceptance
+gate to pass at about 0.04 and the verified-success gate to fail at about 0.51; both numbers were
+corpus-wide rates, and per policy the picture inverts: the fixed comparators meet the ceiling and
+fail the floor, the learned ones (M7, M8, M9, the oracle) clear the floor and exceed the ceiling,
+and M9 passes both on the drift corpus by 0.007 and 0.0006. `results.md` quotes the expectations
+beside the outcome under "Amendment 1" and keeps the v0.4.0 tables in place, tagged `text-v0.4.0`;
+the regeneration test requires both sets. Whether a 0.05 ceiling is the right registration for a
+per-trial reading is left to the next pre-registration.
+
 ## Parked beside v0.4
 
 The v0.3.1 operator-UI redesign (M9 of the v0.3 ladder) is parked after its stylesheet port

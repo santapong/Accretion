@@ -192,18 +192,48 @@ version of this list is in [notes.md](notes.md).
 
 ## Release procedure
 
-1. Merge the remaining v0.4 milestone PRs into `develop` (M9d, then M10c and M10d).
-2. Open the release PR against `develop`: bump `pyproject.toml`, the root `package.json` and
-   `apps/ui/package.json` to `0.4.0`, run `npm install --package-lock-only` and `uv lock`,
-   convert `## [Unreleased]` to `## [0.4.0] - <date>` in the v0.3 header shape — theme line,
-   links to these notes and this audit, the counts line and the five-of-five gate — and fill
-   every cell above.
-3. Open `develop` → `main` and squash-merge, using the protected release bridge from
-   [branch-policy.md](../../governance/branch-policy.md) if the two branches have no usable
-   merge ancestry.
-4. Tag `v0.4.0` on `main`, then verify the tag's peeled commit matches the merged `main` tip
-   and that `git diff --exit-code origin/develop origin/main` passes.
-5. Write `docs/releases/v0.4/baseline.md` recording the frozen identity.
+1. ~~Merge the remaining v0.4 milestone PRs into `develop`.~~ Done — M9d
+   [#153](https://github.com/santapong/Accretion/pull/153), M10c
+   [#154](https://github.com/santapong/Accretion/pull/154), the §21 freeze
+   [#155](https://github.com/santapong/Accretion/pull/155) and M10d
+   [#156](https://github.com/santapong/Accretion/pull/156); `develop` at
+   `cea73eb1eeb6e1cdeb7513de5acff3b085c16542` is the audited code commit above.
+2. ~~Open the release PR against `develop`.~~ Done —
+   [#157](https://github.com/santapong/Accretion/pull/157), `develop` at
+   `08a695bcc642fb11bf6b67cbd524ae727610849c`: versions `0.4.0`, both lockfiles regenerated, the changelog release header,
+   these documents completed.
+3. ~~Open `develop` → `main` and squash-merge.~~ Done —
+   [#158](https://github.com/santapong/Accretion/pull/158). `main` and `develop`
+   had no usable merge ancestry, as at v0.2.0 and v0.3.0, so the protected release bridge
+   from [branch-policy.md](../../governance/branch-policy.md) was used: branch
+   `release/v0.4.0` created from `main` at `bf5b774eb964252d448b44ec3ea9d6b7b7511213`, its complete tree replaced
+   with the audited `develop` tree, and `git diff --exit-code origin/develop
+   release/v0.4.0` verified to pass before the pull request was opened.
+4. ~~Tag `v0.4.0` on `main` and verify.~~ Done — annotated tag object
+   `c4067684a7de6f820cdf0703c6d70afc5a29ebae`; its peeled commit and the merged `main` tip are both
+   `dd1d9f300ba05dc5875b964322c34b47a5288c39`, and `git diff --exit-code origin/develop origin/main` passes, so the
+   promoted tree `2e59ad70ad36b0934c189ec698bbf7658928b57d` is byte-identical to the audited one.
+5. ~~Write `docs/releases/v0.4/baseline.md`.~~ Done — see
+   [the frozen v0.4 baseline](baseline.md).
 
-Steps 2 through 5 are the release PR's, not this draft's. Nothing in this file is a release
-authorization.
+All required CI checks — `backend`, `frontend`, `browser` and `clean-checkout` — passed on
+both pull requests. The `v0.1.0`, `v0.2.0` and `v0.3.0` tag objects and peeled commits are
+unchanged from the values recorded in their own baselines.
+
+## v0.4.1 addendum (2026-09-07)
+
+Measured on 2026-09-07 on `develop` at `cbefe2eea6e7e7165c96bc10fc3ce483e6762629` (#164, the last v0.4.1 change), the base the release commit sits on.
+The SDD §24.8 gate and the acceptance line are unchanged from v0.4.0; the four hardening
+changes touch no contract or migration. Amendment 1 was confirmed and frozen on 2026-09-07
+(sha256 pinned beside the pre-registration's in every corpus config, so the three corpus config
+files and their digests moved); one re-read was made under it, so `access-log.jsonl` holds four
+rows, and `docs/research/v0.4/results.md` reports it under "Amendment 1" beside the v0.4.0 tables.
+
+| Check | Result |
+|---|---|
+| `ruff check .` / `mypy src` / contract schemas / `check_docs.py` | PASS / PASS (149 source files) / PASS (21 schemas) / PASS (111 Markdown files, 18 SVGs) |
+| `alembic upgrade head` → `downgrade base` → `upgrade head` (clean database) | PASS |
+| `pytest` (with PostgreSQL) | PASS — 3411 passed, 6 skipped, 2 deselected; Postgres twins re-run: 47 passed |
+| `make acceptance` / `make release-gate` | PASS — `in scope: 167   proven: 159   unmet MUST: 0`; five of five conditions PASS |
+| `npm run check` / `npm run test` / `npm run build` / `api:generate` diff / `uv lock --check` | PASS / PASS (286 passed) / PASS (initial JS  595,379 B raw / 175,178 B gzip   initial CSS  53,181 B raw / 10,638 B gzip) / PASS / PASS |
+| Audited base (develop, #164) / tree / release commit / tag | `cbefe2eea6e7e7165c96bc10fc3ce483e6762629` / `f8d3465fc66e8ab2ba56c292fa46d85bc81e51f9` / *filled after the bridge* / *filled after the tag* |
