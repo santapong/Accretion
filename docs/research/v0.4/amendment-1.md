@@ -1,13 +1,14 @@
-# Router benchmark v0.4 — amendment 1: pooling the gates as rates (DRAFT)
+# Router benchmark v0.4 — amendment 1: pooling the gates as rates (FROZEN 2026-09-07)
 
-**Status: PROPOSED — not frozen.** Nothing on this page has been applied. No corpus pins it, no
-runner reads it, [`results.md`](results.md) is unchanged, and
-[`access-log.jsonl`](access-log.jsonl) still has exactly the two rows the v0.4.0 read wrote. The
-mechanism this amendment would use exists and is tested
-([`PoolingRule`](../../../src/accretion/router_benchmark.py),
-[`tests/test_v04_m10_pooling.py`](../../../tests/test_v04_m10_pooling.py)), and it is inert:
-absent from a corpus, the frozen conjunction applies and every number this page discusses stays
-exactly where the release left it.
+**Status: FROZEN 2026-09-07**, confirmed by the maintainer after the v0.4.1 hardening window. This
+page's sha256 is pinned in every corpus's `config.v1.json` as `amendment_1_sha256`, beside
+`preregistration_sha256` and never in place of it; the locked-test runner checks both before a
+read starts. The locked and drift corpora register `pooling: {verified: rate, false_accept: rate}`
+in the same commit as the pin, and the one re-read this amendment authorises is recorded in
+[`access-log.jsonl`](access-log.jsonl) and reported under "Amendment 1" in [`results.md`](results.md).
+The mechanism ([`PoolingRule`](../../../src/accretion/router_benchmark.py),
+[`tests/test_v04_m10_pooling.py`](../../../tests/test_v04_m10_pooling.py)) landed inert in #163; this
+page is what turns it on, and only for the two corpora that pin it.
 
 The [pre-registration](preregistration.md) is frozen and this page does not edit it. A protocol
 amendment is a **new** document with its own digest, registered beside the original; the
@@ -99,7 +100,7 @@ An outcome outside these expectations is reported as a surprise in the "Amendmen
 
 ## Procedure for the re-read
 
-Not performed here. When the amendment is confirmed:
+Performed on 2026-09-07, in the order below:
 
 1. **Freeze this page** — change its status line to `FROZEN <date>`, take its sha256, and pin it
    in every corpus's `config.v1.json` as `amendment_1_sha256`, **beside**
@@ -125,6 +126,6 @@ Not performed here. When the amendment is confirmed:
 
 ## What this page does not do
 
-It reads no locked corpus, changes no threshold, edits no frozen document, and quotes no new
-number. Every figure above is either a constant from the pre-registration or a number
+This page changes no threshold, edits no frozen document, and quotes no new number; the numbers
+the re-read produced live in `results.md`, never here. Every figure above is either a constant from the pre-registration or a number
 `results.md` already published on 2026-09-06.

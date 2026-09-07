@@ -23,7 +23,7 @@ with every lineage in provider era `2026-H2` and every runtime a minor version l
 differs at both levels [item 8](preregistration.md#8-provider--model--tool-version-windows)
 names. Neither shares a lineage with `evals/router`, the development corpus, or with the other.
 
-```text
+```text-v0.4.0
 # corpora - the two corpora nobody iterated on
 corpus  seed      tasks  configs  trials  digest        traces        run
 ------  --------  -----  -------  ------  ------------  ------------  ------------------------------
@@ -44,7 +44,7 @@ paired regret contrast [item 5](preregistration.md#5-confidence-interval--bootst
 names as the primary analysis: a project-clustered bootstrap over within-task differences,
 B = 2000, seeded from the corpus.
 
-```text
+```text-v0.4.0
 # estimands-locked - locked corpus, EVALUATION half, M9 against the selection-valid best fixed configuration
 estimand                                           value      interval at the adjusted level
 -------------------------------------------------  ---------  ------------------------------
@@ -85,7 +85,7 @@ recorded verdicts alone and share no expression with the objective, so re-weight
 cannot move them, and `GateReport` and `RegretReport` are different types so that neither can be
 computed from the other. They are in their own table for that reason.
 
-```text
+```text-v0.4.0
 # gates-locked - locked corpus, EVALUATION half, verified-success floor 0.700000, false-acceptance ceiling 0.050000
 policy  n   verified      floor        false accepts  ceiling       both
 ------  --  ------------  -----------  -------------  ------------  ----
@@ -117,7 +117,7 @@ frozen. It is filed as `ADR4-M10-005` in
 [the v0.4 backlog](../../releases/v0.4/backlog.md) and it is why the utility table below is
 reported separately: the two columns disagree, and the disagreement is the finding.
 
-```text
+```text-v0.4.0
 # utility-locked - locked corpus, EVALUATION half, reported apart from the gates
 policy  mean utility  mean regret  regret interval       invalid
 ------  ------------  -----------  --------------------  -------
@@ -141,7 +141,7 @@ corpus's `ablations_path` and never by convention, so moving a file cannot repoi
 row removes exactly one component from the full router and re-runs M9 on the same 18 evaluation
 tasks.
 
-```text
+```text-v0.4.0
 # ablations-locked - locked corpus, EVALUATION half, M9 under each registered §14 ablation; unablated mean utility 0.610325
 id   removed                    mean utility  delta      mean regret  verified
 ---  -------------------------  ------------  ---------  -----------  --------
@@ -169,7 +169,7 @@ be removed.
 Reported beside the locked result with the same estimator on the same scale, because a holdout
 summarised more coarsely than the headline is a holdout nobody can check the headline against.
 
-```text
+```text-v0.4.0
 # estimands-drift - drift corpus, EVALUATION half, M9 against the selection-valid best fixed configuration
 estimand                                         value     interval at the adjusted level
 -----------------------------------------------  --------  ------------------------------
@@ -184,7 +184,7 @@ adjusted alpha       0.005556 (Bonferroni over K = 6 configurations and L = 3 po
 recovered fraction   not reported - the opportunity gap's lower limit is not positive
 ```
 
-```text
+```text-v0.4.0
 # gates-drift - drift corpus, EVALUATION half, verified-success floor 0.700000, false-acceptance ceiling 0.050000
 policy  n   verified      floor        false accepts  ceiling       both
 ------  --  ------------  -----------  -------------  ------------  ----
@@ -244,3 +244,151 @@ paired regret contrast — at the multiplicity-adjusted level, on a corpus gener
 analysis was frozen, replicated on a provider-drift holdout, with the read recorded. See the
 [release audit](../../releases/v0.4/audit.md) for how that evidence is graded and the
 [research index](../README.md) for where it sits beside the v0.1–v0.3 experiments.
+
+## Amendment 1 — the gates read as per-trial rates (re-read of 2026-09-07)
+
+[Amendment 1](amendment-1.md) was confirmed and frozen on 2026-09-07 (its sha256 is pinned in
+every corpus config as `amendment_1_sha256`, beside the pre-registration's), and the locked and
+drift corpora registered `pooling: {verified: rate, false_accept: rate}`. One re-read followed —
+one locked read and one drift read, the third and fourth rows of [`access-log.jsonl`](access-log.jsonl).
+Because a config file moved, the corpus digests and run ids below differ from the v0.4.0 read's;
+the tables above stay on the page under their own run ids (their fences are tagged `text-v0.4.0`
+and are no longer regenerated), so a reader can see which reading each number came from. The
+estimands, the utility table and the corpora block are unchanged apart from those ids; what the
+amendment moves is the two gate tables and the "verified" column of the ablation table, which is
+read under the registered rule.
+
+### Against the expectations written before the read
+
+The amendment stated four expectations. Two held, two did not, and the ones that did not are the
+finding.
+
+1. *The false-acceptance gate is expected to pass, at roughly 0.04, for most policies.* **Held for
+   the seven fixed and deterministic comparators (M0–M6: 0.003–0.046 on the locked corpus) and did
+   not hold for the learned ones**: M7, M8, M9 and the oracle sit at 0.068–0.086 on the locked
+   corpus and 0.055–0.068 on the drift corpus, over the 0.05 ceiling. The policies that pick the
+   cells that verify most often also pick the cells that accept wrongly most often; the corpus-wide
+   rate of 0.039 was never a per-policy number.
+2. *The verified-success gate is expected to still fail, at roughly 0.51.* **Did not hold as
+   stated.** 0.51 is the corpus-wide rate; per policy the learned comparators clear the 0.70 floor
+   (M7 0.94, M8 0.89, M9 0.77 locked; 0.93 / 0.91 / 0.71 drift) and the fixed ones do not
+   (0.13–0.62). The expectation was written on the wrong scale, and it is quoted here so that the
+   reading cannot be mistaken for one chosen after the fact.
+3. *No policy is expected to flip both gates.* **Did not hold on the drift corpus**: M9 passes both
+   there, by 0.007 on the floor (0.7068 against 0.70) and by 0.0006 on the ceiling (0.0494 against
+   0.05). On the locked corpus no policy passes both. A margin of that size on one of two corpora is
+   reported as what it is — a marginal pass on the holdout, not a headline — and the page's one
+   superiority result (the paired regret contrast) is unchanged.
+4. *The drift holdout is expected to behave like the locked corpus on both gates.* Held in shape
+   (the same split between fixed and learned policies on each gate) and not in the one cell above.
+
+The gates and the utility table still disagree about which policy is best, and still cannot be
+computed from each other. The amendment did not repair the safety gates; it made them read a
+per-trial quantity, and under that reading the learned router is the one that verifies often
+enough and accepts wrongly too often. Whether a 0.05 ceiling is the right registration for a
+per-trial reading is a question for the next pre-registration, not an edit to this one.
+
+```text
+# corpora - the two corpora nobody iterated on
+corpus  seed      tasks  configs  trials  digest        traces        run
+------  --------  -----  -------  ------  ------------  ------------  ------------------------------
+locked  20260906  36     6        18      49edbf5bba6c  9d412677b291  bnr_09ABA8X37VC389F2VJD5DNX5RD
+drift   20260907  36     6        18      5ff75e480bce  004b01890f18  bnr_3V0EHJ8H33DPVWQCHTVGDCWDRM
+```
+
+```text
+# estimands-locked - locked corpus, EVALUATION half, M9 against the selection-valid best fixed configuration
+estimand                                           value      interval at the adjusted level
+-------------------------------------------------  ---------  ------------------------------
+g_out (oracle opportunity)                         0.222222   [-0.396297, 0.710224]
+g_z (signal-restricted opportunity)                -0.055556  [-0.507748, 0.429923]
+g_learn (learned gain)                             0.166667   [-0.427536, 0.662614]
+best fixed configuration (cnf-claude-sonnet-lean)  3/18       [0.015972, 0.512109]
+paired regret reduction (M0 - M9)                  0.406954   [0.009603, 0.939517]
+
+selection-half rate  2/18
+adjusted alpha       0.005556 (Bonferroni over K = 6 configurations and L = 3 policies)
+recovered fraction   not reported - the opportunity gap's lower limit is not positive
+```
+
+```text
+# gates-locked - locked corpus, EVALUATION half, verified-success floor 0.700000, false-acceptance ceiling 0.050000
+policy  n   verified       floor        false accepts  ceiling       both
+------  --  -------------  -----------  -------------  ------------  ----
+M0      18  7 (0.376543)   BELOW FLOOR  1 (0.033951)   MET           FAIL
+M1      18  7 (0.376543)   BELOW FLOOR  1 (0.040123)   MET           FAIL
+M2      18  4 (0.243827)   BELOW FLOOR  0 (0.015432)   MET           FAIL
+M3      18  2 (0.132716)   BELOW FLOOR  0 (0.003086)   MET           FAIL
+M4      18  3 (0.163580)   BELOW FLOOR  0 (0.018519)   MET           FAIL
+M5      18  11 (0.620370)  BELOW FLOOR  1 (0.046296)   MET           FAIL
+M6      18  9 (0.524691)   BELOW FLOOR  1 (0.043210)   MET           FAIL
+M7      18  17 (0.941358)  MET          2 (0.083333)   OVER CEILING  FAIL
+M8      18  16 (0.885802)  MET          1 (0.080247)   OVER CEILING  FAIL
+M9      18  14 (0.768519)  MET          1 (0.067901)   OVER CEILING  FAIL
+ORACLE  18  15 (0.830247)  MET          2 (0.086420)   OVER CEILING  FAIL
+```
+
+```text
+# utility-locked - locked corpus, EVALUATION half, reported apart from the gates
+policy  mean utility  mean regret  regret interval       invalid
+------  ------------  -----------  --------------------  -------
+M0      0.203370      0.461487     [0.174391, 0.792549]  4
+M1      0.575944      0.088913     [0.036864, 0.147030]  0
+M2      -0.022728     0.687586     [0.255206, 1.164290]  6
+M3      -0.251731     0.916589     [0.472949, 1.349641]  9
+M4      -0.456157     1.121015     [0.714845, 1.467229]  12
+M5      0.387083      0.277774     [0.130314, 0.536531]  1
+M6      0.146788      0.518070     [0.153304, 0.954743]  5
+M7      0.657702      0.007156     [0.000000, 0.018360]  0
+M8      0.660700      0.004158     [0.000000, 0.012729]  0
+M9      0.610325      0.054533     [0.007927, 0.113083]  0
+ORACLE  0.664857      0.000000     [0.000000, 0.000000]  0
+```
+
+```text
+# ablations-locked - locked corpus, EVALUATION half, M9 under each registered §14 ablation; unablated mean utility 0.610325
+id   removed                    mean utility  delta      mean regret  verified
+---  -------------------------  ------------  ---------  -----------  --------
+A1   hierarchical_construction  0.610325      0.000000   0.054533     14/18
+A2   compatibility_pruning      0.610325      0.000000   0.054533     14/18
+A3   experience_retrieval       0.603631      -0.006694  0.061226     12/18
+A4   project_adapter            0.610325      0.000000   0.054533     14/18
+A5   node_feedback              0.605699      -0.004626  0.059159     9/18
+A6   final_run_feedback         0.614442      0.004117   0.050416     14/18
+A7   guarded_exploration        0.660700      0.050375   0.004158     16/18
+A8   independent_verification   0.610538      0.000213   0.054320     14/18
+A9   uncertainty_gate           0.618144      0.007820   0.046713     10/18
+A10  evi_recovery_stop          0.500820      -0.109504  0.164037     10/18
+```
+
+```text
+# estimands-drift - drift corpus, EVALUATION half, M9 against the selection-valid best fixed configuration
+estimand                                         value     interval at the adjusted level
+-----------------------------------------------  --------  ------------------------------
+g_out (oracle opportunity)                       0.111111  [-0.354758, 0.511954]
+g_z (signal-restricted opportunity)              0.055556  [-0.366369, 0.445740]
+g_learn (learned gain)                           0.055556  [-0.366369, 0.445740]
+best fixed configuration (cnf-claude-opus-full)  1/18      [0.000155, 0.370730]
+paired regret reduction (M0 - M9)                0.168669  [0.039887, 0.320070]
+
+selection-half rate  2/18
+adjusted alpha       0.005556 (Bonferroni over K = 6 configurations and L = 3 policies)
+recovered fraction   not reported - the opportunity gap's lower limit is not positive
+```
+
+```text
+# gates-drift - drift corpus, EVALUATION half, verified-success floor 0.700000, false-acceptance ceiling 0.050000
+policy  n   verified       floor        false accepts  ceiling       both
+------  --  -------------  -----------  -------------  ------------  ----
+M0      18  11 (0.608025)  BELOW FLOOR  1 (0.046296)   MET           FAIL
+M1      18  7 (0.395062)   BELOW FLOOR  0 (0.021605)   MET           FAIL
+M2      18  4 (0.243827)   BELOW FLOOR  0 (0.006173)   MET           FAIL
+M3      18  4 (0.228395)   BELOW FLOOR  0 (0.009259)   MET           FAIL
+M4      18  4 (0.209877)   BELOW FLOOR  0 (0.009259)   MET           FAIL
+M5      18  11 (0.635802)  BELOW FLOOR  1 (0.055556)   OVER CEILING  FAIL
+M6      18  8 (0.432099)   BELOW FLOOR  0 (0.015432)   MET           FAIL
+M7      18  17 (0.929012)  MET          1 (0.067901)   OVER CEILING  FAIL
+M8      18  16 (0.910494)  MET          1 (0.067901)   OVER CEILING  FAIL
+M9      18  13 (0.706790)  MET          1 (0.049383)   MET           PASS
+ORACLE  18  15 (0.808642)  MET          1 (0.055556)   OVER CEILING  FAIL
+```

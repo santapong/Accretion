@@ -6,6 +6,14 @@ All notable changes to Accretion are documented in this file.
 
 ### v0.4.1 — hardening
 
+- Confirmed and froze [amendment 1](docs/research/v0.4/amendment-1.md): its sha256 is pinned as
+  `amendment_1_sha256` in every corpus config beside the pre-registration's, the locked and drift
+  corpora register the per-trial pooling rule, `LockedTestRunner` checks both digests before a read,
+  and one re-read (access-log rows 3 and 4) is reported under "Amendment 1" in
+  `docs/research/v0.4/results.md` beside the v0.4.0 tables it does not replace. The expectations
+  the amendment wrote down before the read are quoted next to the outcome, and two of the four did
+  not hold: per policy the learned comparators clear the verified-success floor and exceed the
+  false-acceptance ceiling, and M9 passes both gates on the drift corpus by a hair (ADR4.1-004) (#TBD).
 - Changed CI so a `release/*` branch's own push skips the computed-style diff's base build the
   way a `main`-base pull request already did: the v0.4.0 bridge's first push ran the diff against
   the repository's initial commit and went red before its pull request existed to carry

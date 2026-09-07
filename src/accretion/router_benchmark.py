@@ -272,6 +272,13 @@ class RouterBenchmarkConfig(StrictModel):
     """
 
     preregistration_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    amendment_1_sha256: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    """sha256 of ``docs/research/v0.4/amendment-1.md`` for a corpus that runs under it.
+
+    Pinned *beside* the pre-registration's digest, never in place of it: an amended protocol
+    is two documents, and the locked-test runner checks both before a read starts. ``None``
+    means the corpus runs under the original registration alone.
+    """
     """sha256 of ``docs/research/v0.4/preregistration.md`` at the §21 freeze.
 
     ``None`` means the fields are not frozen and nothing may read the locked test set.
