@@ -1,0 +1,20 @@
+{
+  "scope": "ARTIFACT_INTEGRITY_ONLY; not an empirical research result or a Revision 4 design validation",
+  "checked_at_utc": "2026-09-06T09:06:49.029846+00:00",
+  "original_archive_sha256": "14a41b5ba6748658f82930dd7f91e6a90c6d1cc17dfe2187ed1c9b71bf9dd883",
+  "original_archive_files_identical": 29,
+  "original_manifest_entries_matching": 28,
+  "primary_evidence_files_hash_matching": 12,
+  "local_document_and_skill_links_checked": 9,
+  "skills": {
+    "research-to-design": "structure validator PASS earlier in this task",
+    "alphaxiv-research": "structure validator PASS earlier in this task"
+  },
+  "mathematical_check": "exact rank enumeration PASS; checks/calibration_rank_result.json",
+  "repository_at_packaging": {
+    "head": "2d2f81c91fe279b245f0b16785c7bff36c07b97e",
+    "clean": true
+  },
+  "application_repository_modified_by_this_task": false,
+  "archive_verification_procedure": "Read every ZIP entry and compare SHA-256 against the packaged manifest; ZIP CRC check."
+}

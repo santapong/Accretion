@@ -35,6 +35,7 @@ folder root stays uncluttered.
 | Reproduce the release gate | [Release-hardening runbook](runbooks/v03-release-hardening.md) | [SDD v0.3 §24.8](sdd/Accretion_SDD_v0.3.md), [`scripts/release_gate.py`](../scripts/release_gate.py) |
 | Review the previous release | [Frozen v0.2 baseline](releases/v0.2/baseline.md) | [release audit](releases/v0.2/audit.md), [release notes](releases/v0.2/notes.md), [delivery plan](releases/v0.2/plan.md) |
 | Plan post-v0.4 work | [v0.4 backlog](releases/v0.4/backlog.md) | [v0.4 SDD](sdd/Accretion_SDD_v0.4.md) |
+| Review planned v1.1–v1.8 capabilities | [Revision 4 setup and release sequence](sdd/future/v1.1-v1.8/README.md) | [Full SDD, research and diagrams](sdd/future/v1.1-v1.8/package/index.html); forward designs, acceptance pending |
 | Build v0.4 (evidence-aware node configuration routing) | [v0.4 milestone index](releases/v0.4/README.md) | [SDD v0.4](sdd/Accretion_SDD_v0.4.md), [M0 plan](releases/v0.4/m0-plan.md), [v0.4 backlog](releases/v0.4/backlog.md), [forward package](sdd/future/v0.4-v1.0/00_READ_ME_FIRST.md) |
 | Review the v0.4 release preparation | [v0.4 release notes (draft)](releases/v0.4/notes.md) | [release audit (draft)](releases/v0.4/audit.md), [v0.4 milestone index](releases/v0.4/README.md), [router pre-registration](research/v0.4/preregistration.md) |
 
@@ -47,7 +48,7 @@ folder root stays uncluttered.
 | [`research/`](research/) | Experiment design, frozen results, acceptance evidence, and decisions |
 | [`releases/`](releases/) | Versioned plans, audits, notes, and released baselines |
 | [`governance/`](governance/) | Branch workflow and documentation maintenance rules |
-| [`sdd/`](sdd/) | Normative versioned system designs (v0.1-v0.4) and the forward-design package for v0.5-v1.0 |
+| [`sdd/`](sdd/) | Normative versioned system designs (v0.1-v0.4), the v0.5-v1.0 forward package, and [planned v1.1-v1.8 designs](sdd/future/v1.1-v1.8/README.md) |
 | [`assets/`](assets/) | Accessible repository-native diagrams and illustrative images |
 
 See [documentation maintenance](governance/documentation.md) for ownership,
@@ -74,6 +75,9 @@ naming, experiment-update, and review rules.
 | [P6 quality/compute curve](assets/p6-quality-compute.svg) | Frozen N=1/2/4 replay result and verified acceptance | [P6 acceptance report](research/p6/acceptance.md) |
 | [P7 experience lifecycle](assets/p7-experience-replay.svg) | Materialization, compatibility, frozen selection, fresh-control replay, and revalidation | [P7 runbook](runbooks/p7-verified-experience.md) |
 | [P7 transfer gate](assets/p7-transfer-gate.svg) | Frozen uplift, tool use, stale rejection, false accepts, and negative transfer | [P7 acceptance report](research/p7/acceptance.md) |
+| [Planned v1.8 architecture](sdd/future/v1.1-v1.8/package/accretion-v1.8-review-2026-09-06/architecture.html) | Full future logical architecture; interactive HTML and PNG export | [v1.x design setup](sdd/future/v1.1-v1.8/README.md) |
+| [Planned v1.8 user workflow](sdd/future/v1.1-v1.8/package/accretion-v1.8-review-2026-09-06/user-journey.html) | Goal, scope, execution, verification, recovery and export | [v1.8 capability review](sdd/future/v1.1-v1.8/package/accretion-v1.8-review-2026-09-06/README.md) |
+| [Planned physical trial workflow](sdd/future/v1.1-v1.8/package/accretion-v1.8-review-2026-09-06/physical-trial.html) | Advisory preparation through exact approval and the existing safety gateway | [v1.x design setup](sdd/future/v1.1-v1.8/README.md) |
 
 Every SVG has a title and long description for assistive technology. Technical
 diagrams are repository-native so changes can be reviewed as text. The generated
@@ -81,8 +85,9 @@ bitmap in the showcase is illustrative and never defines behavior.
 
 ## Version authority
 
-- The `v0.3.0` tag defines the current release; its
-  [release notes](releases/v0.3/notes.md) and [audit](releases/v0.3/audit.md)
+- The `v0.4.1` release is recorded in the
+  [frozen baseline](releases/v0.4/baseline.md); its
+  [release notes](releases/v0.4/notes.md) and [audit](releases/v0.4/audit.md)
   record what it claims and what it deliberately does not.
 - The immutable `v0.2.0` tag and [frozen v0.2 baseline](releases/v0.2/baseline.md)
   remain the previous release. The immutable `v0.1.0` tag remains the
@@ -91,6 +96,9 @@ bitmap in the showcase is illustrative and never defines behavior.
 - `codex/v0.1-local-control-plane` is an unmerged historical prototype, not a
   release branch or source of current contracts.
 - Versioned SDDs are normative only for their declared release scope.
+- The [v1.1–v1.8 Revision 4 package](sdd/future/v1.1-v1.8/README.md)
+  is a preserved forward design. Its synthetic validator does not establish
+  implemented features, research outcomes or physical-trial acceptance.
 
 ## Frontend completion
 

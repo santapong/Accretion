@@ -1,0 +1,29 @@
+{
+  "status": "PASS",
+  "scope": "PACKAGE_INTEGRITY_AND_DOCUMENT_CONFORMANCE_ONLY",
+  "source_archives_verified": 3,
+  "original_payloads_preserved": 154,
+  "direct_review_source_documents_included_and_hash_matched": 18,
+  "skill_files_current_and_matched": 7,
+  "predecessor_reference_files": 23,
+  "navigation": "START_HERE and direct relative review links resolve",
+  "runtime_tests": "NOT_RUN",
+  "new_research_or_physical_experiments": "NOT_RUN",
+  "sdd_validation": {
+    "result": "PASS",
+    "scope": "DOCUMENT_DESIGN_CONFORMANCE_ONLY",
+    "schemas": 24,
+    "fixture_cases": 183,
+    "contract_cases": 139,
+    "lifecycle_cases": 36,
+    "metric_cases": 8,
+    "event_names": 101,
+    "acceptance_rows": 174,
+    "release_sdds": 8,
+    "local_links_checked": 16,
+    "runtime_integration": "NOT_RUN",
+    "research_gates": "NOT_EVALUATED",
+    "independent_design_review": "PENDING",
+    "v1_1_pilot": "NOT_READY_TO_EXECUTE"
+  }
+}

@@ -1,0 +1,3374 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Accretion document revision 4 extension payload and projection kit",
+  "description": "Synthetic design conformance only. Versioned evidence projections reuse predecessor owners; full headers, signatures, authorization, reference resolution and runtime atomicity remain integration obligations.",
+  "$defs": {
+    "Locator": {
+      "type": "object",
+      "properties": {
+        "contract_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "record_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "contract_type",
+        "record_id",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "EvaluationProtocol": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "protocol_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "fixture_only": {
+          "type": "boolean"
+        },
+        "horizon_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "success_floor": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "noninferiority_margin": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "minimum_effect_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "confidence_level": {
+          "type": "number",
+          "exclusiveMinimum": 0.5,
+          "exclusiveMaximum": 1
+        },
+        "maximum_missing_fraction": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "cohorts": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "budget_manifest_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "sample_size_plan_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "analysis_plan_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "stopping_rule_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "baseline_manifest_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "split_manifest_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "protocol_id",
+        "fixture_only",
+        "horizon_ms",
+        "success_floor",
+        "noninferiority_margin",
+        "minimum_effect_ms",
+        "confidence_level",
+        "maximum_missing_fraction",
+        "cohorts",
+        "budget_manifest_ref",
+        "sample_size_plan_ref",
+        "analysis_plan_ref",
+        "stopping_rule_ref",
+        "baseline_manifest_ref",
+        "split_manifest_ref",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "ComputeDecisionPayload": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "decision_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "enum": [
+            "BASELINE",
+            "SHADOW",
+            "EXPLOIT",
+            "EXPLORE",
+            "ABSTAIN"
+          ]
+        },
+        "node_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "NodeContract"
+                }
+              }
+            }
+          ]
+        },
+        "verification_spec_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "VerificationSpec"
+                }
+              }
+            }
+          ]
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/Locator"
+              },
+              {
+                "properties": {
+                  "contract_type": {
+                    "const": "ComputeProfile"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "candidate_set_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "selected_ref": {
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/Locator"
+                },
+                {
+                  "properties": {
+                    "contract_type": {
+                      "const": "ComputeProfile"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fallback_ref": {
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/Locator"
+                },
+                {
+                  "properties": {
+                    "contract_type": {
+                      "const": "ComputeProfile"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "abstention_reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_artifact_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "selection_probability": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "decision_id",
+        "mode",
+        "node_ref",
+        "verification_spec_ref",
+        "candidates",
+        "candidate_set_hash",
+        "selected_ref",
+        "fallback_ref",
+        "abstention_reason",
+        "policy_artifact_ref",
+        "selection_probability",
+        "content_hash"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "ABSTAIN"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "selected_ref": {
+                "type": "null"
+              },
+              "abstention_reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "selected_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "abstention_reason": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "HarnessSelectionPayload": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "decision_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "mode": {
+          "enum": [
+            "GENERAL_FALLBACK",
+            "SHADOW",
+            "SPECIALIZED",
+            "ABSTAIN"
+          ]
+        },
+        "node_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "NodeContract"
+                }
+              }
+            }
+          ]
+        },
+        "verification_spec_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "VerificationSpec"
+                }
+              }
+            }
+          ]
+        },
+        "candidates": {
+          "type": "array",
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/Locator"
+              },
+              {
+                "properties": {
+                  "contract_type": {
+                    "const": "HarnessBundle"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "candidate_set_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "selected_ref": {
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/Locator"
+                },
+                {
+                  "properties": {
+                    "contract_type": {
+                      "const": "HarnessBundle"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "fallback_ref": {
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/Locator"
+                },
+                {
+                  "properties": {
+                    "contract_type": {
+                      "const": "HarnessBundle"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "abstention_reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "policy_artifact_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "selection_probability": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "decision_id",
+        "mode",
+        "node_ref",
+        "verification_spec_ref",
+        "candidates",
+        "candidate_set_hash",
+        "selected_ref",
+        "fallback_ref",
+        "abstention_reason",
+        "policy_artifact_ref",
+        "selection_probability",
+        "content_hash"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "mode": {
+                "const": "ABSTAIN"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "selected_ref": {
+                "type": "null"
+              },
+              "abstention_reason": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "selected_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "abstention_reason": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "ComputeDispatchBinding": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "binding_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "compute_decision_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "ComputeDecisionReceipt"
+                }
+              }
+            }
+          ]
+        },
+        "routing_decision_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "RoutingDecisionReceipt"
+                }
+              }
+            }
+          ]
+        },
+        "final_compatibility_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "CompatibilityDecision"
+                }
+              }
+            }
+          ]
+        },
+        "profile_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "ComputeProfile"
+                }
+              }
+            }
+          ]
+        },
+        "effective_configuration_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "EffectiveComputeConfiguration"
+                }
+              }
+            }
+          ]
+        },
+        "node_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "NodeContract"
+                }
+              }
+            }
+          ]
+        },
+        "verification_spec_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "VerificationSpec"
+                }
+              }
+            }
+          ]
+        },
+        "objective_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "ObjectiveContract"
+                }
+              }
+            }
+          ]
+        },
+        "joint_policy_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "JointPolicySnapshot"
+                }
+              }
+            }
+          ]
+        },
+        "graph_revision_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "WorkflowPlanState"
+                }
+              }
+            }
+          ]
+        },
+        "budget_reservation_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "ExistingBudgetReservation"
+                }
+              }
+            }
+          ]
+        },
+        "executor_adapter_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "ComputeExecutorAdapterManifest"
+                }
+              }
+            }
+          ]
+        },
+        "harness_selection_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidate_set_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "dependency_digests": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "expires_at_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "binding_id",
+        "compute_decision_ref",
+        "routing_decision_ref",
+        "final_compatibility_ref",
+        "profile_ref",
+        "effective_configuration_ref",
+        "node_ref",
+        "verification_spec_ref",
+        "objective_ref",
+        "joint_policy_ref",
+        "graph_revision_ref",
+        "budget_reservation_ref",
+        "executor_adapter_ref",
+        "harness_selection_ref",
+        "candidate_set_hash",
+        "dependency_digests",
+        "idempotency_key",
+        "expected_epoch",
+        "expires_at_ms",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "HarnessLifecycleRecord": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "bundle_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "stage": {
+          "enum": [
+            "PACKAGED",
+            "EVALUATED",
+            "PROMOTED",
+            "REVOKED"
+          ]
+        },
+        "evaluation_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "promotion_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "bundle_ref",
+        "stage",
+        "evaluation_ref",
+        "promotion_ref",
+        "reason",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "PhysicalFreezePayload": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "freeze_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manifest_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "trial_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "preflight_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "expected_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "frozen_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "freeze_id",
+        "manifest_ref",
+        "trial_ref",
+        "preflight_ref",
+        "expected_epoch",
+        "frozen_at_ms",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "FreezeInvalidation": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "freeze_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "invalidated_at_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/Locator"
+          }
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "freeze_ref",
+        "invalidated_at_ms",
+        "reason",
+        "evidence_refs",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "PhysicalOutcomePayload": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "outcome_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stage": {
+          "enum": [
+            "PRE_FREEZE",
+            "FROZEN_UNAPPROVED",
+            "APPROVED_UNARMED",
+            "ARMED_NO_EXECUTION",
+            "EXECUTED_UNVERIFIED",
+            "VERIFIED"
+          ]
+        },
+        "terminal_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "freeze_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "approval_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lease_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "verification_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "safety_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "available_evidence_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Locator"
+          }
+        },
+        "incident_refs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Locator"
+          }
+        },
+        "timing_ms": {
+          "type": "object",
+          "properties": {
+            "preparation": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "simulation": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "preflight": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "approval_wait": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "execution": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "verification": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "observed_terminal": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "preparation",
+            "simulation",
+            "preflight",
+            "approval_wait",
+            "execution",
+            "verification",
+            "observed_terminal"
+          ],
+          "additionalProperties": false
+        },
+        "measurement_quality": {
+          "enum": [
+            "COMPLETE",
+            "PARTIAL",
+            "UNKNOWN"
+          ]
+        },
+        "missing_reason": {
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "horizon_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "capped_ttvs_ms": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "verification_status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "ERROR",
+            "QUARANTINED",
+            "NOT_AVAILABLE"
+          ]
+        },
+        "verified_pass_ms": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retry_requests_observed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "physical_reexecutions_observed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "configuration_match": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "outcome_id",
+        "stage",
+        "terminal_reason",
+        "freeze_ref",
+        "approval_ref",
+        "lease_ref",
+        "verification_ref",
+        "safety_ref",
+        "available_evidence_refs",
+        "incident_refs",
+        "timing_ms",
+        "measurement_quality",
+        "missing_reason",
+        "horizon_ms",
+        "capped_ttvs_ms",
+        "verification_status",
+        "verified_pass_ms",
+        "retry_requests_observed",
+        "physical_reexecutions_observed",
+        "configuration_match",
+        "content_hash"
+      ],
+      "additionalProperties": false,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "const": "PRE_FREEZE"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "freeze_ref": {
+                "type": "null"
+              },
+              "approval_ref": {
+                "type": "null"
+              },
+              "lease_ref": {
+                "type": "null"
+              },
+              "verification_ref": {
+                "type": "null"
+              },
+              "safety_ref": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "const": "FROZEN_UNAPPROVED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "freeze_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "approval_ref": {
+                "type": "null"
+              },
+              "lease_ref": {
+                "type": "null"
+              },
+              "verification_ref": {
+                "type": "null"
+              },
+              "safety_ref": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "const": "APPROVED_UNARMED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "freeze_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "approval_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "lease_ref": {
+                "type": "null"
+              },
+              "verification_ref": {
+                "type": "null"
+              },
+              "safety_ref": {
+                "type": "null"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "const": "ARMED_NO_EXECUTION"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "freeze_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "approval_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "lease_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "verification_ref": {
+                "type": "null"
+              },
+              "safety_ref": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Locator"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "const": "EXECUTED_UNVERIFIED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "freeze_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "approval_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "lease_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "verification_ref": {
+                "type": "null"
+              },
+              "safety_ref": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Locator"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "stage": {
+                "const": "VERIFIED"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "freeze_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "approval_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "lease_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "verification_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "safety_ref": {
+                "$ref": "#/$defs/Locator"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "EventPayload": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "event_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "subject_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "subject_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "event_name",
+        "subject_ref",
+        "subject_digest"
+      ],
+      "additionalProperties": false
+    },
+    "LabClosure": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "platform_readiness": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "PENDING"
+          ]
+        },
+        "research_closure": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "DEFERRED"
+          ]
+        },
+        "adapter_promoted": {
+          "type": "boolean"
+        },
+        "critical_incident_open": {
+          "type": "boolean"
+        },
+        "accountable_owner": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dependency_review_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "revisit_condition": {
+          "type": "string",
+          "minLength": 1
+        },
+        "human_decision_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "platform_readiness",
+        "research_closure",
+        "adapter_promoted",
+        "critical_incident_open",
+        "accountable_owner",
+        "reason",
+        "dependency_review_ref",
+        "revisit_condition",
+        "human_decision_ref",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "EffectiveComputeConfiguration": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "execution_configuration_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "ExecutionConfiguration"
+                }
+              }
+            }
+          ]
+        },
+        "runtime_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "Runtime"
+                }
+              }
+            }
+          ]
+        },
+        "model_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "Model"
+                }
+              }
+            }
+          ]
+        },
+        "connection_handle_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "ConnectionRef"
+                }
+              }
+            }
+          ]
+        },
+        "context_policy_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "ContextPolicy"
+                }
+              }
+            }
+          ]
+        },
+        "tool_refs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/Locator"
+              },
+              {
+                "properties": {
+                  "contract_type": {
+                    "const": "Tool"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "harness_ref": {
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/Locator"
+                },
+                {
+                  "properties": {
+                    "contract_type": {
+                      "const": "HarnessBundle"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "retry_policy_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "PolicyRef"
+                }
+              }
+            }
+          ]
+        },
+        "escalation_policy_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "PolicyRef"
+                }
+              }
+            }
+          ]
+        },
+        "adapter_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "ComputeExecutorAdapterManifest"
+                }
+              }
+            }
+          ]
+        },
+        "reasoning_limits": {
+          "type": "object",
+          "properties": {
+            "max_output_tokens": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "max_steps": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "max_wall_time_ms": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "required": [
+            "max_output_tokens",
+            "max_steps",
+            "max_wall_time_ms"
+          ],
+          "additionalProperties": false
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "execution_configuration_ref",
+        "runtime_ref",
+        "model_ref",
+        "connection_handle_ref",
+        "context_policy_ref",
+        "tool_refs",
+        "harness_ref",
+        "retry_policy_ref",
+        "escalation_policy_ref",
+        "adapter_ref",
+        "reasoning_limits",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "ComputeExecutorAdapterManifest": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "adapter_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "package_digest": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "supported_profile_schema_versions": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "supported_fields": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "adapter_id",
+        "package_digest",
+        "supported_profile_schema_versions",
+        "supported_fields",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "ResearchStudyPlan": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "2.0.0"
+        },
+        "study_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "release": {
+          "enum": [
+            "v1.1.0",
+            "v1.2.0",
+            "v1.3.0",
+            "v1.4.0",
+            "v1.5.0",
+            "v1.6.0",
+            "v1.7.0",
+            "v1.8.0"
+          ]
+        },
+        "stage": {
+          "enum": [
+            "FEASIBILITY",
+            "PILOT",
+            "CONFIRMATORY"
+          ]
+        },
+        "protocol_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "verifier_qualification_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "target_population_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "sampling_plan_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "holdout_plan_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "cost_ledger_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "drift_plan_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidate_count": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "final_hidden_max_uses": {
+          "const": 1
+        },
+        "selection_regret_claim": {
+          "type": "boolean"
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "data_role_plan_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "ResearchDataRolePlan"
+                }
+              }
+            }
+          ]
+        },
+        "uncertainty_statement_refs": {
+          "type": "array",
+          "minItems": 0,
+          "uniqueItems": true,
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/Locator"
+              },
+              {
+                "properties": {
+                  "contract_type": {
+                    "const": "UncertaintyStatement"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "comparison_plan_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "ResearchComparisonPlan"
+                }
+              }
+            }
+          ]
+        },
+        "candidate_refs": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Locator"
+          }
+        }
+      },
+      "required": [
+        "schema_version",
+        "study_id",
+        "release",
+        "stage",
+        "protocol_ref",
+        "verifier_qualification_ref",
+        "target_population_ref",
+        "sampling_plan_ref",
+        "holdout_plan_ref",
+        "cost_ledger_ref",
+        "drift_plan_ref",
+        "candidate_count",
+        "final_hidden_max_uses",
+        "selection_regret_claim",
+        "content_hash",
+        "data_role_plan_ref",
+        "uncertainty_statement_refs",
+        "comparison_plan_ref",
+        "candidate_refs"
+      ],
+      "additionalProperties": false
+    },
+    "VerifierQualificationReport": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "2.0.0"
+        },
+        "report_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verifier_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "task_family_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "labeled_set_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "correct_total": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "incorrect_total": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "false_accepts": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "false_rejects": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "false_acceptance_upper_bound": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "false_acceptance_ceiling": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "includes_corrupted_artifacts": {
+          "const": true
+        },
+        "includes_adversarial_outputs": {
+          "const": true
+        },
+        "family_relation": {
+          "enum": [
+            "SAME_FAMILY",
+            "MIXED_FAMILY",
+            "DIFFERENT_FAMILY"
+          ]
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE"
+          ]
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "accepted_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "uncertain_total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "uncertain_accepted": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "correct_inconclusive": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "incorrect_inconclusive": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "bound_method": {
+          "const": "ONE_SIDED_CLOPPER_PEARSON"
+        },
+        "confidence_level": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "exclusiveMaximum": 1
+        },
+        "analysis_ref": {
+          "$ref": "#/$defs/Locator"
+        }
+      },
+      "required": [
+        "schema_version",
+        "report_id",
+        "verifier_ref",
+        "task_family_ref",
+        "labeled_set_ref",
+        "correct_total",
+        "incorrect_total",
+        "false_accepts",
+        "false_rejects",
+        "false_acceptance_upper_bound",
+        "false_acceptance_ceiling",
+        "includes_corrupted_artifacts",
+        "includes_adversarial_outputs",
+        "family_relation",
+        "status",
+        "content_hash",
+        "accepted_total",
+        "uncertain_total",
+        "uncertain_accepted",
+        "correct_inconclusive",
+        "incorrect_inconclusive",
+        "bound_method",
+        "confidence_level",
+        "analysis_ref"
+      ],
+      "additionalProperties": false
+    },
+    "AdaptiveEvaluationStep": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "2.0.0"
+        },
+        "step_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "study_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "history_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "eligible_task_refs": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Locator"
+          }
+        },
+        "selected_task_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "inclusion_probabilities": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "properties": {
+              "task_ref": {
+                "$ref": "#/$defs/Locator"
+              },
+              "probability": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "maximum": 1
+              }
+            },
+            "required": [
+              "task_ref",
+              "probability"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "evaluated_candidate_refs": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Locator"
+          }
+        },
+        "acquisition_arm": {
+          "enum": [
+            "ADAPTIVE",
+            "UNIFORM_ROTATING"
+          ]
+        },
+        "predicted_cost_basis": {
+          "enum": [
+            "OBSERVED_PAST",
+            "FROZEN_MODEL"
+          ]
+        },
+        "hidden_data_accessed": {
+          "const": false
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "frozen_candidate_refs": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Locator"
+          }
+        },
+        "setting_observation_refs": {
+          "type": "array",
+          "minItems": 0,
+          "uniqueItems": true,
+          "items": {
+            "allOf": [
+              {
+                "$ref": "#/$defs/Locator"
+              },
+              {
+                "properties": {
+                  "contract_type": {
+                    "const": "EffectiveSettingObservation"
+                  }
+                }
+              }
+            ]
+          }
+        },
+        "allocation_rule": {
+          "const": "ONE_DRAW_CONDITIONAL_PROBABILITY"
+        }
+      },
+      "required": [
+        "schema_version",
+        "step_id",
+        "study_ref",
+        "history_ref",
+        "eligible_task_refs",
+        "selected_task_ref",
+        "inclusion_probabilities",
+        "evaluated_candidate_refs",
+        "acquisition_arm",
+        "predicted_cost_basis",
+        "hidden_data_accessed",
+        "content_hash",
+        "frozen_candidate_refs",
+        "setting_observation_refs",
+        "allocation_rule"
+      ],
+      "additionalProperties": false
+    },
+    "ObservableInterventionRecord": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "2.0.0"
+        },
+        "intervention_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "study_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "snapshot_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "component_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "intervention_type": {
+          "enum": [
+            "CONTEXT_BUNDLE",
+            "TOOL_BINDING",
+            "ARTIFACT_PRODUCER",
+            "COMPUTE_PROFILE",
+            "HARNESS_BOUNDARY"
+          ]
+        },
+        "validation_mode": {
+          "enum": [
+            "OBSERVED_REEXECUTION",
+            "PREDICTIVE_ONLY"
+          ]
+        },
+        "snapshot_restored": {
+          "type": "boolean"
+        },
+        "descendants_rerun": {
+          "type": "boolean"
+        },
+        "gold_output_available_to_proposer": {
+          "const": false
+        },
+        "independent_verification_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "side_effect_check": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNKNOWN"
+          ]
+        },
+        "causal_scope": {
+          "enum": [
+            "BOUNDED",
+            "UNSUPPORTED"
+          ]
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "localization_status": {
+          "enum": [
+            "RANKED",
+            "AMBIGUOUS",
+            "ABSTAINED"
+          ]
+        },
+        "replay_trial_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "no_op_trial_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "paired_comparison_ref": {
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/Locator"
+                },
+                {
+                  "properties": {
+                    "contract_type": {
+                      "const": "ResearchComparisonPlan"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "intervention_id",
+        "study_ref",
+        "snapshot_ref",
+        "component_ref",
+        "intervention_type",
+        "validation_mode",
+        "snapshot_restored",
+        "descendants_rerun",
+        "gold_output_available_to_proposer",
+        "independent_verification_ref",
+        "side_effect_check",
+        "causal_scope",
+        "content_hash",
+        "localization_status",
+        "replay_trial_count",
+        "no_op_trial_count",
+        "paired_comparison_ref"
+      ],
+      "additionalProperties": false
+    },
+    "EvidenceDerivationRecord": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "2.0.0"
+        },
+        "derivation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Locator"
+          }
+        },
+        "source_trust": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "UNTRUSTED",
+              "CLAIMED",
+              "VERIFIED"
+            ]
+          }
+        },
+        "least_source_trust": {
+          "enum": [
+            "UNTRUSTED",
+            "CLAIMED",
+            "VERIFIED"
+          ]
+        },
+        "output_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "factual_status": {
+          "enum": [
+            "UNVERIFIED",
+            "INDEPENDENTLY_VERIFIED"
+          ]
+        },
+        "command_authority": {
+          "const": "NONE"
+        },
+        "independent_verification_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "invalidation_dependency_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Locator"
+          }
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "dependency_snapshot_ref": {
+          "$ref": "#/$defs/Locator"
+        }
+      },
+      "required": [
+        "schema_version",
+        "derivation_id",
+        "source_refs",
+        "source_trust",
+        "least_source_trust",
+        "output_ref",
+        "factual_status",
+        "command_authority",
+        "independent_verification_ref",
+        "invalidation_dependency_refs",
+        "content_hash",
+        "dependency_snapshot_ref"
+      ],
+      "additionalProperties": false
+    },
+    "DriftEvaluationPlan": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "2.0.0"
+        },
+        "plan_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "strategy": {
+          "enum": [
+            "FROZEN",
+            "PERIODIC",
+            "TRIGGERED"
+          ]
+        },
+        "time_forward_split_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "alarm_metric": {
+          "type": "string",
+          "minLength": 1
+        },
+        "trigger_threshold": {
+          "type": "number"
+        },
+        "label_budget": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "compute_budget_ms": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "exchangeability_assessment": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNKNOWN"
+          ]
+        },
+        "formal_guarantee_claimed": {
+          "type": "boolean"
+        },
+        "fallback_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "uncertainty_statement_ref": {
+          "anyOf": [
+            {
+              "allOf": [
+                {
+                  "$ref": "#/$defs/Locator"
+                },
+                {
+                  "properties": {
+                    "contract_type": {
+                      "const": "UncertaintyStatement"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "label_arrival": {
+          "enum": [
+            "IMMEDIATE",
+            "DELAYED",
+            "BATCHED",
+            "MISSING",
+            "SELECTIVE"
+          ]
+        },
+        "label_update_policy": {
+          "enum": [
+            "ARRIVED_VERIFIED_ONLY",
+            "SUSPEND_UNSUPPORTED_UPDATES"
+          ]
+        },
+        "applicable_assumptions_status": {
+          "enum": [
+            "JUSTIFIED_WITHIN_SCOPE",
+            "FAILED",
+            "UNRESOLVED"
+          ]
+        },
+        "assumption_evidence_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "plan_id",
+        "strategy",
+        "time_forward_split_ref",
+        "alarm_metric",
+        "trigger_threshold",
+        "label_budget",
+        "compute_budget_ms",
+        "exchangeability_assessment",
+        "formal_guarantee_claimed",
+        "fallback_ref",
+        "content_hash",
+        "uncertainty_statement_ref",
+        "label_arrival",
+        "label_update_policy",
+        "applicable_assumptions_status",
+        "assumption_evidence_ref"
+      ],
+      "additionalProperties": false
+    },
+    "ResearchDataRolePlan": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "plan_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "independent_unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "grouping_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "calibration_required": {
+          "type": "boolean"
+        },
+        "memberships": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "properties": {
+              "unit_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "lineage_group": {
+                "type": "string",
+                "minLength": 1
+              },
+              "role": {
+                "enum": [
+                  "FIT",
+                  "DEVELOPMENT",
+                  "CALIBRATION",
+                  "FINAL_TEST"
+                ]
+              }
+            },
+            "required": [
+              "unit_id",
+              "lineage_group",
+              "role"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "reuse_policy": {
+          "const": "STRICT_INDEPENDENT_ROLES"
+        },
+        "access_order": {
+          "const": [
+            "DEVELOPMENT_SELECTION_FROZEN",
+            "CALIBRATION_IF_REQUIRED",
+            "FINAL_TEST"
+          ]
+        },
+        "final_feedback_to_search": {
+          "const": false
+        },
+        "cohort_floor_manifest_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "access_policy_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "plan_id",
+        "independent_unit",
+        "grouping_key",
+        "calibration_required",
+        "memberships",
+        "reuse_policy",
+        "access_order",
+        "final_feedback_to_search",
+        "cohort_floor_manifest_ref",
+        "access_policy_ref",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "UncertaintyStatement": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "statement_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target": {
+          "enum": [
+            "MEAN_PERFORMANCE",
+            "NEW_OUTCOME_PREDICTION",
+            "MARGINAL_ERROR",
+            "TIME_AVERAGE_ERROR",
+            "CONDITIONAL_CLAIM"
+          ]
+        },
+        "method": {
+          "enum": [
+            "EMPIRICAL_ONLY",
+            "MEAN_CONFIDENCE_INTERVAL",
+            "SPLIT_CONFORMAL",
+            "ADAPTIVE_CONFORMAL"
+          ]
+        },
+        "population_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "independent_unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "data_role_plan_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "ResearchDataRolePlan"
+                }
+              }
+            }
+          ]
+        },
+        "assumptions_status": {
+          "enum": [
+            "JUSTIFIED_WITHIN_SCOPE",
+            "FAILED",
+            "UNRESOLVED"
+          ]
+        },
+        "assumption_evidence_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "diagnostic_status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "UNKNOWN"
+          ]
+        },
+        "formal_guarantee_claimed": {
+          "type": "boolean"
+        },
+        "label_arrival": {
+          "enum": [
+            "COMPLETE_OFFLINE",
+            "IMMEDIATE",
+            "DELAYED",
+            "BATCHED",
+            "MISSING",
+            "SELECTIVE"
+          ]
+        },
+        "label_process_support_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "calibration_n": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "miscoverage": {
+          "anyOf": [
+            {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "exclusiveMaximum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "required_rank": {
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "quantile_policy": {
+          "enum": [
+            "FULL_SUPPORT_IF_NEEDED",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "prediction_set": {
+          "enum": [
+            "FINITE",
+            "FULL_SUPPORT",
+            "NOT_APPLICABLE"
+          ]
+        },
+        "safety_authority": {
+          "const": "NONE"
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "statement_id",
+        "target",
+        "method",
+        "population_ref",
+        "independent_unit",
+        "data_role_plan_ref",
+        "assumptions_status",
+        "assumption_evidence_ref",
+        "diagnostic_status",
+        "formal_guarantee_claimed",
+        "label_arrival",
+        "label_process_support_ref",
+        "calibration_n",
+        "miscoverage",
+        "required_rank",
+        "quantile_policy",
+        "prediction_set",
+        "safety_authority",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "EffectiveSettingObservation": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "observation_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "candidate_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "effective_configuration_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "requested_settings_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "accepted_settings_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "observed_settings_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "required_setting_names": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "setting_checks": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "supported": {
+                "type": "boolean"
+              },
+              "accepted": {
+                "type": "boolean"
+              },
+              "observed": {
+                "enum": [
+                  "APPLIED",
+                  "MISMATCH",
+                  "UNKNOWN"
+                ]
+              },
+              "evidence_ref": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/Locator"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "supported",
+              "accepted",
+              "observed",
+              "evidence_ref"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "status": {
+          "enum": [
+            "CONFIRMED",
+            "MISMATCH",
+            "UNKNOWN"
+          ]
+        },
+        "cache_condition": {
+          "enum": [
+            "COLD",
+            "WARM",
+            "UNKNOWN"
+          ]
+        },
+        "execution_order": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "accounting_snapshot_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "allocation_retained": {
+          "const": true
+        },
+        "hidden_reasoning_required": {
+          "const": false
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "observation_id",
+        "candidate_ref",
+        "effective_configuration_ref",
+        "requested_settings_ref",
+        "accepted_settings_ref",
+        "observed_settings_ref",
+        "required_setting_names",
+        "setting_checks",
+        "status",
+        "cache_condition",
+        "execution_order",
+        "accounting_snapshot_ref",
+        "allocation_retained",
+        "hidden_reasoning_required",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "StateConsumptionReceipt": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "receipt_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "view_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "dependency_snapshot_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "dependency_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Locator"
+          }
+        },
+        "observed_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "current_epoch": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dependencies_eligible": {
+          "type": "boolean"
+        },
+        "decision": {
+          "enum": [
+            "CONSUMED",
+            "REJECTED_STALE",
+            "REJECTED_INELIGIBLE"
+          ]
+        },
+        "serialization_owner_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "idempotency_key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "command_authority": {
+          "const": "NONE"
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "receipt_id",
+        "view_ref",
+        "dependency_snapshot_ref",
+        "dependency_refs",
+        "observed_epoch",
+        "current_epoch",
+        "dependencies_eligible",
+        "decision",
+        "serialization_owner_ref",
+        "idempotency_key",
+        "command_authority",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    },
+    "ResearchComparisonPlan": {
+      "type": "object",
+      "properties": {
+        "schema_version": {
+          "const": "1.0.0"
+        },
+        "comparison_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "study_kind": {
+          "enum": [
+            "PROFILE_ACQUISITION",
+            "HARNESS_FACTORIAL",
+            "RECOVERY_REPLAY",
+            "TRACE_ACQUISITION",
+            "BEHAVIOR_SCREENING",
+            "JOINT_ADAPTATION",
+            "CONTEXT_TRANSFER",
+            "DRIFT_SCHEDULE",
+            "WORKFLOW_ALLOCATION",
+            "SCENARIO_CALIBRATION",
+            "STATE_POISONING"
+          ]
+        },
+        "controls": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "candidate_refs": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Locator"
+          }
+        },
+        "baseline_strength": {
+          "enum": [
+            "MATURE_GOVERNED",
+            "DIAGNOSTIC_UNTUNED"
+          ]
+        },
+        "candidate_generation": {
+          "enum": [
+            "FROZEN",
+            "DEVELOPMENT_ADAPTIVE"
+          ]
+        },
+        "acquisition_sampling": {
+          "enum": [
+            "FROZEN",
+            "DEVELOPMENT_ADAPTIVE"
+          ]
+        },
+        "selection_role": {
+          "const": "DEVELOPMENT"
+        },
+        "data_role_plan_ref": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "properties": {
+                "contract_type": {
+                  "const": "ResearchDataRolePlan"
+                }
+              }
+            }
+          ]
+        },
+        "pairing_unit": {
+          "type": "string",
+          "minLength": 1
+        },
+        "total_budget_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "cost_categories": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "EXECUTION",
+              "VERIFICATION",
+              "PROPOSER",
+              "ACQUISITION",
+              "FAILED_CANDIDATES",
+              "TRAINING",
+              "HUMAN",
+              "SERVING",
+              "HOLDOUT",
+              "WAIT_QUOTA",
+              "MAINTENANCE"
+            ]
+          }
+        },
+        "cost_applicability_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "hypothesis_manifest_ref": {
+          "$ref": "#/$defs/Locator"
+        },
+        "repair_units": {
+          "type": "array",
+          "minItems": 0,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "preservation_units": {
+          "type": "array",
+          "minItems": 0,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "boundary_units": {
+          "type": "array",
+          "minItems": 0,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "fresh_confirmation_units": {
+          "type": "array",
+          "minItems": 0,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "proposal_history_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "optimizer_harness_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "target_harness_refs": {
+          "type": "array",
+          "minItems": 0,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Locator"
+          }
+        },
+        "activation_observation_required": {
+          "type": "boolean"
+        },
+        "profile_trial_budget": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "profile_count": {
+                  "const": 3
+                },
+                "arms": {
+                  "type": "array",
+                  "minItems": 2,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "enum": [
+                          "ADAPTIVE",
+                          "UNIFORM_ROTATING"
+                        ]
+                      },
+                      "tasks": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "repeats": {
+                        "type": "integer",
+                        "minimum": 1
+                      },
+                      "profile_trial_cap": {
+                        "type": "integer",
+                        "minimum": 1
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "tasks",
+                      "repeats",
+                      "profile_trial_cap"
+                    ],
+                    "additionalProperties": false
+                  }
+                },
+                "holdout_tasks": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "holdout_repeats": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "qualification_trials": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "extra_trials": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "declared_total_trials": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              },
+              "required": [
+                "profile_count",
+                "arms",
+                "holdout_tasks",
+                "holdout_repeats",
+                "qualification_trials",
+                "extra_trials",
+                "declared_total_trials"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "source_target_content": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "source_bound_fields": {
+                  "type": "array",
+                  "minItems": 0,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "transferable_fields": {
+                  "type": "array",
+                  "minItems": 0,
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "source_snapshot_ref": {
+                  "$ref": "#/$defs/Locator"
+                },
+                "target_descendant_ref": {
+                  "$ref": "#/$defs/Locator"
+                },
+                "prior_status": {
+                  "enum": [
+                    "EMPTY",
+                    "ELIGIBLE"
+                  ]
+                },
+                "weight_updates_owned_here": {
+                  "const": false
+                }
+              },
+              "required": [
+                "source_bound_fields",
+                "transferable_fields",
+                "source_snapshot_ref",
+                "target_descendant_ref",
+                "prior_status",
+                "weight_updates_owned_here"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "assembled_pair": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "base_model_ref": {
+                  "$ref": "#/$defs/Locator"
+                },
+                "harness_ref": {
+                  "$ref": "#/$defs/Locator"
+                },
+                "adapter_ref": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/$defs/Locator"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "rollout_pair_hash": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "training_data_pair_hash": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "assembled_qualification_ref": {
+                  "$ref": "#/$defs/Locator"
+                }
+              },
+              "required": [
+                "base_model_ref",
+                "harness_ref",
+                "adapter_ref",
+                "rollout_pair_hash",
+                "training_data_pair_hash",
+                "assembled_qualification_ref"
+              ],
+              "additionalProperties": false
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "evidence_scope": {
+          "enum": [
+            "DIGITAL",
+            "SIM_TO_SIM",
+            "EXACT_TARGET_PHYSICAL"
+          ]
+        },
+        "target_evidence_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "graph_manifest_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Locator"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "mandatory_verifier_refs": {
+          "type": "array",
+          "minItems": 0,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/Locator"
+          }
+        },
+        "command_authority": {
+          "const": "NONE"
+        },
+        "protected_fields_mutated": {
+          "type": "array",
+          "maxItems": 0
+        },
+        "minimum_matched_repeats": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        }
+      },
+      "required": [
+        "schema_version",
+        "comparison_id",
+        "study_kind",
+        "controls",
+        "candidate_refs",
+        "baseline_strength",
+        "candidate_generation",
+        "acquisition_sampling",
+        "selection_role",
+        "data_role_plan_ref",
+        "pairing_unit",
+        "total_budget_ref",
+        "cost_categories",
+        "cost_applicability_ref",
+        "hypothesis_manifest_ref",
+        "repair_units",
+        "preservation_units",
+        "boundary_units",
+        "fresh_confirmation_units",
+        "proposal_history_ref",
+        "optimizer_harness_ref",
+        "target_harness_refs",
+        "activation_observation_required",
+        "profile_trial_budget",
+        "source_target_content",
+        "assembled_pair",
+        "evidence_scope",
+        "target_evidence_ref",
+        "graph_manifest_ref",
+        "mandatory_verifier_refs",
+        "command_authority",
+        "protected_fields_mutated",
+        "minimum_matched_repeats",
+        "content_hash"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

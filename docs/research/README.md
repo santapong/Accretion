@@ -38,6 +38,12 @@ page under their own run ids.
 
 ## Evidence classes
 
+The [v1.1–v1.8 forward-design research collection](../sdd/future/v1.1-v1.8/README.md#research-workflow-and-next-steps)
+contains literature synthesis, adaptation proposals, reusable reading and
+writing instructions, and the first v1.1 study's readiness protocol. These are
+research plans; its synthetic document checks add no measured result to the
+table above. Current release research remains authoritative in this index.
+
 | Evidence class | What it answers | Mutability | Source |
 |---|---|---|---|
 | Frozen replay | Does the implemented policy reproduce the preregistered result and safety gate? | Fixtures and hashes are immutable for the release | `evals/` plus the reports linked above |

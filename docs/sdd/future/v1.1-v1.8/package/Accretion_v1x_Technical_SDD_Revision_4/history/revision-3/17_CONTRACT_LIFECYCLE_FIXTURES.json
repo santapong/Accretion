@@ -1,0 +1,3117 @@
+{
+  "document_revision": 3,
+  "synthetic_only": true,
+  "cases": [
+    {
+      "id": "PROTOCOL_VALID",
+      "kind": "contract",
+      "schema": "EvaluationProtocol",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "protocol_id": "rp_synthetic",
+        "fixture_only": true,
+        "horizon_ms": 100,
+        "success_floor": 0.9,
+        "noninferiority_margin": 0.01,
+        "minimum_effect_ms": 5,
+        "confidence_level": 0.95,
+        "maximum_missing_fraction": 0.01,
+        "cohorts": [
+          "synthetic-critical"
+        ],
+        "budget_manifest_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "budget_manifest_ref",
+          "content_hash": "824b8d658e7ce6875ac74067f5bc5b72bfe4519f3b08fadd890e65b587b1d292"
+        },
+        "sample_size_plan_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "sample_size_plan_ref",
+          "content_hash": "6d6a8d15f82fda44b67c087db7d61863bf7ea4b04ac745ae70c7159063c2f4cd"
+        },
+        "analysis_plan_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "analysis_plan_ref",
+          "content_hash": "7f0659c5e7a9d18daec828cfffbc8a8d8b073676646277e5f5032b2b575d3121"
+        },
+        "stopping_rule_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "stopping_rule_ref",
+          "content_hash": "9c7e1b3e97c5b50f477a8fea1eb78817267d4f2318d46871ce96df83352d78e4"
+        },
+        "baseline_manifest_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "baseline_manifest_ref",
+          "content_hash": "d07386d68c293e8a15e55e9d84f06ad71f6cab6a78c05d0f0a71a3df54dc6ec0"
+        },
+        "split_manifest_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "split_manifest_ref",
+          "content_hash": "03ac42d4827ea749b41d32a64c546a15d117a42c9f810519f2cfb8e9cc3e31e2"
+        },
+        "content_hash": "4794ba4377f2e948245b29531b8e46d958479bc73fe6427c438e32c4a12f96eb"
+      }
+    },
+    {
+      "id": "PROTOCOL_MISSING_MARGIN",
+      "kind": "contract",
+      "schema": "EvaluationProtocol",
+      "valid": false,
+      "expected_error": "SCHEMA",
+      "instance": {
+        "schema_version": "1.0.0",
+        "protocol_id": "rp_synthetic",
+        "fixture_only": true,
+        "horizon_ms": 100,
+        "success_floor": 0.9,
+        "minimum_effect_ms": 5,
+        "confidence_level": 0.95,
+        "maximum_missing_fraction": 0.01,
+        "cohorts": [
+          "synthetic-critical"
+        ],
+        "budget_manifest_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "budget_manifest_ref",
+          "content_hash": "824b8d658e7ce6875ac74067f5bc5b72bfe4519f3b08fadd890e65b587b1d292"
+        },
+        "sample_size_plan_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "sample_size_plan_ref",
+          "content_hash": "6d6a8d15f82fda44b67c087db7d61863bf7ea4b04ac745ae70c7159063c2f4cd"
+        },
+        "analysis_plan_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "analysis_plan_ref",
+          "content_hash": "7f0659c5e7a9d18daec828cfffbc8a8d8b073676646277e5f5032b2b575d3121"
+        },
+        "stopping_rule_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "stopping_rule_ref",
+          "content_hash": "9c7e1b3e97c5b50f477a8fea1eb78817267d4f2318d46871ce96df83352d78e4"
+        },
+        "baseline_manifest_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "baseline_manifest_ref",
+          "content_hash": "d07386d68c293e8a15e55e9d84f06ad71f6cab6a78c05d0f0a71a3df54dc6ec0"
+        },
+        "split_manifest_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "split_manifest_ref",
+          "content_hash": "03ac42d4827ea749b41d32a64c546a15d117a42c9f810519f2cfb8e9cc3e31e2"
+        },
+        "content_hash": "acf1ffa8c296f51e89594590a265455bf3ebf77d0f2cddaa3849c1985d471037"
+      }
+    },
+    {
+      "id": "PROTOCOL_ZERO_HORIZON",
+      "kind": "contract",
+      "schema": "EvaluationProtocol",
+      "valid": false,
+      "expected_error": "SCHEMA",
+      "instance": {
+        "schema_version": "1.0.0",
+        "protocol_id": "rp_synthetic",
+        "fixture_only": true,
+        "horizon_ms": 0,
+        "success_floor": 0.9,
+        "noninferiority_margin": 0.01,
+        "minimum_effect_ms": 5,
+        "confidence_level": 0.95,
+        "maximum_missing_fraction": 0.01,
+        "cohorts": [
+          "synthetic-critical"
+        ],
+        "budget_manifest_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "budget_manifest_ref",
+          "content_hash": "824b8d658e7ce6875ac74067f5bc5b72bfe4519f3b08fadd890e65b587b1d292"
+        },
+        "sample_size_plan_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "sample_size_plan_ref",
+          "content_hash": "6d6a8d15f82fda44b67c087db7d61863bf7ea4b04ac745ae70c7159063c2f4cd"
+        },
+        "analysis_plan_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "analysis_plan_ref",
+          "content_hash": "7f0659c5e7a9d18daec828cfffbc8a8d8b073676646277e5f5032b2b575d3121"
+        },
+        "stopping_rule_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "stopping_rule_ref",
+          "content_hash": "9c7e1b3e97c5b50f477a8fea1eb78817267d4f2318d46871ce96df83352d78e4"
+        },
+        "baseline_manifest_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "baseline_manifest_ref",
+          "content_hash": "d07386d68c293e8a15e55e9d84f06ad71f6cab6a78c05d0f0a71a3df54dc6ec0"
+        },
+        "split_manifest_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "split_manifest_ref",
+          "content_hash": "03ac42d4827ea749b41d32a64c546a15d117a42c9f810519f2cfb8e9cc3e31e2"
+        },
+        "content_hash": "00b00326931ac4776245238d5c9f8592aec2fc1ee778caa4c33191e8fb20fa37"
+      }
+    },
+    {
+      "id": "PROTOCOL_EFFECT_EXCEEDS_HORIZON",
+      "kind": "contract",
+      "schema": "EvaluationProtocol",
+      "valid": false,
+      "expected_error": "PROTOCOL_EFFECT",
+      "instance": {
+        "schema_version": "1.0.0",
+        "protocol_id": "rp_synthetic",
+        "fixture_only": true,
+        "horizon_ms": 100,
+        "success_floor": 0.9,
+        "noninferiority_margin": 0.01,
+        "minimum_effect_ms": 101,
+        "confidence_level": 0.95,
+        "maximum_missing_fraction": 0.01,
+        "cohorts": [
+          "synthetic-critical"
+        ],
+        "budget_manifest_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "budget_manifest_ref",
+          "content_hash": "824b8d658e7ce6875ac74067f5bc5b72bfe4519f3b08fadd890e65b587b1d292"
+        },
+        "sample_size_plan_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "sample_size_plan_ref",
+          "content_hash": "6d6a8d15f82fda44b67c087db7d61863bf7ea4b04ac745ae70c7159063c2f4cd"
+        },
+        "analysis_plan_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "analysis_plan_ref",
+          "content_hash": "7f0659c5e7a9d18daec828cfffbc8a8d8b073676646277e5f5032b2b575d3121"
+        },
+        "stopping_rule_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "stopping_rule_ref",
+          "content_hash": "9c7e1b3e97c5b50f477a8fea1eb78817267d4f2318d46871ce96df83352d78e4"
+        },
+        "baseline_manifest_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "baseline_manifest_ref",
+          "content_hash": "d07386d68c293e8a15e55e9d84f06ad71f6cab6a78c05d0f0a71a3df54dc6ec0"
+        },
+        "split_manifest_ref": {
+          "contract_type": "SyntheticPlan",
+          "record_id": "split_manifest_ref",
+          "content_hash": "03ac42d4827ea749b41d32a64c546a15d117a42c9f810519f2cfb8e9cc3e31e2"
+        },
+        "content_hash": "f877e636828aafceca3206df7ba6be24382b29f0da218721c6deaa587327779f"
+      }
+    },
+    {
+      "id": "COMPUTE_SELECTED_VALID",
+      "kind": "contract",
+      "schema": "ComputeDecisionPayload",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "decision_id": "cmp_synthetic",
+        "mode": "EXPLOIT",
+        "node_ref": {
+          "contract_type": "NodeContract",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "vsp_synthetic",
+          "content_hash": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47"
+        },
+        "candidates": [
+          {
+            "contract_type": "ComputeProfile",
+            "record_id": "cpf_synthetic",
+            "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+          }
+        ],
+        "candidate_set_hash": "90a5ff79d8aa22243d75307d8d9cc7f5a282d704cf0a88f15ec808b4e574fd31",
+        "selected_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "fallback_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "abstention_reason": null,
+        "policy_artifact_ref": {
+          "contract_type": "PolicyArtifact",
+          "record_id": "pol_synthetic",
+          "content_hash": "79acf7b16af74a2e107d0cb11720df67610d3417945a30f6d8cf09e0ad0131ab"
+        },
+        "selection_probability": 1,
+        "content_hash": "1e15d98eccdfc769c75777fe426a1c4b146771d7eed4a96e020734d5014c0f10"
+      }
+    },
+    {
+      "id": "COMPUTE_ABSTAIN_VALID",
+      "kind": "contract",
+      "schema": "ComputeDecisionPayload",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "decision_id": "cmp_synthetic",
+        "mode": "ABSTAIN",
+        "node_ref": {
+          "contract_type": "NodeContract",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "vsp_synthetic",
+          "content_hash": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47"
+        },
+        "candidates": [
+          {
+            "contract_type": "ComputeProfile",
+            "record_id": "cpf_synthetic",
+            "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+          }
+        ],
+        "candidate_set_hash": "90a5ff79d8aa22243d75307d8d9cc7f5a282d704cf0a88f15ec808b4e574fd31",
+        "selected_ref": null,
+        "fallback_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "abstention_reason": "OOD",
+        "policy_artifact_ref": null,
+        "selection_probability": 1,
+        "content_hash": "24b2697eb3ec2641cc6f5904e58882d3a1495c29594bfecb7ddd42343a5a4bf0"
+      }
+    },
+    {
+      "id": "COMPUTE_ABSTAIN_SELECTED",
+      "kind": "contract",
+      "schema": "ComputeDecisionPayload",
+      "valid": false,
+      "expected_error": "SCHEMA",
+      "instance": {
+        "schema_version": "1.0.0",
+        "decision_id": "cmp_synthetic",
+        "mode": "ABSTAIN",
+        "node_ref": {
+          "contract_type": "NodeContract",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "vsp_synthetic",
+          "content_hash": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47"
+        },
+        "candidates": [
+          {
+            "contract_type": "ComputeProfile",
+            "record_id": "cpf_synthetic",
+            "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+          }
+        ],
+        "candidate_set_hash": "90a5ff79d8aa22243d75307d8d9cc7f5a282d704cf0a88f15ec808b4e574fd31",
+        "selected_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "fallback_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "abstention_reason": "OOD",
+        "policy_artifact_ref": null,
+        "selection_probability": 1,
+        "content_hash": "00b0b0f3ab4040377c1d1cd9fcda3fbb9c32b75f13ee81c2abd021db2a4f60ab"
+      }
+    },
+    {
+      "id": "COMPUTE_SELECTED_OUTSIDE_SET",
+      "kind": "contract",
+      "schema": "ComputeDecisionPayload",
+      "valid": false,
+      "expected_error": "SELECTED_NOT_CANDIDATE",
+      "instance": {
+        "schema_version": "1.0.0",
+        "decision_id": "cmp_synthetic",
+        "mode": "EXPLOIT",
+        "node_ref": {
+          "contract_type": "NodeContract",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "vsp_synthetic",
+          "content_hash": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47"
+        },
+        "candidates": [
+          {
+            "contract_type": "ComputeProfile",
+            "record_id": "cpf_synthetic",
+            "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+          }
+        ],
+        "candidate_set_hash": "90a5ff79d8aa22243d75307d8d9cc7f5a282d704cf0a88f15ec808b4e574fd31",
+        "selected_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_absent",
+          "content_hash": "dee3018d819b80f4257ba40f9a418f77e92186d866ecff198499b285baae0114"
+        },
+        "fallback_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "abstention_reason": null,
+        "policy_artifact_ref": {
+          "contract_type": "PolicyArtifact",
+          "record_id": "pol_synthetic",
+          "content_hash": "79acf7b16af74a2e107d0cb11720df67610d3417945a30f6d8cf09e0ad0131ab"
+        },
+        "selection_probability": 1,
+        "content_hash": "3c5d777d8807c0676b332cdb24960179566d678a9a991257a7c2778773926e4e"
+      }
+    },
+    {
+      "id": "COMPUTE_UNKNOWN_MAJOR",
+      "kind": "contract",
+      "schema": "ComputeDecisionPayload",
+      "valid": false,
+      "expected_error": "SCHEMA",
+      "instance": {
+        "schema_version": "2.0.0",
+        "decision_id": "cmp_synthetic",
+        "mode": "EXPLOIT",
+        "node_ref": {
+          "contract_type": "NodeContract",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "vsp_synthetic",
+          "content_hash": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47"
+        },
+        "candidates": [
+          {
+            "contract_type": "ComputeProfile",
+            "record_id": "cpf_synthetic",
+            "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+          }
+        ],
+        "candidate_set_hash": "90a5ff79d8aa22243d75307d8d9cc7f5a282d704cf0a88f15ec808b4e574fd31",
+        "selected_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "fallback_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "abstention_reason": null,
+        "policy_artifact_ref": {
+          "contract_type": "PolicyArtifact",
+          "record_id": "pol_synthetic",
+          "content_hash": "79acf7b16af74a2e107d0cb11720df67610d3417945a30f6d8cf09e0ad0131ab"
+        },
+        "selection_probability": 1,
+        "content_hash": "8d2e54b6491e39a4f59709bf248c59d3d75bc89380be6311800b30af5806e1b7"
+      }
+    },
+    {
+      "id": "COMPUTE_EXTRA_FIELD",
+      "kind": "contract",
+      "schema": "ComputeDecisionPayload",
+      "valid": false,
+      "expected_error": "SCHEMA",
+      "instance": {
+        "schema_version": "1.0.0",
+        "decision_id": "cmp_synthetic",
+        "mode": "EXPLOIT",
+        "node_ref": {
+          "contract_type": "NodeContract",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "vsp_synthetic",
+          "content_hash": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47"
+        },
+        "candidates": [
+          {
+            "contract_type": "ComputeProfile",
+            "record_id": "cpf_synthetic",
+            "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+          }
+        ],
+        "candidate_set_hash": "90a5ff79d8aa22243d75307d8d9cc7f5a282d704cf0a88f15ec808b4e574fd31",
+        "selected_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "fallback_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "abstention_reason": null,
+        "policy_artifact_ref": {
+          "contract_type": "PolicyArtifact",
+          "record_id": "pol_synthetic",
+          "content_hash": "79acf7b16af74a2e107d0cb11720df67610d3417945a30f6d8cf09e0ad0131ab"
+        },
+        "selection_probability": 1,
+        "grant_capability": true,
+        "content_hash": "074ea13265390bd5cec396d71cf0f8ae464ca55f1b82a102183f447f48e1c4ba"
+      }
+    },
+    {
+      "id": "COMPUTE_HASH_TAMPER",
+      "kind": "contract",
+      "schema": "ComputeDecisionPayload",
+      "valid": false,
+      "expected_error": "CONTENT_HASH",
+      "instance": {
+        "schema_version": "1.0.0",
+        "decision_id": "cmp_synthetic",
+        "mode": "EXPLOIT",
+        "node_ref": {
+          "contract_type": "NodeContract",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "vsp_synthetic",
+          "content_hash": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47"
+        },
+        "candidates": [
+          {
+            "contract_type": "ComputeProfile",
+            "record_id": "cpf_synthetic",
+            "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+          }
+        ],
+        "candidate_set_hash": "90a5ff79d8aa22243d75307d8d9cc7f5a282d704cf0a88f15ec808b4e574fd31",
+        "selected_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "fallback_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "abstention_reason": null,
+        "policy_artifact_ref": {
+          "contract_type": "PolicyArtifact",
+          "record_id": "pol_synthetic",
+          "content_hash": "79acf7b16af74a2e107d0cb11720df67610d3417945a30f6d8cf09e0ad0131ab"
+        },
+        "selection_probability": 0.5,
+        "content_hash": "1e15d98eccdfc769c75777fe426a1c4b146771d7eed4a96e020734d5014c0f10"
+      }
+    },
+    {
+      "id": "HARNESS_ABSTAIN_VALID",
+      "kind": "contract",
+      "schema": "HarnessSelectionPayload",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "decision_id": "cmp_synthetic",
+        "mode": "ABSTAIN",
+        "node_ref": {
+          "contract_type": "NodeContract",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "vsp_synthetic",
+          "content_hash": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47"
+        },
+        "candidates": [
+          {
+            "contract_type": "HarnessBundle",
+            "record_id": "cpf_synthetic",
+            "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+          }
+        ],
+        "candidate_set_hash": "3221bee7655886a95499d78452f758a43393045fb43ccfbd0edf61d6e4454d0f",
+        "selected_ref": null,
+        "fallback_ref": {
+          "contract_type": "HarnessBundle",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "abstention_reason": "OOD",
+        "policy_artifact_ref": null,
+        "selection_probability": 1,
+        "content_hash": "38bbad991324536efc84fdf65dd03c4d07be9cbdf25003b037543e5e5811cbda"
+      }
+    },
+    {
+      "id": "HARNESS_SELECTED_VALID",
+      "kind": "contract",
+      "schema": "HarnessSelectionPayload",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "decision_id": "cmp_synthetic",
+        "mode": "SPECIALIZED",
+        "node_ref": {
+          "contract_type": "NodeContract",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "vsp_synthetic",
+          "content_hash": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47"
+        },
+        "candidates": [
+          {
+            "contract_type": "HarnessBundle",
+            "record_id": "cpf_synthetic",
+            "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+          }
+        ],
+        "candidate_set_hash": "3221bee7655886a95499d78452f758a43393045fb43ccfbd0edf61d6e4454d0f",
+        "selected_ref": {
+          "contract_type": "HarnessBundle",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "fallback_ref": {
+          "contract_type": "HarnessBundle",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "abstention_reason": null,
+        "policy_artifact_ref": {
+          "contract_type": "PolicyArtifact",
+          "record_id": "pol_synthetic",
+          "content_hash": "79acf7b16af74a2e107d0cb11720df67610d3417945a30f6d8cf09e0ad0131ab"
+        },
+        "selection_probability": 1,
+        "content_hash": "6a3247cd60806e5ee3d962e8ad2fb01be4d46ce693411c79d9238970182ee8d8"
+      }
+    },
+    {
+      "id": "HARNESS_ABSTAIN_SELECTED",
+      "kind": "contract",
+      "schema": "HarnessSelectionPayload",
+      "valid": false,
+      "expected_error": "SCHEMA",
+      "instance": {
+        "schema_version": "1.0.0",
+        "decision_id": "cmp_synthetic",
+        "mode": "ABSTAIN",
+        "node_ref": {
+          "contract_type": "NodeContract",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "vsp_synthetic",
+          "content_hash": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47"
+        },
+        "candidates": [
+          {
+            "contract_type": "HarnessBundle",
+            "record_id": "cpf_synthetic",
+            "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+          }
+        ],
+        "candidate_set_hash": "3221bee7655886a95499d78452f758a43393045fb43ccfbd0edf61d6e4454d0f",
+        "selected_ref": {
+          "contract_type": "HarnessBundle",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "fallback_ref": {
+          "contract_type": "HarnessBundle",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "abstention_reason": "OOD",
+        "policy_artifact_ref": null,
+        "selection_probability": 1,
+        "content_hash": "21230e9a3bfd8aa7404de03772b2a9e3aa19dfcc7ee83254f12320ada6d02390"
+      }
+    },
+    {
+      "id": "COMPUTE_BINDING_VALID",
+      "kind": "contract",
+      "schema": "ComputeDispatchBinding",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "compute_decision_ref": {
+          "contract_type": "ComputeDecisionReceipt",
+          "record_id": "compute_decision_ref",
+          "content_hash": "5e7b007021f09fb8a508637d16bda209f1f336673699e523dc41c1f21880a61b"
+        },
+        "routing_decision_ref": {
+          "contract_type": "RoutingDecisionReceipt",
+          "record_id": "routing_decision_ref",
+          "content_hash": "4d7d9a8c5a82a5feb9f8dd2840b661948c5b75eb4ff6b4c41227efbcef1e0aa3"
+        },
+        "final_compatibility_ref": {
+          "contract_type": "CompatibilityDecision",
+          "record_id": "final_compatibility_ref",
+          "content_hash": "10127d504359ee95beaa712357dbb1286a27419ab6c0380aebf8bd9d0f4ce629"
+        },
+        "profile_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "effective_configuration_ref": {
+          "contract_type": "EffectiveComputeConfiguration",
+          "record_id": "effective_configuration_ref",
+          "content_hash": "ad5b38b9d2b55a010c9e5f03086403e7e3817d05d90c2c8dc4ee1a3542c7344a"
+        },
+        "node_ref": {
+          "contract_type": "NodeContract",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "vsp_synthetic",
+          "content_hash": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47"
+        },
+        "objective_ref": {
+          "contract_type": "ObjectiveContract",
+          "record_id": "objective_ref",
+          "content_hash": "f1a3227480cbb263409b61287b187eca926a830e013c0148ffebcdade597e9eb"
+        },
+        "joint_policy_ref": {
+          "contract_type": "JointPolicySnapshot",
+          "record_id": "joint_policy_ref",
+          "content_hash": "1b8f36d3f5fac474ecb70b071bf94338669b0cf5e2e280f54e594849af781d9a"
+        },
+        "graph_revision_ref": {
+          "contract_type": "WorkflowPlanState",
+          "record_id": "graph_revision_ref",
+          "content_hash": "a29103e0119b070885c3efd533869660878d312912645226b1668ba89ed4f81d"
+        },
+        "budget_reservation_ref": {
+          "contract_type": "ExistingBudgetReservation",
+          "record_id": "budget_reservation_ref",
+          "content_hash": "9f7cc4aef26603c562ed0055a1bfa701f9b5cad5835ce0739a55882c8f61c9ce"
+        },
+        "executor_adapter_ref": {
+          "contract_type": "ComputeExecutorAdapterManifest",
+          "record_id": "executor_adapter_ref",
+          "content_hash": "09dd2fc1be1b088bb8dbd08129182ac96cf3d4940e04a04f5a0b94d989f78d6d"
+        },
+        "schema_version": "1.0.0",
+        "binding_id": "cdb_synthetic",
+        "harness_selection_ref": null,
+        "candidate_set_hash": "90a5ff79d8aa22243d75307d8d9cc7f5a282d704cf0a88f15ec808b4e574fd31",
+        "dependency_digests": [
+          "2809fcabb18a9708db004b538cf218003a2efff3f817602dd0a2cdc0b6479247"
+        ],
+        "idempotency_key": "workspace/node/attempt/key",
+        "expected_epoch": 7,
+        "expires_at_ms": 1000,
+        "content_hash": "cdf486b529226b8739ae3d80698f4abca02513159664ad1df978a2a018269491"
+      },
+      "authoritative": {
+        "compute_decision_ref": "5e7b007021f09fb8a508637d16bda209f1f336673699e523dc41c1f21880a61b",
+        "routing_decision_ref": "4d7d9a8c5a82a5feb9f8dd2840b661948c5b75eb4ff6b4c41227efbcef1e0aa3",
+        "final_compatibility_ref": "10127d504359ee95beaa712357dbb1286a27419ab6c0380aebf8bd9d0f4ce629",
+        "profile_ref": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea",
+        "effective_configuration_ref": "ad5b38b9d2b55a010c9e5f03086403e7e3817d05d90c2c8dc4ee1a3542c7344a",
+        "node_ref": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824",
+        "verification_spec_ref": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47",
+        "objective_ref": "f1a3227480cbb263409b61287b187eca926a830e013c0148ffebcdade597e9eb",
+        "joint_policy_ref": "1b8f36d3f5fac474ecb70b071bf94338669b0cf5e2e280f54e594849af781d9a",
+        "graph_revision_ref": "a29103e0119b070885c3efd533869660878d312912645226b1668ba89ed4f81d",
+        "budget_reservation_ref": "9f7cc4aef26603c562ed0055a1bfa701f9b5cad5835ce0739a55882c8f61c9ce",
+        "executor_adapter_ref": "09dd2fc1be1b088bb8dbd08129182ac96cf3d4940e04a04f5a0b94d989f78d6d",
+        "candidate_set_hash": "90a5ff79d8aa22243d75307d8d9cc7f5a282d704cf0a88f15ec808b4e574fd31"
+      }
+    },
+    {
+      "id": "COMPUTE_STALE_CONFIG",
+      "kind": "contract",
+      "schema": "ComputeDispatchBinding",
+      "valid": false,
+      "expected_error": "BINDING_MISMATCH",
+      "instance": {
+        "compute_decision_ref": {
+          "contract_type": "ComputeDecisionReceipt",
+          "record_id": "compute_decision_ref",
+          "content_hash": "5e7b007021f09fb8a508637d16bda209f1f336673699e523dc41c1f21880a61b"
+        },
+        "routing_decision_ref": {
+          "contract_type": "RoutingDecisionReceipt",
+          "record_id": "routing_decision_ref",
+          "content_hash": "4d7d9a8c5a82a5feb9f8dd2840b661948c5b75eb4ff6b4c41227efbcef1e0aa3"
+        },
+        "final_compatibility_ref": {
+          "contract_type": "CompatibilityDecision",
+          "record_id": "final_compatibility_ref",
+          "content_hash": "10127d504359ee95beaa712357dbb1286a27419ab6c0380aebf8bd9d0f4ce629"
+        },
+        "profile_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "effective_configuration_ref": {
+          "contract_type": "EffectiveComputeConfiguration",
+          "record_id": "changed",
+          "content_hash": "35b4e78a43bc2f0df0daf73ed84aec378526d5b0cc23a558d6aa117632ef1234"
+        },
+        "node_ref": {
+          "contract_type": "NodeContract",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "vsp_synthetic",
+          "content_hash": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47"
+        },
+        "objective_ref": {
+          "contract_type": "ObjectiveContract",
+          "record_id": "objective_ref",
+          "content_hash": "f1a3227480cbb263409b61287b187eca926a830e013c0148ffebcdade597e9eb"
+        },
+        "joint_policy_ref": {
+          "contract_type": "JointPolicySnapshot",
+          "record_id": "joint_policy_ref",
+          "content_hash": "1b8f36d3f5fac474ecb70b071bf94338669b0cf5e2e280f54e594849af781d9a"
+        },
+        "graph_revision_ref": {
+          "contract_type": "WorkflowPlanState",
+          "record_id": "graph_revision_ref",
+          "content_hash": "a29103e0119b070885c3efd533869660878d312912645226b1668ba89ed4f81d"
+        },
+        "budget_reservation_ref": {
+          "contract_type": "ExistingBudgetReservation",
+          "record_id": "budget_reservation_ref",
+          "content_hash": "9f7cc4aef26603c562ed0055a1bfa701f9b5cad5835ce0739a55882c8f61c9ce"
+        },
+        "executor_adapter_ref": {
+          "contract_type": "ComputeExecutorAdapterManifest",
+          "record_id": "executor_adapter_ref",
+          "content_hash": "09dd2fc1be1b088bb8dbd08129182ac96cf3d4940e04a04f5a0b94d989f78d6d"
+        },
+        "schema_version": "1.0.0",
+        "binding_id": "cdb_synthetic",
+        "harness_selection_ref": null,
+        "candidate_set_hash": "90a5ff79d8aa22243d75307d8d9cc7f5a282d704cf0a88f15ec808b4e574fd31",
+        "dependency_digests": [
+          "2809fcabb18a9708db004b538cf218003a2efff3f817602dd0a2cdc0b6479247"
+        ],
+        "idempotency_key": "workspace/node/attempt/key",
+        "expected_epoch": 7,
+        "expires_at_ms": 1000,
+        "content_hash": "c89bc1c9ad075c814c4091761e31c685c1da4fe0b80df761ced94d860db940ec"
+      },
+      "authoritative": {
+        "compute_decision_ref": "5e7b007021f09fb8a508637d16bda209f1f336673699e523dc41c1f21880a61b",
+        "routing_decision_ref": "4d7d9a8c5a82a5feb9f8dd2840b661948c5b75eb4ff6b4c41227efbcef1e0aa3",
+        "final_compatibility_ref": "10127d504359ee95beaa712357dbb1286a27419ab6c0380aebf8bd9d0f4ce629",
+        "profile_ref": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea",
+        "effective_configuration_ref": "ad5b38b9d2b55a010c9e5f03086403e7e3817d05d90c2c8dc4ee1a3542c7344a",
+        "node_ref": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824",
+        "verification_spec_ref": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47",
+        "objective_ref": "f1a3227480cbb263409b61287b187eca926a830e013c0148ffebcdade597e9eb",
+        "joint_policy_ref": "1b8f36d3f5fac474ecb70b071bf94338669b0cf5e2e280f54e594849af781d9a",
+        "graph_revision_ref": "a29103e0119b070885c3efd533869660878d312912645226b1668ba89ed4f81d",
+        "budget_reservation_ref": "9f7cc4aef26603c562ed0055a1bfa701f9b5cad5835ce0739a55882c8f61c9ce",
+        "executor_adapter_ref": "09dd2fc1be1b088bb8dbd08129182ac96cf3d4940e04a04f5a0b94d989f78d6d",
+        "candidate_set_hash": "90a5ff79d8aa22243d75307d8d9cc7f5a282d704cf0a88f15ec808b4e574fd31"
+      }
+    },
+    {
+      "id": "COMPUTE_STALE_VERIFIER",
+      "kind": "contract",
+      "schema": "ComputeDispatchBinding",
+      "valid": false,
+      "expected_error": "BINDING_MISMATCH",
+      "instance": {
+        "compute_decision_ref": {
+          "contract_type": "ComputeDecisionReceipt",
+          "record_id": "compute_decision_ref",
+          "content_hash": "5e7b007021f09fb8a508637d16bda209f1f336673699e523dc41c1f21880a61b"
+        },
+        "routing_decision_ref": {
+          "contract_type": "RoutingDecisionReceipt",
+          "record_id": "routing_decision_ref",
+          "content_hash": "4d7d9a8c5a82a5feb9f8dd2840b661948c5b75eb4ff6b4c41227efbcef1e0aa3"
+        },
+        "final_compatibility_ref": {
+          "contract_type": "CompatibilityDecision",
+          "record_id": "final_compatibility_ref",
+          "content_hash": "10127d504359ee95beaa712357dbb1286a27419ab6c0380aebf8bd9d0f4ce629"
+        },
+        "profile_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "effective_configuration_ref": {
+          "contract_type": "EffectiveComputeConfiguration",
+          "record_id": "effective_configuration_ref",
+          "content_hash": "ad5b38b9d2b55a010c9e5f03086403e7e3817d05d90c2c8dc4ee1a3542c7344a"
+        },
+        "node_ref": {
+          "contract_type": "NodeContract",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "changed",
+          "content_hash": "35b4e78a43bc2f0df0daf73ed84aec378526d5b0cc23a558d6aa117632ef1234"
+        },
+        "objective_ref": {
+          "contract_type": "ObjectiveContract",
+          "record_id": "objective_ref",
+          "content_hash": "f1a3227480cbb263409b61287b187eca926a830e013c0148ffebcdade597e9eb"
+        },
+        "joint_policy_ref": {
+          "contract_type": "JointPolicySnapshot",
+          "record_id": "joint_policy_ref",
+          "content_hash": "1b8f36d3f5fac474ecb70b071bf94338669b0cf5e2e280f54e594849af781d9a"
+        },
+        "graph_revision_ref": {
+          "contract_type": "WorkflowPlanState",
+          "record_id": "graph_revision_ref",
+          "content_hash": "a29103e0119b070885c3efd533869660878d312912645226b1668ba89ed4f81d"
+        },
+        "budget_reservation_ref": {
+          "contract_type": "ExistingBudgetReservation",
+          "record_id": "budget_reservation_ref",
+          "content_hash": "9f7cc4aef26603c562ed0055a1bfa701f9b5cad5835ce0739a55882c8f61c9ce"
+        },
+        "executor_adapter_ref": {
+          "contract_type": "ComputeExecutorAdapterManifest",
+          "record_id": "executor_adapter_ref",
+          "content_hash": "09dd2fc1be1b088bb8dbd08129182ac96cf3d4940e04a04f5a0b94d989f78d6d"
+        },
+        "schema_version": "1.0.0",
+        "binding_id": "cdb_synthetic",
+        "harness_selection_ref": null,
+        "candidate_set_hash": "90a5ff79d8aa22243d75307d8d9cc7f5a282d704cf0a88f15ec808b4e574fd31",
+        "dependency_digests": [
+          "2809fcabb18a9708db004b538cf218003a2efff3f817602dd0a2cdc0b6479247"
+        ],
+        "idempotency_key": "workspace/node/attempt/key",
+        "expected_epoch": 7,
+        "expires_at_ms": 1000,
+        "content_hash": "d23ab46c5b7cf8e380849c78f16931ee0e0b6f305242a40e5cac83444f7c5985"
+      },
+      "authoritative": {
+        "compute_decision_ref": "5e7b007021f09fb8a508637d16bda209f1f336673699e523dc41c1f21880a61b",
+        "routing_decision_ref": "4d7d9a8c5a82a5feb9f8dd2840b661948c5b75eb4ff6b4c41227efbcef1e0aa3",
+        "final_compatibility_ref": "10127d504359ee95beaa712357dbb1286a27419ab6c0380aebf8bd9d0f4ce629",
+        "profile_ref": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea",
+        "effective_configuration_ref": "ad5b38b9d2b55a010c9e5f03086403e7e3817d05d90c2c8dc4ee1a3542c7344a",
+        "node_ref": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824",
+        "verification_spec_ref": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47",
+        "objective_ref": "f1a3227480cbb263409b61287b187eca926a830e013c0148ffebcdade597e9eb",
+        "joint_policy_ref": "1b8f36d3f5fac474ecb70b071bf94338669b0cf5e2e280f54e594849af781d9a",
+        "graph_revision_ref": "a29103e0119b070885c3efd533869660878d312912645226b1668ba89ed4f81d",
+        "budget_reservation_ref": "9f7cc4aef26603c562ed0055a1bfa701f9b5cad5835ce0739a55882c8f61c9ce",
+        "executor_adapter_ref": "09dd2fc1be1b088bb8dbd08129182ac96cf3d4940e04a04f5a0b94d989f78d6d",
+        "candidate_set_hash": "90a5ff79d8aa22243d75307d8d9cc7f5a282d704cf0a88f15ec808b4e574fd31"
+      }
+    },
+    {
+      "id": "HARNESS_PACKAGED",
+      "kind": "contract",
+      "schema": "HarnessLifecycleRecord",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "bundle_ref": {
+          "contract_type": "HarnessBundle",
+          "record_id": "hrn_synthetic",
+          "content_hash": "03499f3476fe1a4be2cef08d96130668cfeebad0705be6d99445c1d3b257ecd0"
+        },
+        "stage": "PACKAGED",
+        "evaluation_ref": null,
+        "promotion_ref": null,
+        "reason": null,
+        "content_hash": "f169ffec7e48ea3ff6dd3019e6bee5e5ab6538b4cbbcd686befe96fb84dbf46c"
+      }
+    },
+    {
+      "id": "HARNESS_FUTURE_PROMOTION",
+      "kind": "contract",
+      "schema": "HarnessLifecycleRecord",
+      "valid": false,
+      "expected_error": "HARNESS_LIFECYCLE",
+      "instance": {
+        "schema_version": "1.0.0",
+        "bundle_ref": {
+          "contract_type": "HarnessBundle",
+          "record_id": "hrn_synthetic",
+          "content_hash": "03499f3476fe1a4be2cef08d96130668cfeebad0705be6d99445c1d3b257ecd0"
+        },
+        "stage": "PACKAGED",
+        "evaluation_ref": null,
+        "promotion_ref": {
+          "contract_type": "PromotionDecision",
+          "record_id": "prm_synthetic",
+          "content_hash": "a100bc61ff49a73a304d0d151100d6762f51b63803ecef5c0059cbb2cedf8a2e"
+        },
+        "reason": null,
+        "content_hash": "3bfb2752e9b8b4b5776e327733ae55bb27ec0ab4a2680cc9c18563a74970f4bc"
+      }
+    },
+    {
+      "id": "HARNESS_PROMOTED",
+      "kind": "contract",
+      "schema": "HarnessLifecycleRecord",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "bundle_ref": {
+          "contract_type": "HarnessBundle",
+          "record_id": "hrn_synthetic",
+          "content_hash": "03499f3476fe1a4be2cef08d96130668cfeebad0705be6d99445c1d3b257ecd0"
+        },
+        "stage": "PROMOTED",
+        "evaluation_ref": {
+          "contract_type": "CandidateEvaluationReport",
+          "record_id": "cer_synthetic",
+          "content_hash": "2b4686a8757932528b1d5d784359e098ff60b37b02105f92ee4497d8629354e8"
+        },
+        "promotion_ref": {
+          "contract_type": "PromotionDecision",
+          "record_id": "prm_synthetic",
+          "content_hash": "a100bc61ff49a73a304d0d151100d6762f51b63803ecef5c0059cbb2cedf8a2e"
+        },
+        "reason": null,
+        "content_hash": "236bd10ef36ecba60e68c2705959c2f1860743be89c933bcb2cc7a9dbf9aac8b"
+      }
+    },
+    {
+      "id": "HARNESS_PROMOTION_MISSING",
+      "kind": "contract",
+      "schema": "HarnessLifecycleRecord",
+      "valid": false,
+      "expected_error": "HARNESS_LIFECYCLE",
+      "instance": {
+        "schema_version": "1.0.0",
+        "bundle_ref": {
+          "contract_type": "HarnessBundle",
+          "record_id": "hrn_synthetic",
+          "content_hash": "03499f3476fe1a4be2cef08d96130668cfeebad0705be6d99445c1d3b257ecd0"
+        },
+        "stage": "PROMOTED",
+        "evaluation_ref": null,
+        "promotion_ref": null,
+        "reason": null,
+        "content_hash": "66a48540eb3470cfce561c1c5bf9ae731592310a2dc375e37f0f51bcad46ae0b"
+      }
+    },
+    {
+      "id": "PHYSICAL_BINDING_VALID",
+      "kind": "contract",
+      "schema": "PhysicalFreezePayload",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "freeze_id": "frz_synthetic",
+        "manifest_ref": {
+          "contract_type": "PhysicalConfigurationManifest",
+          "record_id": "pcm_synthetic",
+          "content_hash": "4de4d5d0194748a535d63774cde18b97058b62c86086085662931fe1c134b3e3"
+        },
+        "trial_ref": {
+          "contract_type": "PhysicalTrialContract",
+          "record_id": "ptr_synthetic",
+          "content_hash": "608a440092fc2706ad65a9f007975f3f989f7cc1e665722b100bd70264aad762"
+        },
+        "preflight_ref": {
+          "contract_type": "PhysicalPreflightReceipt",
+          "record_id": "ppf_synthetic",
+          "content_hash": "df14bb134d39a68e64433b1d1bd28e7d2581421607aeb41568d6d20a13d1e8f7"
+        },
+        "expected_epoch": 3,
+        "frozen_at_ms": 10,
+        "content_hash": "585e273b2a9a541e4532dd2cbad9ce986dbcdd0cadd3a749bbd343cb756d17f4"
+      },
+      "chain": {
+        "trial_manifest_hash": "4de4d5d0194748a535d63774cde18b97058b62c86086085662931fe1c134b3e3",
+        "preflight_trial_hash": "608a440092fc2706ad65a9f007975f3f989f7cc1e665722b100bd70264aad762",
+        "approval_trial_hash": "608a440092fc2706ad65a9f007975f3f989f7cc1e665722b100bd70264aad762",
+        "approval_preflight_hash": "df14bb134d39a68e64433b1d1bd28e7d2581421607aeb41568d6d20a13d1e8f7",
+        "loaded_manifest_hash": "4de4d5d0194748a535d63774cde18b97058b62c86086085662931fe1c134b3e3"
+      }
+    },
+    {
+      "id": "PHYSICAL_BINDING_MUTATED",
+      "kind": "contract",
+      "schema": "PhysicalFreezePayload",
+      "valid": false,
+      "expected_error": "PHYSICAL_CHAIN",
+      "instance": {
+        "schema_version": "1.0.0",
+        "freeze_id": "frz_synthetic",
+        "manifest_ref": {
+          "contract_type": "PhysicalConfigurationManifest",
+          "record_id": "pcm_synthetic",
+          "content_hash": "4de4d5d0194748a535d63774cde18b97058b62c86086085662931fe1c134b3e3"
+        },
+        "trial_ref": {
+          "contract_type": "PhysicalTrialContract",
+          "record_id": "ptr_synthetic",
+          "content_hash": "608a440092fc2706ad65a9f007975f3f989f7cc1e665722b100bd70264aad762"
+        },
+        "preflight_ref": {
+          "contract_type": "PhysicalPreflightReceipt",
+          "record_id": "ppf_synthetic",
+          "content_hash": "df14bb134d39a68e64433b1d1bd28e7d2581421607aeb41568d6d20a13d1e8f7"
+        },
+        "expected_epoch": 3,
+        "frozen_at_ms": 10,
+        "content_hash": "585e273b2a9a541e4532dd2cbad9ce986dbcdd0cadd3a749bbd343cb756d17f4"
+      },
+      "chain": {
+        "trial_manifest_hash": "4de4d5d0194748a535d63774cde18b97058b62c86086085662931fe1c134b3e3",
+        "preflight_trial_hash": "608a440092fc2706ad65a9f007975f3f989f7cc1e665722b100bd70264aad762",
+        "approval_trial_hash": "608a440092fc2706ad65a9f007975f3f989f7cc1e665722b100bd70264aad762",
+        "approval_preflight_hash": "df14bb134d39a68e64433b1d1bd28e7d2581421607aeb41568d6d20a13d1e8f7",
+        "loaded_manifest_hash": "261cbd27e4898423d47ba926369b58a69dbcd9312149b150d9d909f336754c7c"
+      }
+    },
+    {
+      "id": "FREEZE_MUTATED_IN_PLACE",
+      "kind": "contract",
+      "schema": "PhysicalFreezePayload",
+      "valid": false,
+      "expected_error": "SCHEMA",
+      "instance": {
+        "schema_version": "1.0.0",
+        "freeze_id": "frz_synthetic",
+        "manifest_ref": {
+          "contract_type": "PhysicalConfigurationManifest",
+          "record_id": "pcm_synthetic",
+          "content_hash": "4de4d5d0194748a535d63774cde18b97058b62c86086085662931fe1c134b3e3"
+        },
+        "trial_ref": {
+          "contract_type": "PhysicalTrialContract",
+          "record_id": "ptr_synthetic",
+          "content_hash": "608a440092fc2706ad65a9f007975f3f989f7cc1e665722b100bd70264aad762"
+        },
+        "preflight_ref": {
+          "contract_type": "PhysicalPreflightReceipt",
+          "record_id": "ppf_synthetic",
+          "content_hash": "df14bb134d39a68e64433b1d1bd28e7d2581421607aeb41568d6d20a13d1e8f7"
+        },
+        "expected_epoch": 3,
+        "frozen_at_ms": 10,
+        "content_hash": "585e273b2a9a541e4532dd2cbad9ce986dbcdd0cadd3a749bbd343cb756d17f4",
+        "invalidated_at_ms": 12
+      }
+    },
+    {
+      "id": "FREEZE_INVALIDATION",
+      "kind": "contract",
+      "schema": "FreezeInvalidation",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "freeze_ref": {
+          "contract_type": "PhysicalExecutionFreezeReceipt",
+          "record_id": "frz_synthetic",
+          "content_hash": "1c591ebde4fe2c2691d111a236b5e9f83db6c12a3b7cf53fcfdb0a5b4e087dfc"
+        },
+        "invalidated_at_ms": 12,
+        "reason": "configuration changed",
+        "evidence_refs": [
+          {
+            "contract_type": "Evidence",
+            "record_id": "evd_change",
+            "content_hash": "d66c6b53e386af256e0b30e8e81bc9e478bf6e830d2d126f4308b5266eb8c7b4"
+          }
+        ],
+        "content_hash": "6029c9dd10141687fdde847d30089fd50d614e99ab69c6c7c612ba42d33e2186"
+      }
+    },
+    {
+      "id": "PHYSICAL_PREFLIGHT_REJECTED",
+      "kind": "contract",
+      "schema": "PhysicalOutcomePayload",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "outcome_id": "peo_synthetic",
+        "stage": "PRE_FREEZE",
+        "terminal_reason": "PREFLIGHT_REJECTED",
+        "freeze_ref": null,
+        "approval_ref": null,
+        "lease_ref": null,
+        "verification_ref": null,
+        "safety_ref": null,
+        "available_evidence_refs": [],
+        "incident_refs": [],
+        "timing_ms": {
+          "preparation": null,
+          "simulation": null,
+          "preflight": null,
+          "approval_wait": null,
+          "execution": null,
+          "verification": null,
+          "observed_terminal": null
+        },
+        "measurement_quality": "UNKNOWN",
+        "missing_reason": "phases unperformed or unmeasured",
+        "horizon_ms": 100,
+        "capped_ttvs_ms": 100,
+        "verification_status": "NOT_AVAILABLE",
+        "verified_pass_ms": null,
+        "retry_requests_observed": 0,
+        "physical_reexecutions_observed": 0,
+        "configuration_match": null,
+        "content_hash": "b1fbaf31fc318e91ed7d52c2928c6ae32d75cf56cfde56404145953de6b399ac"
+      }
+    },
+    {
+      "id": "PHYSICAL_UNKNOWN_TIMING",
+      "kind": "contract",
+      "schema": "PhysicalOutcomePayload",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "outcome_id": "peo_synthetic",
+        "stage": "PRE_FREEZE",
+        "terminal_reason": "PREFLIGHT_REJECTED",
+        "freeze_ref": null,
+        "approval_ref": null,
+        "lease_ref": null,
+        "verification_ref": null,
+        "safety_ref": null,
+        "available_evidence_refs": [],
+        "incident_refs": [],
+        "timing_ms": {
+          "preparation": null,
+          "simulation": null,
+          "preflight": null,
+          "approval_wait": null,
+          "execution": null,
+          "verification": null,
+          "observed_terminal": null
+        },
+        "measurement_quality": "UNKNOWN",
+        "missing_reason": "phases unperformed or unmeasured",
+        "horizon_ms": 100,
+        "capped_ttvs_ms": 100,
+        "verification_status": "NOT_AVAILABLE",
+        "verified_pass_ms": null,
+        "retry_requests_observed": 0,
+        "physical_reexecutions_observed": 0,
+        "configuration_match": null,
+        "content_hash": "b1fbaf31fc318e91ed7d52c2928c6ae32d75cf56cfde56404145953de6b399ac"
+      }
+    },
+    {
+      "id": "PHYSICAL_DENIED",
+      "kind": "contract",
+      "schema": "PhysicalOutcomePayload",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "outcome_id": "peo_synthetic",
+        "stage": "FROZEN_UNAPPROVED",
+        "terminal_reason": "APPROVAL_DENIED",
+        "freeze_ref": {
+          "contract_type": "PhysicalExecutionFreezeReceipt",
+          "record_id": "frz_synthetic",
+          "content_hash": "1c591ebde4fe2c2691d111a236b5e9f83db6c12a3b7cf53fcfdb0a5b4e087dfc"
+        },
+        "approval_ref": null,
+        "lease_ref": null,
+        "verification_ref": null,
+        "safety_ref": null,
+        "available_evidence_refs": [],
+        "incident_refs": [],
+        "timing_ms": {
+          "preparation": null,
+          "simulation": null,
+          "preflight": null,
+          "approval_wait": null,
+          "execution": null,
+          "verification": null,
+          "observed_terminal": null
+        },
+        "measurement_quality": "UNKNOWN",
+        "missing_reason": "phases unperformed or unmeasured",
+        "horizon_ms": 100,
+        "capped_ttvs_ms": 100,
+        "verification_status": "NOT_AVAILABLE",
+        "verified_pass_ms": null,
+        "retry_requests_observed": 0,
+        "physical_reexecutions_observed": 0,
+        "configuration_match": null,
+        "content_hash": "3c0b65f52f4e7d7a3d66c60313e3a82102083a582eb96583f0c1cee07f7ccf13"
+      }
+    },
+    {
+      "id": "PHYSICAL_DENIED_FAKE_LEASE",
+      "kind": "contract",
+      "schema": "PhysicalOutcomePayload",
+      "valid": false,
+      "expected_error": "SCHEMA",
+      "instance": {
+        "schema_version": "1.0.0",
+        "outcome_id": "peo_synthetic",
+        "stage": "FROZEN_UNAPPROVED",
+        "terminal_reason": "APPROVAL_DENIED",
+        "freeze_ref": {
+          "contract_type": "PhysicalExecutionFreezeReceipt",
+          "record_id": "frz_synthetic",
+          "content_hash": "1c591ebde4fe2c2691d111a236b5e9f83db6c12a3b7cf53fcfdb0a5b4e087dfc"
+        },
+        "approval_ref": null,
+        "lease_ref": {
+          "contract_type": "ArmedTrialLease",
+          "record_id": "lease_fake",
+          "content_hash": "c3dd10619e3ec468ad54d1c496ba3b98f069f3def9cd391b49d29b9669514e18"
+        },
+        "verification_ref": null,
+        "safety_ref": null,
+        "available_evidence_refs": [],
+        "incident_refs": [],
+        "timing_ms": {
+          "preparation": null,
+          "simulation": null,
+          "preflight": null,
+          "approval_wait": null,
+          "execution": null,
+          "verification": null,
+          "observed_terminal": null
+        },
+        "measurement_quality": "UNKNOWN",
+        "missing_reason": "phases unperformed or unmeasured",
+        "horizon_ms": 100,
+        "capped_ttvs_ms": 100,
+        "verification_status": "NOT_AVAILABLE",
+        "verified_pass_ms": null,
+        "retry_requests_observed": 0,
+        "physical_reexecutions_observed": 0,
+        "configuration_match": null,
+        "content_hash": "59121c0176c261421f0c5b3674034c7bb953b2fdda03e9cf2a680dcbc76a4aad"
+      }
+    },
+    {
+      "id": "PHYSICAL_EXPIRED",
+      "kind": "contract",
+      "schema": "PhysicalOutcomePayload",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "outcome_id": "peo_synthetic",
+        "stage": "APPROVED_UNARMED",
+        "terminal_reason": "APPROVAL_EXPIRED",
+        "freeze_ref": {
+          "contract_type": "PhysicalExecutionFreezeReceipt",
+          "record_id": "frz_synthetic",
+          "content_hash": "1c591ebde4fe2c2691d111a236b5e9f83db6c12a3b7cf53fcfdb0a5b4e087dfc"
+        },
+        "approval_ref": {
+          "contract_type": "PhysicalTrialApproval",
+          "record_id": "apr_synthetic",
+          "content_hash": "039e0893a61434d70d15d1817cf638125e790e85c610a9de5d0b4b7472c23906"
+        },
+        "lease_ref": null,
+        "verification_ref": null,
+        "safety_ref": null,
+        "available_evidence_refs": [],
+        "incident_refs": [],
+        "timing_ms": {
+          "preparation": null,
+          "simulation": null,
+          "preflight": null,
+          "approval_wait": null,
+          "execution": null,
+          "verification": null,
+          "observed_terminal": null
+        },
+        "measurement_quality": "UNKNOWN",
+        "missing_reason": "phases unperformed or unmeasured",
+        "horizon_ms": 100,
+        "capped_ttvs_ms": 100,
+        "verification_status": "NOT_AVAILABLE",
+        "verified_pass_ms": null,
+        "retry_requests_observed": 0,
+        "physical_reexecutions_observed": 0,
+        "configuration_match": null,
+        "content_hash": "58cc9c25969097140d6b282766c188cd9948fbb601d43a3612f6edac3be08f35"
+      }
+    },
+    {
+      "id": "PHYSICAL_ARMED_NOT_EXECUTED",
+      "kind": "contract",
+      "schema": "PhysicalOutcomePayload",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "outcome_id": "peo_synthetic",
+        "stage": "ARMED_NO_EXECUTION",
+        "terminal_reason": "LEASE_EXPIRED",
+        "freeze_ref": {
+          "contract_type": "PhysicalExecutionFreezeReceipt",
+          "record_id": "frz_synthetic",
+          "content_hash": "1c591ebde4fe2c2691d111a236b5e9f83db6c12a3b7cf53fcfdb0a5b4e087dfc"
+        },
+        "approval_ref": {
+          "contract_type": "PhysicalTrialApproval",
+          "record_id": "apr_synthetic",
+          "content_hash": "039e0893a61434d70d15d1817cf638125e790e85c610a9de5d0b4b7472c23906"
+        },
+        "lease_ref": {
+          "contract_type": "ArmedTrialLease",
+          "record_id": "lea_synthetic",
+          "content_hash": "4e3851e95ede8b815c4fd4ba38099f332e2ddbab79edf3e5b9596e17fad76270"
+        },
+        "verification_ref": null,
+        "safety_ref": null,
+        "available_evidence_refs": [],
+        "incident_refs": [],
+        "timing_ms": {
+          "preparation": null,
+          "simulation": null,
+          "preflight": null,
+          "approval_wait": null,
+          "execution": null,
+          "verification": null,
+          "observed_terminal": null
+        },
+        "measurement_quality": "UNKNOWN",
+        "missing_reason": "phases unperformed or unmeasured",
+        "horizon_ms": 100,
+        "capped_ttvs_ms": 100,
+        "verification_status": "NOT_AVAILABLE",
+        "verified_pass_ms": null,
+        "retry_requests_observed": 0,
+        "physical_reexecutions_observed": 0,
+        "configuration_match": null,
+        "content_hash": "da9c832e38e52de510e7d86f66650bca05991238f66783f7e1932e562e84ffb9"
+      }
+    },
+    {
+      "id": "PHYSICAL_EXECUTED_UNVERIFIED",
+      "kind": "contract",
+      "schema": "PhysicalOutcomePayload",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "outcome_id": "peo_synthetic",
+        "stage": "EXECUTED_UNVERIFIED",
+        "terminal_reason": "VERIFIER_UNAVAILABLE",
+        "freeze_ref": {
+          "contract_type": "PhysicalExecutionFreezeReceipt",
+          "record_id": "frz_synthetic",
+          "content_hash": "1c591ebde4fe2c2691d111a236b5e9f83db6c12a3b7cf53fcfdb0a5b4e087dfc"
+        },
+        "approval_ref": {
+          "contract_type": "PhysicalTrialApproval",
+          "record_id": "apr_synthetic",
+          "content_hash": "039e0893a61434d70d15d1817cf638125e790e85c610a9de5d0b4b7472c23906"
+        },
+        "lease_ref": {
+          "contract_type": "ArmedTrialLease",
+          "record_id": "lea_synthetic",
+          "content_hash": "4e3851e95ede8b815c4fd4ba38099f332e2ddbab79edf3e5b9596e17fad76270"
+        },
+        "verification_ref": null,
+        "safety_ref": null,
+        "available_evidence_refs": [],
+        "incident_refs": [],
+        "timing_ms": {
+          "preparation": null,
+          "simulation": null,
+          "preflight": null,
+          "approval_wait": null,
+          "execution": null,
+          "verification": null,
+          "observed_terminal": null
+        },
+        "measurement_quality": "UNKNOWN",
+        "missing_reason": "phases unperformed or unmeasured",
+        "horizon_ms": 100,
+        "capped_ttvs_ms": 100,
+        "verification_status": "NOT_AVAILABLE",
+        "verified_pass_ms": null,
+        "retry_requests_observed": 0,
+        "physical_reexecutions_observed": 0,
+        "configuration_match": null,
+        "content_hash": "91191cd1fbf6fa768409a4d73563efe021b3e3e89b5111a052c9927498c452a9"
+      }
+    },
+    {
+      "id": "PHYSICAL_VERIFIED",
+      "kind": "contract",
+      "schema": "PhysicalOutcomePayload",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "outcome_id": "peo_synthetic",
+        "stage": "VERIFIED",
+        "terminal_reason": "VERIFIED",
+        "freeze_ref": {
+          "contract_type": "PhysicalExecutionFreezeReceipt",
+          "record_id": "frz_synthetic",
+          "content_hash": "1c591ebde4fe2c2691d111a236b5e9f83db6c12a3b7cf53fcfdb0a5b4e087dfc"
+        },
+        "approval_ref": {
+          "contract_type": "PhysicalTrialApproval",
+          "record_id": "apr_synthetic",
+          "content_hash": "039e0893a61434d70d15d1817cf638125e790e85c610a9de5d0b4b7472c23906"
+        },
+        "lease_ref": {
+          "contract_type": "ArmedTrialLease",
+          "record_id": "lea_synthetic",
+          "content_hash": "4e3851e95ede8b815c4fd4ba38099f332e2ddbab79edf3e5b9596e17fad76270"
+        },
+        "verification_ref": {
+          "contract_type": "IndependentVerificationResult",
+          "record_id": "ivr_synthetic",
+          "content_hash": "4bad9420ef58eb79346943ff099291483a6d4d9df10f6af8b97551ec54ac0419"
+        },
+        "safety_ref": {
+          "contract_type": "SafetyOutcome",
+          "record_id": "saf_synthetic",
+          "content_hash": "e4b0068744c2834ee4b0c65bffab21d1c05c25af17e894bb7223477813f2ac58"
+        },
+        "available_evidence_refs": [],
+        "incident_refs": [],
+        "timing_ms": {
+          "preparation": null,
+          "simulation": null,
+          "preflight": null,
+          "approval_wait": null,
+          "execution": null,
+          "verification": null,
+          "observed_terminal": null
+        },
+        "measurement_quality": "UNKNOWN",
+        "missing_reason": "phases unperformed or unmeasured",
+        "horizon_ms": 100,
+        "capped_ttvs_ms": 70,
+        "verification_status": "PASS",
+        "verified_pass_ms": 70,
+        "retry_requests_observed": 0,
+        "physical_reexecutions_observed": 0,
+        "configuration_match": null,
+        "content_hash": "5c14f94eae95181757c955153e90770923a357fc84e494078957830625efe2ec"
+      }
+    },
+    {
+      "id": "PHYSICAL_RETRY_INCIDENT",
+      "kind": "contract",
+      "schema": "PhysicalOutcomePayload",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "outcome_id": "peo_synthetic",
+        "stage": "VERIFIED",
+        "terminal_reason": "VERIFIED",
+        "freeze_ref": {
+          "contract_type": "PhysicalExecutionFreezeReceipt",
+          "record_id": "frz_synthetic",
+          "content_hash": "1c591ebde4fe2c2691d111a236b5e9f83db6c12a3b7cf53fcfdb0a5b4e087dfc"
+        },
+        "approval_ref": {
+          "contract_type": "PhysicalTrialApproval",
+          "record_id": "apr_synthetic",
+          "content_hash": "039e0893a61434d70d15d1817cf638125e790e85c610a9de5d0b4b7472c23906"
+        },
+        "lease_ref": {
+          "contract_type": "ArmedTrialLease",
+          "record_id": "lea_synthetic",
+          "content_hash": "4e3851e95ede8b815c4fd4ba38099f332e2ddbab79edf3e5b9596e17fad76270"
+        },
+        "verification_ref": {
+          "contract_type": "IndependentVerificationResult",
+          "record_id": "ivr_synthetic",
+          "content_hash": "4bad9420ef58eb79346943ff099291483a6d4d9df10f6af8b97551ec54ac0419"
+        },
+        "safety_ref": {
+          "contract_type": "SafetyOutcome",
+          "record_id": "saf_synthetic",
+          "content_hash": "e4b0068744c2834ee4b0c65bffab21d1c05c25af17e894bb7223477813f2ac58"
+        },
+        "available_evidence_refs": [],
+        "incident_refs": [
+          {
+            "contract_type": "Incident",
+            "record_id": "inc_synthetic",
+            "content_hash": "f34c1df7af9c4bdbfef133ca90f326aa22c2b902852516ebf85ea56b85734fd9"
+          }
+        ],
+        "timing_ms": {
+          "preparation": null,
+          "simulation": null,
+          "preflight": null,
+          "approval_wait": null,
+          "execution": null,
+          "verification": null,
+          "observed_terminal": null
+        },
+        "measurement_quality": "UNKNOWN",
+        "missing_reason": "phases unperformed or unmeasured",
+        "horizon_ms": 100,
+        "capped_ttvs_ms": 70,
+        "verification_status": "PASS",
+        "verified_pass_ms": 70,
+        "retry_requests_observed": 1,
+        "physical_reexecutions_observed": 1,
+        "configuration_match": null,
+        "content_hash": "60b38b8e284873a87feed22b8fe99b9bbf99c4acd21e1e6168dfa44adb9c6d65"
+      },
+      "expected_hard_gate": "FAIL"
+    },
+    {
+      "id": "PHYSICAL_SUCCESS_MISSING_PROOF",
+      "kind": "contract",
+      "schema": "PhysicalOutcomePayload",
+      "valid": false,
+      "expected_error": "SCHEMA",
+      "instance": {
+        "schema_version": "1.0.0",
+        "outcome_id": "peo_synthetic",
+        "stage": "VERIFIED",
+        "terminal_reason": "VERIFIED",
+        "freeze_ref": {
+          "contract_type": "PhysicalExecutionFreezeReceipt",
+          "record_id": "frz_synthetic",
+          "content_hash": "1c591ebde4fe2c2691d111a236b5e9f83db6c12a3b7cf53fcfdb0a5b4e087dfc"
+        },
+        "approval_ref": {
+          "contract_type": "PhysicalTrialApproval",
+          "record_id": "apr_synthetic",
+          "content_hash": "039e0893a61434d70d15d1817cf638125e790e85c610a9de5d0b4b7472c23906"
+        },
+        "lease_ref": {
+          "contract_type": "ArmedTrialLease",
+          "record_id": "lea_synthetic",
+          "content_hash": "4e3851e95ede8b815c4fd4ba38099f332e2ddbab79edf3e5b9596e17fad76270"
+        },
+        "verification_ref": null,
+        "safety_ref": {
+          "contract_type": "SafetyOutcome",
+          "record_id": "saf_synthetic",
+          "content_hash": "e4b0068744c2834ee4b0c65bffab21d1c05c25af17e894bb7223477813f2ac58"
+        },
+        "available_evidence_refs": [],
+        "incident_refs": [],
+        "timing_ms": {
+          "preparation": null,
+          "simulation": null,
+          "preflight": null,
+          "approval_wait": null,
+          "execution": null,
+          "verification": null,
+          "observed_terminal": null
+        },
+        "measurement_quality": "UNKNOWN",
+        "missing_reason": "phases unperformed or unmeasured",
+        "horizon_ms": 100,
+        "capped_ttvs_ms": 70,
+        "verification_status": "PASS",
+        "verified_pass_ms": 70,
+        "retry_requests_observed": 0,
+        "physical_reexecutions_observed": 0,
+        "configuration_match": null,
+        "content_hash": "3e2852a9fc02654e30168444329ed06e8d668d49eb0a7e03eae7cd1a081e03e4"
+      }
+    },
+    {
+      "id": "PHYSICAL_NEGATIVE_RETRY",
+      "kind": "contract",
+      "schema": "PhysicalOutcomePayload",
+      "valid": false,
+      "expected_error": "SCHEMA",
+      "instance": {
+        "schema_version": "1.0.0",
+        "outcome_id": "peo_synthetic",
+        "stage": "VERIFIED",
+        "terminal_reason": "VERIFIED",
+        "freeze_ref": {
+          "contract_type": "PhysicalExecutionFreezeReceipt",
+          "record_id": "frz_synthetic",
+          "content_hash": "1c591ebde4fe2c2691d111a236b5e9f83db6c12a3b7cf53fcfdb0a5b4e087dfc"
+        },
+        "approval_ref": {
+          "contract_type": "PhysicalTrialApproval",
+          "record_id": "apr_synthetic",
+          "content_hash": "039e0893a61434d70d15d1817cf638125e790e85c610a9de5d0b4b7472c23906"
+        },
+        "lease_ref": {
+          "contract_type": "ArmedTrialLease",
+          "record_id": "lea_synthetic",
+          "content_hash": "4e3851e95ede8b815c4fd4ba38099f332e2ddbab79edf3e5b9596e17fad76270"
+        },
+        "verification_ref": {
+          "contract_type": "IndependentVerificationResult",
+          "record_id": "ivr_synthetic",
+          "content_hash": "4bad9420ef58eb79346943ff099291483a6d4d9df10f6af8b97551ec54ac0419"
+        },
+        "safety_ref": {
+          "contract_type": "SafetyOutcome",
+          "record_id": "saf_synthetic",
+          "content_hash": "e4b0068744c2834ee4b0c65bffab21d1c05c25af17e894bb7223477813f2ac58"
+        },
+        "available_evidence_refs": [],
+        "incident_refs": [],
+        "timing_ms": {
+          "preparation": null,
+          "simulation": null,
+          "preflight": null,
+          "approval_wait": null,
+          "execution": null,
+          "verification": null,
+          "observed_terminal": null
+        },
+        "measurement_quality": "UNKNOWN",
+        "missing_reason": "phases unperformed or unmeasured",
+        "horizon_ms": 100,
+        "capped_ttvs_ms": 70,
+        "verification_status": "PASS",
+        "verified_pass_ms": 70,
+        "retry_requests_observed": -1,
+        "physical_reexecutions_observed": 0,
+        "configuration_match": null,
+        "content_hash": "a0c4db6b79ed498f3abf758c2a868b2f1f21bea22decc1075d0cbf8384ccb23f"
+      }
+    },
+    {
+      "id": "EVENT_VALID",
+      "kind": "contract",
+      "schema": "EventPayload",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "event_name": "compute.profile.registered",
+        "subject_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "evt_subject",
+          "content_hash": "4d0e565faed8c9e702b57c62f3ef135ba3f04be20d5a5e35474d25e116a02fc3"
+        },
+        "subject_digest": "4d0e565faed8c9e702b57c62f3ef135ba3f04be20d5a5e35474d25e116a02fc3"
+      }
+    },
+    {
+      "id": "EVENT_UNKNOWN",
+      "kind": "contract",
+      "schema": "EventPayload",
+      "valid": false,
+      "expected_error": "EVENT_UNKNOWN",
+      "instance": {
+        "schema_version": "1.0.0",
+        "event_name": "harness_optimization.completed",
+        "subject_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "evt_subject",
+          "content_hash": "4d0e565faed8c9e702b57c62f3ef135ba3f04be20d5a5e35474d25e116a02fc3"
+        },
+        "subject_digest": "4d0e565faed8c9e702b57c62f3ef135ba3f04be20d5a5e35474d25e116a02fc3"
+      }
+    },
+    {
+      "id": "EVENT_WRONG_SUBJECT",
+      "kind": "contract",
+      "schema": "EventPayload",
+      "valid": false,
+      "expected_error": "EVENT_SUBJECT",
+      "instance": {
+        "schema_version": "1.0.0",
+        "event_name": "compute.profile.registered",
+        "subject_ref": {
+          "contract_type": "WrongContract",
+          "record_id": "evt_subject",
+          "content_hash": "4d0e565faed8c9e702b57c62f3ef135ba3f04be20d5a5e35474d25e116a02fc3"
+        },
+        "subject_digest": "4d0e565faed8c9e702b57c62f3ef135ba3f04be20d5a5e35474d25e116a02fc3"
+      }
+    },
+    {
+      "id": "LAB_DEFERRED",
+      "kind": "contract",
+      "schema": "LabClosure",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "platform_readiness": "PASS",
+        "research_closure": "DEFERRED",
+        "adapter_promoted": false,
+        "critical_incident_open": false,
+        "accountable_owner": "Synthetic research owner",
+        "reason": "No justified persistent target gap",
+        "dependency_review_ref": {
+          "contract_type": "DependencyReview",
+          "record_id": "dep_synthetic",
+          "content_hash": "42cecc3679bf5ef06ad7fded9bb2157fd3858630714049d73d656857b973b2d6"
+        },
+        "revisit_condition": "New evidence of persistent gap",
+        "human_decision_ref": {
+          "contract_type": "HumanDecision",
+          "record_id": "hmd_synthetic",
+          "content_hash": "3c1887a7d871a14a68a4d0e31b58809f7eee1bef8bcb2df53a4033e6fa4fc1a7"
+        },
+        "content_hash": "897fe125e93dca68ff28078c81bb953bdba138a18349d1de7857cc7df27b4efd"
+      }
+    },
+    {
+      "id": "LAB_NEGATIVE",
+      "kind": "contract",
+      "schema": "LabClosure",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "platform_readiness": "PASS",
+        "research_closure": "FAIL",
+        "adapter_promoted": false,
+        "critical_incident_open": false,
+        "accountable_owner": "Synthetic research owner",
+        "reason": "No justified persistent target gap",
+        "dependency_review_ref": {
+          "contract_type": "DependencyReview",
+          "record_id": "dep_synthetic",
+          "content_hash": "42cecc3679bf5ef06ad7fded9bb2157fd3858630714049d73d656857b973b2d6"
+        },
+        "revisit_condition": "New evidence of persistent gap",
+        "human_decision_ref": {
+          "contract_type": "HumanDecision",
+          "record_id": "hmd_synthetic",
+          "content_hash": "3c1887a7d871a14a68a4d0e31b58809f7eee1bef8bcb2df53a4033e6fa4fc1a7"
+        },
+        "content_hash": "0bf5117ba9f3c8ce9ab6ed2cd78332e8ea3db999a49cb9111eb541b3c281c8d8"
+      }
+    },
+    {
+      "id": "LAB_FAILED_PROMOTION",
+      "kind": "contract",
+      "schema": "LabClosure",
+      "valid": false,
+      "expected_error": "LAB_PROMOTION",
+      "instance": {
+        "schema_version": "1.0.0",
+        "platform_readiness": "PASS",
+        "research_closure": "FAIL",
+        "adapter_promoted": true,
+        "critical_incident_open": false,
+        "accountable_owner": "Synthetic research owner",
+        "reason": "No justified persistent target gap",
+        "dependency_review_ref": {
+          "contract_type": "DependencyReview",
+          "record_id": "dep_synthetic",
+          "content_hash": "42cecc3679bf5ef06ad7fded9bb2157fd3858630714049d73d656857b973b2d6"
+        },
+        "revisit_condition": "New evidence of persistent gap",
+        "human_decision_ref": {
+          "contract_type": "HumanDecision",
+          "record_id": "hmd_synthetic",
+          "content_hash": "3c1887a7d871a14a68a4d0e31b58809f7eee1bef8bcb2df53a4033e6fa4fc1a7"
+        },
+        "content_hash": "bea8821e5e58c33c23f7cf482ccdf5cc9caf2ff3ba93314dcc201a4714622cbf"
+      }
+    },
+    {
+      "id": "LAB_MISSING_REVIEW",
+      "kind": "contract",
+      "schema": "LabClosure",
+      "valid": false,
+      "expected_error": "SCHEMA",
+      "instance": {
+        "schema_version": "1.0.0",
+        "platform_readiness": "PASS",
+        "research_closure": "DEFERRED",
+        "adapter_promoted": false,
+        "critical_incident_open": false,
+        "accountable_owner": "Synthetic research owner",
+        "reason": "No justified persistent target gap",
+        "dependency_review_ref": null,
+        "revisit_condition": "New evidence of persistent gap",
+        "human_decision_ref": {
+          "contract_type": "HumanDecision",
+          "record_id": "hmd_synthetic",
+          "content_hash": "3c1887a7d871a14a68a4d0e31b58809f7eee1bef8bcb2df53a4033e6fa4fc1a7"
+        },
+        "content_hash": "d7c8442c967a0ae735b3df894563e242d3725b16da5835c4e841e6458ccd0e39"
+      }
+    },
+    {
+      "id": "TTVS_PASS",
+      "kind": "metric",
+      "status": "PASS",
+      "pass_ms": 60,
+      "terminal_ms": 60,
+      "horizon_ms": 100,
+      "expected_capped_ms": 60
+    },
+    {
+      "id": "TTVS_EARLY_FAIL",
+      "kind": "metric",
+      "status": "FAIL",
+      "pass_ms": null,
+      "terminal_ms": 1,
+      "horizon_ms": 100,
+      "expected_capped_ms": 100
+    },
+    {
+      "id": "TTVS_INCONCLUSIVE",
+      "kind": "metric",
+      "status": "INCONCLUSIVE",
+      "pass_ms": null,
+      "terminal_ms": 4,
+      "horizon_ms": 100,
+      "expected_capped_ms": 100
+    },
+    {
+      "id": "TTVS_TIMEOUT",
+      "kind": "metric",
+      "status": "TIMEOUT",
+      "pass_ms": null,
+      "terminal_ms": 100,
+      "horizon_ms": 100,
+      "expected_capped_ms": 100
+    },
+    {
+      "id": "TTVS_LATE_PASS",
+      "kind": "metric",
+      "status": "PASS",
+      "pass_ms": 101,
+      "terminal_ms": 101,
+      "horizon_ms": 100,
+      "expected_capped_ms": 100
+    },
+    {
+      "id": "TTVS_UNKNOWN_TIME",
+      "kind": "metric",
+      "status": "PASS",
+      "pass_ms": null,
+      "terminal_ms": null,
+      "horizon_ms": 100,
+      "expected_capped_ms": 100
+    },
+    {
+      "id": "TTVS_QUARANTINED",
+      "kind": "metric",
+      "status": "QUARANTINED",
+      "pass_ms": null,
+      "terminal_ms": 3,
+      "horizon_ms": 100,
+      "expected_capped_ms": 100
+    },
+    {
+      "id": "TTVS_DENIED",
+      "kind": "metric",
+      "status": "DENIED",
+      "pass_ms": null,
+      "terminal_ms": 2,
+      "horizon_ms": 100,
+      "expected_capped_ms": 100
+    },
+    {
+      "id": "DISPATCH_VALID",
+      "kind": "lifecycle",
+      "model": "dispatch",
+      "initial": {
+        "state": "CREATED",
+        "epoch": 7,
+        "expected_epoch": 7,
+        "mode": "EXPLOIT",
+        "idempotency_key": "same",
+        "committed": false,
+        "invocations": 0
+      },
+      "actions": [
+        "COMMIT",
+        "DELIVER"
+      ],
+      "expected_state": "EXECUTED",
+      "expected_rejections": []
+    },
+    {
+      "id": "DISPATCH_DUPLICATE",
+      "kind": "lifecycle",
+      "model": "dispatch",
+      "initial": {
+        "state": "CREATED",
+        "epoch": 7,
+        "expected_epoch": 7,
+        "mode": "EXPLOIT",
+        "idempotency_key": "same",
+        "committed": false,
+        "invocations": 0
+      },
+      "actions": [
+        "COMMIT",
+        "DELIVER",
+        "DELIVER"
+      ],
+      "expected_state": "EXECUTED",
+      "expected_rejections": [
+        "DUPLICATE"
+      ]
+    },
+    {
+      "id": "DISPATCH_BEFORE_COMMIT",
+      "kind": "lifecycle",
+      "model": "dispatch",
+      "initial": {
+        "state": "CREATED",
+        "epoch": 7,
+        "expected_epoch": 7,
+        "mode": "EXPLOIT",
+        "idempotency_key": "same",
+        "committed": false,
+        "invocations": 0
+      },
+      "actions": [
+        "DELIVER"
+      ],
+      "expected_state": "CREATED",
+      "expected_rejections": [
+        "NOT_COMMITTED"
+      ]
+    },
+    {
+      "id": "DISPATCH_STALE_EPOCH",
+      "kind": "lifecycle",
+      "model": "dispatch",
+      "initial": {
+        "state": "CREATED",
+        "epoch": 7,
+        "expected_epoch": 7,
+        "mode": "EXPLOIT",
+        "idempotency_key": "same",
+        "committed": false,
+        "invocations": 0
+      },
+      "actions": [
+        "COMMIT",
+        "MUTATE",
+        "DELIVER"
+      ],
+      "expected_state": "INVALIDATED",
+      "expected_rejections": [
+        "STALE_EPOCH"
+      ]
+    },
+    {
+      "id": "DISPATCH_SHADOW",
+      "kind": "lifecycle",
+      "model": "dispatch",
+      "initial": {
+        "state": "CREATED",
+        "epoch": 7,
+        "expected_epoch": 7,
+        "mode": "SHADOW",
+        "idempotency_key": "same",
+        "committed": false,
+        "invocations": 0
+      },
+      "actions": [
+        "COMMIT",
+        "DELIVER"
+      ],
+      "expected_state": "CREATED",
+      "expected_rejections": [
+        "SHADOW",
+        "NOT_COMMITTED"
+      ]
+    },
+    {
+      "id": "DISPATCH_CRASH_REDELIVERY",
+      "kind": "lifecycle",
+      "model": "dispatch",
+      "initial": {
+        "state": "CREATED",
+        "epoch": 7,
+        "expected_epoch": 7,
+        "mode": "EXPLOIT",
+        "idempotency_key": "same",
+        "committed": false,
+        "invocations": 0
+      },
+      "actions": [
+        "COMMIT",
+        "DELIVER_UNKNOWN",
+        "DELIVER"
+      ],
+      "expected_state": "RECONCILE",
+      "expected_rejections": [
+        "UNCERTAIN_INVOCATION"
+      ]
+    },
+    {
+      "id": "DISPATCH_CHANGED_KEY_PAYLOAD",
+      "kind": "lifecycle",
+      "model": "dispatch",
+      "initial": {
+        "state": "CREATED",
+        "epoch": 7,
+        "expected_epoch": 7,
+        "mode": "EXPLOIT",
+        "idempotency_key": "same",
+        "committed": false,
+        "invocations": 0
+      },
+      "actions": [
+        "COMMIT",
+        "REUSE_KEY_CHANGED_PAYLOAD"
+      ],
+      "expected_state": "COMMITTED",
+      "expected_rejections": [
+        "IDEMPOTENCY_CONFLICT"
+      ]
+    },
+    {
+      "id": "RECOVERY_CONFLICT",
+      "kind": "lifecycle",
+      "model": "recovery",
+      "initial": {
+        "state": "FAILED",
+        "conflict": true,
+        "human_resolution": false,
+        "independent_pass": false,
+        "physical": false,
+        "unknown": false
+      },
+      "actions": [
+        "CLASSIFY",
+        "EVIDENCE",
+        "DISPATCH"
+      ],
+      "expected_state": "PAUSED",
+      "expected_rejections": [
+        "PAUSED"
+      ]
+    },
+    {
+      "id": "RECOVERY_RESOLUTION",
+      "kind": "lifecycle",
+      "model": "recovery",
+      "initial": {
+        "state": "FAILED",
+        "conflict": true,
+        "human_resolution": false,
+        "independent_pass": false,
+        "physical": false,
+        "unknown": false
+      },
+      "actions": [
+        "CLASSIFY",
+        "EVIDENCE",
+        "HUMAN_RESOLVE",
+        "INDEPENDENT_PASS",
+        "ACCEPT"
+      ],
+      "expected_state": "SUCCEEDED",
+      "expected_rejections": []
+    },
+    {
+      "id": "RECOVERY_HUMAN_NOT_PROOF",
+      "kind": "lifecycle",
+      "model": "recovery",
+      "initial": {
+        "state": "FAILED",
+        "conflict": true,
+        "human_resolution": false,
+        "independent_pass": false,
+        "physical": false,
+        "unknown": false
+      },
+      "actions": [
+        "CLASSIFY",
+        "HUMAN_RESOLVE",
+        "ACCEPT"
+      ],
+      "expected_state": "PAUSED",
+      "expected_rejections": [
+        "NO_INDEPENDENT_PASS"
+      ]
+    },
+    {
+      "id": "RECOVERY_UNKNOWN",
+      "kind": "lifecycle",
+      "model": "recovery",
+      "initial": {
+        "state": "FAILED",
+        "conflict": false,
+        "human_resolution": false,
+        "independent_pass": false,
+        "physical": false,
+        "unknown": true
+      },
+      "actions": [
+        "CLASSIFY",
+        "DISPATCH"
+      ],
+      "expected_state": "PAUSED",
+      "expected_rejections": [
+        "PAUSED"
+      ]
+    },
+    {
+      "id": "RECOVERY_PHYSICAL",
+      "kind": "lifecycle",
+      "model": "recovery",
+      "initial": {
+        "state": "FAILED",
+        "conflict": true,
+        "human_resolution": false,
+        "independent_pass": false,
+        "physical": true,
+        "unknown": false
+      },
+      "actions": [
+        "CLASSIFY",
+        "DISPATCH"
+      ],
+      "expected_state": "STOPPED",
+      "expected_rejections": [
+        "PHYSICAL_RETRY"
+      ]
+    },
+    {
+      "id": "ARM_VALID",
+      "kind": "lifecycle",
+      "model": "arm",
+      "initial": {
+        "state": "APPROVED",
+        "epoch": 3,
+        "expected_epoch": 3,
+        "consumed": false,
+        "arms": 0
+      },
+      "actions": [
+        "ARM"
+      ],
+      "expected_state": "ARMED",
+      "expected_rejections": []
+    },
+    {
+      "id": "ARM_DUPLICATE",
+      "kind": "lifecycle",
+      "model": "arm",
+      "initial": {
+        "state": "APPROVED",
+        "epoch": 3,
+        "expected_epoch": 3,
+        "consumed": false,
+        "arms": 0
+      },
+      "actions": [
+        "ARM",
+        "ARM"
+      ],
+      "expected_state": "ARMED",
+      "expected_rejections": [
+        "CONSUMED"
+      ]
+    },
+    {
+      "id": "ARM_STALE_EPOCH",
+      "kind": "lifecycle",
+      "model": "arm",
+      "initial": {
+        "state": "APPROVED",
+        "epoch": 4,
+        "expected_epoch": 3,
+        "consumed": false,
+        "arms": 0
+      },
+      "actions": [
+        "ARM"
+      ],
+      "expected_state": "INVALIDATED",
+      "expected_rejections": [
+        "STALE_EPOCH"
+      ]
+    },
+    {
+      "id": "ARM_MUTATION_FIRST",
+      "kind": "lifecycle",
+      "model": "arm",
+      "initial": {
+        "state": "APPROVED",
+        "epoch": 3,
+        "expected_epoch": 3,
+        "consumed": false,
+        "arms": 0
+      },
+      "actions": [
+        "MUTATE",
+        "ARM"
+      ],
+      "expected_state": "INVALIDATED",
+      "expected_rejections": [
+        "STALE_EPOCH"
+      ]
+    },
+    {
+      "id": "ARM_ARMING_FIRST",
+      "kind": "lifecycle",
+      "model": "arm",
+      "initial": {
+        "state": "APPROVED",
+        "epoch": 3,
+        "expected_epoch": 3,
+        "consumed": false,
+        "arms": 0
+      },
+      "actions": [
+        "ARM",
+        "MUTATE"
+      ],
+      "expected_state": "STOP_REQUIRED",
+      "expected_rejections": [
+        "EXISTING_SAFETY_PATH"
+      ]
+    },
+    {
+      "id": "COMPUTE_CANDIDATE_HASH_MISMATCH",
+      "kind": "contract",
+      "schema": "ComputeDecisionPayload",
+      "valid": false,
+      "expected_error": "CANDIDATE_SET_HASH",
+      "instance": {
+        "schema_version": "1.0.0",
+        "decision_id": "cmp_synthetic",
+        "mode": "EXPLOIT",
+        "node_ref": {
+          "contract_type": "NodeContract",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "vsp_synthetic",
+          "content_hash": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47"
+        },
+        "candidates": [
+          {
+            "contract_type": "ComputeProfile",
+            "record_id": "cpf_synthetic",
+            "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+          }
+        ],
+        "candidate_set_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+        "selected_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "fallback_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "abstention_reason": null,
+        "policy_artifact_ref": {
+          "contract_type": "PolicyArtifact",
+          "record_id": "pol_synthetic",
+          "content_hash": "79acf7b16af74a2e107d0cb11720df67610d3417945a30f6d8cf09e0ad0131ab"
+        },
+        "selection_probability": 1,
+        "content_hash": "c24da06ebdbc0dc6a0a0225289d44c6c8e2c883a045f794bde3b6956fd7817e8"
+      }
+    },
+    {
+      "id": "COMPUTE_WRONG_REFERENCE_TYPE",
+      "kind": "contract",
+      "schema": "ComputeDecisionPayload",
+      "valid": false,
+      "expected_error": "SCHEMA",
+      "instance": {
+        "schema_version": "1.0.0",
+        "decision_id": "cmp_synthetic",
+        "mode": "EXPLOIT",
+        "node_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "nod_synthetic",
+          "content_hash": "cd86848c855bd5f3e03c616f2e3edcd1363c9bb3f69089c331ab846a0be2d824"
+        },
+        "verification_spec_ref": {
+          "contract_type": "VerificationSpec",
+          "record_id": "vsp_synthetic",
+          "content_hash": "6c7cc96e8eb61ef5133152274cbb20c0ecd00014c503ff4848959949ea52fe47"
+        },
+        "candidates": [
+          {
+            "contract_type": "ComputeProfile",
+            "record_id": "cpf_synthetic",
+            "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+          }
+        ],
+        "candidate_set_hash": "90a5ff79d8aa22243d75307d8d9cc7f5a282d704cf0a88f15ec808b4e574fd31",
+        "selected_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "fallback_ref": {
+          "contract_type": "ComputeProfile",
+          "record_id": "cpf_synthetic",
+          "content_hash": "d5e651a6761ac04dae69046788d6153d8e316b81bec36415a42eb177891ee3ea"
+        },
+        "abstention_reason": null,
+        "policy_artifact_ref": {
+          "contract_type": "PolicyArtifact",
+          "record_id": "pol_synthetic",
+          "content_hash": "79acf7b16af74a2e107d0cb11720df67610d3417945a30f6d8cf09e0ad0131ab"
+        },
+        "selection_probability": 1,
+        "content_hash": "477250cc0bc62a6c1ebcdcb95dd30616a76e5299fee60efbfa165a171653cb3a"
+      }
+    },
+    {
+      "id": "PHYSICAL_FALSE_COMPLETE_TIMING",
+      "kind": "contract",
+      "schema": "PhysicalOutcomePayload",
+      "valid": false,
+      "expected_error": "PHYSICAL_MISSING_TIMING",
+      "instance": {
+        "schema_version": "1.0.0",
+        "outcome_id": "peo_synthetic",
+        "stage": "PRE_FREEZE",
+        "terminal_reason": "PREFLIGHT_REJECTED",
+        "freeze_ref": null,
+        "approval_ref": null,
+        "lease_ref": null,
+        "verification_ref": null,
+        "safety_ref": null,
+        "available_evidence_refs": [],
+        "incident_refs": [],
+        "timing_ms": {
+          "preparation": null,
+          "simulation": null,
+          "preflight": null,
+          "approval_wait": null,
+          "execution": null,
+          "verification": null,
+          "observed_terminal": null
+        },
+        "measurement_quality": "COMPLETE",
+        "missing_reason": "phases unperformed or unmeasured",
+        "horizon_ms": 100,
+        "capped_ttvs_ms": 100,
+        "verification_status": "NOT_AVAILABLE",
+        "verified_pass_ms": null,
+        "retry_requests_observed": 0,
+        "physical_reexecutions_observed": 0,
+        "configuration_match": null,
+        "content_hash": "e62a53227e46791bed77ea3f49d7d80aeb5c9f2badeb26c8c851d52dd5f68ccd"
+      }
+    },
+    {
+      "id": "PHYSICAL_WRONG_STAGE_REASON",
+      "kind": "contract",
+      "schema": "PhysicalOutcomePayload",
+      "valid": false,
+      "expected_error": "PHYSICAL_STAGE_REASON",
+      "instance": {
+        "schema_version": "1.0.0",
+        "outcome_id": "peo_synthetic",
+        "stage": "FROZEN_UNAPPROVED",
+        "terminal_reason": "LEASE_EXPIRED",
+        "freeze_ref": {
+          "contract_type": "PhysicalExecutionFreezeReceipt",
+          "record_id": "frz_synthetic",
+          "content_hash": "1c591ebde4fe2c2691d111a236b5e9f83db6c12a3b7cf53fcfdb0a5b4e087dfc"
+        },
+        "approval_ref": null,
+        "lease_ref": null,
+        "verification_ref": null,
+        "safety_ref": null,
+        "available_evidence_refs": [],
+        "incident_refs": [],
+        "timing_ms": {
+          "preparation": null,
+          "simulation": null,
+          "preflight": null,
+          "approval_wait": null,
+          "execution": null,
+          "verification": null,
+          "observed_terminal": null
+        },
+        "measurement_quality": "UNKNOWN",
+        "missing_reason": "phases unperformed or unmeasured",
+        "horizon_ms": 100,
+        "capped_ttvs_ms": 100,
+        "verification_status": "NOT_AVAILABLE",
+        "verified_pass_ms": null,
+        "retry_requests_observed": 0,
+        "physical_reexecutions_observed": 0,
+        "configuration_match": null,
+        "content_hash": "a2f77eea7bf409871c56b0a6d3cc90680a05e4aa142b9e1bdca34992ef5d831d"
+      }
+    },
+    {
+      "id": "PHYSICAL_FAILURE_FAST_METRIC",
+      "kind": "contract",
+      "schema": "PhysicalOutcomePayload",
+      "valid": false,
+      "expected_error": "PHYSICAL_METRIC",
+      "instance": {
+        "schema_version": "1.0.0",
+        "outcome_id": "peo_synthetic",
+        "stage": "PRE_FREEZE",
+        "terminal_reason": "PREFLIGHT_REJECTED",
+        "freeze_ref": null,
+        "approval_ref": null,
+        "lease_ref": null,
+        "verification_ref": null,
+        "safety_ref": null,
+        "available_evidence_refs": [],
+        "incident_refs": [],
+        "timing_ms": {
+          "preparation": null,
+          "simulation": null,
+          "preflight": null,
+          "approval_wait": null,
+          "execution": null,
+          "verification": null,
+          "observed_terminal": null
+        },
+        "measurement_quality": "UNKNOWN",
+        "missing_reason": "phases unperformed or unmeasured",
+        "horizon_ms": 100,
+        "capped_ttvs_ms": 1,
+        "verification_status": "NOT_AVAILABLE",
+        "verified_pass_ms": null,
+        "retry_requests_observed": 0,
+        "physical_reexecutions_observed": 0,
+        "configuration_match": null,
+        "content_hash": "f26192fe0f38458999252a8decc4631f21c8ec0be2b61555fc48422ee329e4cb"
+      }
+    },
+    {
+      "id": "DISPATCH_EXPIRED",
+      "kind": "lifecycle",
+      "model": "dispatch",
+      "initial": {
+        "state": "CREATED",
+        "epoch": 7,
+        "expected_epoch": 7,
+        "mode": "EXPLOIT",
+        "idempotency_key": "same",
+        "committed": false,
+        "invocations": 0,
+        "now_ms": 1001,
+        "expires_at_ms": 1000
+      },
+      "actions": [
+        "COMMIT",
+        "DELIVER"
+      ],
+      "expected_state": "INVALIDATED",
+      "expected_rejections": [
+        "EXPIRED"
+      ]
+    },
+    {
+      "id": "DISPATCH_SAME_KEY_REPLAY",
+      "kind": "lifecycle",
+      "model": "dispatch",
+      "initial": {
+        "state": "CREATED",
+        "epoch": 7,
+        "expected_epoch": 7,
+        "mode": "EXPLOIT",
+        "idempotency_key": "same",
+        "committed": false,
+        "invocations": 0
+      },
+      "actions": [
+        "COMMIT",
+        "COMMIT",
+        "DELIVER"
+      ],
+      "expected_state": "EXECUTED",
+      "expected_rejections": []
+    },
+    {
+      "id": "DISPATCH_CRASH_BEFORE_COMMIT",
+      "kind": "lifecycle",
+      "model": "dispatch",
+      "initial": {
+        "state": "CREATED",
+        "epoch": 7,
+        "expected_epoch": 7,
+        "mode": "EXPLOIT",
+        "idempotency_key": "same",
+        "committed": false,
+        "invocations": 0
+      },
+      "actions": [
+        "CRASH_BEFORE_COMMIT",
+        "DELIVER"
+      ],
+      "expected_state": "CREATED",
+      "expected_rejections": [
+        "NOT_COMMITTED"
+      ]
+    },
+    {
+      "id": "RECOVERY_SAFETY",
+      "kind": "lifecycle",
+      "model": "recovery",
+      "initial": {
+        "state": "FAILED",
+        "conflict": true,
+        "human_resolution": false,
+        "independent_pass": false,
+        "physical": false,
+        "unknown": false,
+        "safety": true
+      },
+      "actions": [
+        "CLASSIFY",
+        "DISPATCH"
+      ],
+      "expected_state": "STOPPED",
+      "expected_rejections": [
+        "STOPPED"
+      ]
+    },
+    {
+      "id": "RECOVERY_AUTHORITY",
+      "kind": "lifecycle",
+      "model": "recovery",
+      "initial": {
+        "state": "FAILED",
+        "conflict": true,
+        "human_resolution": false,
+        "independent_pass": false,
+        "physical": false,
+        "unknown": false,
+        "authority": true
+      },
+      "actions": [
+        "CLASSIFY",
+        "DISPATCH"
+      ],
+      "expected_state": "STOPPED",
+      "expected_rejections": [
+        "STOPPED"
+      ]
+    },
+    {
+      "id": "RECOVERY_QUARANTINE",
+      "kind": "lifecycle",
+      "model": "recovery",
+      "initial": {
+        "state": "FAILED",
+        "conflict": true,
+        "human_resolution": false,
+        "independent_pass": false,
+        "physical": false,
+        "unknown": false,
+        "quarantined": true
+      },
+      "actions": [
+        "CLASSIFY",
+        "DISPATCH"
+      ],
+      "expected_state": "STOPPED",
+      "expected_rejections": [
+        "STOPPED"
+      ]
+    },
+    {
+      "id": "ARM_EXPIRED_APPROVAL",
+      "kind": "lifecycle",
+      "model": "arm",
+      "initial": {
+        "state": "APPROVED",
+        "epoch": 3,
+        "expected_epoch": 3,
+        "consumed": false,
+        "arms": 0,
+        "now_ms": 1001,
+        "expires_at_ms": 1000
+      },
+      "actions": [
+        "ARM"
+      ],
+      "expected_state": "INVALIDATED",
+      "expected_rejections": [
+        "EXPIRED"
+      ]
+    },
+    {
+      "id": "ARM_INVALID_SIGNATURE",
+      "kind": "lifecycle",
+      "model": "arm",
+      "initial": {
+        "state": "APPROVED",
+        "epoch": 3,
+        "expected_epoch": 3,
+        "consumed": false,
+        "arms": 0,
+        "signature_valid": false
+      },
+      "actions": [
+        "ARM"
+      ],
+      "expected_state": "INVALIDATED",
+      "expected_rejections": [
+        "INVALID_SIGNATURE"
+      ]
+    },
+    {
+      "id": "ASSEMBLY_VALID",
+      "kind": "contract",
+      "schema": "EffectiveComputeConfiguration",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "execution_configuration_ref": {
+          "contract_type": "ExecutionConfiguration",
+          "record_id": "exc_synthetic",
+          "content_hash": "46cce3ad2de0e7bfb00539e4f2cef3a19c17ff1f90cd4cf8ba4d4ffa6b2dabd0"
+        },
+        "runtime_ref": {
+          "contract_type": "Runtime",
+          "record_id": "rtm_synthetic",
+          "content_hash": "c1b5b1053ba65427c7f6fd9dcdfd22d30758a307883d41b3973086dbd2e1375e"
+        },
+        "model_ref": {
+          "contract_type": "Model",
+          "record_id": "mdl_synthetic",
+          "content_hash": "60d9021d1fddf4655443d36202d460e2f8cf2ef4a8e63510b51642a2bac713ba"
+        },
+        "connection_handle_ref": {
+          "contract_type": "ConnectionRef",
+          "record_id": "con_opaque",
+          "content_hash": "5e7ab5b6b2d579a1c8ea7363f0e061f28bf70fd6f30fa4dfd61445de730a7563"
+        },
+        "context_policy_ref": {
+          "contract_type": "ContextPolicy",
+          "record_id": "ctx_synthetic",
+          "content_hash": "3d99a3d1e34caf6b3bff92ec08c527aaed816c6a7d776bd79864ac89dbd12b8d"
+        },
+        "tool_refs": [
+          {
+            "contract_type": "Tool",
+            "record_id": "tool_synthetic",
+            "content_hash": "5faa9c0299b988ab971c56276b9be82f63a1d473b7d9df6cac132c448ccb6ae2"
+          }
+        ],
+        "harness_ref": null,
+        "retry_policy_ref": {
+          "contract_type": "PolicyRef",
+          "record_id": "retry_synthetic",
+          "content_hash": "3e9700ed1593f0d27dc39df9efbca7f780866adf32673b54324113855fd1c15c"
+        },
+        "escalation_policy_ref": {
+          "contract_type": "PolicyRef",
+          "record_id": "esc_synthetic",
+          "content_hash": "fe5e4137e2e392febfb5accb4db359bacb62185ff2f6b44d4fea35c48292a66d"
+        },
+        "adapter_ref": {
+          "contract_type": "ComputeExecutorAdapterManifest",
+          "record_id": "cma_synthetic",
+          "content_hash": "28abb2a8636bacf17a0d03407f9388262340aa3654d97fe5e42f80c0790e8c8a"
+        },
+        "reasoning_limits": {
+          "max_output_tokens": 100,
+          "max_steps": 5,
+          "max_wall_time_ms": 100
+        },
+        "content_hash": "2f043218144dd9922eaffcefc02d7e4da43e9187734399cde1479433be8a5705"
+      },
+      "assembly_authority": {
+        "caps": {
+          "max_output_tokens": 100,
+          "max_steps": 5,
+          "max_wall_time_ms": 100
+        },
+        "allowed_tool_hashes": [
+          "5faa9c0299b988ab971c56276b9be82f63a1d473b7d9df6cac132c448ccb6ae2"
+        ],
+        "supported_fields": [
+          "schema_version",
+          "execution_configuration_ref",
+          "runtime_ref",
+          "model_ref",
+          "connection_handle_ref",
+          "context_policy_ref",
+          "tool_refs",
+          "harness_ref",
+          "retry_policy_ref",
+          "escalation_policy_ref",
+          "adapter_ref",
+          "reasoning_limits"
+        ]
+      }
+    },
+    {
+      "id": "ASSEMBLY_RELAXED_CAP",
+      "kind": "contract",
+      "schema": "EffectiveComputeConfiguration",
+      "valid": false,
+      "expected_error": "ASSEMBLY_LIMIT",
+      "instance": {
+        "schema_version": "1.0.0",
+        "execution_configuration_ref": {
+          "contract_type": "ExecutionConfiguration",
+          "record_id": "exc_synthetic",
+          "content_hash": "46cce3ad2de0e7bfb00539e4f2cef3a19c17ff1f90cd4cf8ba4d4ffa6b2dabd0"
+        },
+        "runtime_ref": {
+          "contract_type": "Runtime",
+          "record_id": "rtm_synthetic",
+          "content_hash": "c1b5b1053ba65427c7f6fd9dcdfd22d30758a307883d41b3973086dbd2e1375e"
+        },
+        "model_ref": {
+          "contract_type": "Model",
+          "record_id": "mdl_synthetic",
+          "content_hash": "60d9021d1fddf4655443d36202d460e2f8cf2ef4a8e63510b51642a2bac713ba"
+        },
+        "connection_handle_ref": {
+          "contract_type": "ConnectionRef",
+          "record_id": "con_opaque",
+          "content_hash": "5e7ab5b6b2d579a1c8ea7363f0e061f28bf70fd6f30fa4dfd61445de730a7563"
+        },
+        "context_policy_ref": {
+          "contract_type": "ContextPolicy",
+          "record_id": "ctx_synthetic",
+          "content_hash": "3d99a3d1e34caf6b3bff92ec08c527aaed816c6a7d776bd79864ac89dbd12b8d"
+        },
+        "tool_refs": [
+          {
+            "contract_type": "Tool",
+            "record_id": "tool_synthetic",
+            "content_hash": "5faa9c0299b988ab971c56276b9be82f63a1d473b7d9df6cac132c448ccb6ae2"
+          }
+        ],
+        "harness_ref": null,
+        "retry_policy_ref": {
+          "contract_type": "PolicyRef",
+          "record_id": "retry_synthetic",
+          "content_hash": "3e9700ed1593f0d27dc39df9efbca7f780866adf32673b54324113855fd1c15c"
+        },
+        "escalation_policy_ref": {
+          "contract_type": "PolicyRef",
+          "record_id": "esc_synthetic",
+          "content_hash": "fe5e4137e2e392febfb5accb4db359bacb62185ff2f6b44d4fea35c48292a66d"
+        },
+        "adapter_ref": {
+          "contract_type": "ComputeExecutorAdapterManifest",
+          "record_id": "cma_synthetic",
+          "content_hash": "28abb2a8636bacf17a0d03407f9388262340aa3654d97fe5e42f80c0790e8c8a"
+        },
+        "reasoning_limits": {
+          "max_output_tokens": 100,
+          "max_steps": 6,
+          "max_wall_time_ms": 100
+        },
+        "content_hash": "087d169c754f468de3150715ff57305714c043e28cec478a0f3f5eaeffce9b8e"
+      },
+      "assembly_authority": {
+        "caps": {
+          "max_output_tokens": 100,
+          "max_steps": 5,
+          "max_wall_time_ms": 100
+        },
+        "allowed_tool_hashes": [
+          "5faa9c0299b988ab971c56276b9be82f63a1d473b7d9df6cac132c448ccb6ae2"
+        ],
+        "supported_fields": [
+          "schema_version",
+          "execution_configuration_ref",
+          "runtime_ref",
+          "model_ref",
+          "connection_handle_ref",
+          "context_policy_ref",
+          "tool_refs",
+          "harness_ref",
+          "retry_policy_ref",
+          "escalation_policy_ref",
+          "adapter_ref",
+          "reasoning_limits"
+        ]
+      }
+    },
+    {
+      "id": "ASSEMBLY_UNAPPROVED_TOOL",
+      "kind": "contract",
+      "schema": "EffectiveComputeConfiguration",
+      "valid": false,
+      "expected_error": "ASSEMBLY_TOOL",
+      "instance": {
+        "schema_version": "1.0.0",
+        "execution_configuration_ref": {
+          "contract_type": "ExecutionConfiguration",
+          "record_id": "exc_synthetic",
+          "content_hash": "46cce3ad2de0e7bfb00539e4f2cef3a19c17ff1f90cd4cf8ba4d4ffa6b2dabd0"
+        },
+        "runtime_ref": {
+          "contract_type": "Runtime",
+          "record_id": "rtm_synthetic",
+          "content_hash": "c1b5b1053ba65427c7f6fd9dcdfd22d30758a307883d41b3973086dbd2e1375e"
+        },
+        "model_ref": {
+          "contract_type": "Model",
+          "record_id": "mdl_synthetic",
+          "content_hash": "60d9021d1fddf4655443d36202d460e2f8cf2ef4a8e63510b51642a2bac713ba"
+        },
+        "connection_handle_ref": {
+          "contract_type": "ConnectionRef",
+          "record_id": "con_opaque",
+          "content_hash": "5e7ab5b6b2d579a1c8ea7363f0e061f28bf70fd6f30fa4dfd61445de730a7563"
+        },
+        "context_policy_ref": {
+          "contract_type": "ContextPolicy",
+          "record_id": "ctx_synthetic",
+          "content_hash": "3d99a3d1e34caf6b3bff92ec08c527aaed816c6a7d776bd79864ac89dbd12b8d"
+        },
+        "tool_refs": [
+          {
+            "contract_type": "Tool",
+            "record_id": "tool_unapproved",
+            "content_hash": "d370c58323dc0c52942c20b5b1d82d904ee0e4e5502d454f71959d633c5f8087"
+          }
+        ],
+        "harness_ref": null,
+        "retry_policy_ref": {
+          "contract_type": "PolicyRef",
+          "record_id": "retry_synthetic",
+          "content_hash": "3e9700ed1593f0d27dc39df9efbca7f780866adf32673b54324113855fd1c15c"
+        },
+        "escalation_policy_ref": {
+          "contract_type": "PolicyRef",
+          "record_id": "esc_synthetic",
+          "content_hash": "fe5e4137e2e392febfb5accb4db359bacb62185ff2f6b44d4fea35c48292a66d"
+        },
+        "adapter_ref": {
+          "contract_type": "ComputeExecutorAdapterManifest",
+          "record_id": "cma_synthetic",
+          "content_hash": "28abb2a8636bacf17a0d03407f9388262340aa3654d97fe5e42f80c0790e8c8a"
+        },
+        "reasoning_limits": {
+          "max_output_tokens": 100,
+          "max_steps": 5,
+          "max_wall_time_ms": 100
+        },
+        "content_hash": "6bd6a988ca3770c45bab83aa5092de88943f74889b5470b6b21c72560c3ea7fa"
+      },
+      "assembly_authority": {
+        "caps": {
+          "max_output_tokens": 100,
+          "max_steps": 5,
+          "max_wall_time_ms": 100
+        },
+        "allowed_tool_hashes": [
+          "5faa9c0299b988ab971c56276b9be82f63a1d473b7d9df6cac132c448ccb6ae2"
+        ],
+        "supported_fields": [
+          "schema_version",
+          "execution_configuration_ref",
+          "runtime_ref",
+          "model_ref",
+          "connection_handle_ref",
+          "context_policy_ref",
+          "tool_refs",
+          "harness_ref",
+          "retry_policy_ref",
+          "escalation_policy_ref",
+          "adapter_ref",
+          "reasoning_limits"
+        ]
+      }
+    },
+    {
+      "id": "ASSEMBLY_IGNORED_FIELD",
+      "kind": "contract",
+      "schema": "EffectiveComputeConfiguration",
+      "valid": false,
+      "expected_error": "ASSEMBLY_ADAPTER_FIELD",
+      "instance": {
+        "schema_version": "1.0.0",
+        "execution_configuration_ref": {
+          "contract_type": "ExecutionConfiguration",
+          "record_id": "exc_synthetic",
+          "content_hash": "46cce3ad2de0e7bfb00539e4f2cef3a19c17ff1f90cd4cf8ba4d4ffa6b2dabd0"
+        },
+        "runtime_ref": {
+          "contract_type": "Runtime",
+          "record_id": "rtm_synthetic",
+          "content_hash": "c1b5b1053ba65427c7f6fd9dcdfd22d30758a307883d41b3973086dbd2e1375e"
+        },
+        "model_ref": {
+          "contract_type": "Model",
+          "record_id": "mdl_synthetic",
+          "content_hash": "60d9021d1fddf4655443d36202d460e2f8cf2ef4a8e63510b51642a2bac713ba"
+        },
+        "connection_handle_ref": {
+          "contract_type": "ConnectionRef",
+          "record_id": "con_opaque",
+          "content_hash": "5e7ab5b6b2d579a1c8ea7363f0e061f28bf70fd6f30fa4dfd61445de730a7563"
+        },
+        "context_policy_ref": {
+          "contract_type": "ContextPolicy",
+          "record_id": "ctx_synthetic",
+          "content_hash": "3d99a3d1e34caf6b3bff92ec08c527aaed816c6a7d776bd79864ac89dbd12b8d"
+        },
+        "tool_refs": [
+          {
+            "contract_type": "Tool",
+            "record_id": "tool_synthetic",
+            "content_hash": "5faa9c0299b988ab971c56276b9be82f63a1d473b7d9df6cac132c448ccb6ae2"
+          }
+        ],
+        "harness_ref": null,
+        "retry_policy_ref": {
+          "contract_type": "PolicyRef",
+          "record_id": "retry_synthetic",
+          "content_hash": "3e9700ed1593f0d27dc39df9efbca7f780866adf32673b54324113855fd1c15c"
+        },
+        "escalation_policy_ref": {
+          "contract_type": "PolicyRef",
+          "record_id": "esc_synthetic",
+          "content_hash": "fe5e4137e2e392febfb5accb4db359bacb62185ff2f6b44d4fea35c48292a66d"
+        },
+        "adapter_ref": {
+          "contract_type": "ComputeExecutorAdapterManifest",
+          "record_id": "cma_synthetic",
+          "content_hash": "28abb2a8636bacf17a0d03407f9388262340aa3654d97fe5e42f80c0790e8c8a"
+        },
+        "reasoning_limits": {
+          "max_output_tokens": 100,
+          "max_steps": 5,
+          "max_wall_time_ms": 100
+        },
+        "content_hash": "2f043218144dd9922eaffcefc02d7e4da43e9187734399cde1479433be8a5705"
+      },
+      "assembly_authority": {
+        "caps": {
+          "max_output_tokens": 100,
+          "max_steps": 5,
+          "max_wall_time_ms": 100
+        },
+        "allowed_tool_hashes": [
+          "5faa9c0299b988ab971c56276b9be82f63a1d473b7d9df6cac132c448ccb6ae2"
+        ],
+        "supported_fields": [
+          "schema_version",
+          "execution_configuration_ref",
+          "runtime_ref",
+          "model_ref",
+          "connection_handle_ref",
+          "tool_refs",
+          "harness_ref",
+          "retry_policy_ref",
+          "escalation_policy_ref",
+          "adapter_ref",
+          "reasoning_limits"
+        ]
+      }
+    },
+    {
+      "id": "ADAPTER_MANIFEST_VALID",
+      "kind": "contract",
+      "schema": "ComputeExecutorAdapterManifest",
+      "valid": true,
+      "expected_error": null,
+      "instance": {
+        "schema_version": "1.0.0",
+        "adapter_id": "cma_synthetic",
+        "package_digest": "daa40e7154d5aa433c368f0c87c674cb6fc0916c41505ed7da836bcb5d03d14a",
+        "supported_profile_schema_versions": [
+          "1.0.0"
+        ],
+        "supported_fields": [
+          "schema_version",
+          "execution_configuration_ref",
+          "runtime_ref",
+          "model_ref",
+          "connection_handle_ref",
+          "context_policy_ref",
+          "tool_refs",
+          "harness_ref",
+          "retry_policy_ref",
+          "escalation_policy_ref",
+          "adapter_ref",
+          "reasoning_limits"
+        ],
+        "content_hash": "bde4bd4c21c572928d5ea760cd76e4f14c9ccbe709e76477caefa1a651225041"
+      }
+    },
+    {"id":"STUDY_PLAN_VALID","kind":"contract","schema":"ResearchStudyPlan","valid":true,"expected_error":null,"instance":{"schema_version":"1.0.0","study_id":"study_v11_pilot","release":"v1.1.0","stage":"PILOT","protocol_ref":{"contract_type":"SyntheticArtifact","record_id":"protocol","content_hash":"49f0bd814c20bc9389c3836addac76cea7110cad3cd904bf4a0bf529b2ade2a4"},"verifier_qualification_ref":{"contract_type":"SyntheticArtifact","record_id":"verifier","content_hash":"ad4fdcc57fb22422a9c84747b990545470e9150cf4e918a76a313cc00f2f26ca"},"target_population_ref":{"contract_type":"SyntheticArtifact","record_id":"population","content_hash":"aa022860a05c482483eb0dbf448f86effd797f9e3d5c4b169f471b98b06c208c"},"sampling_plan_ref":{"contract_type":"SyntheticArtifact","record_id":"sampling","content_hash":"ec710b85f32b8d926f1932a8c188ad7fbba9c041752eabdd3fbf6e76aaf21f44"},"holdout_plan_ref":{"contract_type":"SyntheticArtifact","record_id":"holdout","content_hash":"2b3baeafa4fcfdd2103148b1805316f3a435a7d24d6888415c6f4bb0011de7bf"},"cost_ledger_ref":{"contract_type":"SyntheticArtifact","record_id":"cost","content_hash":"ba366e1caa312af8ce91cb3afec348165c3f393efe2c1429011126c2cbff5bdf"},"drift_plan_ref":null,"candidate_count":3,"final_hidden_max_uses":1,"selection_regret_claim":true,"content_hash":"f965e39a932baa6af9c69fabfb8b0d87a7e81344d697d318c410fb99e17c133c"}},
+    {"id":"STUDY_PLAN_FINAL_HOLDOUT_REUSED","kind":"contract","schema":"ResearchStudyPlan","valid":false,"expected_error":"SCHEMA","instance":{"schema_version":"1.0.0","study_id":"study_bad_holdout","release":"v1.1.0","stage":"CONFIRMATORY","protocol_ref":{"contract_type":"SyntheticArtifact","record_id":"protocol","content_hash":"49f0bd814c20bc9389c3836addac76cea7110cad3cd904bf4a0bf529b2ade2a4"},"verifier_qualification_ref":{"contract_type":"SyntheticArtifact","record_id":"verifier","content_hash":"ad4fdcc57fb22422a9c84747b990545470e9150cf4e918a76a313cc00f2f26ca"},"target_population_ref":{"contract_type":"SyntheticArtifact","record_id":"population","content_hash":"aa022860a05c482483eb0dbf448f86effd797f9e3d5c4b169f471b98b06c208c"},"sampling_plan_ref":{"contract_type":"SyntheticArtifact","record_id":"sampling","content_hash":"ec710b85f32b8d926f1932a8c188ad7fbba9c041752eabdd3fbf6e76aaf21f44"},"holdout_plan_ref":{"contract_type":"SyntheticArtifact","record_id":"holdout","content_hash":"2b3baeafa4fcfdd2103148b1805316f3a435a7d24d6888415c6f4bb0011de7bf"},"cost_ledger_ref":{"contract_type":"SyntheticArtifact","record_id":"cost","content_hash":"ba366e1caa312af8ce91cb3afec348165c3f393efe2c1429011126c2cbff5bdf"},"drift_plan_ref":null,"candidate_count":3,"final_hidden_max_uses":2,"selection_regret_claim":true,"content_hash":"a48a307c27497de75b591a7bd050e457bc3a8a4d2767d31ccf6d297b8bafca68"}},
+    {"id":"VERIFIER_QUALIFIED_VALID","kind":"contract","schema":"VerifierQualificationReport","valid":true,"expected_error":null,"instance":{"schema_version":"1.0.0","report_id":"vq_pass","verifier_ref":{"contract_type":"SyntheticArtifact","record_id":"verifier","content_hash":"ad4fdcc57fb22422a9c84747b990545470e9150cf4e918a76a313cc00f2f26ca"},"task_family_ref":{"contract_type":"SyntheticArtifact","record_id":"family","content_hash":"581570c1dda1b38255acb1bec0809a4d267c3f92005793a75624658989fa6d74"},"labeled_set_ref":{"contract_type":"SyntheticArtifact","record_id":"labeled","content_hash":"709d4ea9afe38bddbff017584c65e2b71b219d417f7f7522aca58924a7a66e52"},"correct_total":50,"incorrect_total":50,"false_accepts":1,"false_rejects":2,"false_acceptance_upper_bound":0.049,"false_acceptance_ceiling":0.05,"includes_corrupted_artifacts":true,"includes_adversarial_outputs":true,"family_relation":"SAME_FAMILY","status":"PASS","content_hash":"d67d17c1df4c22f17cc8337632d13634bd7f372dcfb977be17818de0f57eb526"}},
+    {"id":"VERIFIER_FALSE_PASS","kind":"contract","schema":"VerifierQualificationReport","valid":false,"expected_error":"VERIFIER_STATUS","instance":{"schema_version":"1.0.0","report_id":"vq_bad","verifier_ref":{"contract_type":"SyntheticArtifact","record_id":"verifier","content_hash":"ad4fdcc57fb22422a9c84747b990545470e9150cf4e918a76a313cc00f2f26ca"},"task_family_ref":{"contract_type":"SyntheticArtifact","record_id":"family","content_hash":"581570c1dda1b38255acb1bec0809a4d267c3f92005793a75624658989fa6d74"},"labeled_set_ref":{"contract_type":"SyntheticArtifact","record_id":"labeled","content_hash":"709d4ea9afe38bddbff017584c65e2b71b219d417f7f7522aca58924a7a66e52"},"correct_total":50,"incorrect_total":50,"false_accepts":8,"false_rejects":2,"false_acceptance_upper_bound":0.22,"false_acceptance_ceiling":0.05,"includes_corrupted_artifacts":true,"includes_adversarial_outputs":true,"family_relation":"SAME_FAMILY","status":"PASS","content_hash":"bddd8662f78f6394fb401df2e025cb5d4bca2fc3147af0086284c17bd4dccd2b"}},
+    {"id":"ADAPTIVE_STEP_VALID","kind":"contract","schema":"AdaptiveEvaluationStep","valid":true,"expected_error":null,"instance":{"schema_version":"1.0.0","step_id":"step_01","study_ref":{"contract_type":"SyntheticArtifact","record_id":"study","content_hash":"6a01a0f4f3c3efdfce1b6f1151419fd132ea5c680247c6b309244c761d24b897"},"history_ref":{"contract_type":"SyntheticArtifact","record_id":"history","content_hash":"14504e27cc13535d5b3c3be77a860773f84e1da18db2eb6a254c87c2abf7e828"},"eligible_task_refs":[{"contract_type":"SyntheticArtifact","record_id":"task_a","content_hash":"42a7807ba4f8d053a1d60fc65b4b50b993c56539f5180487dd63bd40acba5142"},{"contract_type":"SyntheticArtifact","record_id":"task_b","content_hash":"b156d5cf7a6cfc0ec9d62180bb6bd24169d63fc883688f8a55c075d483af1f79"}],"selected_task_ref":{"contract_type":"SyntheticArtifact","record_id":"task_a","content_hash":"42a7807ba4f8d053a1d60fc65b4b50b993c56539f5180487dd63bd40acba5142"},"inclusion_probabilities":[{"task_ref":{"contract_type":"SyntheticArtifact","record_id":"task_a","content_hash":"42a7807ba4f8d053a1d60fc65b4b50b993c56539f5180487dd63bd40acba5142"},"probability":0.6},{"task_ref":{"contract_type":"SyntheticArtifact","record_id":"task_b","content_hash":"b156d5cf7a6cfc0ec9d62180bb6bd24169d63fc883688f8a55c075d483af1f79"},"probability":0.4}],"evaluated_candidate_refs":[{"contract_type":"SyntheticArtifact","record_id":"profile_1","content_hash":"e8b1a572f628660568c8174534bc44657576d5cc067b8342b59f2e8766ed08d5"},{"contract_type":"SyntheticArtifact","record_id":"profile_2","content_hash":"b5c6d91386ae7235434d5a745f35e7272b3547c90773a34531542baeba485fbd"},{"contract_type":"SyntheticArtifact","record_id":"profile_3","content_hash":"49c59b7184f2b9fff0334e4071c31223f1cd94bedaf458d5cb4feb25b06aa337"}],"acquisition_arm":"ADAPTIVE","predicted_cost_basis":"OBSERVED_PAST","hidden_data_accessed":false,"content_hash":"b71392c953f5ae497ebe5fae5c077584d78ec236bc96baf7d7cbff4a4cd4b360"}},
+    {"id":"ADAPTIVE_STEP_MISSING_PROPENSITY","kind":"contract","schema":"AdaptiveEvaluationStep","valid":false,"expected_error":"ACQUISITION_PROPENSITY","instance":{"schema_version":"1.0.0","step_id":"step_bad","study_ref":{"contract_type":"SyntheticArtifact","record_id":"study","content_hash":"6a01a0f4f3c3efdfce1b6f1151419fd132ea5c680247c6b309244c761d24b897"},"history_ref":{"contract_type":"SyntheticArtifact","record_id":"history","content_hash":"14504e27cc13535d5b3c3be77a860773f84e1da18db2eb6a254c87c2abf7e828"},"eligible_task_refs":[{"contract_type":"SyntheticArtifact","record_id":"task_a","content_hash":"42a7807ba4f8d053a1d60fc65b4b50b993c56539f5180487dd63bd40acba5142"},{"contract_type":"SyntheticArtifact","record_id":"task_b","content_hash":"b156d5cf7a6cfc0ec9d62180bb6bd24169d63fc883688f8a55c075d483af1f79"}],"selected_task_ref":{"contract_type":"SyntheticArtifact","record_id":"task_a","content_hash":"42a7807ba4f8d053a1d60fc65b4b50b993c56539f5180487dd63bd40acba5142"},"inclusion_probabilities":[{"task_ref":{"contract_type":"SyntheticArtifact","record_id":"task_a","content_hash":"42a7807ba4f8d053a1d60fc65b4b50b993c56539f5180487dd63bd40acba5142"},"probability":0.5},{"task_ref":{"contract_type":"SyntheticArtifact","record_id":"task_a","content_hash":"42a7807ba4f8d053a1d60fc65b4b50b993c56539f5180487dd63bd40acba5142"},"probability":0.5}],"evaluated_candidate_refs":[{"contract_type":"SyntheticArtifact","record_id":"profile_1","content_hash":"e8b1a572f628660568c8174534bc44657576d5cc067b8342b59f2e8766ed08d5"},{"contract_type":"SyntheticArtifact","record_id":"profile_2","content_hash":"b5c6d91386ae7235434d5a745f35e7272b3547c90773a34531542baeba485fbd"},{"contract_type":"SyntheticArtifact","record_id":"profile_3","content_hash":"49c59b7184f2b9fff0334e4071c31223f1cd94bedaf458d5cb4feb25b06aa337"}],"acquisition_arm":"ADAPTIVE","predicted_cost_basis":"OBSERVED_PAST","hidden_data_accessed":false,"content_hash":"e172a550d51b645fa8d1ae45cb02d8eacb22ba9477a9ca7e7176ac746e5a2794"}},
+    {"id":"INTERVENTION_VALID","kind":"contract","schema":"ObservableInterventionRecord","valid":true,"expected_error":null,"instance":{"schema_version":"1.0.0","intervention_id":"int_01","study_ref":{"contract_type":"SyntheticArtifact","record_id":"study","content_hash":"6a01a0f4f3c3efdfce1b6f1151419fd132ea5c680247c6b309244c761d24b897"},"snapshot_ref":{"contract_type":"SyntheticArtifact","record_id":"snapshot","content_hash":"69c83aaf71c8db7436a59c34a8fdd86f0cfb9bfefa36164b756ee95a0871d52c"},"component_ref":{"contract_type":"SyntheticArtifact","record_id":"context","content_hash":"50f66dbbe9f1911ac239ae399a6534e74ee209799512321262079da208239e39"},"intervention_type":"CONTEXT_BUNDLE","validation_mode":"DETERMINISTIC_REEXECUTION","snapshot_restored":true,"descendants_rerun":true,"gold_output_available_to_proposer":false,"independent_verification_ref":{"contract_type":"SyntheticArtifact","record_id":"verification","content_hash":"ad9ea74ba9e26918056f83598e945a89c8f772ba659cea89d8e48380b6bc7be7"},"side_effect_check":"PASS","causal_scope":"BOUNDED","content_hash":"bb0bf49b1da922d950c5a1c47679faf5825247819177f287894828be4966712f"}},
+    {"id":"INTERVENTION_PREDICTIVE_CAUSAL","kind":"contract","schema":"ObservableInterventionRecord","valid":false,"expected_error":"CAUSAL_SUPPORT","instance":{"schema_version":"1.0.0","intervention_id":"int_bad","study_ref":{"contract_type":"SyntheticArtifact","record_id":"study","content_hash":"6a01a0f4f3c3efdfce1b6f1151419fd132ea5c680247c6b309244c761d24b897"},"snapshot_ref":{"contract_type":"SyntheticArtifact","record_id":"snapshot","content_hash":"69c83aaf71c8db7436a59c34a8fdd86f0cfb9bfefa36164b756ee95a0871d52c"},"component_ref":{"contract_type":"SyntheticArtifact","record_id":"context","content_hash":"50f66dbbe9f1911ac239ae399a6534e74ee209799512321262079da208239e39"},"intervention_type":"CONTEXT_BUNDLE","validation_mode":"PREDICTIVE_ONLY","snapshot_restored":true,"descendants_rerun":false,"gold_output_available_to_proposer":false,"independent_verification_ref":null,"side_effect_check":"PASS","causal_scope":"BOUNDED","content_hash":"2a0bf600b811b126ce71c33352b3acea86bca8614a29abefe2f983e0654e6a41"}},
+    {"id":"DERIVATION_VALID","kind":"contract","schema":"EvidenceDerivationRecord","valid":true,"expected_error":null,"instance":{"schema_version":"1.0.0","derivation_id":"drv_01","source_refs":[{"contract_type":"SyntheticArtifact","record_id":"source_a","content_hash":"67eaf88644899ad5087c42e263da08f7e17a207ebd69550b127a5b72bcec829f"},{"contract_type":"SyntheticArtifact","record_id":"source_b","content_hash":"c99ea1fb4e88c88417a7358e92900901f3c616d90686aa1edf1c7c0d3d885c9a"}],"source_trust":["UNTRUSTED","CLAIMED"],"least_source_trust":"UNTRUSTED","output_ref":{"contract_type":"SyntheticArtifact","record_id":"summary","content_hash":"1c0dc3a06d4fcf7c1d850bbb8ffc60404991a5a32ee0325fe8542ae6f5f41dbc"},"factual_status":"INDEPENDENTLY_VERIFIED","command_authority":"NONE","independent_verification_ref":{"contract_type":"SyntheticArtifact","record_id":"verification","content_hash":"ad9ea74ba9e26918056f83598e945a89c8f772ba659cea89d8e48380b6bc7be7"},"invalidation_dependency_refs":[{"contract_type":"SyntheticArtifact","record_id":"source_a","content_hash":"67eaf88644899ad5087c42e263da08f7e17a207ebd69550b127a5b72bcec829f"},{"contract_type":"SyntheticArtifact","record_id":"source_b","content_hash":"c99ea1fb4e88c88417a7358e92900901f3c616d90686aa1edf1c7c0d3d885c9a"}],"content_hash":"ca463a08b1c66bfa070a2fc8b5c0f0dcb7d2de6e33eb9c2d9e97e6e6720ff216"}},
+    {"id":"DERIVATION_TRUST_ESCALATION","kind":"contract","schema":"EvidenceDerivationRecord","valid":false,"expected_error":"DERIVATION_TRUST","instance":{"schema_version":"1.0.0","derivation_id":"drv_bad","source_refs":[{"contract_type":"SyntheticArtifact","record_id":"source_a","content_hash":"67eaf88644899ad5087c42e263da08f7e17a207ebd69550b127a5b72bcec829f"},{"contract_type":"SyntheticArtifact","record_id":"source_b","content_hash":"c99ea1fb4e88c88417a7358e92900901f3c616d90686aa1edf1c7c0d3d885c9a"}],"source_trust":["UNTRUSTED","CLAIMED"],"least_source_trust":"VERIFIED","output_ref":{"contract_type":"SyntheticArtifact","record_id":"summary","content_hash":"1c0dc3a06d4fcf7c1d850bbb8ffc60404991a5a32ee0325fe8542ae6f5f41dbc"},"factual_status":"UNVERIFIED","command_authority":"NONE","independent_verification_ref":null,"invalidation_dependency_refs":[{"contract_type":"SyntheticArtifact","record_id":"source_a","content_hash":"67eaf88644899ad5087c42e263da08f7e17a207ebd69550b127a5b72bcec829f"},{"contract_type":"SyntheticArtifact","record_id":"source_b","content_hash":"c99ea1fb4e88c88417a7358e92900901f3c616d90686aa1edf1c7c0d3d885c9a"}],"content_hash":"d1c46de1b6c3eef230cb229caef70be6004e1c8b46016f21e485b8ae1ddda7b7"}},
+    {"id":"DRIFT_PLAN_VALID","kind":"contract","schema":"DriftEvaluationPlan","valid":true,"expected_error":null,"instance":{"schema_version":"1.0.0","plan_id":"drift_01","strategy":"TRIGGERED","time_forward_split_ref":{"contract_type":"SyntheticArtifact","record_id":"time_split","content_hash":"2431dc70a19c8b0d37aaa4ed6a47ec6f29b143def82c8668877aceec82f1aba0"},"alarm_metric":"population_stability_index","trigger_threshold":0.2,"label_budget":50,"compute_budget_ms":100000,"exchangeability_assessment":"PASS","formal_guarantee_claimed":true,"fallback_ref":{"contract_type":"SyntheticArtifact","record_id":"target_only","content_hash":"0206954596581c65cbbcfa6c735d174da3817f2db2934ed5b68a7676c0510ffb"},"content_hash":"2e37ef14432c7cea42907b4459e6d420fb9375033dcc50f82105652697ccb653"}},
+    {"id":"DRIFT_GUARANTEE_UNDER_SHIFT","kind":"contract","schema":"DriftEvaluationPlan","valid":false,"expected_error":"DRIFT_GUARANTEE","instance":{"schema_version":"1.0.0","plan_id":"drift_bad","strategy":"TRIGGERED","time_forward_split_ref":{"contract_type":"SyntheticArtifact","record_id":"time_split","content_hash":"2431dc70a19c8b0d37aaa4ed6a47ec6f29b143def82c8668877aceec82f1aba0"},"alarm_metric":"population_stability_index","trigger_threshold":0.2,"label_budget":50,"compute_budget_ms":100000,"exchangeability_assessment":"FAIL","formal_guarantee_claimed":true,"fallback_ref":{"contract_type":"SyntheticArtifact","record_id":"target_only","content_hash":"0206954596581c65cbbcfa6c735d174da3817f2db2934ed5b68a7676c0510ffb"},"content_hash":"35046d7586f136b83c4012c527b98c73c29a5636eabfc03079e75b0d148afe52"}},
+    {"id":"RESEARCH_FINAL_HOLDOUT_ONCE","kind":"lifecycle","model":"research","initial":{"state":"DRAFT","final_holdout_uses":0},"actions":["FREEZE","DEV_OBSERVE","FINAL_HOLDOUT","FINAL_HOLDOUT"],"expected_state":"CLOSED","expected_rejections":["HOLDOUT_REUSE"]},
+    {"id":"RESEARCH_UNFROZEN_OBSERVATION","kind":"lifecycle","model":"research","initial":{"state":"DRAFT","final_holdout_uses":0},"actions":["DEV_OBSERVE"],"expected_state":"DRAFT","expected_rejections":["NOT_FROZEN"]}
+  ],
+  "golden_hash": {
+    "input": {
+      "a": 1,
+      "b": [
+        "x",
+        2
+      ]
+    },
+    "canonical_utf8": "{\"a\":1,\"b\":[\"x\",2]}",
+    "sha256": "566fd36cec581afdfe4ceeafd68b0ebcfcaf812b653dce975a415a372024730b"
+  }
+}

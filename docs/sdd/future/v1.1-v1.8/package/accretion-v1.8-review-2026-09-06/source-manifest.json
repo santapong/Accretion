@@ -1,0 +1,92 @@
+[
+  {
+    "source": "/mnt/data/company/apps/Accretion/docs/sdd/future/v0.4-v1.0/02_SDDS/Accretion_SDD_v1.0.md",
+    "exists": true,
+    "sha256": "512e34f63cec437bc2046d51f602e3b1f1ce4f1be2697928bd7791910e78b110"
+  },
+  {
+    "source": "/mnt/data/company/apps/Accretion/README.md",
+    "exists": true,
+    "sha256": "4134935108685b5aa453b757ba858962409286f453fe75bfe6d2e8f4095a945d"
+  },
+  {
+    "source": "/mnt/data/company/apps/Accretion/docs/releases/v0.4/backlog.md",
+    "exists": true,
+    "sha256": "e19ccaee254918a48187c6b123eb8e80ff440029653be2aea77a0ca4267b6a7c"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/00_READ_ME_FIRST.md",
+    "exists": true,
+    "sha256": "28a9ebcc18c2db861459233df1d157abc9cd2417f4dddbf8c07c3044b5f9a49b"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/02_CROSS_RELEASE_CONTRACT_REGISTRY_v1.x.md",
+    "exists": true,
+    "sha256": "2bd5cf1bf53afe614696b6049aa449e0b2ae661a2bea8f9bdf94c9c143d98cdd"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/04_Accretion_SDD_v1.1.0.md",
+    "exists": true,
+    "sha256": "8a4950f60747c2a267bf753d0440637bbe6424643489247bae200794d50ba364"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/05_Accretion_SDD_v1.2.0.md",
+    "exists": true,
+    "sha256": "987c59f872b634cca0adea2a55acdc7cecf336cd5e97e8136109c680de29760b"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/06_Accretion_SDD_v1.3.0.md",
+    "exists": true,
+    "sha256": "e6193a18217e028aa706c2dc1b8d7bbd0c8b56f8e165ba3523ed86c0a9cc242a"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/07_Accretion_SDD_v1.4.0.md",
+    "exists": true,
+    "sha256": "40536376b14caee47f9fed00ae4069487c2b68bbe401d091d3a32b45a91ca484"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/08_Accretion_SDD_v1.5.0.md",
+    "exists": true,
+    "sha256": "dd49ab5c9d5a9b957557494296769274d096cc95061c744d9dff4fbe60dde84a"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/09_Accretion_SDD_v1.6.0.md",
+    "exists": true,
+    "sha256": "3bfee30cfc518884584e26639b60614dc9cbee40242f2fa07210971cd1c75586"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/10_Accretion_SDD_v1.7.0.md",
+    "exists": true,
+    "sha256": "12a60cdb08ef1682f0c20cba08b89becf96ca8b4dee9ff4e324799d631d59047"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/11_Accretion_SDD_v1.8.0.md",
+    "exists": true,
+    "sha256": "60bc3f640a88bbb3c7c30d7a348b0d829927e5d4205683c5def67f20e9dd1987"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/24_V1_1_PILOT_READINESS_AND_PROTOCOL.md",
+    "exists": true,
+    "sha256": "ac23ce577b5c8b5663fb086d92afe4ec0299078a29d3c2cf695cc04a7d011b07"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/03_SHARED_RESEARCH_EVALUATION_PROTOCOL.md",
+    "exists": true,
+    "sha256": "fdc7eddbb5cf729c2fdb8144ffb514e2006506cd0b8512b0e2914c01ddfe6edc"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/28_REVISION_4_INTEGRATION_AND_ADRS.md",
+    "exists": true,
+    "sha256": "06c1e0f2c007e103bdc1147dfe1edd4b86584012ced1efa45b6be716ce64e368"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/30_REVISION_4_VALIDATION_REPORT.md",
+    "exists": true,
+    "sha256": "8fb0e9129dd37fb79a90d5bcc87cd79f993a5e48f76564c2c34d9b734c470852"
+  },
+  {
+    "source": "/mnt/data/Accretion_v1x_Technical_SDD_Revision_4/32_REVISION_4_CONTRACT_REFERENCE.md",
+    "exists": true,
+    "sha256": "011b22cc4ceca9460d34504b270c467bd667061779db82dca77740caa8fa8e89"
+  }
+]

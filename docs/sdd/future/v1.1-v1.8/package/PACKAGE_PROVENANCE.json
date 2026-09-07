@@ -1,0 +1,144 @@
+{
+  "packaged_date": "2026-09-07",
+  "timezone": "Asia/Bangkok",
+  "design_revision": 4,
+  "target_releases": "v1.1.0\u2013v1.8.0",
+  "source_archives": [
+    {
+      "source_archive": "Accretion_v1x_Technical_SDD_Package_Revision_4.zip",
+      "sha256": "64e649a60443b64ad3d4f75dd9e83737575f957e8ea4fb5e01e5eb35d308c717",
+      "file_count": 69,
+      "verified_manifest_payloads": 68,
+      "destination": "Accretion_v1x_Technical_SDD_Revision_4",
+      "preservation": "All payload bytes unchanged; outer directory only may be renamed"
+    },
+    {
+      "source_archive": "Accretion_v1x_Research_Improvements_2026-09-06.zip",
+      "sha256": "f50c02d6df5975338f7a4af1f3e128fa0869ee3ba50d430c1da8028a1e2a298f",
+      "file_count": 50,
+      "verified_manifest_payloads": 49,
+      "destination": "Accretion_v1x_Research_Improvements",
+      "preservation": "All payload bytes unchanged; outer directory only may be renamed"
+    },
+    {
+      "source_archive": "Accretion_v1.8_Review_and_Diagrams_2026-09-06.zip",
+      "sha256": "a12790f65f6714cd7171d33e5941ae1cc90f1522156fa085be3c39ef25b91be6",
+      "file_count": 35,
+      "verified_manifest_payloads": 34,
+      "destination": "accretion-v1.8-review-2026-09-06",
+      "preservation": "All payload bytes unchanged; outer directory only may be renamed"
+    }
+  ],
+  "review_source_commit": "84c3eede99c171e1f13fa37a19d15fa978e0830d",
+  "review_source_checks": [
+    {
+      "packaged_path": "company/apps/Accretion/docs/sdd/future/v0.4-v1.0/02_SDDS/Accretion_SDD_v1.0.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "company/apps/Accretion/README.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "company/apps/Accretion/docs/releases/v0.4/backlog.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/00_READ_ME_FIRST.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/02_CROSS_RELEASE_CONTRACT_REGISTRY_v1.x.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/04_Accretion_SDD_v1.1.0.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/05_Accretion_SDD_v1.2.0.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/06_Accretion_SDD_v1.3.0.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/07_Accretion_SDD_v1.4.0.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/08_Accretion_SDD_v1.5.0.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/09_Accretion_SDD_v1.6.0.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/10_Accretion_SDD_v1.7.0.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/11_Accretion_SDD_v1.8.0.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/24_V1_1_PILOT_READINESS_AND_PROTOCOL.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/03_SHARED_RESEARCH_EVALUATION_PROTOCOL.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/28_REVISION_4_INTEGRATION_AND_ADRS.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/30_REVISION_4_VALIDATION_REPORT.md",
+      "source_sha256_matches_review": true
+    },
+    {
+      "packaged_path": "Accretion_v1x_Technical_SDD_Revision_4/32_REVISION_4_CONTRACT_REFERENCE.md",
+      "source_sha256_matches_review": true
+    }
+  ],
+  "skill_checks": [
+    {
+      "path": "Accretion_v1x_Research_Improvements/skill-snapshots/research-to-design/SKILL.md",
+      "matches_installed_on_packaging_date": true
+    },
+    {
+      "path": "Accretion_v1x_Research_Improvements/skill-snapshots/research-to-design/agents/openai.yaml",
+      "matches_installed_on_packaging_date": true
+    },
+    {
+      "path": "Accretion_v1x_Research_Improvements/skill-snapshots/research-to-design/references/adaptation-template.md",
+      "matches_installed_on_packaging_date": true
+    },
+    {
+      "path": "Accretion_v1x_Research_Improvements/skill-snapshots/research-to-design/references/reading-map.md",
+      "matches_installed_on_packaging_date": true
+    },
+    {
+      "path": "Accretion_v1x_Research_Improvements/skill-snapshots/research-to-design/references/research-writing.md",
+      "matches_installed_on_packaging_date": true
+    },
+    {
+      "path": "Accretion_v1x_Research_Improvements/skill-snapshots/alphaxiv-research/SKILL.md",
+      "matches_installed_on_packaging_date": true
+    },
+    {
+      "path": "Accretion_v1x_Research_Improvements/skill-snapshots/alphaxiv-research/agents/openai.yaml",
+      "matches_installed_on_packaging_date": true
+    }
+  ],
+  "packaging_repository_checkpoint": {
+    "commit": "f023a67df33c2155cb282def9338c1821df84127",
+    "status": "## develop...origin/develop",
+    "remote_refresh_performed": false,
+    "scope": "Read-only packaging inventory; does not rewrite the dated review or certify a release"
+  },
+  "scope": "Documentation, research synthesis, skill snapshots, diagrams and referenced design documents. No application installation, dependencies, credentials or new experiment results."
+}

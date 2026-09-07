@@ -1,0 +1,97 @@
+{
+  "result": "PASS",
+  "scope": "DOCUMENT_DESIGN_CONFORMANCE_ONLY",
+  "schemas": 24,
+  "fixture_cases": 183,
+  "contract_cases": 139,
+  "lifecycle_cases": 36,
+  "metric_cases": 8,
+  "event_names": 101,
+  "acceptance_rows": 174,
+  "release_sdds": 8,
+  "local_links_checked": 16,
+  "runtime_integration": "NOT_RUN",
+  "research_gates": "NOT_EVALUATED",
+  "independent_design_review": "PENDING",
+  "v1_1_pilot": "NOT_READY_TO_EXECUTE",
+  "validated_at_utc": "2026-09-06 09:46:01 UTC",
+  "environment": {
+    "python": "3.14.6",
+    "jsonschema": "4.23.0",
+    "dependencies": {
+      "attrs": "26.1.0",
+      "jsonschema-specifications": "2025.9.1",
+      "referencing": "0.37.0",
+      "rpds-py": "2026.6.3"
+    }
+  },
+  "baseline_validation": {
+    "result": "PASS",
+    "scope": "DOCUMENT_DESIGN_CONFORMANCE_ONLY",
+    "schemas": 19,
+    "fixture_cases": 100,
+    "contract_cases": 65,
+    "lifecycle_cases": 27,
+    "metric_cases": 8,
+    "event_names": 96,
+    "acceptance_rows": 153,
+    "release_sdds": 8,
+    "runtime_integration": "NOT_RUN",
+    "research_gates": "NOT_EVALUATED",
+    "v1_1_pilot": "NOT_READY_TO_EXECUTE"
+  },
+  "mathematical_check": {
+    "scope": "EXACT_MATHEMATICAL_CHECK_ONLY",
+    "cases": [
+      {
+        "calibration_n": 6,
+        "target_coverage": 0.95,
+        "required_rank": 7,
+        "clamped_rank": 6,
+        "clamped_exact_coverage": 0.8571428571428571,
+        "conservative_exact_coverage": 1,
+        "needs_full_support_set": true
+      },
+      {
+        "calibration_n": 15,
+        "target_coverage": 0.95,
+        "required_rank": 16,
+        "clamped_rank": 15,
+        "clamped_exact_coverage": 0.9375,
+        "conservative_exact_coverage": 1,
+        "needs_full_support_set": true
+      },
+      {
+        "calibration_n": 19,
+        "target_coverage": 0.95,
+        "required_rank": 19,
+        "clamped_rank": 19,
+        "clamped_exact_coverage": 0.95,
+        "conservative_exact_coverage": 0.95,
+        "needs_full_support_set": false
+      },
+      {
+        "calibration_n": 99,
+        "target_coverage": 0.95,
+        "required_rank": 95,
+        "clamped_rank": 95,
+        "clamped_exact_coverage": 0.95,
+        "conservative_exact_coverage": 0.95,
+        "needs_full_support_set": false
+      }
+    ]
+  },
+  "application_repository": {
+    "initial_commit": "2d2f81c91fe279b245f0b16785c7bff36c07b97e",
+    "final_bounded_check_commit": "fa8d865453e2c84d2c6733c985bf4d3f6b397b64",
+    "clean_at_check": true,
+    "fetch_performed": false,
+    "modified_by_this_task": false
+  },
+  "limitations": [
+    "Synthetic projection and normalized lifecycle checks only",
+    "No model or provider experiment, application integration tests or physical execution",
+    "No independent methods, architecture or security sign-off",
+    "Full owner reference resolution, signatures, production canonicalization and transaction isolation remain pending"
+  ]
+}

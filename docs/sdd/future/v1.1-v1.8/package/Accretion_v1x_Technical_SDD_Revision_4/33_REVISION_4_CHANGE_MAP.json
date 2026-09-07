@@ -1,0 +1,457 @@
+{
+  "document_revision": 4,
+  "scope": "DOCUMENT_CHANGE_MAP_ONLY",
+  "documents": [
+    {
+      "file": "00_READ_ME_FIRST.md",
+      "before_sha256": "2520c8f5e228cdf33aa462492b6bc6fd3a9a2fe8f8b56156b67817502b9bbc9a",
+      "after_sha256": "28a9ebcc18c2db861459233df1d157abc9cd2417f4dddbf8c07c3044b5f9a49b",
+      "changed_sections": [
+        "## 1. Outcome",
+        "## 1. What changed",
+        "## 10. Implementation discipline",
+        "## 11. Research status",
+        "## 12. Handoff rule",
+        "## 2. Frozen predecessor boundary",
+        "## 2. Read in this order",
+        "## 3. Executable design validation",
+        "## 3. Release sequence",
+        "## 4. Permanent optimization contract",
+        "## 4. Status and next gate",
+        "## 5. Permanent authority boundary",
+        "## 5. Supporting material and provenance",
+        "## 6. Package map",
+        "## 7. Normative reading order",
+        "## 8. Status vocabulary",
+        "## 9. Feature release versus patch release",
+        "header"
+      ]
+    },
+    {
+      "file": "01_SEMVER_AND_CHANGE_CONTROL.md",
+      "before_sha256": "1bdcf1d259089334c5d5077e6785cfa29a57b813fb15e1180eebafc7ccd03e8e",
+      "after_sha256": "ed4f172deed63929a0c5decfc33be4338b3c0ba6e7b0ef0c9a196ea176b88ed4",
+      "changed_sections": [
+        "## 1. Direct answer",
+        "## 4. Separate version namespaces",
+        "## 8. Deprecation and compatibility window",
+        "header"
+      ]
+    },
+    {
+      "file": "02_CROSS_RELEASE_CONTRACT_REGISTRY_v1.x.md",
+      "before_sha256": "7ad44df315a0135aff7f292218a9a3dc5ba1edf3fca823e7128f4d9858b5c241",
+      "after_sha256": "2bd5cf1bf53afe614696b6049aa449e0b2ae661a2bea8f9bdf94c9c143d98cdd",
+      "changed_sections": [
+        "## 21. Revision-3 shared research contract ownership",
+        "## 21. Revision-4 shared research contract ownership",
+        "## 5. v1.1.0 contract ownership \u2014 Verified Compute Optimizer",
+        "## 8. v1.4.0 contract ownership \u2014 Runtime State Coordination",
+        "header"
+      ]
+    },
+    {
+      "file": "03_SHARED_RESEARCH_EVALUATION_PROTOCOL.md",
+      "before_sha256": "86e3a2a65d0adfa42e618703a1531c6fd756af97d788c54c4d4207982c665787",
+      "after_sha256": "fdc7eddbb5cf729c2fdb8144ffb514e2006506cd0b8512b0e2914c01ddfe6edc",
+      "changed_sections": [
+        "## 10. Statistical gate",
+        "## 11. Promotion decision",
+        "## 13. Required shared ablations",
+        "## 15. Reproducibility bundle",
+        "## 19. Final scientific rule",
+        "## 20. Shared research events",
+        "## 21. Revision-3 shared acceptance criteria",
+        "## 21. Revision-4 shared acceptance criteria",
+        "## 3. Verification denominator",
+        "## 7. Dataset and cohort design",
+        "## 9. Experimental design",
+        "header"
+      ]
+    },
+    {
+      "file": "04_Accretion_SDD_v1.1.0.md",
+      "before_sha256": "ea9f1438a4e49c1c8620484a64c093e80e5afe2554f6aa730f4ba1c23edf879e",
+      "after_sha256": "8a4950f60747c2a267bf753d0440637bbe6424643489247bae200794d50ba364",
+      "changed_sections": [
+        "## 10. Algorithms and compatibility rules",
+        "## 13. Persistence and migrations",
+        "## 14. Identity, tenancy, secrets, and policy",
+        "## 15. Failure handling and recovery",
+        "## 16. Verification and contradiction handling",
+        "## 17. Observability and Experiment Studio",
+        "## 18. Test strategy",
+        "## 19. Research benchmark",
+        "## 20. Implementation milestones",
+        "## 21. Release acceptance criteria",
+        "## 22. Open questions and proposed defaults",
+        "## 23. Handoff to v1.2.0",
+        "## 4. Scope",
+        "## 7. Component responsibilities",
+        "## 8. Contracts",
+        "header"
+      ]
+    },
+    {
+      "file": "05_Accretion_SDD_v1.2.0.md",
+      "before_sha256": "fbf22982106b9e99819c793aebbb78862217075c0cceda625247aef44e3993f5",
+      "after_sha256": "987c59f872b634cca0adea2a55acdc7cecf336cd5e97e8136109c680de29760b",
+      "changed_sections": [
+        "## 10. Algorithms and rules",
+        "## 13. Persistence and migrations",
+        "## 14. Identity, tenancy, secrets, and security",
+        "## 15. Failure handling and recovery",
+        "## 16. Verification and contradictions",
+        "## 17. Observability and Experiment Studio",
+        "## 18. Test strategy",
+        "## 19. Research benchmark",
+        "## 20. Implementation milestones",
+        "## 21. Acceptance criteria",
+        "## 22. Open questions and defaults",
+        "## 23. Handoff to v1.3.0",
+        "## 4. Scope",
+        "## 7. Components",
+        "## 8. Contracts",
+        "header"
+      ]
+    },
+    {
+      "file": "06_Accretion_SDD_v1.3.0.md",
+      "before_sha256": "6452fd0cc6cfff73079cbae7ddc9a30b7e614a1caf042235d620d897b31a62f1",
+      "after_sha256": "e6193a18217e028aa706c2dc1b8d7bbd0c8b56f8e165ba3523ed86c0a9cc242a",
+      "changed_sections": [
+        "## 10. Algorithms and rules",
+        "## 13. Persistence and migrations",
+        "## 14. Identity, tenancy, secrets, and policy",
+        "## 15. Failure handling",
+        "## 16. Verification and contradictions",
+        "## 17. Observability and Experiment Studio",
+        "## 18. Test strategy",
+        "## 19. Research benchmark",
+        "## 20. Implementation milestones",
+        "## 21. Release acceptance criteria",
+        "## 22. Open questions and defaults",
+        "## 23. Handoff to v1.4.0",
+        "## 4. Scope",
+        "## 7. Components",
+        "## 8. Contracts",
+        "header"
+      ]
+    },
+    {
+      "file": "07_Accretion_SDD_v1.4.0.md",
+      "before_sha256": "67ceaf680c26f7fd26ef715a404d08cd5b5138d9aa3a9a4b53213d4674b34028",
+      "after_sha256": "40536376b14caee47f9fed00ae4069487c2b68bbe401d091d3a32b45a91ca484",
+      "changed_sections": [
+        "## 10. Algorithms and rules",
+        "## 12. Events and replay",
+        "## 13. Persistence and migrations",
+        "## 14. Identity, tenancy, secrets, and policy",
+        "## 15. Failure handling and recovery",
+        "## 16. Verification and contradictions",
+        "## 17. Observability and Experiment Studio",
+        "## 18. Test strategy",
+        "## 19. Research benchmark",
+        "## 20. Implementation milestones",
+        "## 21. Acceptance criteria",
+        "## 22. Open questions and defaults",
+        "## 23. Handoff to v1.5.0",
+        "## 4. Scope",
+        "## 7. Components",
+        "## 8. Contracts",
+        "## 9. Lifecycle and state machines",
+        "header"
+      ]
+    },
+    {
+      "file": "08_Accretion_SDD_v1.5.0.md",
+      "before_sha256": "1a971592d543145002e5243d97de00664aa689ad316fe8534169d438e66f2edc",
+      "after_sha256": "dd49ab5c9d5a9b957557494296769274d096cc95061c744d9dff4fbe60dde84a",
+      "changed_sections": [
+        "## 10. Algorithms and rules",
+        "## 13. Persistence and migrations",
+        "## 14. Identity, tenancy, secrets, and policy",
+        "## 15. Failure handling and recovery",
+        "## 16. Verification and contradictions",
+        "## 17. Observability and Experiment Studio",
+        "## 18. Test strategy",
+        "## 19. Research benchmark",
+        "## 20. Implementation milestones",
+        "## 21. Acceptance criteria",
+        "## 22. Open questions and defaults",
+        "## 23. Handoff to v1.6.0",
+        "## 4. Scope",
+        "## 7. Components",
+        "## 8. Contracts",
+        "header"
+      ]
+    },
+    {
+      "file": "09_Accretion_SDD_v1.6.0.md",
+      "before_sha256": "dca8de21b11f920971582b31ebf2b12cab96d7be36050b52861ee8a3f2c83fe4",
+      "after_sha256": "3bfee30cfc518884584e26639b60614dc9cbee40242f2fa07210971cd1c75586",
+      "changed_sections": [
+        "## 10. Algorithms and rules",
+        "## 13. Persistence and migrations",
+        "## 14. Identity, tenancy, secrets, licensing, and policy",
+        "## 15. Failure handling and recovery",
+        "## 16. Verification and contradictions",
+        "## 17. Observability and Experiment Studio",
+        "## 18. Test strategy",
+        "## 19. Research benchmark",
+        "## 20. Implementation milestones",
+        "## 21. Acceptance criteria",
+        "## 22. Open questions and defaults",
+        "## 23. Handoff to v1.7.0",
+        "## 4. Scope",
+        "## 7. Components",
+        "## 8. Contracts",
+        "header"
+      ]
+    },
+    {
+      "file": "10_Accretion_SDD_v1.7.0.md",
+      "before_sha256": "e833bac88ade9eb7772414f1e45ea67cef5a6b8609df1a0199a801e3ab3997ab",
+      "after_sha256": "12a60cdb08ef1682f0c20cba08b89becf96ca8b4dee9ff4e324799d631d59047",
+      "changed_sections": [
+        "## 10. Algorithms and rules",
+        "## 13. Persistence and migrations",
+        "## 14. Identity, tenancy, secrets, and policy",
+        "## 15. Failure handling and recovery",
+        "## 16. Verification and contradictions",
+        "## 17. Observability and Experiment Studio",
+        "## 18. Test strategy",
+        "## 19. Research benchmark",
+        "## 20. Implementation milestones",
+        "## 21. Acceptance criteria",
+        "## 22. Open questions and defaults",
+        "## 23. Handoff to v1.8.0",
+        "## 4. Scope",
+        "## 7. Components",
+        "## 8. Contracts",
+        "header"
+      ]
+    },
+    {
+      "file": "11_Accretion_SDD_v1.8.0.md",
+      "before_sha256": "7d1de320d4f72f33912bffefc26a69e9b2444640c30d70122d4b7f9f9db17363",
+      "after_sha256": "60bc3f640a88bbb3c7c30d7a348b0d829927e5d4205683c5def67f20e9dd1987",
+      "changed_sections": [
+        "## 10. Algorithms and rules",
+        "## 13. Persistence and migrations",
+        "## 14. Identity, tenancy, secrets, and policy",
+        "## 15. Failure handling and recovery",
+        "## 16. Verification and contradictions",
+        "## 17. Observability and Experiment Studio",
+        "## 18. Test strategy",
+        "## 19. Research benchmark",
+        "## 20. Implementation milestones",
+        "## 21. Acceptance criteria",
+        "## 22. Open questions and defaults",
+        "## 23. Handoff after v1.8.0",
+        "## 4. Scope",
+        "## 7. Components",
+        "## 8. Contracts",
+        "header"
+      ]
+    },
+    {
+      "file": "12_PATCH_RELEASE_SDD_TEMPLATE.md",
+      "before_sha256": "ec436a446a41f8e5de3e30bdd6ee00243412ecc9559471261e9626ba246a8d24",
+      "after_sha256": "656e9d973835b2f9e8ee610883c30d65bcd1f8dd6ff976ac781d52d31f1a2181",
+      "changed_sections": [
+        "## 1. Patch identity",
+        "header"
+      ]
+    },
+    {
+      "file": "13_RESEARCH_INTAKE_AND_SDD_AMENDMENT_PROCESS.md",
+      "before_sha256": "db43339e209ca0be77d5cb4e4c91808cd1f11a3fc2952f0606bf2c1d6a990e8e",
+      "after_sha256": "2c5194b168c1252d4c79066afa2a0f0ac35255f1063182fe285603b6cd3b5ff4",
+      "changed_sections": [
+        "## 15. Application to the current research set",
+        "## 9. SDD amendment requirements",
+        "header"
+      ]
+    },
+    {
+      "file": "14_REVISION_2_TECHNICAL_ADDENDUM.md",
+      "before_sha256": "2546648e93f3522feb06f96009a0e6125a575f94c7f67f373cecb3a31128d86c",
+      "after_sha256": "8c73179ac40b325a07c0142b158942854b9d5814559034150c72e12e6161499f",
+      "changed_sections": [
+        "## 2. How to read and run the kit",
+        "header"
+      ]
+    },
+    {
+      "file": "21_REVISION_2_VALIDATION_REPORT.md",
+      "before_sha256": "835ea65fcbd9d746ebf31a6323b26e796bff574769fa1a6f6187eef2a6f6699f",
+      "after_sha256": "2755e890e4eb2ea4f62c81884e25d64d41a82512212c733f5bda55781ea77c62",
+      "changed_sections": [
+        "header"
+      ]
+    },
+    {
+      "file": "22_REVISION_3_RESEARCH_INTEGRATION.md",
+      "before_sha256": "1ca280f2ac4c141a058a39b36e691fd0db2869957de587e2fdd1ad98e92517c5",
+      "after_sha256": "55079c0093399abccd88d9af19a9a770c98b5bc69113a8437f1d68b42b933642",
+      "changed_sections": [
+        "header"
+      ]
+    },
+    {
+      "file": "23_V1X_RESEARCH_PROGRAM_MATRIX.md",
+      "before_sha256": "a611ec2aa9b4c555a9ba1b899e26fc18375beffb06d359065a2b6b129aa540c0",
+      "after_sha256": "75d68640d4d2b943aaad906f8ef017b3e5adcedc2b71c760e3278e8bf9b0b52b",
+      "changed_sections": [
+        "## 1. Program order",
+        "## 3. Research priority",
+        "## 4. Revision-4 stage refinements",
+        "header"
+      ]
+    },
+    {
+      "file": "24_V1_1_PILOT_READINESS_AND_PROTOCOL.md",
+      "before_sha256": "b53724ab416a0aabaf31a4b72ed8c453b4c7ed8818eb2a834c3c145c34759e93",
+      "after_sha256": "ac23ce577b5c8b5663fb086d92afe4ec0299078a29d3c2cf695cc04a7d011b07",
+      "changed_sections": [
+        "## 1. Readiness decision",
+        "## 3. Population and split",
+        "## 4. Candidate profiles",
+        "## 5. Staged protocol",
+        "## 8. Acceptance mapping",
+        "## 9. Decisions still required before execution",
+        "header"
+      ]
+    },
+    {
+      "file": "25_RESEARCH_SOURCE_REGISTER.md",
+      "before_sha256": "72605c81e25ca0032b692a5752c06a0a8578bc5151b635a753579b322fa2a992",
+      "after_sha256": "e3e5c085532e39406c197a8803fd26018418522bdfd48c915c918fbd17139097",
+      "changed_sections": [
+        "## 1. Review scope",
+        "## 2. Source-status rules",
+        "## 3. Design conclusions supported by the combined evidence",
+        "header"
+      ]
+    },
+    {
+      "file": "27_REVISION_3_VALIDATION_REPORT.md",
+      "before_sha256": "1877c10ffc0d10818a70e9fd0ef12205758b81fa35fee6ff17e6357dd3311acb",
+      "after_sha256": "9e0a5848ede74357819a677e98da3b1af4aad6c035f337478457194a2728588e",
+      "changed_sections": [
+        "header"
+      ]
+    }
+  ],
+  "new_schemas": [
+    "EffectiveSettingObservation",
+    "ResearchComparisonPlan",
+    "ResearchDataRolePlan",
+    "StateConsumptionReceipt",
+    "UncertaintyStatement"
+  ],
+  "amended_schemas": [
+    {
+      "name": "AdaptiveEvaluationStep",
+      "previous_version": "1.0.0",
+      "current_version": "2.0.0",
+      "new_required_fields": [
+        "allocation_rule",
+        "frozen_candidate_refs",
+        "setting_observation_refs"
+      ]
+    },
+    {
+      "name": "DriftEvaluationPlan",
+      "previous_version": "1.0.0",
+      "current_version": "2.0.0",
+      "new_required_fields": [
+        "applicable_assumptions_status",
+        "assumption_evidence_ref",
+        "label_arrival",
+        "label_update_policy",
+        "uncertainty_statement_ref"
+      ]
+    },
+    {
+      "name": "EvidenceDerivationRecord",
+      "previous_version": "1.0.0",
+      "current_version": "2.0.0",
+      "new_required_fields": [
+        "dependency_snapshot_ref"
+      ]
+    },
+    {
+      "name": "ObservableInterventionRecord",
+      "previous_version": "1.0.0",
+      "current_version": "2.0.0",
+      "new_required_fields": [
+        "localization_status",
+        "no_op_trial_count",
+        "paired_comparison_ref",
+        "replay_trial_count"
+      ]
+    },
+    {
+      "name": "ResearchStudyPlan",
+      "previous_version": "1.0.0",
+      "current_version": "2.0.0",
+      "new_required_fields": [
+        "candidate_refs",
+        "comparison_plan_ref",
+        "data_role_plan_ref",
+        "uncertainty_statement_refs"
+      ]
+    },
+    {
+      "name": "VerifierQualificationReport",
+      "previous_version": "1.0.0",
+      "current_version": "2.0.0",
+      "new_required_fields": [
+        "accepted_total",
+        "analysis_ref",
+        "bound_method",
+        "confidence_level",
+        "correct_inconclusive",
+        "incorrect_inconclusive",
+        "uncertain_accepted",
+        "uncertain_total"
+      ]
+    }
+  ],
+  "new_events": [
+    "research.comparison.frozen",
+    "research.data_roles.frozen",
+    "research.setting_observation.recorded",
+    "research.uncertainty.recorded",
+    "state.view.consumption_decided"
+  ],
+  "removed_events": [],
+  "new_acceptance_ids": [
+    "AC11-C1-022",
+    "AC11-C7-023",
+    "AC12-H5-018",
+    "AC12-H8-019",
+    "AC13-R1-019",
+    "AC13-R8-018",
+    "AC14-S3-019",
+    "AC14-S8-020",
+    "AC15-O5-017",
+    "AC15-O8-018",
+    "AC16-A2-019",
+    "AC16-A5-018",
+    "AC17-T3-017",
+    "AC17-T8-018",
+    "AC18-P3-023",
+    "AC18-P4-021",
+    "AC18-P4-022",
+    "ACX-P3-012",
+    "ACX-P3-013",
+    "ACX-P3-014",
+    "ACX-P3-015"
+  ],
+  "removed_acceptance_ids": [],
+  "modified_prior_requirements": [],
+  "all_evidence_pending": true
+}

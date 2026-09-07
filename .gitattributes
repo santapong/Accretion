@@ -1,0 +1,3 @@
+# Frozen import: preserve Markdown hard breaks, historical whitespace and hashes
+# across checkouts, including machines configured with automatic CRLF conversion.
+docs/sdd/future/v1.1-v1.8/package/** -text -whitespace

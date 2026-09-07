@@ -1,0 +1,4 @@
+interface:
+  display_name: "alphaXiv Research"
+  short_description: "Verify robotics papers and evidence"
+  default_prompt: "Use $alphaxiv-research to find and verify primary papers for this question."

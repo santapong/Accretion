@@ -1,0 +1,308 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Accretion v1.8 | Physical preparation and trial",
+    "locale": "en",
+    "animation": "none",
+    "quality_profile": "showcase"
+  },
+  "lanes": [
+    {
+      "id": "prepare",
+      "label": "PREPARE DIGITALLY"
+    },
+    {
+      "id": "gate",
+      "label": "CHECK + AUTHORIZE"
+    },
+    {
+      "id": "physical",
+      "label": "EXISTING v0.6 OWNER"
+    },
+    {
+      "id": "record",
+      "label": "EVIDENCE + FAILURE"
+    }
+  ],
+  "mainPath": [
+    "task",
+    "advise",
+    "sim",
+    "preflight",
+    "freeze",
+    "approve",
+    "arm",
+    "control",
+    "outcome"
+  ],
+  "nodes": [
+    {
+      "id": "task",
+      "lane": "prepare",
+      "col": 0,
+      "type": "security",
+      "label": "Supported task",
+      "sublabel": "Exact cell and safety envelope",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "advise",
+      "lane": "prepare",
+      "col": 1,
+      "type": "backend",
+      "label": "Rank allowed options",
+      "sublabel": "Planning, perception and compute",
+      "width": 184,
+      "height": 70,
+      "tag": "v1.8 advisory only"
+    },
+    {
+      "id": "sim",
+      "lane": "prepare",
+      "col": 2,
+      "type": "backend",
+      "label": "Evaluate in simulation",
+      "sublabel": "Compare governed static baseline",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "preflight",
+      "lane": "gate",
+      "col": 2,
+      "type": "security",
+      "label": "Independent preflight",
+      "sublabel": "Complete configuration and stop path",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "freeze",
+      "lane": "gate",
+      "col": 3,
+      "type": "database",
+      "label": "Freeze configuration",
+      "sublabel": "Hash trial, settings and evidence",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "approve",
+      "lane": "gate",
+      "col": 4,
+      "type": "security",
+      "label": "Human approves trial",
+      "sublabel": "Exact, expiring and single use",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "arm",
+      "lane": "physical",
+      "col": 4,
+      "type": "security",
+      "label": "Consume and arm",
+      "sublabel": "Match hashes; issue bound lease",
+      "width": 184,
+      "height": 70,
+      "tag": "v0.6 gateway"
+    },
+    {
+      "id": "control",
+      "lane": "physical",
+      "col": 5,
+      "type": "backend",
+      "label": "Execute once",
+      "sublabel": "Deterministic controller + safety",
+      "width": 184,
+      "height": 70,
+      "tag": "Independent stop path"
+    },
+    {
+      "id": "outcome",
+      "lane": "record",
+      "col": 5,
+      "type": "security",
+      "label": "Verify and record",
+      "sublabel": "Task success AND safety outcome",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "blocked",
+      "lane": "record",
+      "col": 2,
+      "type": "security",
+      "label": "Record and pause",
+      "sublabel": "No approval or execution on failure",
+      "width": 184,
+      "height": 70
+    },
+    {
+      "id": "invalidate",
+      "lane": "record",
+      "col": 3,
+      "type": "security",
+      "label": "Invalidate on change",
+      "sublabel": "New preflight and approval required",
+      "width": 184,
+      "height": 70
+    }
+  ],
+  "edges": [
+    {
+      "id": "task_advise",
+      "from": "task",
+      "to": "advise",
+      "label": "eligible",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "advise_sim",
+      "from": "advise",
+      "to": "sim",
+      "label": "finite candidate",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "sim_preflight",
+      "from": "sim",
+      "to": "preflight",
+      "label": "sim evidence",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "preflight_freeze",
+      "from": "preflight",
+      "to": "freeze",
+      "label": "preflight PASS",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "freeze_approve",
+      "from": "freeze",
+      "to": "approve",
+      "label": "review exact trial",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "approve_arm",
+      "from": "approve",
+      "to": "arm",
+      "label": "valid approval",
+      "role": "main",
+      "variant": "security"
+    },
+    {
+      "id": "arm_control",
+      "from": "arm",
+      "to": "control",
+      "label": "lease + final gates",
+      "role": "main",
+      "variant": "security"
+    },
+    {
+      "id": "control_outcome",
+      "from": "control",
+      "to": "outcome",
+      "label": "actual trial evidence",
+      "role": "main",
+      "variant": "emphasis"
+    },
+    {
+      "id": "preflight_blocked",
+      "from": "preflight",
+      "to": "blocked",
+      "label": "FAIL / uncertain",
+      "role": "error",
+      "variant": "security"
+    },
+    {
+      "id": "freeze_invalidate",
+      "from": "freeze",
+      "to": "invalidate",
+      "label": "material change",
+      "role": "error",
+      "variant": "security"
+    },
+    {
+      "id": "approve_blocked",
+      "from": "approve",
+      "to": "blocked",
+      "label": "denied / expired",
+      "role": "error",
+      "variant": "security",
+      "route": "bottom-channel",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "arm_blocked",
+      "from": "arm",
+      "to": "blocked",
+      "label": "mismatch / revoked",
+      "role": "error",
+      "variant": "security"
+    }
+  ],
+  "semanticChecks": {
+    "allowedRoots": [
+      "task"
+    ],
+    "allowedTerminals": [
+      "outcome",
+      "blocked",
+      "invalidate"
+    ],
+    "requiredPaths": [
+      {
+        "from": "task",
+        "to": "approve"
+      },
+      {
+        "from": "approve",
+        "to": "control"
+      },
+      {
+        "from": "control",
+        "to": "outcome"
+      }
+    ]
+  },
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Advice ends before freeze",
+      "items": [
+        "Only compatible digital preparation options may be ranked.",
+        "Uncertain advice uses a governed static fallback or pauses.",
+        "Simulation evidence cannot establish physical success."
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "One existing authority",
+      "items": [
+        "The freeze receipt is an audit record, not approval.",
+        "v0.6 owns approval checks, arming, leases and execution.",
+        "No live learning, post-freeze changes or automatic retry."
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Separate outcomes",
+      "items": [
+        "A safe stop is not task success.",
+        "Task success with a safety incident fails the gate.",
+        "Every denial, stop, failure and actual retry attempt is recorded."
+      ]
+    }
+  ]
+}
