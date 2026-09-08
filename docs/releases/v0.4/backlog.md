@@ -17,7 +17,7 @@ status and decisions; it does not add criteria or authorize activation.
 | M4 offline ranker and calibration | 016 | delivered #138; [plan](m4-plan.md); live activation requires its separate gates |
 | M5 project adapter and cold start | 021 | delivered #141; [plan](m5-plan.md) |
 | M6 shadow routing | 017, 041 | delivered #145; [plan](m6-plan.md); OQ-409 retains an interim evidence floor |
-| M7 guarded bandit | 018-020 | delivered #151; [plan](m7-plan.md); accounting follow-up below remains open |
+| M7 guarded bandit | 018-020 | delivered #151; [plan](m7-plan.md); post-release accounting disposition below |
 | M8 promotion and rollback | 035-039, 042 | delivered #147; [plan](m8-plan.md) |
 | M9 Experiment Studio | 040, 043, 044 | delivered #153; [plan](m9-plan.md) |
 | M10 research benchmark integration | 045-050 | delivered #156; [plan](m10-plan.md), [results](../../research/v0.4/results.md) |
@@ -29,15 +29,15 @@ reopen a frozen protocol.
 
 ## Remaining bounded work
 
-These are post-release dispositions as of 2026-09-08, not unfinished M0–M10
+These are post-release dispositions as of 2026-09-09, not unfinished M0–M10
 milestones. The released flag remains off by default and the shipped fallback
 catalog remains FAKE-only; no activation or new experiment is claimed here.
 
 | Work | Owner and next trigger | Current disposition |
 |---|---|---|
-| Exploration budget admission and settlement recovery | Runtime maintainer; deterministic witnesses using independent store connections and disposable databases | Check cross-run/process admission, settlement overruns after restart, unreadable charges, and actual cap scope before widening AUTO use. Suspected defects are not recorded as repaired. |
-| Stored writer identity after read-boundary upcasting | Compatibility maintainer; a complete stored-reference-chain witness | The upcaster exists. Check whether routing compares a projected hash against a persisted writer pin; preserve stored identities and legacy digest bytes. |
-| Full research claim and next study | Research owner; dated claim disposition and prospective pilot protocol | Preserve PARTIAL synthetic evidence and the frozen amendment; no priced live-routing result. New execution needs its own qualified verifier, complete cost accounting and explicit budget. |
+| Exploration budget admission and settlement recovery | Runtime maintainer; final integrated checks and protected PR | Reproduced defects repaired in the [closure candidate](closure-execution-2026-09-08.md): shared transaction lock, durable cost replay, conservative revisions and fail-closed malformed accounting. Focused process/database witnesses pass. The [runbook](../../runbooks/v04-routing-accounting.md) limits claims to cumulative normalized workspace/node-kind accounting and requires older AUTO writers to drain or disable. |
+| Stored writer identity after read-boundary upcasting | Compatibility maintainer; final integrated checks and protected PR | Reproduced reference and projection defects repaired in the [closure candidate](closure-execution-2026-09-08.md), with both-store witnesses. Reads use verified writer identity; unknown execution/accounting fields and executable projection amendments remain denied. Original stored bytes and legacy digests are retained. |
+| Full research claim and next study | Research owner; complete and explicitly authorize the prospective study before provider execution | [Adopted scoped NO-GO](research-handoff-2026-09-08.md) preserves PARTIAL paired evidence and the frozen amendment. [R1 fake preparation](../../research/v0.4/provider-pilot-2026-09-08/instrumentation-report-2026-09-09.md) is verified with zero provider calls. No priced live-routing result; qualified evaluation, monetary accounting and explicit call/money/time limits remain required. |
 | Pin-aware routed AGENT tool sessions | Runtime/capability maintainer; explicit SDD/version scope | Deferred capability extension. TOOL-node binding enforcement exists; AGENT sessions carrying selected tools remain denied. |
 | OQ-409 minimum shadow evidence | Research owner; prospective power analysis on permitted development data | Open. The implemented default is 30 complete pairs workspace-wide, not proof of a per-configuration quota or a completed power calculation. |
 | OQ-419 benchmark name | Research owner; protocol publication preparation | Deferred naming decision; no benchmark re-read follows from naming it. |
@@ -54,7 +54,7 @@ plans. It does not silently amend the frozen SDD's open-question table.
 | OQ-417 override reasons | [M2 plan](m2-plan.md): uppercase reason code and nonempty explanation | Closed taxonomy and a new canonical override contract remain deferred. |
 | OQ-418 verifier independence | [M3 plan](m3-plan.md) and [IndependenceCheck](../../../src/accretion/feedback/verification.py): separate producer/verifier context required | A distinct runtime is preferred; this is not a measured numeric independence score. |
 | OQ-420 v0.5 hook | [M0 plan](m0-plan.md), ADR-059: no reserved slot | Robotics remains outside v0.4. |
-| Read-boundary upcaster and digest convergence | [M8 plan](m8-plan.md), [upcaster](../../../src/accretion/contracts/upcast.py), and M8 digest outcome below | Upcasting is implemented; three digest sites converged and four deliberately keep legacy bytes. Reference-boundary correctness remains the bounded check above. |
+| Read-boundary upcaster and digest convergence | [M8 plan](m8-plan.md), [upcaster](../../../src/accretion/contracts/upcast.py), and M8 digest outcome below | Upcasting is implemented; three digest sites converged and four deliberately keep legacy bytes. The post-release reference repair and its remaining integration gates are recorded above. |
 
 The following milestone sections retain the decisions and observations recorded
 while the program was built. Dated clarifications identify superseded readings
