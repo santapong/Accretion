@@ -40,6 +40,12 @@ page under their own run ids. There are four access-log rows in total through
 no priced routing pilot or full preregistered routing-benefit claim is established
 by these replay results.
 
+The [2026-09-08 research handoff](../releases/v0.4/research-handoff-2026-09-08.md)
+records NO-GO for the full preregistered routing-benefit claim while retaining
+PARTIAL synthetic paired evidence. The separate [provider-pilot preparation](v0.4/provider-pilot-2026-09-08/README.md)
+remains NOT_AUTHORIZED for live execution; its protocol and fake instrumentation
+are preparation, not hosted-provider evidence.
+
 ## Evidence classes
 
 The [v1.1–v1.8 forward-design research collection](../sdd/future/v1.1-v1.8/README.md#research-workflow-and-next-steps)

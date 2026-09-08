@@ -17,8 +17,11 @@ has four rows in total, two from the original read and two from the amendment.
 The [results](../../research/v0.4/results.md) retain both readings. No priced
 real-provider routing pilot is claimed.
 
-The [bounded follow-up backlog](backlog.md#remaining-bounded-work) separates
-post-release correctness checks, research decisions and deferred capabilities.
+The [approved completion plan](completion-plan-2026-09-08.md) assigns the
+post-release work and its validation gates. The [bounded follow-up backlog](backlog.md#remaining-bounded-work)
+separates correctness checks, research decisions and deferred capabilities.
+The [dated research handoff](research-handoff-2026-09-08.md) records the scoped
+claim decision and the v0.5 entry-condition dispositions.
 
 | Document | Purpose |
 |---|---|

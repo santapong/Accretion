@@ -1,7 +1,9 @@
 # v0.4 completion and handoff plan
 
-**Prepared: 8 September 2026. Status: planning complete after parallel review;
-execution packages below are proposed.**
+**Prepared: 8 September 2026. Approved by Santapong in the Codex conversation
+on 8 September 2026; bounded execution is in progress.** The original reviewed
+plan is preserved at `55536dce89b2a64d16dcae20a1e5a0f11db05638`. Follow the
+[execution record](closure-execution-2026-09-08.md) for completed work and checks.
 
 The v0.4.0 and v0.4.1 releases already exist. M0–M10 are recorded as delivered;
 the job is to reconcile the remaining documentation, test specific correctness

@@ -25,7 +25,8 @@ identify any intentional compatibility change under a new semantic version.
 The release commit and the authorized `develop` commit differ because promotion to
 `main` is a squash of the protected bridge; the **trees are identical**, which
 is the property the policy requires and which
-`git diff --exit-code origin/develop origin/main` confirms.
+`git diff --exit-code 08a695bcc642fb11bf6b67cbd524ae727610849c dd1d9f300ba05dc5875b964322c34b47a5288c39`
+confirms using the pinned release commits above; moving branch heads may contain later work.
 
 Release PRs: [#157](https://github.com/santapong/Accretion/pull/157) into
 `develop`, [#158](https://github.com/santapong/Accretion/pull/158) as the
