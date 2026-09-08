@@ -21,31 +21,62 @@ allows that slack, and declining it is strictly safer and much easier to audit. 
 exploration whose real cost is not known yet keeps its upper bound: an unsettled exploration
 is a cost that has been incurred and not yet measured, and treating it as free until the
 measurement lands is precisely how a budget gets spent twice. :meth:`CostLedger.settle`
-replaces the bound with the observation, which can only ever release budget it should not
-have been holding.
+replaces the bound with the observation. An observation can exceed a predicted bound;
+that overrun remains charged and can refuse the next exploration.
 
 **Two absolute caps sit outside the inequality.** ``(1 + α)`` is a *relative* bound, and a
 relative bound on an expensive baseline is a large absolute number.
 :class:`ExplorationCaps` therefore bounds the count of explorations and their total cost
 outright, and those bind whatever ``α`` says.
 
-**Costs are normalised floats in ``[0, 1]``.** One exploration's cost is a fraction of the
+**Predicted bounds are normalised floats in ``[0, 1]``.** Measured overruns may exceed one.
+One exploration's cost is a fraction of the
 node's ``resource_cap``, not a currency, not a token count and not a duration — the ledger
 compares costs from different providers in the same breath and can only do that if the
 caller has already normalised them. ``ExplorationCaps.max_cost`` is a *cumulative* budget in
 that same unit and is therefore free to exceed 1.
 
 Nothing here touches a store, a clock or a network. :meth:`CostLedger.snapshot` hands a
-plain, sorted, JSON-serialisable dict to whoever wants to persist it; the persistence itself
-belongs to a later PR.
+plain, sorted, JSON-serialisable diagnostic dict. The registry reconstructs this state from
+immutable receipts and durable experience observations, rather than persisting a second total.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from decimal import Decimal
+from math import isfinite
 from typing import Final
 
+from accretion.contracts.routing import NodeContract
+
 _COST_UNIT: Final = "a normalised cost must be a float in [0, 1]"
+
+
+class AccountingUnavailable(ValueError):
+    """The exploration account cannot be safely reconstructed."""
+
+    def __init__(self, reason: str) -> None:
+        super().__init__(f"EXPLORATION_ACCOUNTING_UNAVAILABLE: {reason}")
+
+
+def normalised_cost(cost: Decimal, *, node: NodeContract) -> float:
+    """Observed spend divided by its frozen cap, retaining overruns above one.
+
+    An unbudgeted positive cost has no finite normalized value. Refuse future
+    exploration instead of silently capping a measured overrun at one.
+    """
+    cap = node.resource_cap.maximum_cost
+    if not cost.is_finite() or cost < 0:
+        raise AccountingUnavailable("observed cost is not finite and nonnegative")
+    if cap <= 0:
+        if cost == 0:
+            return 0.0
+        raise AccountingUnavailable("positive observed cost has no positive frozen cap")
+    value = float(cost / cap)
+    if not isfinite(value):
+        raise AccountingUnavailable("normalized observed cost is not finite")
+    return value
 
 
 def _check_cost(name: str, value: float) -> float:
@@ -269,7 +300,9 @@ class CostLedger:
                 f"receipt {receipt_id!r} already settled at {entry.observed_cost}; an "
                 "exploration is measured once"
             )
-        settled = replace(entry, observed_cost=_check_cost("observed_cost", observed_cost))
+        if not isfinite(observed_cost) or observed_cost < 0:
+            raise ValueError("observed_cost must be finite and nonnegative")
+        settled = replace(entry, observed_cost=float(observed_cost))
         self._entries[receipt_id] = settled
         return settled
 

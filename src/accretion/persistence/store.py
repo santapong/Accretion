@@ -81,6 +81,7 @@ from accretion.contracts import (
 from accretion.contracts.canonical import (
     CONTRACT_SCHEMA_VERSION,
     CanonicalContract,
+    canonical_json,
     content_hash,
 )
 from accretion.contracts.routing import (
@@ -1148,7 +1149,9 @@ class StateStore(Protocol):
     async def list_routing_overrides(
         self, *, workspace_id: str, project_id: str | None = None
     ) -> list[dict[str, Any]]: ...
-    def routing_transaction(self, run_id: str) -> AbstractAsyncContextManager[StateStore]: ...
+    def routing_transaction(
+        self, run_id: str, *, budget_key: tuple[str, str] | None = None
+    ) -> AbstractAsyncContextManager[StateStore]: ...
     async def list_routing_receipts_for_run_graph(
         self, *, workspace_id: str, run_graph_id: str
     ) -> list[RoutingDecisionReceipt]: ...
@@ -1397,7 +1400,9 @@ class MemoryStore:
                     )
 
     @asynccontextmanager
-    async def routing_transaction(self, run_id: str) -> AsyncIterator[StateStore]:
+    async def routing_transaction(
+        self, run_id: str, *, budget_key: tuple[str, str] | None = None
+    ) -> AsyncIterator[StateStore]:
         """Commit routing records and audit events together; retain subclass test hooks."""
         async with self._scoped_v04_transaction() as scoped:
             yield scoped
@@ -3904,15 +3909,29 @@ class PostgresStore:
         self.sessions = sessions
 
     @asynccontextmanager
-    async def routing_transaction(self, run_id: str) -> AsyncIterator[StateStore]:
+    async def routing_transaction(
+        self, run_id: str, *, budget_key: tuple[str, str] | None = None
+    ) -> AsyncIterator[StateStore]:
         """Serialize decision amendments and dispatch claims across API processes.
 
         The advisory lock is transaction-scoped: connection loss rolls back both
         records and events, releases the lock, and allows a safe retry. No DDL needed.
+        AUTO routes additionally lock their workspace/node-class budget before
+        the run lock. All concurrent AUTO writers must use this protocol: an
+        older writer ignores the shared lock and is not safe in a mixed rollout.
         """
         key = int.from_bytes(sha256(("routing:" + run_id).encode()).digest()[:8],
                              "big", signed=True)
         async with self.sessions.begin() as session:
+            if budget_key is not None:
+                # Every route takes the shared budget lock before its run lock.
+                # Two runs spend the same workspace/class allowance; a run lock
+                # alone cannot make admission and receipt publication atomic.
+                budget_lock = int.from_bytes(
+                    sha256(canonical_json(["exploration", *budget_key])).digest()[:8],
+                    "big", signed=True,
+                )
+                await session.execute(select(func.pg_advisory_xact_lock(budget_lock)))
             await session.execute(select(func.pg_advisory_xact_lock(key)))
             yield PostgresStore(cast(async_sessionmaker[AsyncSession], _RoutingSessions(session)))
 

@@ -295,6 +295,7 @@ async def setup_exploring(
     seed: int = 20260906,
     policy: ExplorationPolicy | None = None,
     projects: int = PROJECT_COUNT,
+    maximum_cost: str | None = None,
 ) -> Exploring:
     """A workspace with a promoted router, a passing shadow stage and an exploration budget.
 
@@ -311,6 +312,14 @@ async def setup_exploring(
     tmp_path.mkdir(parents=True, exist_ok=True)
     execution = await _routable_execution(tmp_path)
     store = execution.store
+    if maximum_cost is not None:
+        payload = execution.frozen.node_contract.model_dump(mode="python")
+        payload["contract_id"] = new_id("node_contract")
+        payload["resource_cap"]["maximum_cost"] = maximum_cost
+        payload["content_hash"] = ""
+        payload["immutable_hash"] = ""
+        revised_node = await store.put_node_contract(NodeContract.model_validate(payload))
+        execution.frozen = replace(execution.frozen, node_contract=revised_node)
     node = execution.frozen.node_contract
     workspace_id = node.workspace_id
     who = node.created_by
@@ -1049,19 +1058,18 @@ async def _project_experience(
 ) -> ExperienceRecord:
     """The experience record ADR-048 projects once a routed node's run has been judged."""
 
-    project_id = new_id("project")
-    await fixture.store.create_project(
-        Project(
-            project_id=project_id,
-            name="M7 settlement",
-            repository_path=Path("/tmp/accretion-v04-m7"),
-        )
+    project_id = fixture.run.project_id
+    receipts = await fixture.store.list_routing_receipts(workspace_id=fixture.workspace_id)
+    selected = next(
+        r for r in receipts
+        if r.node_contract_hash == fixture.frozen.node_contract.immutable_hash
     )
     record = build(
         ExperienceRecord,
         workspace_id=fixture.workspace_id,
         project_id=project_id,
         source_node_execution_id=execution_instance_id,
+        configuration_hash=selected.selected_configuration_hash,
         outcomes={"quality": 0.9, "cost": cost, "latency_ms": 1_200},
     )
     await seed_experience(fixture.store, record.contract_id)
@@ -1098,7 +1106,7 @@ async def test_settling_an_exploration_replaces_its_upper_bound_with_what_it_cos
     ``max_explore_count`` either way, because settling a charge is not undoing an exploration.
     """
 
-    fixture = await setup_exploring(tmp_path)
+    fixture = await setup_exploring(tmp_path, maximum_cost="2.0")
     receipt = await route_once(fixture)
     assert receipt.decision_type is DecisionType.EXPLORE
     node_class = fixture.frozen.node_contract.node_kind.value
@@ -1123,6 +1131,7 @@ async def test_settling_an_exploration_replaces_its_upper_bound_with_what_it_cos
         lease=None,
     )
 
+    ledger = await fixture.ledgers.ledger(workspace_id=fixture.workspace_id, node_class=node_class)
     assert ledger.explored_cost_sum == 0.1
     assert ledger.explore_count == 1
 
@@ -1206,7 +1215,7 @@ async def test_a_settlement_that_cannot_be_made_never_fails_the_node(tmp_path: P
     attempt rather than that both were accepted.
     """
 
-    fixture = await setup_exploring(tmp_path)
+    fixture = await setup_exploring(tmp_path, maximum_cost="2.0")
     receipt = await route_once(fixture)
     frozen = _capped(fixture.frozen, maximum_cost="2.0")
     await _project_experience(
@@ -1231,8 +1240,10 @@ async def test_a_settlement_that_cannot_be_made_never_fails_the_node(tmp_path: P
     )
     assert ledger.explored_cost_sum == 0.1
 
-    broken = ExplorationSettlement(BrokenStore(), fixture.ledgers)
+    broken_store = BrokenStore()
+    broken = ExplorationSettlement(broken_store, LedgerRegistry(broken_store))
     await broken.after_node(**call)
+    assert broken_store.calls == 1
     assert ledger.explored_cost_sum == 0.1
 
 
@@ -1242,7 +1253,7 @@ class BrokenStore:
     def __init__(self) -> None:
         self.calls = 0
 
-    async def list_experience_records(self, **kwargs: Any) -> Any:
+    async def list_routing_receipts(self, **kwargs: Any) -> Any:
         self.calls += 1
         raise RuntimeError("the experience table is unavailable")
 
@@ -1258,23 +1269,11 @@ def _cap(maximum_cost: str) -> dict[str, Any]:
     }
 
 
-def test_a_node_with_no_cost_cap_pays_the_whole_budget_for_any_spend() -> None:
-    """A zero cap has no denominator, and the safe reading of that is "all of it".
-
-    Returning 0.0 instead — the arithmetically tempting answer for a division that cannot be
-    done — would let a class of nodes whose budget was never set explore for free forever,
-    which is the one outcome a cost ledger exists to prevent. A spend of exactly zero is still
-    zero, because nothing was consumed.
-    """
-
+def test_observed_cost_is_not_clamped_and_unbudgeted_spend_refuses_accounting() -> None:
     node = build(NodeContract, resource_cap=_cap("0"))
-
     assert normalised_cost(Decimal("0"), node=node) == 0.0
-    assert normalised_cost(Decimal("0.0001"), node=node) == 1.0
-
+    with pytest.raises(ValueError, match="EXPLORATION_ACCOUNTING_UNAVAILABLE"):
+        normalised_cost(Decimal("0.0001"), node=node)
     capped = build(NodeContract, resource_cap=_cap("4"))
     assert normalised_cost(Decimal("1"), node=capped) == 0.25
-    # Above the cap the fraction is clamped rather than allowed past 1.0: the ledger's unit is
-    # a fraction of the budget, and a charge of 1.5 budgets would be refused outright by
-    # `CostLedger` and take a completed node's bookkeeping down with it.
-    assert normalised_cost(Decimal("9"), node=capped) == 1.0
+    assert normalised_cost(Decimal("9"), node=capped) == 2.25

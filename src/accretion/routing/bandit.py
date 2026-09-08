@@ -88,7 +88,12 @@ from accretion.routing.breaker_inputs import (
 from accretion.routing.breakers import exploration_allowed
 from accretion.routing.calibration import CalibrationDataError, conformal_quantile
 from accretion.routing.catalog import WORKSPACE_ROUTER_VERSION
-from accretion.routing.ledger import CostLedger, ExplorationCaps
+from accretion.routing.ledger import (
+    AccountingUnavailable,
+    CostLedger,
+    ExplorationCaps,
+    normalised_cost,
+)
 from accretion.routing.selector import DETERMINISTIC_PROPENSITY, SelectionResult
 from accretion.routing.shadow import (
     DEFAULT_DELTA_NI,
@@ -320,55 +325,67 @@ def _normalised(cost: float) -> float:
 
 
 class LedgerRegistry:
-    """The live cost ledgers of one process, keyed by ``(workspace_id, node_class)``.
+    """Rebuild accounting from immutable receipts and durable measured outcomes.
 
-    **There is no ledger table (ADR4-M7-003).** Everything the conservative inequality needs is
-    already on the receipt that spent the budget — the charged upper bound, the credited
-    baseline lower bound and the node class — so a ledger is *rebuilt* by replaying a
-    workspace's ``EXPLORE`` receipts rather than read from a second durable copy of a derived
-    quantity. A table would have to be kept in step with the receipts, which are the audit
-    record either way, and the two disagreeing is a class of bug with no external symptom.
-
-    :meth:`ledger` folds in every receipt it has not seen before on *every* call, so a
-    decision taken a moment ago by this same process is charged against the next one without
-    the registry having to be told. What the cache holds and a replay cannot rebuild is the
-    *settlements* :class:`~accretion.routing.settlement.ExplorationSettlement` applied, and
-    losing those across a restart is deliberate: an unsettled exploration keeps its upper
-    bound, so a fresh process charges every past exploration at its UCB and can only ever
-    hold a *tighter* budget than the one that has been measured. Conservative in the
-    direction a budget is allowed to be wrong in.
+    No process cache is authoritative. Every admission re-reads the receipts and
+    observations through its budget-locked transaction. Revisions retain the
+    largest observed cost: a later lower value is not an authorization to forget
+    spend. Missing outcomes keep their reservation; uncertain provenance refuses
+    exploration instead of crediting a guessed amount.
     """
 
     def __init__(self, store: StateStore) -> None:
         self.store = store
-        self._ledgers: dict[tuple[str, str], CostLedger] = {}
-        self._recorded: dict[tuple[str, str], set[str]] = {}
 
-    async def ledger(self, *, workspace_id: str, node_class: str) -> CostLedger:
-        """This key's ledger, with every ``EXPLORE`` receipt not yet in it folded in.
-
-        Receipts are replayed in ``contract_id`` order so that two processes rebuilding the
-        same ledger hold the same floats, and a receipt whose labels are missing or
-        unparseable is skipped rather than guessed at: a charge nobody can read is not a
-        charge this ledger may invent a number for.
-        """
-
-        key = (workspace_id, node_class)
-        ledger = self._ledgers.get(key)
-        if ledger is None:
-            ledger = CostLedger(workspace_id=workspace_id, node_class=node_class)
-            self._ledgers[key] = ledger
-            self._recorded[key] = set()
-        seen = self._recorded[key]
-        receipts = await self.store.list_routing_receipts(workspace_id=workspace_id)
+    async def ledger(
+        self, *, workspace_id: str, node_class: str, store: StateStore | None = None
+    ) -> CostLedger:
+        reader = store if store is not None else self.store
+        ledger = CostLedger(workspace_id=workspace_id, node_class=node_class)
+        receipts = await reader.list_routing_receipts(workspace_id=workspace_id)
+        records = await reader.list_experience_records(workspace_id=workspace_id)
+        nodes = await reader.list_node_contracts(workspace_id=workspace_id)
+        by_hash = {node.immutable_hash: node for node in nodes}
+        seen: dict[str, str] = {}
         for receipt in sorted(receipts, key=lambda item: item.contract_id):
             if receipt.contract_id in seen:
+                if seen[receipt.contract_id] != receipt.content_hash:
+                    raise AccountingUnavailable("contradictory duplicate receipt")
+                continue
+            seen[receipt.contract_id] = receipt.content_hash
+            if receipt.decision_type is not DecisionType.EXPLORE:
+                continue
+            declared_class = receipt.labels.get(NODE_CLASS_LABEL)
+            if not declared_class:
+                raise AccountingUnavailable("exploration receipt has no accounting scope")
+            node = by_hash.get(receipt.node_contract_hash)
+            if (
+                node is None
+                or node.project_id != receipt.project_id
+                or node.node_kind.value != declared_class
+            ):
+                raise AccountingUnavailable("exploration receipt has no matching frozen scope")
+            if declared_class != node_class:
                 continue
             charge = _charge_of(receipt, node_class=node_class)
             if charge is None:
-                continue
+                raise AccountingUnavailable("exploration receipt has an unreadable charge")
             ledger.record(receipt.contract_id, *charge)
-            seen.add(receipt.contract_id)
+            observations = [
+                record
+                for record in records
+                if record.source_node_execution_id == node.execution_instance_id
+            ]
+            if not observations:
+                continue
+            if any(
+                record.project_id != receipt.project_id
+                or record.configuration_hash != receipt.selected_configuration_hash
+                for record in observations
+            ):
+                raise AccountingUnavailable("observation does not match the selected execution")
+            observed = max(record.outcomes.cost for record in observations)
+            ledger.settle(receipt.contract_id, normalised_cost(observed, node=node))
         return ledger
 
 
@@ -420,6 +437,7 @@ class GuardedBandit:
         node: NodeContract,
         objective: ObjectiveContract,
         snapshot: RoutingSnapshot,
+        store: StateStore | None = None,
     ) -> BehaviorDecision:
         """Draw the action actually taken, or refuse and say which gate refused."""
 
@@ -440,9 +458,18 @@ class GuardedBandit:
             )
 
         node_class = node_class_of(node)
-        ledger = await self.ledgers.ledger(
-            workspace_id=node.workspace_id, node_class=node_class
-        )
+        try:
+            ledger = await self.ledgers.ledger(
+                workspace_id=node.workspace_id, node_class=node_class, store=store
+            )
+        except Exception:
+            # Unknown accounting cannot be treated as an empty account. Do not
+            # include store error text or untrusted labels in the public receipt.
+            return BehaviorDecision(
+                selection=baseline,
+                propensity=DETERMINISTIC_PROPENSITY,
+                labels={REFUSED_LABEL: "EXPLORATION_ACCOUNTING_UNAVAILABLE"},
+            )
         probabilities = self._distribution(
             admission.safe,
             greedy=admission.greedy,
@@ -599,9 +626,7 @@ class GuardedBandit:
                 "the §15.3 circuit breakers refused: " + ", ".join(tripped),
                 tuple(tripped),
             )
-        return _Admission(
-            policy=policy, greedy=greedy, safe=safe, version_id=version_id, beta=beta
-        )
+        return _Admission(policy=policy, greedy=greedy, safe=safe, version_id=version_id, beta=beta)
 
     def _safe_actions(
         self,
@@ -843,9 +868,7 @@ class GuardedBandit:
         )
 
 
-def _charge_of(
-    receipt: RoutingDecisionReceipt, *, node_class: str
-) -> tuple[float, float] | None:
+def _charge_of(receipt: RoutingDecisionReceipt, *, node_class: str) -> tuple[float, float] | None:
     """``(cost_ucb, baseline_cost_lcb)`` for an EXPLORE receipt of ``node_class``, or ``None``."""
 
     if receipt.decision_type is not DecisionType.EXPLORE:

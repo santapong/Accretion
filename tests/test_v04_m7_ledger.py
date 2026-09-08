@@ -175,8 +175,11 @@ def test_unsettled_explorations_are_charged_at_their_upper_bound_until_settled()
         ledger.settle("rcp_1", 0.125)
     with pytest.raises(KeyError, match="never recorded"):
         ledger.settle("rcp_absent", 0.125)
+    assert ledger.settle("rcp_2", 2.0).charged_cost == 2.0
+    # A real overrun stays measured; non-finite observations are still invalid.
+    ledger.record("rcp_nonfinite", 0.5, 0.5)
     with pytest.raises(ValueError, match="observed_cost"):
-        ledger.settle("rcp_2", 2.0)
+        ledger.settle("rcp_nonfinite", float("inf"))
 
 
 def test_absolute_caps_bind_independently_of_alpha() -> None:

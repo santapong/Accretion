@@ -384,9 +384,7 @@ class DefaultNodeRoutingService:
 
         if mode is not RoutingMode.AUTO:
             return DETERMINISTIC_VERSIONS
-        return await self.active_versions.resolve(
-            workspace_id=workspace_id, project_id=project_id
-        )
+        return await self.active_versions.resolve(workspace_id=workspace_id, project_id=project_id)
 
     @staticmethod
     def _attributed(versions: ActiveVersions, degraded: str | None) -> ActiveVersions:
@@ -459,7 +457,18 @@ class DefaultNodeRoutingService:
         )
         committed: tuple[RoutingDecisionReceipt, RoutingContext, ScoredSlate] | None = None
         try:
-            async with self.store.routing_transaction(run.run_id) as store:
+            transaction = (
+                self.store.routing_transaction(
+                    run.run_id,
+                    budget_key=(
+                        frozen.node_contract.workspace_id,
+                        frozen.node_contract.node_kind.value,
+                    ),
+                )
+                if mode is RoutingMode.AUTO
+                else self.store.routing_transaction(run.run_id)
+            )
+            async with transaction as store:
                 await self._authorize(
                     frozen.node_contract.workspace_id,
                     principal_ref_for_run(run),
@@ -569,6 +578,7 @@ class DefaultNodeRoutingService:
                 )
                 selection, propensity, behavior_labels = await self._behave(
                     mode,
+                    store=store,
                     context=context,
                     slate=slate,
                     baseline=baseline,
@@ -749,8 +759,7 @@ class DefaultNodeRoutingService:
             # sibling configurations under the same signature, and a per-hash split would
             # hide all of it.
             evidence_by_hash={
-                candidate.configuration.configuration_hash: records
-                for candidate in candidates
+                candidate.configuration.configuration_hash: records for candidate in candidates
             },
         )
         # §14 A4 and A9 reach the receipt through the slate's labels, which is the channel
@@ -767,6 +776,7 @@ class DefaultNodeRoutingService:
         self,
         mode: RoutingMode,
         *,
+        store: StateStore,
         context: RoutingContext,
         slate: ScoredSlate,
         baseline: SelectionResult,
@@ -783,6 +793,7 @@ class DefaultNodeRoutingService:
         if mode is not RoutingMode.AUTO:
             return baseline, DETERMINISTIC_PROPENSITY, {}
         decision = await self.behavior.select(
+            store=store,
             context=context,
             slate=slate,
             baseline=baseline,
@@ -1227,9 +1238,7 @@ class DefaultNodeRoutingService:
         snapshot = replace(snapshot, fallback_bundle_digest=catalog.fallback_bundle.digest)
         from accretion.routing.identity import routing_request_id as derive_request
 
-        versions = await self._versions(
-            mode, workspace_id=node.workspace_id, project_id=project_id
-        )
+        versions = await self._versions(mode, workspace_id=node.workspace_id, project_id=project_id)
         expected = derive_request(
             node.immutable_hash,
             snapshot,
