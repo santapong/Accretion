@@ -5,6 +5,7 @@ import re
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from copy import copy, deepcopy
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from typing import Any, NamedTuple, Protocol, cast
@@ -430,6 +431,89 @@ def _load_v04_contract[C: CanonicalContract](
     return upcast(dict(payload), model)
 
 
+@dataclass(frozen=True)
+class StoredRoutingContract[C: CanonicalContract]:
+    """A verified reader view and the writer identities its references actually pin.
+
+    No raw payload escapes the store. ``projected`` comes from the verified stored
+    field set, never a caller-controlled label. A projected view is readable, but
+    cannot establish that this binary understands the writer's execution inputs.
+    """
+
+    record: C
+    writer_content_hash: str
+    writer_schema_version: str
+    writer_immutable_hash: str | None
+    projected: bool
+
+
+_ROUTING_READ_TABLES: dict[type[CanonicalContract], tuple[str, type[V04ContractRow]]] = {
+    NodeContract: ("node_contracts", NodeContractRow),
+    VerificationSpec: ("verification_specs", VerificationSpecRow),
+    RoutingContext: ("routing_requests", RoutingRequestRow),
+    RoutingDecisionReceipt: ("routing_receipts", RoutingReceiptRow),
+    ConfigurationCandidate: ("configuration_candidates", ConfigurationCandidateRow),
+    ExperienceRecord: ("experience_records", ExperienceRecordRow),
+}
+
+
+def _stored_routing_contract[C: CanonicalContract](
+    model: type[C], row: _V04MemoryRow | V04ContractRow, contract_id: str
+) -> StoredRoutingContract[C]:
+    """Validate a selected row before its promoted columns can authorize a join."""
+
+    record = _load_v04_contract(model, row.payload, contract_id)
+    row_id = row.contract_id if isinstance(row, _V04MemoryRow) else row.id
+    expected = {
+        "contract_id": row_id,
+        "workspace_id": row.workspace_id,
+        "project_id": row.project_id,
+        "content_hash": row.content_hash,
+        "schema_version": row.schema_version,
+    }
+    for field, value in expected.items():
+        if row.payload.get(field) != value:
+            raise ValueError(f"stored {model.__name__} {field} disagrees with its row")
+    if record.contract_id != contract_id or record.created_at != row.created_at:
+        raise ValueError(f"stored {model.__name__} identity disagrees with its lookup")
+
+    # Memory has no extra indexed columns. PostgreSQL does; verify the exact ones
+    # used to select a node/reference/candidate instead of treating the SQL join as
+    # proof that its sealed payload names the same resource.
+    promoted: dict[str, Any] = {}
+    if isinstance(row, NodeContractRow):
+        for field in (
+            "node_id", "run_graph_id", "graph_revision", "execution_instance_id", "immutable_hash"
+        ):
+            promoted[field] = row.payload.get(field)
+    elif isinstance(row, RoutingRequestRow):
+        reference = cast(RoutingContext, record).node_contract_ref
+        promoted = {
+            "node_contract_id": reference.node_contract_id,
+            "node_contract_hash": reference.immutable_hash,
+        }
+    elif isinstance(row, RoutingReceiptRow):
+        promoted = {
+            "routing_request_id": row.payload.get("routing_request_id"),
+            "node_contract_hash": row.payload.get("node_contract_hash"),
+        }
+    elif isinstance(row, ConfigurationCandidateRow):
+        promoted = {"routing_request_id": row.payload.get("routing_request_id")}
+    for field, value in promoted.items():
+        if getattr(row, field) != value:
+            raise ValueError(f"stored {model.__name__} {field} disagrees with its row")
+
+    return StoredRoutingContract(
+        record=record,
+        writer_content_hash=row.content_hash,
+        writer_schema_version=row.schema_version,
+        writer_immutable_hash=(
+            str(row.payload["immutable_hash"]) if isinstance(record, NodeContract) else None
+        ),
+        projected=bool(set(row.payload) - model.model_fields.keys()),
+    )
+
+
 def _guard_v04_drift(
     noun: str,
     contract_id: str,
@@ -709,6 +793,9 @@ class _V04MemoryRow(NamedTuple):
 
 
 class StateStore(Protocol):
+    async def read_routing_contract[C: CanonicalContract](
+        self, model: type[C], contract_id: str
+    ) -> StoredRoutingContract[C] | None: ...
     async def create_project(self, project: Project) -> Project: ...
     async def get_project(self, project_id: str) -> Project | None: ...
     async def list_projects(self) -> list[Project]: ...
@@ -1274,13 +1361,37 @@ class StateStore(Protocol):
 class MemoryStore:
     """Deterministic store for unit tests and protocol development, never production."""
 
+    async def read_routing_contract[C: CanonicalContract](
+        self, model: type[C], contract_id: str
+    ) -> StoredRoutingContract[C] | None:
+        table, _ = _ROUTING_READ_TABLES[model]
+        row = self.v04_contracts[table].get(contract_id)
+        return _stored_routing_contract(model, row, contract_id) if row else None
+
     async def list_routing_receipts_for_run_graph(
         self, *, workspace_id: str, run_graph_id: str
     ) -> list[RoutingDecisionReceipt]:
-        nodes = await self.list_node_contracts(workspace_id=workspace_id)
-        hashes = {n.immutable_hash for n in nodes if n.run_graph_id == run_graph_id}
-        return [r for r in await self.list_routing_receipts(workspace_id=workspace_id)
-                if r.node_contract_hash in hashes]
+        nodes = [
+            _stored_routing_contract(NodeContract, row, key)
+            for key, row in self.v04_contracts["node_contracts"].items()
+            if row.workspace_id == workspace_id and row.payload.get("run_graph_id") == run_graph_id
+        ]
+        projects = {node.writer_immutable_hash: node.record.project_id for node in nodes}
+        receipts = []
+        for key, row in sorted(
+            self.v04_contracts["routing_receipts"].items(),
+            key=lambda item: (item[1].created_at, item[0]),
+        ):
+            if (
+                row.workspace_id != workspace_id
+                or row.payload.get("node_contract_hash") not in projects
+            ):
+                continue
+            receipt = _stored_routing_contract(RoutingDecisionReceipt, row, key).record
+            if receipt.project_id != projects[receipt.node_contract_hash]:
+                raise ValueError("stored routing receipt and node disagree on project scope")
+            receipts.append(receipt)
+        return receipts
 
     def __init__(self) -> None:
         self.projects: dict[str, Project] = {}
@@ -3261,7 +3372,11 @@ class MemoryStore:
         project_id: str | None,
     ) -> list[C]:
         return [
-            _load_v04_contract(model, row.payload, row.contract_id)
+            (
+                _stored_routing_contract(model, row, row.contract_id).record
+                if model in _ROUTING_READ_TABLES
+                else _load_v04_contract(model, row.payload, row.contract_id)
+            )
             for row in self._scoped_v04_rows(
                 table, workspace_id=workspace_id, project_id=project_id
             )
@@ -3959,7 +4074,7 @@ class PostgresStore:
     async def list_routing_receipts_for_run_graph(
         self, *, workspace_id: str, run_graph_id: str
     ) -> list[RoutingDecisionReceipt]:
-        query = (select(RoutingReceiptRow)
+        query = (select(RoutingReceiptRow, NodeContractRow)
                  .join(NodeContractRow,
                        NodeContractRow.immutable_hash == RoutingReceiptRow.node_contract_hash)
                  .where(RoutingReceiptRow.workspace_id == workspace_id,
@@ -3967,8 +4082,28 @@ class PostgresStore:
                         NodeContractRow.run_graph_id == run_graph_id)
                  .order_by(RoutingReceiptRow.created_at, RoutingReceiptRow.id))
         async with self.sessions() as session:
-            rows = (await session.scalars(query)).all()
-        return [_load_v04_contract(RoutingDecisionReceipt, row.payload, row.id) for row in rows]
+            rows = (await session.execute(query)).all()
+        receipts = []
+        for receipt_row, node_row in rows:
+            node = _stored_routing_contract(NodeContract, node_row, node_row.id)
+            receipt = _stored_routing_contract(
+                RoutingDecisionReceipt, receipt_row, receipt_row.id
+            ).record
+            if (
+                node.writer_immutable_hash != receipt.node_contract_hash
+                or node.record.project_id != receipt.project_id
+            ):
+                raise ValueError("stored routing receipt and node disagree on identity or scope")
+            receipts.append(receipt)
+        return receipts
+
+    async def read_routing_contract[C: CanonicalContract](
+        self, model: type[C], contract_id: str
+    ) -> StoredRoutingContract[C] | None:
+        _, row_type = _ROUTING_READ_TABLES[model]
+        async with self.sessions() as session:
+            row = await session.get(row_type, contract_id)
+        return _stored_routing_contract(model, row, contract_id) if row else None
 
     async def create_project(self, project: Project) -> Project:
         async with self.sessions.begin() as session:
@@ -7510,7 +7645,14 @@ class PostgresStore:
             query = query.where(row_type.project_id == project_id)
         async with self.sessions() as session:
             rows = (await session.scalars(query)).all()
-        return [_load_v04_contract(model, row.payload, row.id) for row in rows]
+        return [
+            (
+                _stored_routing_contract(model, row, row.id).record
+                if model in _ROUTING_READ_TABLES
+                else _load_v04_contract(model, row.payload, row.id)
+            )
+            for row in rows
+        ]
 
     async def _guard_activation_contiguity(
         self, session: AsyncSession, record: RouterActivation

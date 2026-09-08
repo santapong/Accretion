@@ -345,6 +345,10 @@ class LedgerRegistry:
         receipts = await reader.list_routing_receipts(workspace_id=workspace_id)
         records = await reader.list_experience_records(workspace_id=workspace_id)
         nodes = await reader.list_node_contracts(workspace_id=workspace_id)
+        if any(
+            record.workspace_id != workspace_id for record in (*receipts, *records, *nodes)
+        ):
+            raise AccountingUnavailable("accounting payload is outside the requested workspace")
         by_hash = {node.immutable_hash: node for node in nodes}
         seen: dict[str, str] = {}
         for receipt in sorted(receipts, key=lambda item: item.contract_id):
@@ -355,6 +359,15 @@ class LedgerRegistry:
             seen[receipt.contract_id] = receipt.content_hash
             if receipt.decision_type is not DecisionType.EXPLORE:
                 continue
+            receipt_view = await reader.read_routing_contract(
+                RoutingDecisionReceipt, receipt.contract_id
+            )
+            if (
+                receipt_view is None
+                or receipt_view.projected
+                or receipt_view.record.content_hash != receipt.content_hash
+            ):
+                raise AccountingUnavailable("exploration receipt has unknown accounting inputs")
             declared_class = receipt.labels.get(NODE_CLASS_LABEL)
             if not declared_class:
                 raise AccountingUnavailable("exploration receipt has no accounting scope")
@@ -365,6 +378,14 @@ class LedgerRegistry:
                 or node.node_kind.value != declared_class
             ):
                 raise AccountingUnavailable("exploration receipt has no matching frozen scope")
+            node_view = await reader.read_routing_contract(NodeContract, node.contract_id)
+            if (
+                node_view is None
+                or node_view.projected
+                or node_view.writer_immutable_hash != receipt.node_contract_hash
+                or node_view.record != node
+            ):
+                raise AccountingUnavailable("exploration node has unknown accounting inputs")
             if declared_class != node_class:
                 continue
             charge = _charge_of(receipt, node_class=node_class)
@@ -378,6 +399,16 @@ class LedgerRegistry:
             ]
             if not observations:
                 continue
+            for record in observations:
+                observed_view = await reader.read_routing_contract(
+                    ExperienceRecord, record.contract_id
+                )
+                if (
+                    observed_view is None
+                    or observed_view.projected
+                    or observed_view.record.content_hash != record.content_hash
+                ):
+                    raise AccountingUnavailable("observation has unknown accounting inputs")
             if any(
                 record.project_id != receipt.project_id
                 or record.configuration_hash != receipt.selected_configuration_hash

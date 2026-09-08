@@ -71,7 +71,8 @@ the result: **an upcast contract's digests are the reader's, not the writer's.**
 :class:`~accretion.contracts.canonical.CanonicalContract`, such as
 ``NodeContract.immutable_hash`` — commits to the projection, so two readers
 at different versions will compute different values for the same stored document. An upcast
-record is therefore safe to *read*, to route on and to explain with, and must never be
+record is therefore safe to *read* and to explain with; execution must refuse fields
+whose meaning was lost in projection. It must never be
 written back: doing so would replace the writer's sealed body with a lossy copy of it under
 the same id. Nothing in this repository writes one back — the stores hand
 :func:`upcast` the row's payload and keep the row exactly as it found it — and a store test
@@ -84,8 +85,9 @@ Three references in the family exist solely to be compared against those digests
 H1 and pins H1 in a node contract; this reader upcasts the spec, drops one unknown key and
 re-seals it as H2. The rule for whoever implements the ref-vs-record integrity check
 (ADR-044, SDD §8.3) is therefore explicit: a pinned digest MUST be compared against the
-digest carried by the stored payload (the row's ``content_hash`` / ``immutable_hash``
-column), never against the digest on the record ``upcast`` returned. Otherwise a
+verified digest carried by the stored payload, after checking derived hashes and the
+row's identity/scope columns, never against the digest on the record ``upcast`` returned.
+An indexed digest alone is not integrity evidence. Otherwise a
 well-formed peer reads as a forger on the one path the registry classifies as
 Major/fail-closed.
 
@@ -139,6 +141,7 @@ from accretion.contracts.canonical import (
     CanonicalContract,
     content_hash,
 )
+from accretion.contracts.routing import NodeContract
 
 UPCAST_DROPPED_KEYS_LABEL = "upcast_dropped_keys"
 """The header label an upcast record carries, naming the keys the projection dropped."""
@@ -322,13 +325,26 @@ def upcast[C: CanonicalContract](payload: dict[str, Any], model: type[C]) -> C:
             "document cannot be upcast, because the projection would seal a body no writer "
             "ever committed to"
         )
-    computed = content_hash(_sealed_body(payload, model))
+    sealed = _sealed_body(payload, model)
+    computed = content_hash(sealed)
     if declared != computed:
         raise ValueError(
             f"content_hash {declared!r} does not match the digest of this stored "
             f"{model.__name__} payload ({computed!r}); the document was edited after it was "
             "sealed and is refused rather than upcast (registry §20.5, ADR-057)"
         )
+
+    # The outer seal includes a derived hash but does not prove its derivation. A
+    # writer identity must be checked before the projection discards and recomputes
+    # it; otherwise a coherent outer seal can launder an arbitrary reference pin.
+    # NodeContract is body-scoped. Other derived hashes have their own signatures
+    # and must not be guessed from the names in DERIVED_HASH_FIELDS.
+    if issubclass(model, NodeContract):
+        immutable_hash = content_hash(sealed, exclude=("content_hash", "immutable_hash"))
+        if payload.get("immutable_hash") != immutable_hash:
+            raise ValueError(
+                f"stored {model.__name__} immutable_hash does not match its writer body"
+            )
 
     projected = dict(payload)
     upcaster = UPCASTERS.get((model.CONTRACT_TYPE, version[0]))

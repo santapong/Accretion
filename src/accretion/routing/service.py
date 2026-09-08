@@ -66,10 +66,11 @@ from accretion.contracts.routing import (
     StructuredExplanation,
     TaskFeatures,
     UncertaintySummary,
+    VerificationSpec,
 )
 from accretion.governance import CapabilityPolicyEngine
 from accretion.ids import derived_id
-from accretion.persistence.store import StateStore
+from accretion.persistence.store import StateStore, StoredRoutingContract
 from accretion.routing.candidates import CandidateBuilder
 from accretion.routing.catalog import WORKSPACE_ROUTER_VERSION, ConfigurationCatalog
 from accretion.routing.compatibility import CompatibilityEngine
@@ -422,17 +423,25 @@ class DefaultNodeRoutingService:
         task = await self.store.get_task(run.task_id)
         if task is None:
             raise _error("ROUTING_INPUT_MISSING", "Task not found", 404)
-        persisted_node = await self.store.get_node_contract(frozen.node_contract.contract_id)
-        persisted_spec = await self.store.get_verification_spec(
-            frozen.verification_spec.contract_id
+        node_view = await self.store.read_routing_contract(
+            NodeContract, frozen.node_contract.contract_id
         )
+        spec_view = await self.store.read_routing_contract(
+            VerificationSpec, frozen.verification_spec.contract_id
+        )
+        persisted_node = node_view.record if node_view else None
+        persisted_spec = spec_view.record if spec_view else None
         graph = await self.store.get_run_graph(run.run_id)
         if (
             persisted_node is None
             or persisted_spec is None
+            or node_view is None
+            or spec_view is None
+            or node_view.projected
+            or spec_view.projected
             or graph is None
-            or persisted_node.content_hash != frozen.node_contract.content_hash
-            or persisted_spec.content_hash != frozen.verification_spec.content_hash
+            or persisted_node != frozen.node_contract
+            or persisted_spec != frozen.verification_spec
             or persisted_node.verification_spec_ref.content_hash != persisted_spec.content_hash
             or persisted_node.run_graph_id != graph.run_graph_id
             or persisted_node.project_id != run.project_id
@@ -930,7 +939,7 @@ class DefaultNodeRoutingService:
 
     async def configuration_for(self, receipt: RoutingDecisionReceipt) -> ExecutionConfiguration:
         persisted = await self.store.get_routing_receipt(receipt.contract_id)
-        if persisted is None or persisted.content_hash != receipt.content_hash:
+        if persisted is None or persisted != receipt:
             raise _error("DISPATCH_WITHOUT_RECEIPT", "A persisted matching receipt is required")
         for candidate in await self._candidates(self.store, persisted):
             if (
@@ -947,36 +956,103 @@ class DefaultNodeRoutingService:
     async def latest_receipt(
         self, *, frozen: FrozenNode, run: Run
     ) -> RoutingDecisionReceipt | None:
+        node = await self.store.read_routing_contract(
+            NodeContract, frozen.node_contract.contract_id
+        )
+        if node is None or node.record != frozen.node_contract:
+            return None
         receipts = await self.store.list_routing_receipts_for_run_graph(
             workspace_id=frozen.node_contract.workspace_id,
             run_graph_id=frozen.node_contract.run_graph_id,
         )
         matches = [
-            r for r in receipts if r.node_contract_hash == frozen.node_contract.immutable_hash
+            r for r in receipts if r.node_contract_hash == node.writer_immutable_hash
         ]
         superseded = {r.supersedes_contract_id for r in matches}
         heads = [r for r in matches if r.contract_id not in superseded]
         return max(heads, key=lambda r: (r.created_at, r.contract_id)) if heads else None
 
-    async def _run_for(self, receipt: RoutingDecisionReceipt) -> Run:
-        context = await self.store.get_routing_request(receipt.routing_request_id)
+    async def _read_lineage(
+        self, store: StateStore, receipt: RoutingDecisionReceipt
+    ) -> tuple[
+        StoredRoutingContract[RoutingDecisionReceipt],
+        StoredRoutingContract[RoutingContext],
+        StoredRoutingContract[NodeContract],
+    ]:
+        persisted = await store.read_routing_contract(RoutingDecisionReceipt, receipt.contract_id)
+        context = await store.read_routing_contract(RoutingContext, receipt.routing_request_id)
         node = (
-            await self.store.get_node_contract(context.node_contract_ref.node_contract_id)
-            if context
-            else None
+            await store.read_routing_contract(
+                NodeContract, context.record.node_contract_ref.node_contract_id
+            ) if context else None
         )
-        run = await self.store.get_run(node.labels.get("run_id", "")) if node else None
+        if (
+            persisted is None
+            or persisted.record != receipt
+            or context is None
+            or node is None
+            or context.record.node_contract_ref.immutable_hash != node.writer_immutable_hash
+            or node.writer_immutable_hash != receipt.node_contract_hash
+            or {receipt.workspace_id, context.record.workspace_id, node.record.workspace_id}
+            != {receipt.workspace_id}
+            or {receipt.project_id, context.record.project_id, node.record.project_id}
+            != {receipt.project_id}
+        ):
+            raise _error("RECEIPT_NOT_FOUND", "Routing resource not found", 404)
+        return persisted, context, node
+
+    async def _run_for(self, receipt: RoutingDecisionReceipt) -> Run:
+        _, _, node_view = await self._read_lineage(self.store, receipt)
+        node = node_view.record
+        # The label is only a locator. The verified node/reference scope and the
+        # durable run/graph relation establish ownership; the label alone cannot.
+        run = await self.store.get_run(node.labels.get("run_id", ""))
         graph = await self.store.get_run_graph(run.run_id) if run else None
         if (
             run is None
-            or node is None
             or graph is None
+            or graph.run_id != run.run_id
+            or graph.task_id != run.task_id
             or graph.run_graph_id != node.run_graph_id
-            or node.immutable_hash != receipt.node_contract_hash
             or run.project_id != receipt.project_id
         ):
             raise _error("RECEIPT_NOT_FOUND", "Routing resource not found", 404)
         return run
+
+    async def _assert_dispatch_inputs(
+        self, store: StateStore, receipt: RoutingDecisionReceipt
+    ) -> None:
+        persisted, context, node = await self._read_lineage(store, receipt)
+        spec = await store.read_routing_contract(
+            VerificationSpec, node.record.verification_spec_ref.verification_spec_id
+        )
+        if (
+            any(view.projected for view in (persisted, context, node))
+            or spec is None
+            or spec.projected
+            or spec.writer_content_hash != node.record.verification_spec_ref.content_hash
+            or spec.record.workspace_id != node.record.workspace_id
+            or spec.record.project_id != node.record.project_id
+        ):
+            raise _error(
+                "ROUTING_INPUT_INVALID",
+                "Dispatch requires verified inputs whose execution fields this reader understands",
+                422,
+            )
+        for candidate in await self._candidates(store, receipt):
+            if candidate.configuration.contract_id != receipt.selected_configuration_id:
+                continue
+            candidate_view = await store.read_routing_contract(
+                ConfigurationCandidate, candidate.contract_id
+            )
+            if (
+                candidate_view is None
+                or candidate_view.projected
+                or candidate_view.record.project_id != receipt.project_id
+            ):
+                raise _error(
+                    "ROUTING_INPUT_INVALID", "Dispatch requires a fully understood candidate", 422
+                )
 
     async def _assert_amendable(
         self, store: StateStore, receipt: RoutingDecisionReceipt, run: Run
@@ -1003,6 +1079,7 @@ class DefaultNodeRoutingService:
         self, *, receipt: RoutingDecisionReceipt, run: Run
     ) -> ExecutionConfiguration:
         configuration = await self.configuration_for(receipt)
+        await self._assert_dispatch_inputs(self.store, receipt)
         owner = await self._run_for(receipt)
         if owner.run_id != run.run_id:
             raise _error("DISPATCH_WITHOUT_RECEIPT", "Receipt belongs to another execution")
@@ -1032,6 +1109,7 @@ class DefaultNodeRoutingService:
             await self._authorize(
                 receipt.workspace_id, principal_ref_for_run(run), mutate=True, store=store
             )
+            await self._assert_dispatch_inputs(store, receipt)
             await self._assert_amendable(store, receipt, run)
             await self._receipt_event(
                 store, run, receipt, "dispatch", EventType.ROUTING_DECISION_CREATED
@@ -1097,6 +1175,16 @@ class DefaultNodeRoutingService:
         try:
             async with self.store.routing_transaction(run.run_id) as store:
                 await self._authorize(original.workspace_id, principal, mutate=True, store=store)
+                lineage = await self._read_lineage(store, original)
+                if candidate_id is not None and any(view.projected for view in lineage):
+                    # An override copies the original/context into new current
+                    # contracts. Never let that reseal erase an execution refusal.
+                    # Cancellation remains available and its successor is terminal.
+                    raise _error(
+                        "ROUTING_INPUT_INVALID",
+                        "Override requires fully understood stored routing inputs",
+                        422,
+                    )
                 existing = await store.get_routing_receipt_for_request(request_id)
                 if existing is not None:
                     return existing
@@ -1110,6 +1198,16 @@ class DefaultNodeRoutingService:
                     raise _error(
                         "CANDIDATE_NOT_ELIGIBLE", "Candidate is not in the eligible set", 422
                     )
+                if selected is not None:
+                    selected_view = await store.read_routing_contract(
+                        ConfigurationCandidate, selected.contract_id
+                    )
+                    if selected_view is None or selected_view.projected:
+                        raise _error(
+                            "ROUTING_INPUT_INVALID",
+                            "Override requires a fully understood candidate",
+                            422,
+                        )
                 context = await store.get_routing_request(original.routing_request_id)
                 if context is None:
                     raise _error("ROUTING_RECORD_INVALID", "Routing context is unavailable")
