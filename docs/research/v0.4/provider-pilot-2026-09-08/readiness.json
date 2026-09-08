@@ -1,12 +1,12 @@
 {
   "schema_version": "0.1.0",
   "study_id": "ACR-ROUTER-DEV-20260908",
-  "checked_on": "2026-09-08",
+  "checked_on": "2026-09-09",
   "baseline_commit": "8ded8bab151267ec8e06182f52543dabed6eaca7",
   "protocol_state": "DRAFT_NOT_FROZEN",
   "preparation_authority": "USER_APPROVED_COMPLETION_PLAN_2026_09_08",
   "live_execution_authority": "NOT_AUTHORIZED",
-  "fake_instrumentation_state": "DESIGNED_NOT_IMPLEMENTED",
+  "fake_instrumentation_state": "IMPLEMENTED_LOCAL_TESTED_FINAL_EXPORT_PENDING",
   "r0_decision": "ADOPTED_SCOPED_NO_GO_FULL_CLAIM",
   "owners": {
     "maintainer": "Santapong",
@@ -38,7 +38,7 @@
     "power_analysis": null
   },
   "data_inventory": {
-    "FAKE_INSTRUMENTATION": "SCHEMA_FIXTURES_ONLY",
+    "FAKE_INSTRUMENTATION": "THREE_FIXED_LOCAL_CASES_IMPLEMENTED_FINAL_EXPORT_PENDING",
     "VERIFIER_QUALIFICATION": null,
     "PILOT_DEVELOPMENT": null,
     "CANDIDATE_TRAINING": null,
@@ -47,8 +47,8 @@
     "FINAL_EVALUATION": "NOT_ASSIGNED_NOT_AUTHORIZED"
   },
   "readiness_gates": {
-    "mechanical_fake_only_exclusion": "PENDING_IMPLEMENTATION_AND_TESTS",
-    "record_join_validation": "PENDING_IMPLEMENTATION_AND_TESTS",
+    "mechanical_fake_only_exclusion": "FOCUSED_TESTS_PASSED_FINAL_EXPORT_PENDING",
+    "record_join_validation": "FOCUSED_TESTS_PASSED_FINAL_EXPORT_PENDING",
     "frozen_verifier_qualification": "MISSING",
     "candidate_eligibility": "MISSING",
     "effective_setting_observability": "MISSING",

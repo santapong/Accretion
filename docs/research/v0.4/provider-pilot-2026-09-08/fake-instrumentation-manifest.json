@@ -1,14 +1,15 @@
 {
   "schema_version": "0.1.0",
   "study_id": "ACR-ROUTER-DEV-20260908",
-  "status": "DESIGNED_NOT_IMPLEMENTED",
+  "status": "REVIEWED_FAKE_RECIPE",
   "execution_source": "FAKE_INSTRUMENTATION",
   "allowed_runtime_providers": [
     "FAKE"
   ],
   "routing_mode": "BASELINE_ONLY",
   "allowed_decision_kinds": [
-    "BASELINE"
+    "EXPLOIT",
+    "FALLBACK"
   ],
   "allowed_risk_class": "LOW_DIGITAL",
   "selected_agent_tools": [],

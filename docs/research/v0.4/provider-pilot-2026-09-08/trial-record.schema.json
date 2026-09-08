@@ -86,6 +86,10 @@
         "observed_model": {
           "type": "string",
           "minLength": 1
+        },
+        "configuration_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
         }
       },
       "required": [
@@ -97,7 +101,8 @@
         "selected_agent_tools",
         "requested_model",
         "accepted_model",
-        "observed_model"
+        "observed_model",
+        "configuration_hash"
       ]
     },
     "routing": {
@@ -108,7 +113,10 @@
           "const": "BASELINE_ONLY"
         },
         "decision_kind": {
-          "const": "BASELINE"
+          "enum": [
+            "EXPLOIT",
+            "FALLBACK"
+          ]
         },
         "receipt_id": {
           "type": "string",

@@ -47,7 +47,7 @@ feedback leaking between candidate arms or data roles.
 
 ## Candidate eligibility
 
-The initial fake path allows only Provider.FAKE, BASELINE_ONLY, BASELINE
+The initial fake path allows only Provider.FAKE, BASELINE_ONLY, deterministic EXPLOIT/FALLBACK
 decisions, LOW_DIGITAL and empty selected tools for AGENT nodes. It denies AUTO,
 SHADOW, EXPLORE, native/provider tools, selected AGENT tool configurations and
 any provider registry entry other than the in-process fake. It does not call

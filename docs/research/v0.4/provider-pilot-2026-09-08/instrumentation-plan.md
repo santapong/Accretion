@@ -1,13 +1,16 @@
 # Minimal fake instrumentation implementation
 
-State: **DESIGNED, NOT IMPLEMENTED**. Scope: R1 preparation only.
+State: **IMPLEMENTED, FOCUSED LOCAL TESTS PASSED; clean-commit evidence pending**
+on 2026-09-09 (Asia/Bangkok). Scope: R1 preparation only.
 The user-approved completion plan authorizes this bounded fake/local path;
-the coordinator reviews its implementation boundary before code changes.
+the coordinator reviewed and approved this implementation boundary before code
+changes. Live execution remains **NOT_AUTHORIZED**.
 
 ## Files and ownership
 
-Add only `src/accretion/provider_pilot.py`,
-`scripts/provider_pilot_dry_run.py`, and `tests/test_provider_pilot_dry_run.py`,
+Added only [the instrument](../../../../src/accretion/provider_pilot.py),
+[local CLI](../../../../scripts/provider_pilot_dry_run.py), and
+[focused tests](../../../../tests/test_provider_pilot_dry_run.py),
 plus generated local evidence under this study's new directory after the run.
 No existing runtime, RunManager, routing bootstrap, store, migration or frozen
 research file needs an edit. If a missing public seam prevents the join, stop
@@ -18,8 +21,10 @@ schemas now; do not label illustrative fixture rows as run receipts or evidence.
 
 ## Mechanical isolation from the accounting repair
 
-1. Construct Settings explicitly for BASELINE_ONLY and live providers disabled;
-   refuse ambient AUTO/SHADOW or live-provider settings before creating a run.
+1. Pass BASELINE_ONLY and live providers disabled directly to the existing
+   `build_node_routing` and `RunManager` constructors; do not load ambient
+   Settings or use a production app factory. Refuse ambient AUTO/SHADOW or
+   live-provider settings before constructing a runtime.
 2. Construct a runtime map containing only the in-process Provider.FAKE. Do not
    instantiate hosted-provider adapters, read provider credentials or use an
    external-runtime factory. Deny any non-FAKE runtime/configuration.
@@ -36,8 +41,9 @@ schemas now; do not label illustrative fixture rows as run receipts or evidence.
    calls and billed provider amount must remain zero; no proxy is treated as
    money. These limits are unrelated to the questioned AUTO accounting path.
 
-This mechanical exclusion, once tested, lets fake preparation proceed while C1/C2
-budget work is reviewed. It does not prove the excluded budget behavior safe.
+The focused tests trap hosted-adapter, learned/budget and promotion constructors
+and network connection attempts. This exclusion lets fake preparation proceed
+while C1/C2 budget work is reviewed. It does not prove the excluded behavior safe.
 
 ## Data path and smallest fixture set
 
@@ -57,12 +63,31 @@ Capture actual wall/monotonic timing. Record zero provider calls with its basis;
 keep unsupported local-compute accounting null and a limitation. The result
 must distinguish task verification status from measurement-completeness status.
 
+The instrument manually orchestrates one AGENT node with actual existing
+freeze, route, dispatch-claim, FakeRuntime, OutputContractVerifier and M3
+independent-record APIs. It uses MemoryStore and disposable worktrees, not a
+full production scheduler, database restart or feedback-pipeline execution.
+BASELINE_ONLY is the routing mode; native decisions are EXPLOIT or FALLBACK,
+not an invented BASELINE decision kind. The missing-evidence case deliberately
+withholds the verifier's required-output observation to exercise INCONCLUSIVE;
+it never changes the frozen native VerificationSpec.
+
 Export immutable JSON records and a manifest of content hashes to a new output
 directory. Verify referential joins against the actual store; serializing five
 unrelated IDs does not meet acceptance. Missing join/usage/verifier data becomes
 INCONCLUSIVE or a rejected export. Preserve attempts rejected before dispatch
 in a separate admission log with zero executions; never invent a receipt to
 fill a row. A new output directory avoids overwriting prior evidence.
+
+Validation applies the JSON schema and native CanonicalContract seal checks,
+recomputes the independent result from its saved verifier inputs, verifies the
+exact evidence set and artifact digests, and joins native session, lease,
+runtime terminal and dispatch events. The per-case timeout wraps setup through
+export/verification; the total timeout bounds the three-case loop. Local Git
+subprocesses are bounded and reaped on cancellation. Source provenance includes
+the commit, tracked/untracked status, relevant code hashes, interpreter,
+imported package paths and dependency versions. Unsupported monetary prices
+and local-compute accounting remain unavailable, never inferred.
 
 ## Required tests and review gate
 

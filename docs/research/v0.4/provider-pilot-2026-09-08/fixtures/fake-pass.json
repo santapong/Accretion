@@ -19,11 +19,12 @@
     "selected_agent_tools": [],
     "requested_model": "fake-instrumentation",
     "accepted_model": "fake-instrumentation",
-    "observed_model": "fake-instrumentation"
+    "observed_model": "fake-instrumentation",
+    "configuration_hash": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
   },
   "routing": {
     "mode": "BASELINE_ONLY",
-    "decision_kind": "BASELINE",
+    "decision_kind": "EXPLOIT",
     "receipt_id": "illustrative-receipt-01",
     "receipt_hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "node_contract_hash": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
