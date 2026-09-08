@@ -1,5 +1,7 @@
 # M2 implementation and evidence
 
+> **Status clarification — 2026-09-08:** Historical M2 implementation record. M2 merged in #139 and ships in v0.4.0/v0.4.1; the branch/review wording and local counts below describe its original build. Current status is in the [milestone index](README.md).
+
 Baseline: `42067cd` on `develop`. Implementation uses the isolated
 `feature/v04-m2-integration` branch. The original checkout and older worktrees are
 preserved. Three implementation workers cover freeze/dispatch, catalog/selection,

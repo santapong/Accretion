@@ -1,5 +1,7 @@
 # v0.4 M7 — Guarded exploration, and the six conditions that switch it off
 
+> **Status clarification — 2026-09-08:** Historical milestone measurements below predate the completed release audit. M7 merged in #151. The [current backlog](backlog.md#remaining-bounded-work) records the separate accounting witnesses; this banner does not claim those concerns repaired.
+
 SDD v0.4 §9.5 is the only place in this release where the router is permitted to take an action
 its own deterministic selector would not have taken. §15.3 is the list of six conditions under
 which it may not. M7 is both, and the ordering between them is the milestone: the breakers, the

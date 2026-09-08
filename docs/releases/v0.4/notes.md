@@ -1,9 +1,10 @@
 # Accretion v0.4.0 release notes
 
-> Every number below is sourced from the repository at `develop`
-> `cea73eb1eeb6e1cdeb7513de5acff3b085c16542` (the #156 squash commit that closed M10) on
-> 2026-09-07. The release audit records the measurements; the tag `v0.4.0` is cut on `main`
-> after the release bridge and recorded in the audit's release procedure.
+> **Released historical record.** The v0.4.0 measurements refer to `develop`
+> `cea73eb1eeb6e1cdeb7513de5acff3b085c16542` (#156, M10 closed), audited on
+> 2026-09-07. The v0.4.1 addendum below has its own dated evidence. Both releases
+> and their actual tag identities are recorded in the [frozen baseline](baseline.md).
+> Documentation clarifications dated 2026-09-08 do not claim a new test or provider run.
 
 Version: `v0.4.0`. Theme: **Evidence-aware node configuration routing**.
 
@@ -93,20 +94,20 @@ expose credentials, or erase durable execution history.
 | Uncovered | 0 |
 | **Unmet MUST** | **0** |
 
-**This table is the target, not a measurement.** The release PR must confirm
+**Historical release measurement, confirmed in the [audit](audit.md) on 2026-09-07:**
 
 ```
 in scope: 167   proven: 159   unmet MUST: 0
 ```
 
-before this draft may be published. 167 is the 117 criteria of the v0.1–v0.3 SDDs plus the
+167 is the 117 criteria of the v0.1–v0.3 SDDs plus the
 fifty `AC4-M<owner>-0NN` rows SDD v0.4 §20 adds; 159 is 167 less the **five** criteria proven
 by the vitest suite and the three proven by a recorded live-provider run. The line is derived
 from [`docs/acceptance/criteria.toml`](../../acceptance/criteria.toml): each row still
 recorded `not_yet_due` subtracts one from *in scope* and one from *proven*. Earlier drafts of
 this page quoted 161; that figure counted three `frontend` rows when the policy file carries
 five — `V01-P4-004`, `V02-P6-008`, `V02-P7-007`, `AC4-M9-040` and `AC4-M9-043` — and M9's two
-were double-counted as proven by pytest as well. When this draft was written twelve rows were
+were double-counted as proven by pytest as well. When the original draft was written twelve rows were
 still `not_yet_due` and `make acceptance` reported
 `in scope: 155   proven: 149   unmet MUST: 0`; M7 closed three of them the same day, leaving
 nine — `AC4-M9-040`, `-043`, `-044` and `AC4-M10-045`..`-050`. M9d flipped the three M9 rows
@@ -131,12 +132,13 @@ This release does not claim more than it proved.
   the provider-drift holdout, `[0.039887, 0.320070]`. The binary endpoint does not: `g_learn`
   spans zero, and no recovered fraction is quoted because the opportunity gap's lower limit is
   not positive.
-- **Both safety gates fail for every policy on the locked corpora.** That is a property of the
+- **In the original v0.4.0 analysis, both safety gates fail for every policy on the locked corpora.** That is a property of the
   corpus's conservative trial pooling at the pre-registered 18 trials per cell — verified means
   verified on every trial, and one false acceptance among eighteen is a false acceptance — and
   not of any router. It is recorded as `ADR4-M10-005` and reported rather than repaired,
   because changing the pooling rule after seeing the rows is the post-hoc analysis change the
-  pre-registration exists to prevent.
+  pre-registration exists to prevent. The separately frozen amendment 1 and its
+  outcome are retained in the v0.4.1 addendum; they do not replace these original tables.
 - **The ablations are replay-only.** `RouterBenchmarkRunner` refuses any source but `REPLAY`,
   at the route and again inside the runner. A replay is a reproducibility guarantee, not a new
   measurement.
@@ -154,16 +156,24 @@ This release does not claim more than it proved.
   [`docs/research/v0.4/preregistration.md`](../../research/v0.4/preregistration.md) were frozen
   on 2026-09-06 and the page's sha256 is pinned in every corpus's `config.v1.json`; the runner
   refuses to start if the file no longer hashes to it. Under ADR-064 the read is recorded:
-  [`docs/research/v0.4/access-log.jsonl`](../../research/v0.4/access-log.jsonl) holds two rows,
-  one for the locked corpus and one for the drift holdout, and any further row is a finding.
-- **The M7 exploration cost ledger is in-memory.** `routing/ledger.py` touches no store, no
-  clock and no network; `CostLedger.snapshot()` hands a plain sorted dict to whoever wants to
-  persist it, and nothing does yet. A restart forgets what a workspace has already spent, so
-  `ExplorationCaps` — the absolute count and cost caps that sit outside the `(1 + α)`
-  inequality — is what actually bounds a long-lived deployment today.
-- **Routed AGENT tool configurations fail closed.** M2 pins governed-tool identity, and the
-  MCP boundary cannot yet honour an exact binding pin, so a routed AGENT node that names a
-  tool configuration is refused rather than dispatched under a looser binding.
+  the original read wrote two rows to [the access log](../../research/v0.4/access-log.jsonl),
+  one for each corpus. Amendment 1 added two authorized rows on 2026-09-07, for
+  four total. A further scientific read requires its own recorded decision.
+- **Exploration reservations are reconstructed; settlement adjustments are volatile.**
+  Clarified 2026-09-08: `LedgerRegistry` rebuilds readable EXPLORE charges from
+  immutable receipts, so restart does not erase every prior charge. Its cached
+  settlements are lost; an observed overrun can exceed the reserved amount,
+  so reconstruction is not an unconditional proof of conservative accounting.
+  The count/cost caps use this same ledger, keyed by workspace and node class,
+  with normalized cumulative costs rather than a monetary or per-day account.
+  [Bounded follow-up work](backlog.md#remaining-bounded-work) covers contention,
+  overruns, unreadable charges and cap scope; no repair is claimed by this note.
+- **TOOL-node pins and AGENT sessions have different support.** Clarified
+  2026-09-08: selected TOOL nodes pass exact receipt-pinned binding checks into
+  the existing capability gateway. Routed AGENT sessions carrying selected tools
+  are refused before dispatch/session creation because that session boundary
+  cannot honor the same pins. The executing-provider seam did not remove this
+  AGENT limitation.
 - **A crash after a durable dispatch claim is uncertain execution.** It must be reconciled
   before retry; v0.4 does not claim exactly-once external execution.
 - **The four v0.3 deferrals are still deferred.** Workspace-shared and `SERVICE_ACCOUNT`
@@ -245,7 +255,7 @@ A hardening release on the same acceptance line. Four changes, each recorded as 
   from 1.0 / 0.25 / 0.15 to the pre-registered corpus weights 1.0 / 0.3 / 0.15; persisted objective
   contracts keep the vector they were minted with.
 - **The safety gates' pooling rule is registered, not assumed** (#163). `PoolingRule` on the
-  benchmark config, absent everywhere, so every v0.4.0 number is unchanged; every cell carries both
+  benchmark config, initially absent in #163 so every v0.4.0 number remained unchanged; every cell carries both
   the conjunction and the per-trial rate; `docs/research/v0.4/amendment-1.md` proposes the rate
   reading with thresholds unchanged and its expected outcome stated before any re-read. The
   maintainer confirmed the amendment on 2026-09-07; it is frozen, pinned beside the

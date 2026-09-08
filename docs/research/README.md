@@ -15,7 +15,7 @@ as a research result.
 | [P5 dynamic workflows](p5/benchmark.md) | 12 tasks, 24 paired static/dynamic traces | Heterogeneous/uncertain utility uplift `+0.224631`; success `9/12 → 12/12`; predictable uplift `+0.009195`; static fallback and safety gates pass | PASS · POSITIVE |
 | [P6 bounded search](p6/acceptance.md#frozen-benchmark-result) | 12 held-out tasks at N=1, 2, and 4 | Verified accepts `8/12 → 12/12`; mean quality `0.472500 → 0.768333`; explicit null-gain result preserved | PASS |
 | [P7 verified experience](p7/acceptance.md#frozen-benchmark-result) | 20 tasks, 50 sources, 80 traces, four treatments | Replay quality uplift `+0.070500`; 20% fewer tool calls; 95% stale rejection (corpus-declared, see ADR3-M8-005); 3.33% negative transfer; false accepts do not increase | PASS |
-| [Router benchmark v0.4](v0.4/results.md) | Locked corpus and provider-drift holdout, each 12 projects in two lineage-disjoint halves, 36 tasks, 6 configurations, 18 trials per cell, 3,888 replay traces; analysis [pre-registered](v0.4/preregistration.md) and its sha256 pinned in every corpus; [amendment 1](v0.4/amendment-1.md) FROZEN 2026-09-07, re-read once | Paired regret contrast M9 vs best fixed excludes zero — `[0.009603, 0.939517]` locked, `[0.039887, 0.320070]` drift; `g_learn` spans zero so no binary superiority is claimed and **no recovered fraction is quoted**; both safety gates fail for every policy at the frozen trial count (ADR4-M10-005); priced real-provider run **not run**. Read once, [2 access-log rows](v0.4/access-log.jsonl) | PASS · PARTIAL (paired only) |
+| [Router benchmark v0.4](v0.4/results.md) | Locked corpus and provider-drift holdout, each 12 projects in two lineage-disjoint halves, 36 tasks, 6 configurations, 18 trials per cell, 3,888 replay traces; analysis [pre-registered](v0.4/preregistration.md) and its sha256 pinned in every corpus; [amendment 1](v0.4/amendment-1.md) FROZEN 2026-09-07, re-read once | Paired regret contrast M9 vs best fixed excludes zero — `[0.009603, 0.939517]` locked, `[0.039887, 0.320070]` drift; `g_learn` spans zero so no binary superiority is claimed and **no recovered fraction is quoted**; the original v0.4.0 pooling fails both safety gates for every policy (ADR4-M10-005); amendment 1 retains a separate per-trial analysis; priced real-provider run **not run**. [4 access-log rows](v0.4/access-log.jsonl): 2 original + 2 amendment | PASS · PARTIAL (paired only) |
 
 The P5–P7 values above are deterministic properties of versioned fixtures. They
 do not claim that a currently hosted model will reproduce those exact values.
@@ -25,7 +25,8 @@ The v0.4 row is the first one whose corpus was generated *after* its analysis wa
 locked test set and drift holdout were read exactly once, through a runner that refuses unless
 the pre-registration on disk still hashes to the digest the corpus pinned and
 `ACCRETION_ROUTER_LOCKED_TEST=1` is set, and that read is recorded in
-[`v0.4/access-log.jsonl`](v0.4/access-log.jsonl) — two rows, one per corpus. The row is
+[`v0.4/access-log.jsonl`](v0.4/access-log.jsonl) — the original read wrote two rows,
+one per corpus; the amendment later added two more. The result row is
 classified `PARTIAL` because one of the two endpoints cleared and the other did not, which is
 the state the page reports rather than the one it rounds to.
 
@@ -34,7 +35,10 @@ gates are read against each cell's per-trial rate on the locked and drift corpor
 unchanged, its sha256 pinned beside the pre-registration's in every corpus config. The re-read is
 reported under "Amendment 1" in [`results.md`](v0.4/results.md) with the expectations the amendment
 wrote down beside the outcome: two of four did not hold (ADR4.1-004). The v0.4.0 tables stay on the
-page under their own run ids.
+page under their own run ids. There are four access-log rows in total through
+2026-09-07. Status clarified on 2026-09-08 without rerunning either analysis;
+no priced routing pilot or full preregistered routing-benefit claim is established
+by these replay results.
 
 ## Evidence classes
 

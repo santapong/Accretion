@@ -1,5 +1,7 @@
 # v0.4 M9 — The Experiment Studio
 
+> **Status clarification — 2026-09-08:** Historical M9 record, merged in #153. The missing snapshot join described below was repaired by v0.4.1 #161 (ADR4.1-001 in the [backlog](backlog.md)); retain the old observation and counts as milestone evidence.
+
 SDD v0.4 §16 and §17 give the operator four things the router owes them: why one node ran the
 configuration it ran (§17.1), what a shadow policy would have done instead (§17.2), which router
 version is live and what authorised it (§17.3), and a run page whose graph is a **projection** of

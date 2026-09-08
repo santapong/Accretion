@@ -5,7 +5,7 @@ integrators, researchers, and release reviewers. Start with the path that
 matches what you want to do; supporting documents are grouped by purpose so the
 folder root stays uncluttered.
 
-<img src="assets/project-overview.svg" alt="Accretion project overview from bounded operator intent through deterministic control, isolated runtime execution, and independent verification, with the v0.3.0 release, the preceding v0.2.0 release, and immutable v0.1.0 static-control evidence" width="100%" />
+<img src="assets/project-overview.svg" alt="Accretion project overview from bounded operator intent through deterministic control, isolated runtime execution, and independent verification, with the v0.4.1 release, bounded follow-up work, and immutable v0.1.0 static-control evidence" width="100%" />
 
 <img src="assets/developer-journey.svg" alt="Six-step developer journey from cloning Accretion through running, observing, verifying, and contributing" width="100%" />
 
@@ -33,12 +33,12 @@ folder root stays uncluttered.
 | Review security | [Security policy](../SECURITY.md) | [Trust-boundary diagram](assets/trust-boundary.svg) |
 | Review the current release | [v0.4 release notes](releases/v0.4/notes.md) | [frozen v0.4 baseline](releases/v0.4/baseline.md), [release audit](releases/v0.4/audit.md), [acceptance baseline](releases/v0.4/acceptance-baseline.md), [research results](research/v0.4/results.md); the v0.3 record stays at [releases/v0.3](releases/v0.3/notes.md) |
 | Reproduce the release gate | [Release-hardening runbook](runbooks/v03-release-hardening.md) | [SDD v0.3 §24.8](sdd/Accretion_SDD_v0.3.md), [`scripts/release_gate.py`](../scripts/release_gate.py) |
-| Review the previous release | [Frozen v0.2 baseline](releases/v0.2/baseline.md) | [release audit](releases/v0.2/audit.md), [release notes](releases/v0.2/notes.md), [delivery plan](releases/v0.2/plan.md) |
-| Plan post-v0.4 work | [v0.4 backlog](releases/v0.4/backlog.md) | [v0.4 SDD](sdd/Accretion_SDD_v0.4.md) |
+| Review the historical v0.2 release | [Frozen v0.2 baseline](releases/v0.2/baseline.md) | [release audit](releases/v0.2/audit.md), [release notes](releases/v0.2/notes.md), [delivery plan](releases/v0.2/plan.md) |
+| Plan post-v0.4.1 work | [Bounded follow-up backlog](releases/v0.4/backlog.md#remaining-bounded-work) | [Recorded release decisions](releases/v0.4/backlog.md#decision-status-reconciled-2026-09-08), [v0.4 SDD](sdd/Accretion_SDD_v0.4.md) |
 | Reconcile v0.4 closure and plan remaining work | [Completion and handoff plan](releases/v0.4/completion-plan-2026-09-08.md) | [Release audit](releases/v0.4/planning/release-closure-audit-2026-09-08.md), [runtime audit](releases/v0.4/planning/runtime-gap-audit-2026-09-08.md), [research readiness](releases/v0.4/planning/research-readiness-audit-2026-09-08.md) |
 | Review planned v1.1–v1.8 capabilities | [Revision 4 setup and release sequence](sdd/future/v1.1-v1.8/README.md) | [Full SDD, research and diagrams](sdd/future/v1.1-v1.8/package/index.html); forward designs, acceptance pending |
-| Build v0.4 (evidence-aware node configuration routing) | [v0.4 milestone index](releases/v0.4/README.md) | [SDD v0.4](sdd/Accretion_SDD_v0.4.md), [M0 plan](releases/v0.4/m0-plan.md), [v0.4 backlog](releases/v0.4/backlog.md), [forward package](sdd/future/v0.4-v1.0/00_READ_ME_FIRST.md) |
-| Review the v0.4 release preparation | [v0.4 release notes (draft)](releases/v0.4/notes.md) | [release audit (draft)](releases/v0.4/audit.md), [v0.4 milestone index](releases/v0.4/README.md), [router pre-registration](research/v0.4/preregistration.md) |
+| Inspect delivered v0.4 milestones | [v0.4 milestone index](releases/v0.4/README.md) | [SDD v0.4](sdd/Accretion_SDD_v0.4.md), [M0 plan](releases/v0.4/m0-plan.md), [v0.4 backlog](releases/v0.4/backlog.md), [forward package](sdd/future/v0.4-v1.0/00_READ_ME_FIRST.md) |
+| Inspect the v0.4 research boundary | [Router results and amendment 1](research/v0.4/results.md) | [Frozen pre-registration](research/v0.4/preregistration.md), [release limitations](releases/v0.4/notes.md#honest-limitations); replay findings are separate from a live-provider pilot |
 
 ## Folder map
 
@@ -92,7 +92,7 @@ bitmap in the showcase is illustrative and never defines behavior.
   [release notes](releases/v0.4/notes.md) and [audit](releases/v0.4/audit.md)
   record what it claims and what it deliberately does not.
 - The immutable `v0.2.0` tag and [frozen v0.2 baseline](releases/v0.2/baseline.md)
-  remain the previous release. The immutable `v0.1.0` tag remains the
+  remain historical release evidence. The immutable `v0.1.0` tag remains the
   [frozen static control](releases/v0.1/baseline.md).
 - `main` is the stable branch; `develop` integrates the next release.
 - `codex/v0.1-local-control-plane` is an unmerged historical prototype, not a
