@@ -1,0 +1,417 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:accretion:research:router-dev-20260908:fake-trial:0.1.0",
+  "title": "Draft fake instrumentation export; not a production or live study contract",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "schema_version": {
+      "const": "0.1.0"
+    },
+    "study_id": {
+      "const": "ACR-ROUTER-DEV-20260908"
+    },
+    "artifact_kind": {
+      "enum": [
+        "SCHEMA_FIXTURE",
+        "DRY_RUN_RECORD"
+      ]
+    },
+    "execution_source": {
+      "const": "FAKE_INSTRUMENTATION"
+    },
+    "data_role": {
+      "const": "FAKE_INSTRUMENTATION"
+    },
+    "live_execution_authority": {
+      "const": "NOT_AUTHORIZED"
+    },
+    "trial_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pair_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "project_lineage": {
+      "type": "string",
+      "minLength": 1
+    },
+    "input_revision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "provider": {
+          "const": "FAKE"
+        },
+        "model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "runtime_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "selected_agent_tools": {
+          "type": "array",
+          "maxItems": 0
+        },
+        "requested_model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "accepted_model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "observed_model": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "id",
+        "content_hash",
+        "provider",
+        "model",
+        "runtime_version",
+        "selected_agent_tools",
+        "requested_model",
+        "accepted_model",
+        "observed_model"
+      ]
+    },
+    "routing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "const": "BASELINE_ONLY"
+        },
+        "decision_kind": {
+          "const": "BASELINE"
+        },
+        "receipt_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "receipt_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "node_contract_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "shadow_enabled": {
+          "const": false
+        },
+        "exploration_enabled": {
+          "const": false
+        },
+        "promotion_enabled": {
+          "const": false
+        }
+      },
+      "required": [
+        "mode",
+        "decision_kind",
+        "receipt_id",
+        "receipt_hash",
+        "node_contract_hash",
+        "shadow_enabled",
+        "exploration_enabled",
+        "promotion_enabled"
+      ]
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "execution_instance_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "producer_session_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "started_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "completed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "status": {
+          "enum": [
+            "COMPLETED",
+            "FAILED",
+            "CANCELLED",
+            "UNCERTAIN"
+          ]
+        }
+      },
+      "required": [
+        "execution_instance_id",
+        "producer_session_id",
+        "started_at",
+        "completed_at",
+        "status"
+      ]
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "record_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "execution_instance_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "spec_hash": {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        "status": {
+          "enum": [
+            "PASS",
+            "FAIL",
+            "INCONCLUSIVE",
+            "ERROR"
+          ]
+        },
+        "verifier_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verifier_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verifier_session_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "deterministic": {
+          "type": "boolean"
+        },
+        "independent": {
+          "type": "boolean"
+        },
+        "required_claim_coverage": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "evidence_hashes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "adjudication_status": {
+          "enum": [
+            "NOT_NEEDED_FAKE",
+            "NOT_PERFORMED"
+          ]
+        }
+      },
+      "required": [
+        "record_id",
+        "execution_instance_id",
+        "spec_hash",
+        "status",
+        "verifier_id",
+        "verifier_version",
+        "verifier_session_id",
+        "deterministic",
+        "independent",
+        "required_claim_coverage",
+        "evidence_hashes",
+        "adjudication_status"
+      ]
+    },
+    "accounting": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "provider_calls": {
+          "const": 0
+        },
+        "external_tokens": {
+          "const": 0
+        },
+        "provider_charge": {
+          "const": 0
+        },
+        "currency": {
+          "type": "null"
+        },
+        "provider_cost_basis": {
+          "const": "NO_PROVIDER_CALLS"
+        },
+        "elapsed_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "provider_wait_ms": {
+          "const": 0
+        },
+        "local_compute_ms": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "human_adjudication_ms": {
+          "type": "number",
+          "minimum": 0
+        },
+        "executed_tool_calls": {
+          "const": 0
+        },
+        "usage_source": {
+          "const": "LOCAL_FAKE_INSTRUMENTATION"
+        }
+      },
+      "required": [
+        "provider_calls",
+        "external_tokens",
+        "provider_charge",
+        "currency",
+        "provider_cost_basis",
+        "elapsed_ms",
+        "provider_wait_ms",
+        "local_compute_ms",
+        "human_adjudication_ms",
+        "executed_tool_calls",
+        "usage_source"
+      ]
+    },
+    "measurement_status": {
+      "enum": [
+        "COMPLETE_FAKE_RECORD",
+        "INCONCLUSIVE"
+      ]
+    },
+    "limitations": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    }
+  },
+  "required": [
+    "schema_version",
+    "study_id",
+    "artifact_kind",
+    "execution_source",
+    "data_role",
+    "live_execution_authority",
+    "trial_id",
+    "pair_id",
+    "task_id",
+    "project_lineage",
+    "input_revision",
+    "configuration",
+    "routing",
+    "execution",
+    "verification",
+    "accounting",
+    "measurement_status",
+    "limitations"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "verification": {
+            "properties": {
+              "status": {
+                "const": "PASS"
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "verification": {
+            "properties": {
+              "record_id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "independent": {
+                "const": true
+              },
+              "required_claim_coverage": {
+                "const": 1
+              },
+              "evidence_hashes": {
+                "minItems": 1
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "verification": {
+            "properties": {
+              "deterministic": {
+                "const": true
+              }
+            }
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "verification": {
+            "properties": {
+              "verifier_session_id": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$comment": "Structural constraints do not prove cross-record identity joins, temporal order, producer/verifier session separation or actual execution; the dry-run semantic verifier must check them against persisted records. No live-record form is supported."
+}
