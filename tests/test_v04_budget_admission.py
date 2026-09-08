@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import sqlalchemy as sa
 from test_v04_m0_postgres_store import build
 from test_v04_m2_postgres_store import postgres_stores, routing_event, seed_run
 from test_v04_m7_postgres_store import seed_experience
@@ -164,19 +165,35 @@ async def test_known_overrun_is_not_forgotten_by_a_new_registry(tmp_path: Path, 
         ).allowed == (float(observed) <= 0.7)
         # Revisions cannot talk already measured spend down. Retain a higher
         # observation even when a later, superseding record claims it was cheap.
+        revision_id = new_id("experience")
         lower_payload = record.model_dump(mode="python")
         lower_payload.update(
-            contract_id=new_id("experience"),
+            contract_id=revision_id,
             supersedes_contract_id=record.contract_id,
             content_hash="",
             labels={"experience_id": record.contract_id},
         )
         lower_payload["outcomes"]["cost"] = "0.05"
-        await store.put_experience_record(
-            ExperienceRecord.model_validate(lower_payload), experience_id=record.contract_id
-        )
-        again = await LedgerRegistry(restarted).ledger(workspace_id=workspace, node_class="AGENT")
-        assert again.snapshot() == recovered.snapshot()
+        try:
+            await store.put_experience_record(
+                ExperienceRecord.model_validate(lower_payload), experience_id=record.contract_id
+            )
+            again = await LedgerRegistry(restarted).ledger(
+                workspace_id=workspace, node_class="AGENT"
+            )
+            assert again.snapshot() == recovered.snapshot()
+        finally:
+            # Migration 0020 correctly refuses downgrade with any revisions.
+            # Remove only this test's revision, including after failed assertions;
+            # the production store remains append-only.
+            async with store.sessions.begin() as session:
+                await session.execute(
+                    sa.text(
+                        "DELETE FROM experience_records "
+                        "WHERE id = :revision_id AND experience_id = :experience_id"
+                    ),
+                    {"revision_id": revision_id, "experience_id": record.contract_id},
+                )
 
 
 @pytest.mark.parametrize("bad", [None, "unknown", "nan", "inf", "-0.1", "1.01"])
