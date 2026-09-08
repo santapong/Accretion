@@ -43,8 +43,9 @@ schemas now; do not label illustrative fixture rows as run receipts or evidence.
    money. These limits are unrelated to the questioned AUTO accounting path.
 
 The focused tests trap hosted-adapter, learned/budget and promotion constructors
-and network connection attempts. This exclusion lets fake preparation proceed
-while C1/C2 budget work is reviewed. It does not prove the excluded behavior safe.
+and network connection attempts. This exclusion allowed fake preparation during
+C1/C2 review. The [final accounting disposition](../../../releases/v0.4/closure-execution-2026-09-08.md)
+is recorded separately; the fake run does not prove the excluded behavior safe.
 
 ## Data path and smallest fixture set
 

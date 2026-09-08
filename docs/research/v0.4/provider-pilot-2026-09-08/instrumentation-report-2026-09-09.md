@@ -56,7 +56,7 @@ when generated run, session and receipt IDs differ on a later reproduction.
 
 ## Environment and checks
 
-Final execution and post-review tests used this worktree's own environment,
+Final worker execution and post-review tests used the research worker's own environment,
 populated by `uv sync --locked --all-groups`. Observed paths were:
 
 ```text
@@ -140,12 +140,16 @@ does not verify the full production scheduler/feedback path, restart behavior,
 database durability, provider setting fidelity, monetary accounting or safety
 of the excluded AUTO/shadow/exploration paths. It does not qualify a scientific
 verifier or turn the verifier's embedded risk estimate into a measured error
-rate. Final integrated engineering checks belong to the coordinator's closure.
+rate. The coordinator's [closure record](../../../releases/v0.4/closure-execution-2026-09-08.md)
+records passing integrated engineering checks and a separate fresh fake run at
+`f8b47a8`. The original worker source and archive above remain unchanged.
 
 The old preregistration, amendment and access-log hashes remain unchanged;
 the log still has four existing rows, and this work added zero locked accesses.
 The documentation check also confirmed all 187 imported future-package files
-unchanged. No locked or drift trace rows were read and no old evaluation was run.
+unchanged. This worker preparation read no locked or drift trace rows and ran
+no old evaluation. The coordinator's ordinary regression reproduction is
+separately scoped in the closure record.
 
 [Readiness](readiness.json) now records only the fake instrumentation gates as
 verified. Provider/accounts, qualified evaluator, task inventory, configurations,

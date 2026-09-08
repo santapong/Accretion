@@ -64,8 +64,12 @@ admission; unsupported selected AGENT tools remain refused.
 A learned candidate needs its own training provenance, project-disjoint holdout
 and calibration evidence and the existing runtime promotion gates. A fixed
 configuration comparison may qualify measurement, but cannot be called a
-learned-router evaluation. AUTO remains excluded until the accounting concern's
-C1/C2 disposition and existing learned-routing gates are satisfied. Provider
+learned-router evaluation. The fake path continues to exclude AUTO. The
+[accounting disposition](../../../releases/v0.4/closure-execution-2026-09-08.md)
+and [runbook](../../../runbooks/v04-routing-accounting.md) neither authorize AUTO
+nor supply a currency-denominated spending guard. Any future learned candidate
+needs the existing learned-routing gates and a separately frozen, explicitly
+authorized study. Provider
 and candidate identities are **unresolved**, not defaults inferred from old
 synthetic configuration names.
 

@@ -1,6 +1,7 @@
 # Approved v0.4 closure execution
 
-Started 2026-09-08 (Asia/Bangkok). Status: **IN PROGRESS**.
+Started 2026-09-08 (Asia/Bangkok). Local validation completed 2026-09-09.
+Status: **LOCAL IMPLEMENTATION VERIFIED — protected integration remains the exit gate.**
 Santapong approved the [parallel completion plan](completion-plan-2026-09-08.md)
 in the Codex conversation. This record distinguishes executed checks from the
 original planning audits and existing v0.4.0/v0.4.1 releases.
@@ -33,11 +34,11 @@ lane's database across independent clients. No production service is reused.
 
 | Package | Executed evidence | Current disposition |
 |---|---|---|
-| C0 | Worker commit `68c39a3`, integrated as `dcf98c6`; docs check passed for 221 Markdown and 18 SVGs, SVG rendered and inspected; frozen package and protocols preserved | Implemented; final integrated docs validation pending |
-| C1/C2 budget | Original witnesses reproduced double admission, lost overrun and unusable accounting accepted as empty. Repair `0b2879`, integrated as `7a4db47`, passed 78 focused tests with PostgreSQL and separate processes; Ruff/mypy/schema checks passed | Implemented and reviewed; final integrated gates pending. [Accounting runbook](../../runbooks/v04-routing-accounting.md) defines scope and mixed-version rollout limits |
-| C1/C2 compatibility | Initial witnesses reproduced hidden graph receipts and false lineage 404s. Repair `0a76d83`, integrated as `4e52ec3`, passed 518 focused tests across MemoryStore and PostgreSQL, with Ruff/mypy clean | Implemented; final review and integrated gates pending. Verified writer seals and scope preserve read lineage; unknown execution/accounting fields and executable amendments remain denied |
-| R0 | [Adopted scoped NO-GO](research-handoff-2026-09-08.md), preserving PARTIAL paired synthetic evidence; 22 bounded capability/verifier tests passed at `b83ac5c` in 4.75 seconds | Decision recorded; final migration and capability/verifier refresh pending |
-| R1 | [Separate draft study](../../research/v0.4/provider-pilot-2026-09-08/README.md), schema, 39 passing tests and [clean-commit fake execution](../../research/v0.4/provider-pilot-2026-09-08/instrumentation-report-2026-09-09.md) at worker `cb122b7`; 48 exported files validated from the Git index | FAKE-only preparation verified with PASS/FAIL/INCONCLUSIVE and zero provider calls; final integrated refresh pending; live execution NOT_AUTHORIZED |
+| C0 | Worker commit `68c39a3`, integrated as `dcf98c6`; SVG rendered and inspected; integrated docs check passed for 232 Markdown and 18 SVGs; frozen package and protocols preserved | Implemented and locally verified |
+| C1/C2 budget | Original witnesses reproduced double admission, lost overrun and unusable accounting accepted as empty. Repair `0b2879`, integrated as `7a4db47`, passed 78 focused tests with PostgreSQL and separate processes; combined full suite and gates passed | Implemented, independently reviewed and locally verified. [Accounting runbook](../../runbooks/v04-routing-accounting.md) defines scope and mixed-version rollout limits |
+| C1/C2 compatibility | Initial witnesses reproduced hidden graph receipts and false lineage 404s. Repair `0a76d83`, integrated as `4e52ec3`, passed 518 focused tests across MemoryStore and PostgreSQL; combined full suite and gates passed | Implemented, independently reviewed and locally verified. Verified writer seals and scope preserve read lineage; unknown execution/accounting fields and executable amendments remain denied |
+| R0 | [Adopted scoped NO-GO](research-handoff-2026-09-08.md), preserving PARTIAL paired synthetic evidence; final migration, capability and independent-verifier witnesses passed in the combined gates | Decision recorded; inherited technical entry conditions have evidence, without expanding execution scope |
+| R1 | [Separate draft study](../../research/v0.4/provider-pilot-2026-09-08/README.md), 39 passing tests and [clean-commit worker execution](../../research/v0.4/provider-pilot-2026-09-08/instrumentation-report-2026-09-09.md); 48 exported files validated from the Git index; fresh integrated run at `f8b47a8` also passed | FAKE-only preparation verified with PASS/FAIL/INCONCLUSIVE and zero provider calls; live execution NOT_AUTHORIZED |
 
 Fixture-construction errors preceding corrected C1 runs are not bug evidence.
 The initial two compatibility tests exercise read lineage. Expanded witnesses
@@ -57,9 +58,42 @@ database yielded 35 passes, zero skips and zero remaining revision rows.
 
 ## Validation and version decision
 
-Final integrated `make check`, `make test`, `make acceptance`, `make release-gate`,
-clean-database migration cycle, and required remote checks are pending. No new
-release, complete test run, priced provider result or scientific read is claimed.
+The clean integration candidate `f8b47a8a56226a729097273624dbcc2d65c20608`
+passed all twelve serial commands from 00:35:27 to 00:43:14 on 2026-09-09
+(Asia/Bangkok). [Machine-readable evidence](closure-evidence-2026-09-09/validation.json)
+retains commands, durations and hashes of the accompanying original logs.
+Those logs retain the commands' original whitespace so their hashes remain
+reproducible; source and prose whitespace checks exclude only these raw outputs.
+
+| Check | Observed result |
+|---|---|
+| Clean PostgreSQL upgrade → downgrade to base → upgrade | All three pass; head `0019_v04_m8_activation`; separate disposable integration database |
+| `make check` | Lock, Ruff, mypy (150 source files), docs, 21 unchanged schemas, ESLint and TypeScript pass |
+| `make test` | 3,544 backend tests pass; six signed-in provider tests skipped; 286 frontend tests pass across 27 files |
+| `make acceptance` | `in scope: 167   proven: 159   unmet MUST: 0`; five frontend criteria and three recorded manual witnesses accounted for |
+| `make release-gate` | All five conditions pass, including capability denial, isolation and inherited regressions |
+| `make future-sdd-check` | 187 unchanged files; synthetic document-design conformance passes, without claiming future runtime or research execution |
+| Fresh integrated fake pilot | PASS/FAIL/INCONCLUSIVE; zero provider calls; clean source and own environment recorded in [the summary](closure-evidence-2026-09-09/fake-pilot-summary.json) |
+| API generation, clean generated schema and production build | All pass; generated TypeScript schema unchanged |
+
+[Preservation checks](closure-evidence-2026-09-09/preservation.json) match the
+original tags, frozen hashes and four access rows. Contract schemas, migrations,
+versions, CI configuration and imported SDDs are unchanged from the execution
+base. The acceptance policy has only a comment correction and parses identically.
+The normal regression harness recomputes existing frozen benchmarks using
+temporary logs; no new scientific read or benefit result is claimed.
+
+Independent committed-state review re-ran the two newly discovered MemoryStore
+bypasses and confirmed the intended refusals, with no successor records or
+dispatch events from the rejected overrides. There are no remaining blockers
+within the reviewed implementation scope. Later changes to this candidate only
+record validation and handoff documentation; check those links before pushing.
+
+The protected integration gate requires successful backend, frontend, browser
+and clean-checkout checks for the pushed branch, plus resolved PR review
+conversations and squash merge into `develop`. This record is not evidence that
+the remote gate or merge has happened. At preparation, Codex has no connected
+signed-in browser for PR creation/merge; the access request is pending.
 
 Version decision, 2026-09-09: the bounded runtime repairs are compatible with a
 future patch release. They introduce no public contract or database migration,

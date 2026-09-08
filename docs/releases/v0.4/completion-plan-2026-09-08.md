@@ -1,7 +1,8 @@
 # v0.4 completion and handoff plan
 
 **Prepared: 8 September 2026. Approved by Santapong in the Codex conversation
-on 8 September 2026; bounded execution is in progress.** The original reviewed
+on 8 September 2026; bounded local implementation and validation completed
+on 9 September, with protected integration remaining.** The original reviewed
 plan is preserved at `55536dce89b2a64d16dcae20a1e5a0f11db05638`. Follow the
 [execution record](closure-execution-2026-09-08.md) for completed work and checks.
 
@@ -346,16 +347,16 @@ expiry is 28 February 2027. A new result must still satisfy its own scope.
 
 ## Exit checklist and stop conditions
 
-- [ ] C0: status, limitations, milestone witnesses and research counts agree.
-- [ ] C1: each high-priority runtime concern has a reproducible witness or an
+- [x] C0: status, limitations, milestone witnesses and research counts agree.
+- [x] C1: each high-priority runtime concern has a reproducible witness or an
   explicit bounded disposition; no source-only suspicion is called a fixed bug.
-- [ ] C2: any confirmed defect is repaired and independently reviewed, or the
+- [x] C2: any confirmed defect is repaired and independently reviewed, or the
   affected optional mode remains unavailable with an explicit limitation.
-- [ ] R0: the full-claim research decision and all v0.5 entry conditions have
+- [x] R0: the full-claim research decision and all v0.5 entry conditions have
   attributable dispositions; partial evidence is preserved.
 - [ ] The final integrated candidate passes its applicable local and remote
   gates; original tags, manifests, frozen protocols and access-log history match.
-- [ ] Deferred work has an owner, trigger and scope; it is not presented as
+- [x] Deferred work has an owner, trigger and scope; it is not presented as
   unfinished M0–M10 implementation.
 
 Stop and revise the plan if a witness needs a wider contract change, the runtime

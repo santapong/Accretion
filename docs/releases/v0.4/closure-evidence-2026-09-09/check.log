@@ -1,0 +1,20 @@
+uv lock --check
+Resolved 65 packages in 0.93ms
+uv run ruff check .
+All checks passed!
+uv run mypy src
+Success: no issues found in 150 source files
+uv run --no-sync python scripts/check_docs.py
+Future SDD package integrity passed: 187 unchanged files
+Documentation check passed: 232 Markdown files, 18 SVGs
+uv run --no-sync python scripts/export_contract_schemas.py --check
+21 committed contract schemas match their models
+npm run check
+
+> accretion@0.4.1 check
+> npm run check --workspace @accretion/ui
+
+
+> @accretion/ui@0.4.1 check
+> eslint . && tsc -b --pretty false
+

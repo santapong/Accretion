@@ -56,9 +56,9 @@ run below. Line references below are at the inspected baseline.
 |---|---|---|
 | 1. v0.1–v0.3 release gates passed | **Historical condition satisfied.** [v0.1 audit](../v0.1/audit.md), lines 5–9 and 17–48; [v0.2 audit](../v0.2/audit.md), lines 54–74, includes its explicit browser exception; [v0.3 baseline](../v0.3/baseline.md), lines 29–32 and 44–58, records protected CI and acceptance. Local annotated tag objects and peeled commits match all three baseline records | Preserve the known exception as historical, retain current manual-evidence expiry, and run applicable release gates for any new code candidate |
 | 2. v0.4 claim or documented no-go | **Satisfied by the adopted scoped no-go above.** The paired synthetic result and binary uncertainty remain unchanged | No additional scientific read is needed. Any new benefit claim needs its own evidence |
-| 3. v0.4 contract migrations stable | **Established for v0.4.1, candidate refresh pending.** [v0.4.1 audit addendum](audit.md), lines 223–239, records clean-database upgrade → downgrade → upgrade; it states hardening changed no contract or migration. Migration tests contain data-preservation and refusal witnesses | On the final integrated candidate, perform the same clean-database cycle and relevant migration witnesses serially in an isolated database. The concurrent accounting work may change what must be checked |
-| 4. Gateway denies undeclared capabilities | **Fresh bounded witnesses PASS before runtime changes.** [gateway denial test](../../../tests/test_p4_governance.py), lines 114–135, proves denied/unknown requests make zero executor calls; [routing capability tests](../../../tests/test_v04_m1_gates.py), lines 536–601 and 688–749, distinguish unauthorized, denied and unlisted capabilities. [Execution attribution test](../../../tests/test_v04_seam_executing_provider.py), lines 1187–1244, additionally covers a registered capability the task did not allow; that additional witness is source-inspected here | Re-run on the final integrated candidate; include the additional attribution witness. Do not infer this from tags or a capability catalog alone |
-| 5. Independent PASS/FAIL/INCONCLUSIVE verifier | **Fresh bounded witnesses PASS before runtime changes.** [verifier tests](../../../tests/test_verifiers.py), lines 65–100, exercise executable PASS/FAIL/INCONCLUSIVE outcomes. [M3 verification tests](../../../tests/test_v04_m3_verification.py), lines 220–274, 381–432 and 543–616, cover producer-session rejection, missing coverage and material disagreement. [VerificationState](../../../src/accretion/contracts/routing.py), lines 109–141, keeps ERROR separate and blocks unresolved outcomes | Re-run on the final integrated candidate. A new simulation-specific verifier still requires its own conformance; a fake or digital witness does not verify an embodied task |
+| 3. v0.4 contract migrations stable | **Satisfied for integrated candidate `f8b47a8`.** The [closure evidence](closure-execution-2026-09-08.md#validation-and-version-decision) records a clean isolated upgrade → downgrade to base → upgrade and passing data-preservation/refusal tests in the full serial suite. No contract schema or migration changed | Preserve the historical v0.4.1 audit. Any subsequent schema change needs fresh migration evidence |
+| 4. Gateway denies undeclared capabilities | **Satisfied for integrated candidate `f8b47a8`.** The full suite includes the [gateway denial test](../../../tests/test_p4_governance.py), [routing capability tests](../../../tests/test_v04_m1_gates.py) and [execution-attribution witness](../../../tests/test_v04_seam_executing_provider.py); the release gate separately passes its 21 policy-bypass tests. See [actual commands and results](closure-evidence-2026-09-09/validation.json) | This is executable local/fake evidence, with the additional attribution witness now run. A capability catalog alone would not satisfy this condition |
+| 5. Independent PASS/FAIL/INCONCLUSIVE verifier | **Satisfied for integrated candidate `f8b47a8`.** [Verifier tests](../../../tests/test_verifiers.py) and [M3 verification tests](../../../tests/test_v04_m3_verification.py) pass in the full suite; the [integrated fake run](closure-evidence-2026-09-09/fake-pilot-summary.json) exports all three outcomes through the independent recorder. Producer-session rejection, missing coverage and material disagreement remain fail-closed | A new simulation-specific verifier still requires its own conformance; a fake or digital witness does not verify an embodied task |
 
 Observed local release identities on 2026-09-08:
 
@@ -69,9 +69,12 @@ Observed local release identities on 2026-09-08:
 | `v0.3.0` | `6d20bc6a3b4df4ba2f01920b3717b4cf3c69a2e0` | `bf5b774eb964252d448b44ec3ea9d6b7b7511213` |
 
 No remote release re-verification is claimed by this local identity check.
-The v0.5 entry matrix is **not yet an unconditional implementation GO**: the
-integrated candidate checks above are pending, and this decision grants no
-simulation or physical execution authority.
+All five inherited v0.5 §2.4 technical entry conditions have satisfied
+dispositions for integrated candidate `f8b47a8`, with the historical browser
+exception retained under condition 1. The [closure record](closure-execution-2026-09-08.md)
+separately tracks protected integration. This resolves inherited prerequisites;
+it does not enlarge the approved v0.4 scope or authorize a new v0.5 implementation,
+provider pilot, simulation campaign or physical execution.
 
 ## Bounded checks for the coordinator
 
@@ -79,10 +82,14 @@ The coordinator reports **22 passed in 4.75 seconds** on integration commit
 `b83ac5c` on 2026-09-08, before runtime repairs: the three capability cases below
 plus `tests/test_verifiers.py` and `tests/test_v04_m3_verification.py`. This is
 fresh bounded evidence communicated by the executing coordinator, not a test
-run in this document worktree. The additional execution-attribution case below
-and the final integrated rerun remain pending.
+run in this document worktree. On 2026-09-09, the final combined suite at
+`f8b47a8a56226a729097273624dbcc2d65c20608` passed **3,544 backend tests with six
+signed-in provider tests skipped**, including every case below and the additional
+execution-attribution witness. The clean migration cycle and all five release
+conditions also passed; [the original logs and command record](closure-evidence-2026-09-09/validation.json)
+retain the exact source, isolation, timestamps and results.
 
-Run the following existing tests against the final candidate; they use local
+The following existing tests are the focused rerun command; they use local
 or fake execution and do not require a locked scientific corpus read:
 
 ```bash
