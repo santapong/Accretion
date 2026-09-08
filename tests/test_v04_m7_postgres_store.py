@@ -304,6 +304,10 @@ async def test_both_backends_rebuild_the_same_exploration_ledger_from_receipts()
                      project_id=project_id, node_kind=NODE_CLASS)
         other_node = build(NodeContract, workspace_id=workspace_id,
                            project_id=project_id, node_kind="VERIFIER")
+        unreadable_payload = unreadable.model_dump(mode="python")
+        unreadable_payload["node_contract_hash"] = node.immutable_hash
+        unreadable_payload["content_hash"] = ""
+        unreadable = RoutingDecisionReceipt.model_validate(unreadable_payload)
         receipts = []
         for row in [*charged, *skipped]:
             payload = row.model_dump(mode="python")
@@ -327,7 +331,7 @@ async def test_both_backends_rebuild_the_same_exploration_ledger_from_receipts()
             )
             snapshots.append(ledger.snapshot())
             await store.put_routing_receipt(unreadable)
-            with pytest.raises(ValueError, match="EXPLORATION_ACCOUNTING_UNAVAILABLE"):
+            with pytest.raises(ValueError, match="unreadable charge"):
                 await LedgerRegistry(store).ledger(
                     workspace_id=workspace_id, node_class=NODE_CLASS
                 )

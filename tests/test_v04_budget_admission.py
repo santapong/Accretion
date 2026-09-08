@@ -180,20 +180,21 @@ async def test_known_overrun_is_not_forgotten_by_a_new_registry(tmp_path: Path, 
 
 
 @pytest.mark.parametrize("bad", [None, "unknown", "nan", "inf", "-0.1", "1.01"])
-async def test_unreadable_explore_charge_never_becomes_an_empty_budget(tmp_path: Path, bad):
+@pytest.mark.parametrize("charge_label", [COST_UCB_LABEL, BASELINE_COST_LCB_LABEL])
+async def test_unreadable_explore_charge_never_becomes_an_empty_budget(
+    tmp_path: Path, bad, charge_label
+):
     async with postgres_stores() as (store,):
-        project, _ = await seed_run(store, tmp_path, "malformed")
-        workspace = new_id("workspace_entity")
-        row = receipt(workspace_id=workspace, project_id=project.project_id)
+        _, _, node, row = await _seed_account(store, tmp_path)
         payload = row.model_dump(mode="python")
         if bad is None:
-            del payload["labels"][COST_UCB_LABEL]
+            del payload["labels"][charge_label]
         else:
-            payload["labels"][COST_UCB_LABEL] = bad
+            payload["labels"][charge_label] = bad
         payload["content_hash"] = ""
         await store.put_routing_receipt(RoutingDecisionReceipt.model_validate(payload))
-        with pytest.raises(ValueError, match="EXPLORATION_ACCOUNTING_UNAVAILABLE"):
-            await LedgerRegistry(store).ledger(workspace_id=workspace, node_class="AGENT")
+        with pytest.raises(ValueError, match="unreadable charge"):
+            await LedgerRegistry(store).ledger(workspace_id=node.workspace_id, node_class="AGENT")
 
 
 async def _seed_account(store, tmp_path):
