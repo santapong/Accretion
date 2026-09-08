@@ -15,7 +15,7 @@ and planning worktrees:
 | Worktree | Branch | Ownership |
 |---|---|---|
 | `integration` | `fix/v04-closure-hardening` | Coordinator, integration, compatibility witnesses and final gates |
-| `documentation` | `docs/v04-close-status` | C0 current status/index corrections, then compatibility review |
+| `documentation` | `docs/v04-close-status`, then `test/v04-upcast-identity` and `fix/v04-upcast-identity` | C0 corrections, preserved compatibility witness checkpoint, then bounded repair |
 | `budget` | `fix/v04-budget-admission` | C1/C2 shared admission and authoritative accounting |
 | `research` | `docs/v04-next-pilot-protocol` | R0 claim decision, R1 prospective protocol and fake instrumentation |
 
@@ -31,7 +31,7 @@ lane's database across independent clients. No production service is reused.
 | Package | Executed evidence | Current disposition |
 |---|---|---|
 | C0 | Worker commit `68c39a3`, integrated as `dcf98c6`; docs check passed for 221 Markdown and 18 SVGs, SVG rendered and inspected; frozen package and protocols preserved | Implemented; final integrated docs validation pending |
-| C1 budget | Three corrected real-PostgreSQL witnesses fail on original runtime: two final-slot admissions instead of one, observed 0.8 rebuilt as reservation 0.25, malformed charge accepted as empty usable budget | Defects reproduced; repair and independent-process/recovery checks in progress |
+| C1/C2 budget | Original witnesses reproduced double admission, lost overrun and unusable accounting accepted as empty. Repair `0b2879`, integrated as `7a4db47`, passed 78 focused tests with PostgreSQL and separate processes; Ruff/mypy/schema checks passed | Implemented and reviewed; final integrated gates pending. [Accounting runbook](../../runbooks/v04-routing-accounting.md) defines scope and mixed-version rollout limits |
 | C1 compatibility | [New reference tests](../../../tests/test_v04_upcast_references.py) fail at the intended assertions: a coherent future-minor writer chain disappears from graph receipt listing and lineage lookup returns false 404 | Defects reproduced; bounded read-identity repair pending, unknown execution semantics remain denied |
 | R0 | [Adopted scoped NO-GO](research-handoff-2026-09-08.md), preserving PARTIAL paired synthetic evidence; 22 bounded capability/verifier tests passed at `b83ac5c` in 4.75 seconds | Decision recorded; final migration and capability/verifier refresh pending |
 | R1 | [Separate draft study](../../research/v0.4/provider-pilot-2026-09-08/README.md), schema and illustrative fixtures reviewed | FAKE-only implementation in progress; live execution NOT_AUTHORIZED |
@@ -40,6 +40,13 @@ Fixture-construction errors preceding corrected C1 runs are not bug evidence.
 The two compatibility tests currently exercise read lineage; they do not prove
 an executable configuration or permit dispatch of unknown fields. The final
 repair must preserve this distinction and verify both stores.
+
+Review corrected two test weaknesses before final integration: malformed-charge
+fixtures now have valid node scope and assert the charge-specific refusal
+(`b44c821`, 14 focused tests passed). Revision fixtures now clean only their own
+superseding row (`690a1cc`): the previous budget-then-migration sequence yielded
+33 passes and two downgrade refusals; the corrected sequence on a fresh lane
+database yielded 35 passes, zero skips and zero remaining revision rows.
 
 ## Validation and version decision
 
