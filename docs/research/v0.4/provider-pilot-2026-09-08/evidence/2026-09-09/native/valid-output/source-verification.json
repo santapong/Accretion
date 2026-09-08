@@ -1,0 +1,18 @@
+{
+  "duration_ms": 0,
+  "evidence_refs": [
+    "file-sha256:result.json:55f66c2c5aeb275ff5b1ae26b321d5c0b8ceda8c034b19c2643e046d024919f3"
+  ],
+  "executed_at": "2026-09-08T17:20:22.994343Z",
+  "false_accept_risk_estimate": 0.05,
+  "findings": [],
+  "iteration_id": null,
+  "run_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+  "schema_version": "1.0",
+  "score": 1.0,
+  "status": "PASS",
+  "target_ref": "exe_T8GC7AD77TXTQHSN32B0EWNSZ6",
+  "verification_id": "ver_01M210HZYJ63MNBT2CRAPQ02RW",
+  "verifier_id": "output-contract",
+  "verifier_version": "output-contract-v1"
+}

@@ -1,0 +1,154 @@
+{
+  "candidate_summary_refs": [
+    "ccd_DFNP09XQ3TKTNFWS0PWJEM49G3"
+  ],
+  "capability_registry_snapshot_id": "bcdc17ea4d0434fce6c2e8343dc9d00daeef1cb28f427e350650bf6bd8905741",
+  "content_hash": "682df5e91bdecd87a170c6a6899cc6d844015c481c1378d091e04873944b1cf0",
+  "contract_id": "rcp_9AEAVWSSD8VC838QYF5BR6X7BQ",
+  "contract_type": "accretion.routing-decision-receipt",
+  "created_at": "2026-09-08T17:20:22.914201Z",
+  "created_by": {
+    "display_name": null,
+    "principal_id": "usr_01M210HZVTDXYG58WS6YKRMX5S",
+    "status": "ACTIVE"
+  },
+  "decision_type": "FALLBACK",
+  "experience_refs": [],
+  "explanation": {
+    "content_hash": "5e614ab25112821561c31c5e48f227bef48c89ab4d4083551f2bbff341f2c301",
+    "contract_id": "rcp_WM8XRYAT5VZNNAW3RRVVSBHJ0B",
+    "contract_type": "accretion.structured-explanation",
+    "created_at": "2026-09-08T17:20:22.914201Z",
+    "created_by": {
+      "display_name": null,
+      "principal_id": "usr_01M210HZVTDXYG58WS6YKRMX5S",
+      "status": "ACTIVE"
+    },
+    "factors": [
+      {
+        "description": "Predicted normalized quality.",
+        "evidence_refs": [],
+        "factor_id": "quality",
+        "weight": 0.5
+      },
+      {
+        "description": "Predicted normalized cost penalty.",
+        "evidence_refs": [],
+        "factor_id": "cost",
+        "weight": -0.15
+      },
+      {
+        "description": "Predicted normalized latency penalty.",
+        "evidence_refs": [],
+        "factor_id": "latency",
+        "weight": -0.075
+      }
+    ],
+    "labels": {},
+    "objective_contract_ref": null,
+    "project_id": "prj_01M210HZVTQ2P5CJ1W790QTDRF",
+    "rejected_candidates": [],
+    "retention_class": null,
+    "schema_version": "1.0.0",
+    "summary": "Selected the audited deterministic fallback because evidence was insufficient.",
+    "supersedes_contract_id": null,
+    "workspace_id": "wks_01M210HZVT41DWRSBAQ93G9554"
+  },
+  "fallback_configuration_id": "cfg_APTKHK3NW0XPTGHJ1J4X7YBRD5",
+  "labels": {
+    "decision_version": "1",
+    "routing_status": "READY",
+    "run_id": "run_01M210HZVVKGZB57Z5D6RGD7H6"
+  },
+  "node_contract_hash": "e1867f5d5048e3cc92d1cbf68cf617ce80ed17227e4476ff50a87824f3c98faf",
+  "objective_contract_ref": {
+    "approved_at": "2026-09-08T17:20:22.906342Z",
+    "approved_by": {
+      "display_name": null,
+      "principal_id": "usr_01M210HZVTDXYG58WS6YKRMX5S",
+      "status": "ACTIVE"
+    },
+    "content_hash": "9cbe1b3984004e2af6619437aa144521960a052fe5986a82f6e53855766e081b",
+    "contract_id": "obj_SFN7C3AKDENQ8MNNB10HYQ78JB:ref",
+    "contract_type": "accretion.objective-contract-ref",
+    "created_at": "2026-09-08T17:20:22.906342Z",
+    "created_by": {
+      "display_name": null,
+      "principal_id": "usr_01M210HZVTDXYG58WS6YKRMX5S",
+      "status": "ACTIVE"
+    },
+    "labels": {},
+    "objective_contract_hash": "b32256c6179b60a0556118a40376d57542bbf53d603864805ad549534e7815c0",
+    "objective_contract_id": "obj_SFN7C3AKDENQ8MNNB10HYQ78JB",
+    "objective_contract_ref": null,
+    "project_id": "prj_01M210HZVTQ2P5CJ1W790QTDRF",
+    "retention_class": null,
+    "revision": 1,
+    "risk_policy": {
+      "content_digest": "f3da274e9b494c14c87e90f2a3023af147fd5cab2d439f3b3900846c850802a8",
+      "policy_id": "acp_01M210HZVVEVY8RBEAFTDZV0JM",
+      "version": "acceptance-policy-v1"
+    },
+    "schema_version": "1.0.0",
+    "supersedes_contract_id": null,
+    "utility_profile_id": "quality-cost-latency/1",
+    "verified_success_floor": 0.5,
+    "workspace_id": "wks_01M210HZVT41DWRSBAQ93G9554"
+  },
+  "objective_contract_version": 1,
+  "policy_snapshot_id": "local-capability-policy@1.0.0",
+  "predicted_outcomes": {
+    "cost": {
+      "confidence": 0.5,
+      "lower_bound": 0.25,
+      "mean": 0.5,
+      "method": "cold-start-prior/1",
+      "upper_bound": 0.75
+    },
+    "latency": {
+      "confidence": 0.5,
+      "lower_bound": 0.25,
+      "mean": 0.5,
+      "method": "cold-start-prior/1",
+      "upper_bound": 0.75
+    },
+    "node_verified_success": {
+      "confidence": 0.5,
+      "lower_bound": 0.25,
+      "mean": 0.5,
+      "method": "cold-start-prior/1",
+      "upper_bound": 0.75
+    },
+    "quality": {
+      "confidence": 0.5,
+      "lower_bound": 0.25,
+      "mean": 0.5,
+      "method": "cold-start-prior/1",
+      "upper_bound": 0.75
+    },
+    "run_verified_success": {
+      "confidence": 0.5,
+      "lower_bound": 0.25,
+      "mean": 0.5,
+      "method": "cold-start-prior/1",
+      "upper_bound": 0.75
+    }
+  },
+  "project_adapter_version": null,
+  "project_id": "prj_01M210HZVTQ2P5CJ1W790QTDRF",
+  "rejected_candidate_reasons": [],
+  "retention_class": null,
+  "routing_request_id": "rrq_1R1D5MC6EN406T66YWG4X4M39W",
+  "schema_version": "1.0.0",
+  "selected_configuration_hash": "c1321a47240aef590018f88e2410ea3138c9342654eaf876f79b6b57abb3ca19",
+  "selected_configuration_id": "cfg_APTKHK3NW0XPTGHJ1J4X7YBRD5",
+  "selection_propensity": 1.0,
+  "supersedes_contract_id": null,
+  "uncertainty": {
+    "calibration_version": "cold-start-prior/1",
+    "epistemic_uncertainty": 0.5,
+    "lower_confidence_success": 0.25
+  },
+  "workspace_id": "wks_01M210HZVT41DWRSBAQ93G9554",
+  "workspace_router_version": "deterministic-router/1"
+}

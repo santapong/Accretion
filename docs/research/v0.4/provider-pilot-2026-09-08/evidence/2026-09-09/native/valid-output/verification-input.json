@@ -1,0 +1,15 @@
+{
+  "evidence": {
+    "file-sha256:result.json:55f66c2c5aeb275ff5b1ae26b321d5c0b8ceda8c034b19c2643e046d024919f3": {
+      "content_digest": "55f66c2c5aeb275ff5b1ae26b321d5c0b8ceda8c034b19c2643e046d024919f3",
+      "evidence_class": "DIGITAL",
+      "evidence_id": "file-sha256:result.json:55f66c2c5aeb275ff5b1ae26b321d5c0b8ceda8c034b19c2643e046d024919f3"
+    }
+  },
+  "verifier_runtimes": {
+    "output-contract": null
+  },
+  "verifier_session_ids": {
+    "output-contract": null
+  }
+}

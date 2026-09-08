@@ -1,0 +1,10 @@
+{
+  "allowed_tools": [],
+  "denied_tools": [
+    "*"
+  ],
+  "model": "fake-model",
+  "resume_native_session_id": null,
+  "run_id": "run_01M210J02GQYVRFNXQ3M2TN1JP",
+  "workspace": "/tmp/accretion-fake-pilot-p043p_op/missing-required-evidence/worktrees/run_01M210J02GQYVRFNXQ3M2TN1JP"
+}

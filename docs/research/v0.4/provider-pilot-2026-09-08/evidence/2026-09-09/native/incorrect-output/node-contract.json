@@ -1,0 +1,83 @@
+{
+  "allowed_risk_class": "LOW_DIGITAL",
+  "content_hash": "54a43f1d7880e283e0b0916fb666b18dd5bb13f01669de54f58604aca2cda6c1",
+  "contract_id": "nct_0BMFS6GVXZ6AMAKNXDG7AF635K",
+  "contract_type": "accretion.node-contract",
+  "created_at": "2026-09-08T17:20:23.041396Z",
+  "created_by": {
+    "display_name": null,
+    "principal_id": "usr_01M210J001WP7RWXZW9571M6H7",
+    "status": "ACTIVE"
+  },
+  "environment_constraints": [],
+  "evidence_requirements": [],
+  "execution_instance_id": "exe_FZHJE8AV4FJZN31JPVZXW2AK7D",
+  "failure_policy_ref": {
+    "content_digest": "fb14ad5fca510b53e2ce9293d07f5ae563b73c350c92bf3c127a1761edc37a20",
+    "policy_id": "acp_01M210J0022CVRWJ3MGE074VVR",
+    "version": "acceptance-policy-v1"
+  },
+  "graph_revision": 1,
+  "immutable_hash": "3e6a1184d35ee1aeff199367249bdf1f50c065f8c45711b3e4400020542310be",
+  "input_contracts": [],
+  "labels": {
+    "attempt": "1",
+    "node_key": "plan",
+    "run_id": "run_01M210J002G0SAYZWB3E0HRWJ2"
+  },
+  "node_id": "run_01M210J002G0SAYZWB3E0HRWJ2:plan",
+  "node_kind": "AGENT",
+  "objective": "Write the fixed local fixture artifact.",
+  "objective_contract_ref": {
+    "approved_at": "2026-09-08T17:20:23.041396Z",
+    "approved_by": {
+      "display_name": null,
+      "principal_id": "usr_01M210J001WP7RWXZW9571M6H7",
+      "status": "ACTIVE"
+    },
+    "content_hash": "b0401b5efcbe04907d31f6a25dbce5bc6632aa57d5a774f37ab7376d6ba53639",
+    "contract_id": "obj_YQJTB0Z6YP61V3SKRT9XDBTWM0:ref",
+    "contract_type": "accretion.objective-contract-ref",
+    "created_at": "2026-09-08T17:20:23.041396Z",
+    "created_by": {
+      "display_name": null,
+      "principal_id": "usr_01M210J001WP7RWXZW9571M6H7",
+      "status": "ACTIVE"
+    },
+    "labels": {},
+    "objective_contract_hash": "b1048be5bdebef315ac9e08d22ebe348da19f618de305a3b1cce4d54ebbfe0bb",
+    "objective_contract_id": "obj_YQJTB0Z6YP61V3SKRT9XDBTWM0",
+    "objective_contract_ref": null,
+    "project_id": "prj_01M210J00169D5PMSJ3JBW351Z",
+    "retention_class": null,
+    "revision": 1,
+    "risk_policy": {
+      "content_digest": "fb14ad5fca510b53e2ce9293d07f5ae563b73c350c92bf3c127a1761edc37a20",
+      "policy_id": "acp_01M210J0022CVRWJ3MGE074VVR",
+      "version": "acceptance-policy-v1"
+    },
+    "schema_version": "1.0.0",
+    "supersedes_contract_id": null,
+    "utility_profile_id": "quality-cost-latency/1",
+    "verified_success_floor": 0.5,
+    "workspace_id": "wks_01M210J001E0Z50Z5FJS0GQGH8"
+  },
+  "output_contracts": [],
+  "project_id": "prj_01M210J00169D5PMSJ3JBW351Z",
+  "required_capabilities": [],
+  "resource_cap": {
+    "maximum_attempts": 1,
+    "maximum_cost": "0",
+    "maximum_latency_ms": 30000,
+    "maximum_tool_calls": 1
+  },
+  "retention_class": null,
+  "run_graph_id": "rgr_01M210J0025FE6DV7H414TDE6J",
+  "schema_version": "1.0.0",
+  "supersedes_contract_id": null,
+  "verification_spec_ref": {
+    "content_hash": "25b161ba0effe1aff82a21bc5e7da0476084bdd1472f4ce206436127a45ee0f3",
+    "verification_spec_id": "vsp_VDTES95Z91SHN56CEF6CGTJQZ7"
+  },
+  "workspace_id": "wks_01M210J001E0Z50Z5FJS0GQGH8"
+}

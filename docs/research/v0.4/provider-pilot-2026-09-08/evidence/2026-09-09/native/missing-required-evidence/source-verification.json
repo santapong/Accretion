@@ -1,0 +1,27 @@
+{
+  "duration_ms": 0,
+  "evidence_refs": [],
+  "executed_at": "2026-09-08T17:20:23.159450Z",
+  "false_accept_risk_estimate": null,
+  "findings": [
+    {
+      "code": "OUTPUT_CONTRACT_MISSING",
+      "evidence_ref": null,
+      "fingerprint": "25eb4da4e6e6898450d4ebe787b8985370b3d426dad1f245c1c6e58dc365c5ac",
+      "line": null,
+      "message": "No required outputs were declared.",
+      "path": null,
+      "schema_version": "1.0",
+      "severity": "WARNING"
+    }
+  ],
+  "iteration_id": null,
+  "run_id": "run_01M210J02GQYVRFNXQ3M2TN1JP",
+  "schema_version": "1.0",
+  "score": null,
+  "status": "INCONCLUSIVE",
+  "target_ref": "exe_JQWBXNTWWG8RSH4VF6B7X2DT0R",
+  "verification_id": "ver_01M210J03Q25PZABVVYRFN46W1",
+  "verifier_id": "output-contract",
+  "verifier_version": "output-contract-v1"
+}

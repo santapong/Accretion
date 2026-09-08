@@ -1,6 +1,7 @@
 # Minimal fake instrumentation implementation
 
-State: **IMPLEMENTED, FOCUSED LOCAL TESTS PASSED; clean-commit evidence pending**
+State: **FAKE_INSTRUMENTATION_VERIFIED**; see the
+[clean-commit execution report](instrumentation-report-2026-09-09.md)
 on 2026-09-09 (Asia/Bangkok). Scope: R1 preparation only.
 The user-approved completion plan authorizes this bounded fake/local path;
 the coordinator reviewed and approved this implementation boundary before code
@@ -108,7 +109,8 @@ live-provider tests, database migrations or a service deployment. A dry run
 is complete only after actual records, manifest integrity and all joins are
 checked, not when the script or fixtures merely exist.
 
-After a verified run, append a dated local instrumentation report with commit,
-commands, counts, artifact paths/hashes, denials and limitations; update this
-study's readiness to FAKE_INSTRUMENTATION_VERIFIED. Keep live execution
-NOT_AUTHORIZED and scientific verifier qualification unresolved.
+The dated execution report now records the commit, commands, counts, artifact
+paths/hashes, denials and limitations. Study readiness is
+FAKE_INSTRUMENTATION_VERIFIED. Live execution remains NOT_AUTHORIZED and
+scientific verifier qualification remains unresolved. A later reproduction
+must write a fresh output directory and retain the same provenance checks.

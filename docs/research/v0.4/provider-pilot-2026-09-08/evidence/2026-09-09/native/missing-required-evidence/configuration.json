@@ -1,0 +1,84 @@
+{
+  "configuration_hash": "47bde59317b6f68d1e78848b1145ecdf242e5b467779c2863b39fd13ea356f06",
+  "content_hash": "6191b2d6de92c90781618607ec71e61d9dcf2b458f4665a360ca6a5acff3d771",
+  "contract_id": "cfg_VKR62E399WEY1J092HF6DAF6M4",
+  "contract_type": "accretion.execution-configuration",
+  "created_at": "2026-09-08T17:20:23.124921Z",
+  "created_by": {
+    "display_name": null,
+    "principal_id": "usr_01M210J02FECX56S9Q83057VAG",
+    "status": "ACTIVE"
+  },
+  "environment": {
+    "environment": {
+      "environment_id": "local-worktree",
+      "image_digest": "da4f14859cc403bae835a8d4120f076d33e093d1bd7b94acb51349aa2cc22c5e",
+      "policy_profile": "local-capability-policy"
+    },
+    "workspace_isolation": "WORKTREE"
+  },
+  "labels": {
+    "catalog_digest": "474901fbfe5e6d6a4248594185486ec5a38f1728fcde44e5f602444082b59bcc"
+  },
+  "model": {
+    "inference_profile": {},
+    "model_id": "fake-model",
+    "provider": "FAKE"
+  },
+  "objective_contract_ref": {
+    "approved_at": "2026-09-08T17:20:23.119339Z",
+    "approved_by": {
+      "display_name": null,
+      "principal_id": "usr_01M210J02FECX56S9Q83057VAG",
+      "status": "ACTIVE"
+    },
+    "content_hash": "33af8d44b8fb5630f5b90edc54a34e65112648e91e44ea37ae667dccde7d147a",
+    "contract_id": "obj_ZRAAJCHRNC7HM8Z5D7Q5Q2NB4M:ref",
+    "contract_type": "accretion.objective-contract-ref",
+    "created_at": "2026-09-08T17:20:23.119339Z",
+    "created_by": {
+      "display_name": null,
+      "principal_id": "usr_01M210J02FECX56S9Q83057VAG",
+      "status": "ACTIVE"
+    },
+    "labels": {},
+    "objective_contract_hash": "d5c9aca6579d6f13a8acb68bce41809f470588ecd0da1d6cea96451431b51f6c",
+    "objective_contract_id": "obj_ZRAAJCHRNC7HM8Z5D7Q5Q2NB4M",
+    "objective_contract_ref": null,
+    "project_id": "prj_01M210J02FVMV66YC23D8NWE5Y",
+    "retention_class": null,
+    "revision": 1,
+    "risk_policy": {
+      "content_digest": "b78a66c0c0fa9eb3efcf69bfbbe17cecb06ca4e6d74f34d6e7aa68a90baab926",
+      "policy_id": "acp_01M210J02GRX7HGNH85W43MFKF",
+      "version": "acceptance-policy-v1"
+    },
+    "schema_version": "1.0.0",
+    "supersedes_contract_id": null,
+    "utility_profile_id": "quality-cost-latency/1",
+    "verified_success_floor": 0.5,
+    "workspace_id": "wks_01M210J02FANMHGQSVFK6R3K08"
+  },
+  "project_id": "prj_01M210J02FVMV66YC23D8NWE5Y",
+  "retention_class": null,
+  "runtime": {
+    "adapter_version": "fake-p2-v1",
+    "capability_profile_digest": "fcc078e0910049ead0d35169f46056c2c91aa4f7600133400eaca91620d92f4a",
+    "model": "fake-model",
+    "provider": "FAKE",
+    "runtime_id": "runtime_fake"
+  },
+  "schema_version": "1.0.0",
+  "skills": [],
+  "supersedes_contract_id": null,
+  "tools": [],
+  "verifier": {
+    "verification_spec_hash": "582dadb62cf60470f983b7811fae1106b07c66431c0a3e0531c1bb4bc6c45d83",
+    "verifier": {
+      "implementation_digest": "b12de164996ddaf0c73ee08197058fca6764a025e3acdd23b544f6cfb82b2917",
+      "verifier_contract_id": "output-contract"
+    },
+    "version": "output-contract-v1"
+  },
+  "workspace_id": "wks_01M210J02FANMHGQSVFK6R3K08"
+}

@@ -1,0 +1,100 @@
+[
+  {
+    "adapter_version": "routing/1",
+    "causation_id": "rrq_1R1D5MC6EN406T66YWG4X4M39W",
+    "correlation_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "event_id": "evt_845RZCX89M4KC1617EQA2PHHXD",
+    "native_type": "accretion/routing/requested",
+    "node_id": null,
+    "normalized_type": "ROUTING_REQUESTED",
+    "payload": {
+      "action": "requested",
+      "mode": "BASELINE_ONLY",
+      "node_contract_hash": "e1867f5d5048e3cc92d1cbf68cf617ce80ed17227e4476ff50a87824f3c98faf",
+      "routing_request_id": "rrq_1R1D5MC6EN406T66YWG4X4M39W",
+      "workspace_router_version": "deterministic-router/1"
+    },
+    "provider": "FAKE",
+    "run_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "sequence": 1,
+    "session_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "timestamp": "2026-09-08T17:20:22.912762Z"
+  },
+  {
+    "adapter_version": "routing/1",
+    "causation_id": "rrq_1R1D5MC6EN406T66YWG4X4M39W",
+    "correlation_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "event_id": "evt_7QWK42ZW3BCTN9FM4JXWQN7C3F",
+    "native_type": "accretion/routing/candidates-built",
+    "node_id": null,
+    "normalized_type": "ROUTING_CANDIDATES_BUILT",
+    "payload": {
+      "action": "candidates-built",
+      "candidate_count": 1,
+      "rejected_count": 0,
+      "routing_request_id": "rrq_1R1D5MC6EN406T66YWG4X4M39W"
+    },
+    "provider": "FAKE",
+    "run_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "sequence": 2,
+    "session_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "timestamp": "2026-09-08T17:20:22.921734Z"
+  },
+  {
+    "adapter_version": "routing/1",
+    "causation_id": "rcp_9AEAVWSSD8VC838QYF5BR6X7BQ",
+    "correlation_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "event_id": "evt_G70T2HVJ7F90HPGFS9FWMCR4A9",
+    "native_type": "accretion/routing/created",
+    "node_id": null,
+    "normalized_type": "ROUTING_DECISION_CREATED",
+    "payload": {
+      "action": "created",
+      "node_contract_hash": "e1867f5d5048e3cc92d1cbf68cf617ce80ed17227e4476ff50a87824f3c98faf",
+      "receipt_id": "rcp_9AEAVWSSD8VC838QYF5BR6X7BQ"
+    },
+    "provider": "FAKE",
+    "run_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "sequence": 3,
+    "session_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "timestamp": "2026-09-08T17:20:22.927849Z"
+  },
+  {
+    "adapter_version": "routing/1",
+    "causation_id": "rcp_9AEAVWSSD8VC838QYF5BR6X7BQ",
+    "correlation_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "event_id": "evt_P621SJEBGAGYN02JADDBQWDCZS",
+    "native_type": "accretion/routing/fallback",
+    "node_id": null,
+    "normalized_type": "ROUTING_FALLBACK_SELECTED",
+    "payload": {
+      "action": "fallback",
+      "node_contract_hash": "e1867f5d5048e3cc92d1cbf68cf617ce80ed17227e4476ff50a87824f3c98faf",
+      "receipt_id": "rcp_9AEAVWSSD8VC838QYF5BR6X7BQ"
+    },
+    "provider": "FAKE",
+    "run_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "sequence": 4,
+    "session_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "timestamp": "2026-09-08T17:20:22.927918Z"
+  },
+  {
+    "adapter_version": "routing/1",
+    "causation_id": "rcp_9AEAVWSSD8VC838QYF5BR6X7BQ",
+    "correlation_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "event_id": "evt_47YCKWPYDFD4NKZXRK64BFFHQM",
+    "native_type": "accretion/routing/dispatch",
+    "node_id": null,
+    "normalized_type": "ROUTING_DECISION_CREATED",
+    "payload": {
+      "action": "dispatch",
+      "node_contract_hash": "e1867f5d5048e3cc92d1cbf68cf617ce80ed17227e4476ff50a87824f3c98faf",
+      "receipt_id": "rcp_9AEAVWSSD8VC838QYF5BR6X7BQ"
+    },
+    "provider": "FAKE",
+    "run_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "sequence": 5,
+    "session_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+    "timestamp": "2026-09-08T17:20:22.939540Z"
+  }
+]

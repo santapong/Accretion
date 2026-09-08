@@ -1,0 +1,83 @@
+[
+  {
+    "adapter_version": "fake-p2-v1",
+    "causation_id": null,
+    "correlation_id": "rtc_01M210J03JWVGBE50YJ1QTCTHB",
+    "event_id": "evt_01M210J03N3BWS7SPFCZVZJN0A",
+    "native_type": "fake/call-started",
+    "node_id": null,
+    "normalized_type": "RUNTIME_CALL_STARTED",
+    "payload": {
+      "directive": {
+        "evidence_refs": [],
+        "findings": [],
+        "kind": "INITIAL",
+        "objective": "Write only the fixed fixture.",
+        "previous_iteration_id": null,
+        "schema_version": "1.0"
+      },
+      "iteration_number": 1,
+      "objective": "Write the fixed local fixture artifact.",
+      "runtime_call_id": "rtc_01M210J03JWVGBE50YJ1QTCTHB"
+    },
+    "provider": "FAKE",
+    "run_id": "run_01M210J02GQYVRFNXQ3M2TN1JP",
+    "sequence": 6,
+    "session_id": "ses_01M210J03JN6HM4S7A4WSRDNAK",
+    "timestamp": "2026-09-08T17:20:23.157809Z"
+  },
+  {
+    "adapter_version": "fake-p2-v1",
+    "causation_id": null,
+    "correlation_id": "rtc_01M210J03JWVGBE50YJ1QTCTHB",
+    "event_id": "evt_01M210J03NWZXJKZHBH7KDDWCB",
+    "native_type": "fake/progress",
+    "node_id": null,
+    "normalized_type": "RUN_PROGRESS",
+    "payload": {
+      "directive": {
+        "evidence_refs": [],
+        "findings": [],
+        "kind": "INITIAL",
+        "objective": "Write only the fixed fixture.",
+        "previous_iteration_id": null,
+        "schema_version": "1.0"
+      },
+      "iteration_number": 1,
+      "message": "fake runtime executing",
+      "runtime_call_id": "rtc_01M210J03JWVGBE50YJ1QTCTHB"
+    },
+    "provider": "FAKE",
+    "run_id": "run_01M210J02GQYVRFNXQ3M2TN1JP",
+    "sequence": 7,
+    "session_id": "ses_01M210J03JN6HM4S7A4WSRDNAK",
+    "timestamp": "2026-09-08T17:20:23.157930Z"
+  },
+  {
+    "adapter_version": "fake-p2-v1",
+    "causation_id": null,
+    "correlation_id": "rtc_01M210J03JWVGBE50YJ1QTCTHB",
+    "event_id": "evt_01M210J03NEK55VDXT93D05YJ8",
+    "native_type": "fake/call-terminal",
+    "node_id": null,
+    "normalized_type": "RUNTIME_CALL_COMPLETED",
+    "payload": {
+      "directive": {
+        "evidence_refs": [],
+        "findings": [],
+        "kind": "INITIAL",
+        "objective": "Write only the fixed fixture.",
+        "previous_iteration_id": null,
+        "schema_version": "1.0"
+      },
+      "iteration_number": 1,
+      "runtime_call_id": "rtc_01M210J03JWVGBE50YJ1QTCTHB",
+      "status": "completed"
+    },
+    "provider": "FAKE",
+    "run_id": "run_01M210J02GQYVRFNXQ3M2TN1JP",
+    "sequence": 8,
+    "session_id": "ses_01M210J03JN6HM4S7A4WSRDNAK",
+    "timestamp": "2026-09-08T17:20:23.157971Z"
+  }
+]

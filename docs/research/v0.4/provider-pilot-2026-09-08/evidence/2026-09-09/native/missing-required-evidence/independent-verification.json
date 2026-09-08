@@ -1,0 +1,55 @@
+{
+  "claim_results": [
+    {
+      "claim_id": "verifier.output-contract",
+      "confidence": null,
+      "coverage": 0.0,
+      "evidence_refs": [],
+      "limitations": [
+        "EVIDENCE_CLASS_NOT_PRODUCED",
+        "SAME_RUNTIME_AS_PRODUCER"
+      ],
+      "status": "INCONCLUSIVE"
+    },
+    {
+      "claim_id": "output.result.json",
+      "confidence": null,
+      "coverage": 0.0,
+      "evidence_refs": [],
+      "limitations": [
+        "EVIDENCE_CLASS_NOT_PRODUCED",
+        "SAME_RUNTIME_AS_PRODUCER"
+      ],
+      "status": "INCONCLUSIVE"
+    }
+  ],
+  "conflict_refs": [],
+  "content_hash": "f5a31ed81c8adaa4ccc71494e49fce57e9d007c17b8bd8bf21d2566fa6f12388",
+  "contract_id": "ivr_EQGMGJG0BW16ET4GPQYKN04EH9",
+  "contract_type": "accretion.independent-verification-result",
+  "created_at": "2026-09-08T17:20:23.159457Z",
+  "created_by": {
+    "display_name": "Fake instrumentation",
+    "principal_id": "usr_01M210J02FECX56S9Q83057VAG",
+    "status": "ACTIVE"
+  },
+  "deterministic_evidence_refs": [],
+  "execution_instance_id": "exe_JQWBXNTWWG8RSH4VF6B7X2DT0R",
+  "labels": {},
+  "model_review_refs": [],
+  "objective_contract_ref": null,
+  "project_id": "prj_01M210J02FVMV66YC23D8NWE5Y",
+  "retention_class": null,
+  "schema_version": "1.0.0",
+  "signed_at": "2026-09-08T17:20:23.159457Z",
+  "source_verification_id": "ver_01M210J03Q25PZABVVYRFN46W1",
+  "status": "INCONCLUSIVE",
+  "supersedes_contract_id": null,
+  "verification_spec_hash": "582dadb62cf60470f983b7811fae1106b07c66431c0a3e0531c1bb4bc6c45d83",
+  "verifier": {
+    "implementation_digest": "b12de164996ddaf0c73ee08197058fca6764a025e3acdd23b544f6cfb82b2917",
+    "verifier_contract_id": "output-contract"
+  },
+  "verifier_version": "output-contract-v1",
+  "workspace_id": "wks_01M210J02FANMHGQSVFK6R3K08"
+}
