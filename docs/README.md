@@ -5,7 +5,7 @@ integrators, researchers, and release reviewers. Start with the path that
 matches what you want to do; supporting documents are grouped by purpose so the
 folder root stays uncluttered.
 
-<img src="assets/project-overview.svg" alt="Accretion project overview from bounded operator intent through deterministic control, isolated runtime execution, and independent verification, with the v0.4.1 release, bounded follow-up work, and immutable v0.1.0 static-control evidence" width="100%" />
+<img src="assets/project-overview.svg" alt="Four stages of an Accretion run: define the objective and limits, plan under deterministic policy, execute in an isolated worktree, and independently verify the captured candidate." width="100%" />
 
 <img src="assets/developer-journey.svg" alt="Six-step developer journey from cloning Accretion through running, observing, verifying, and contributing" width="100%" />
 
@@ -16,7 +16,8 @@ folder root stays uncluttered.
 | Understand the project and release status | [Project README](../README.md) | [v0.4 release notes](releases/v0.4/notes.md) |
 | Run Accretion locally | [Developer guide](guides/developer.md) | [Showcase](guides/showcase.md) |
 | Use or extend the React operator UI | [Frontend guide](guides/frontend.md) | [Developer guide](guides/developer.md), [showcase](guides/showcase.md) |
-| Understand the system | [README architecture](../README.md#architecture) | [v0.1 SDD](sdd/Accretion_SDD_v0.1.md) |
+| Understand the system | [README architecture](../README.md#architecture) | [v0.4 SDD](sdd/Accretion_SDD_v0.4.md) |
+| Review release changes | [Changelog](../CHANGELOG.md) | [Detailed engineering history](releases/engineering-change-history.md) |
 | Build a contribution | [Contributing](../CONTRIBUTING.md) | [Branch policy](governance/branch-policy.md) |
 | Operate or recover runs | [P0 runtime runbook](runbooks/p0-runtime.md) | [P2 loops](runbooks/p2-feedback-loops.md), [P3 replay](runbooks/p3-recovery.md) |
 | Operate P5 dynamic workflows | [P5 runbook](runbooks/p5-dynamic-workflows.md) | [Dynamic benchmark](research/p5/benchmark.md), [decisions](research/p5/decisions.md), [acceptance](research/p5/acceptance.md) |
@@ -34,7 +35,7 @@ folder root stays uncluttered.
 | Review the current release | [v0.4 release notes](releases/v0.4/notes.md) | [frozen v0.4 baseline](releases/v0.4/baseline.md), [release audit](releases/v0.4/audit.md), [acceptance baseline](releases/v0.4/acceptance-baseline.md), [research results](research/v0.4/results.md); the v0.3 record stays at [releases/v0.3](releases/v0.3/notes.md) |
 | Reproduce the release gate | [Release-hardening runbook](runbooks/v03-release-hardening.md) | [SDD v0.3 §24.8](sdd/Accretion_SDD_v0.3.md), [`scripts/release_gate.py`](../scripts/release_gate.py) |
 | Review the historical v0.2 release | [Frozen v0.2 baseline](releases/v0.2/baseline.md) | [release audit](releases/v0.2/audit.md), [release notes](releases/v0.2/notes.md), [delivery plan](releases/v0.2/plan.md) |
-| Execute the approved v0.4 handoff | [Completion plan](releases/v0.4/completion-plan-2026-09-08.md) | [Bounded follow-up backlog](releases/v0.4/backlog.md#remaining-bounded-work), [research handoff](releases/v0.4/research-handoff-2026-09-08.md), [provider-pilot preparation](research/v0.4/provider-pilot-2026-09-08/README.md) |
+| Review the completed v0.4 closure | [Closure execution](releases/v0.4/closure-execution-2026-09-08.md) | [Approved plan](releases/v0.4/completion-plan-2026-09-08.md), [research handoff](releases/v0.4/research-handoff-2026-09-08.md), [provider-pilot preparation](research/v0.4/provider-pilot-2026-09-08/README.md) |
 | Reconcile v0.4 closure and plan remaining work | [Completion and handoff plan](releases/v0.4/completion-plan-2026-09-08.md) | [Release audit](releases/v0.4/planning/release-closure-audit-2026-09-08.md), [runtime audit](releases/v0.4/planning/runtime-gap-audit-2026-09-08.md), [research readiness](releases/v0.4/planning/research-readiness-audit-2026-09-08.md) |
 | Review planned v1.1–v1.8 capabilities | [Revision 4 setup and release sequence](sdd/future/v1.1-v1.8/README.md) | [Full SDD, research and diagrams](sdd/future/v1.1-v1.8/package/index.html); forward designs, acceptance pending |
 | Inspect delivered v0.4 milestones | [v0.4 milestone index](releases/v0.4/README.md) | [SDD v0.4](sdd/Accretion_SDD_v0.4.md), [M0 plan](releases/v0.4/m0-plan.md), [v0.4 backlog](releases/v0.4/backlog.md), [forward package](sdd/future/v0.4-v1.0/00_READ_ME_FIRST.md) |
@@ -45,7 +46,7 @@ folder root stays uncluttered.
 | Folder | Use it for |
 |---|---|
 | [`guides/`](guides/) | Local setup, frontend use, extension, and the product showcase |
-| [`runbooks/`](runbooks/) | Operating, diagnosing, and recovering P0–P7 and v0.3 M0–M8 behavior |
+| [`runbooks/`](runbooks/) | Operating, diagnosing, and recovering workflows, integrations and v0.4 routing |
 | [`research/`](research/) | Experiment design, frozen results, acceptance evidence, and decisions |
 | [`releases/`](releases/) | Versioned plans, audits, notes, and released baselines |
 | [`governance/`](governance/) | Branch workflow and documentation maintenance rules |
@@ -57,11 +58,12 @@ naming, experiment-update, and review rules.
 
 ## Visual reference
 
-| Diagram | Explains | Primary document |
+| Visual | Explains | Primary document |
 |---|---|---|
-| [Project overview](assets/project-overview.svg) | Product purpose, authority flow, and stable/develop/next release position | [Project README](../README.md) |
+| [Project banner](assets/accretion-banner.png) | Conceptual brand artwork; not a product screenshot | [Visual identity and source prompt](guides/visual-identity.md) |
+| [Project overview](assets/project-overview.svg) | Define, plan, execute and verify, with bounded repair and escalation | [Project README](../README.md) |
 | [System architecture](assets/accretion-architecture.svg) | Task-to-runtime and durable telemetry flow | [Project README](../README.md) |
-| [Operator frontend map](assets/operator-ui-map.svg) | Eleven UI routes, central live-run evidence, and snapshot/SSE data flow | [Frontend guide](guides/frontend.md) |
+| [Operator frontend map](assets/operator-ui-map.svg) | Operator surfaces, central live-run evidence, and snapshot/SSE data flow | [Frontend guide](guides/frontend.md) |
 | [Developer journey](assets/developer-journey.svg) | First checkout through verified PR | [Developer guide](guides/developer.md) |
 | [Feedback lifecycle](assets/accretion-feedback-loop.svg) | Bounded act, observe, verify, repair | [P2 runbook](runbooks/p2-feedback-loops.md) |
 | [Checkpoint and replay](assets/checkpoint-replay.svg) | Recovery classification and safe replay | [P3 runbook](runbooks/p3-recovery.md) |
@@ -76,14 +78,14 @@ naming, experiment-update, and review rules.
 | [P6 quality/compute curve](assets/p6-quality-compute.svg) | Frozen N=1/2/4 replay result and verified acceptance | [P6 acceptance report](research/p6/acceptance.md) |
 | [P7 experience lifecycle](assets/p7-experience-replay.svg) | Materialization, compatibility, frozen selection, fresh-control replay, and revalidation | [P7 runbook](runbooks/p7-verified-experience.md) |
 | [P7 transfer gate](assets/p7-transfer-gate.svg) | Frozen uplift, tool use, stale rejection, false accepts, and negative transfer | [P7 acceptance report](research/p7/acceptance.md) |
-| [Planned v0.4 closure sequence](releases/v0.4/completion-plan-2026-09-08.md#execution-waves-and-ownership) | Parallel documentation, targeted runtime witnesses, conditional repair and research handoff | [Completion plan](releases/v0.4/completion-plan-2026-09-08.md) |
+| [Approved v0.4 closure sequence](releases/v0.4/completion-plan-2026-09-08.md#execution-waves-and-ownership) | Parallel documentation, targeted runtime witnesses, repair and research handoff; execution is complete | [Closure execution](releases/v0.4/closure-execution-2026-09-08.md) |
 | [Planned v1.8 architecture](sdd/future/v1.1-v1.8/package/accretion-v1.8-review-2026-09-06/architecture.html) | Full future logical architecture; interactive HTML and PNG export | [v1.x design setup](sdd/future/v1.1-v1.8/README.md) |
 | [Planned v1.8 user workflow](sdd/future/v1.1-v1.8/package/accretion-v1.8-review-2026-09-06/user-journey.html) | Goal, scope, execution, verification, recovery and export | [v1.8 capability review](sdd/future/v1.1-v1.8/package/accretion-v1.8-review-2026-09-06/README.md) |
 | [Planned physical trial workflow](sdd/future/v1.1-v1.8/package/accretion-v1.8-review-2026-09-06/physical-trial.html) | Advisory preparation through exact approval and the existing safety gateway | [v1.x design setup](sdd/future/v1.1-v1.8/README.md) |
 
 Every SVG has a title and long description for assistive technology. Technical
 diagrams are repository-native so changes can be reviewed as text. The generated
-bitmap in the showcase is illustrative and never defines behavior.
+banner and showcase bitmaps are illustrative and never define behavior.
 
 ## Version authority
 
@@ -105,8 +107,8 @@ bitmap in the showcase is illustrative and never defines behavior.
 ## Frontend completion
 
 The React frontend is implemented for every P0–P7 release surface plus the v0.3
-M6 administration pages and the v0.4 M9 router administration page — eighteen routes
-in all. The deterministic checks cover
+M6 administration pages, Experiment Studio and v0.4 M9 router administration.
+The deterministic checks cover
 the component test suite, generated OpenAPI, ESLint, TypeScript, and production
 build.
 For v0.3.0 rendered browser and accessibility evidence **was** collected: axe-core
