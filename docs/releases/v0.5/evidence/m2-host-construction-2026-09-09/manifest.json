@@ -1,0 +1,40 @@
+{
+  "scope": "CONSTRUCTION_ONLY_NO_AC5_CLAIM",
+  "files": [
+    {
+      "path": "083301-probe.json",
+      "size_bytes": 551,
+      "sha256": "eba146dcff31bbc5c54fc304c6eb0e3bc5fc1897e19d2b21f67f0975d40509a8"
+    },
+    {
+      "path": "083301-record.json",
+      "size_bytes": 1307,
+      "sha256": "4d7cafd05e73fe07f95d6fd7e0c575c54257779c850fde27df55602d57bf689c"
+    },
+    {
+      "path": "083721-record.json",
+      "size_bytes": 2455,
+      "sha256": "2ee8efdc6bdaede4fe275258a85a199611e3ba37752f3889ff742ff9f6e540a4"
+    },
+    {
+      "path": "083924-probe.json",
+      "size_bytes": 551,
+      "sha256": "99da1522d36145a087abc5d91811e016800d4ea62bbf4150acf475016a61ce71"
+    },
+    {
+      "path": "083924-record.json",
+      "size_bytes": 1307,
+      "sha256": "5f55eaf5cee1d3cd3ce195d678f4acc023e1e3fb6df3d21c2e21d7c89a0ea45a"
+    },
+    {
+      "path": "Dockerfile",
+      "size_bytes": 219,
+      "sha256": "a7ef14118ee61ed4bddaa2c71ae205b1c103d8afe4955f27798adf20248a0204"
+    },
+    {
+      "path": "probe.py.txt",
+      "size_bytes": 2002,
+      "sha256": "9d33d381674eb77fdd348e16c0ef489bc1146a5f92848df00ce6d8c0e0138aa8"
+    }
+  ]
+}

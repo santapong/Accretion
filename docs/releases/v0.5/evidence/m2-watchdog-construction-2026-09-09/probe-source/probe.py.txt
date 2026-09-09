@@ -1,0 +1,10 @@
+#!/usr/local/bin/python3
+import json, sys
+from pathlib import Path
+from types import SimpleNamespace
+from datetime import datetime
+sys.path.insert(0, '/opt/accretion/probe')
+from accretion.robotics.host.watchdog import supervise
+values=json.loads(Path('/run/accretion/bootstrap.json').read_bytes())
+values['authority_expires_at']=datetime.fromisoformat(values['authority_expires_at'])
+raise SystemExit(supervise(SimpleNamespace(**values)))

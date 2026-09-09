@@ -106,6 +106,8 @@ from accretion.planning import (
     has_irreversible_capabilities,
 )
 from accretion.projections import build_graph_projection, build_loop_projection
+from accretion.robotics.errors import RoboticsError, RoboticsErrorCode
+from accretion.robotics.runtime_store import runtime_store_for
 from accretion.routing.identity import principal_ref_for_run, workspace_for_run
 from accretion.routing.protocols import (
     FeedbackPipeline,
@@ -460,6 +462,7 @@ class RunManager:
         task = await self.store.get_task(task_id)
         if task is None:
             raise KeyError(task_id)
+        await self.require_software_task(task_id, actor_id=principal_id)
         planning = await self.get_task_planning(task_id)
         decision = planning.current_decision
         if not await self.store.list_workflow_templates():
@@ -588,6 +591,7 @@ class RunManager:
         """Create a durable P5 run without making an unvalidated graph executable."""
 
         task = await self._require_task(task_id)
+        await self.require_software_task(task_id)
         planning = await self.get_task_planning(task_id)
         self._require_runtime(provider)
         verifier_ids = list(dict.fromkeys(required_verifiers))
@@ -1167,6 +1171,7 @@ class RunManager:
         session: SessionRef,
         graph: RunGraph,
     ) -> None:
+        await self.require_software_run(run.run_id)
         template = await self.store.get_workflow_template(
             graph.template_id, graph.template_version
         )
@@ -3047,8 +3052,11 @@ class RunManager:
         return await self._require_run(run_id)
 
     async def resolve_approval(
-        self, approval_id: str, decision: ApprovalDecisionValue
+        self, approval_id: str, decision: ApprovalDecisionValue, *, actor_id: str | None = None
     ) -> ApprovalRecord:
+        existing = await self.store.get_approval(approval_id)
+        if existing is not None:
+            await self.require_software_run(existing.run_id, actor_id=actor_id)
         record = await self.store.decide_approval(approval_id, decision)
         condition = self.approval_conditions.setdefault(approval_id, asyncio.Condition())
         async with condition:
@@ -3322,6 +3330,7 @@ class RunManager:
         routing_receipt: RoutingDecisionReceipt | None = None,
         routing_configuration: ExecutionConfiguration | None = None,
     ) -> RuntimeCallOutcome:
+        await self.require_software_run(run.run_id)
         runtime = self._runtime_for(session)
         if (routing_receipt is None) != (routing_configuration is None):
             raise RuntimeError(
@@ -4045,7 +4054,10 @@ class RunManager:
 
     async def _cancel_execution(self, run_id: str) -> None:
         run = await self.store.get_run(run_id)
-        if run is None or run.state in TERMINAL_RUN_STATES:
+        if run is None:
+            return
+        await self.require_software_run(run_id)
+        if run.state in TERMINAL_RUN_STATES:
             return
         execution = await self.store.get_loop_execution_for_run(run_id)
         terminal_loop_states = {
@@ -4113,7 +4125,10 @@ class RunManager:
         self, run_id: str, exc: Exception, session_id: str | None = None
     ) -> None:
         run = await self.store.get_run(run_id)
-        if run is None or run.state in TERMINAL_RUN_STATES:
+        if run is None:
+            return
+        await self.require_software_run(run_id)
+        if run.state in TERMINAL_RUN_STATES:
             return
         error = ErrorSummary(code="RUN_EXECUTION_FAILED", message=str(exc)[:2000])
         execution = await self.store.get_loop_execution_for_run(run_id)
@@ -4519,6 +4534,10 @@ class RunManager:
                 for operation in await self.side_effect_ledger.reconcile_uncertain()
             }
         for run in await self.store.list_runs(limit=10_000):
+            if await runtime_store_for(self.store).lookup_run_owner(run.run_id) is not None:
+                # The episode service owns restart fencing and verification.
+                # Never classify a simulator through a coding-agent checkpoint.
+                continue
             execution = await self.store.get_loop_execution_for_run(run.run_id)
             # Only a whole-run LOOP execution's terminal status resolves the
             # run; a graph node's bounded region ending SUCCEEDED mid-graph is
@@ -4948,7 +4967,19 @@ class RunManager:
         run = await self.store.get_run(run_id)
         if run is None:
             raise KeyError(run_id)
+        # Ownership is checked after existence: a newly committed bound run
+        # cannot appear between a negative ownership lookup and this read.
+        await self.require_software_run(run_id)
         return run
+
+    async def require_software_run(self, run_id: str, *, actor_id: str | None = None) -> None:
+        """Internal callers omit actor; HTTP callers must authenticate it first."""
+        if await runtime_store_for(self.store).lookup_run_owner(run_id, actor_id=actor_id):
+            raise RoboticsError(RoboticsErrorCode.EPISODE_STATE_CONFLICT)
+
+    async def require_software_task(self, task_id: str, *, actor_id: str | None = None) -> None:
+        if await runtime_store_for(self.store).lookup_task_owner(task_id, actor_id=actor_id):
+            raise RoboticsError(RoboticsErrorCode.EPISODE_STATE_CONFLICT)
 
     async def _require_task(self, task_id: str) -> Task:
         task = await self.store.get_task(task_id)
@@ -4957,6 +4988,7 @@ class RunManager:
         return task
 
     async def _require_loop(self, run_id: str) -> LoopExecution:
+        await self.require_software_run(run_id)
         execution = await self.store.get_loop_execution_for_run(run_id)
         if execution is None:
             raise KeyError(run_id)

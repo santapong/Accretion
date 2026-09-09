@@ -1,0 +1,44 @@
+{
+  "scope": "WATCHDOG_CONSTRUCTION_ONLY_NO_ROBOT_NO_AC5",
+  "mode": "WALL_STALL",
+  "profile": {
+    "resource_id": "watchdog-construction-probe",
+    "image_id": "sha256:d31688dd8c103271b237e48d2347be7f3320e92ea7834d8736ca2d19a45b1bdd",
+    "adapter_artifact_digest": "7fd644761ca92f6b6c6a85990cc43c4ee2d7a828ec7a57b736963268cabbf43a",
+    "model_bundle_digest": "e5fb0f1b98f0836d070e668e50e6ed4e61ef5661c2f43f0a6cbc2e2d6af3ffd8",
+    "worker_kind": "CONFORMANCE",
+    "limits": {
+      "cpu_millicores": 1000,
+      "memory_bytes": 134217728,
+      "temporary_bytes": 1048576,
+      "shared_memory_bytes": 1048576,
+      "pids": 16,
+      "cpu_seconds": 10,
+      "wall_seconds": 25
+    }
+  },
+  "bootstrap": {
+    "mode": "WALL_STALL",
+    "authority_expires_at": "2026-09-09T09:16:04.864760+00:00",
+    "wall_seconds": 1,
+    "cpu_seconds": 10
+  },
+  "source_files": {
+    "artifact_channel.py": "d08a5963b3bdbd0326bb49d61fb03d6f16c6073ecc865e89dfccb52972a0c235",
+    "authority_channel.py": "c1233e2518038382afe607e59c6a1a4ea81b7c8d3c6f3f154aae6b7ac6ab7703",
+    "docker.py": "fa3bfc274eef0b8563fa63ac9757b96a7634e9faea4392cbaf322b7bb296b526",
+    "transport.py": "e7427daad347c59943bab245e29a4a9c464df3dc4468ab4293c059d3ad22cb91",
+    "watchdog.py": "7fd644761ca92f6b6c6a85990cc43c4ee2d7a828ec7a57b736963268cabbf43a",
+    "worker.py": "2e6137daffebe5090f9f62cfc856b5acf70d381f9f56a94c5892832bee427c6c",
+    "__init__.py": "0f88d7a0ca42babc5797d047cdb484e0f6b68daf3f97d3cd379828bc4a7da674"
+  },
+  "started_at": "2026-09-09T09:15:34.871385+00:00",
+  "exit_code": 124,
+  "wall_seconds": 1.8881773760003853,
+  "stdout": "{\"scope\": \"WATCHDOG_CONSTRUCTION_ONLY_NO_ROBOT\", \"worker_pid\": 7, \"descendants\": [], \"mode\": \"WALL_STALL\"}\n",
+  "stderr": "SIMULATION_WATCHDOG_STOP cpu_usec=332896\n",
+  "passed": true,
+  "removed": true,
+  "container_id": "22d24e3a4d79a824e5b8d3eb0572a80fd91e75320e8e66ddbcaf921243a606f6",
+  "ended_at": "2026-09-09T09:15:36.882657+00:00"
+}

@@ -1,0 +1,137 @@
+{
+  "candidate": "1f4c6715f90104d71f17619e5a3af54027cfea4e",
+  "tree": "aca1f1402b5e4ee4a69ac67400373d098c6f32b7",
+  "scope": "CONSTRUCTION_ONLY",
+  "archive": {
+    "path": "raw-gates.zip",
+    "size_bytes": 39965,
+    "sha256": "e0ed0b0dd36505af6734f9f3cd4a45721ec2e4f81a4f071472f8248b0a45302c"
+  },
+  "files": [
+    {
+      "path": "backend-1f4c6715-01.log",
+      "size_bytes": 4009,
+      "sha256": "f7e355e54ca341af873bf8a3f51ae83b20bc4556b6d4979bf603ca0b3ffe7fba"
+    },
+    {
+      "path": "backend-1f4c6715-02.log",
+      "size_bytes": 4055,
+      "sha256": "f58e2c2af5bd534ca68ce318e9697c6023987d9a753207524fe3aa81ab9491a5"
+    },
+    {
+      "path": "backend-1f4c6715-03.log",
+      "size_bytes": 4009,
+      "sha256": "f7e355e54ca341af873bf8a3f51ae83b20bc4556b6d4979bf603ca0b3ffe7fba"
+    },
+    {
+      "path": "backend-1f4c6715-04.log",
+      "size_bytes": 6607,
+      "sha256": "3f5c71fd62ee1d6b16b23ec7d1db2372e65d4e77dfefeb36f32bd124ce6152eb"
+    },
+    {
+      "path": "backend-1f4c6715.json",
+      "size_bytes": 1864,
+      "sha256": "50fddd43e5d5b0ea81d2764d6b8a89cb011fef5c655295cde737bd520c977fa7"
+    },
+    {
+      "path": "frontend-1f4c6715-01.log",
+      "size_bytes": 8,
+      "sha256": "bd17489adcddbc8ed526bf6dedb22de2e677bbae176b977aa7f7c0408999248c"
+    },
+    {
+      "path": "frontend-1f4c6715-02.log",
+      "size_bytes": 8,
+      "sha256": "005206ab803f8881d8227540b7980b37e723b69a8849edb31734a90b7e7964e2"
+    },
+    {
+      "path": "frontend-1f4c6715-03.log",
+      "size_bytes": 1020,
+      "sha256": "2314107727e260376f195e447d14d7e79bb04b0a6dcbfd7987b99ef1314a0f6c"
+    },
+    {
+      "path": "frontend-1f4c6715-attempt2-01.log",
+      "size_bytes": 8,
+      "sha256": "bd17489adcddbc8ed526bf6dedb22de2e677bbae176b977aa7f7c0408999248c"
+    },
+    {
+      "path": "frontend-1f4c6715-attempt2-02.log",
+      "size_bytes": 8,
+      "sha256": "005206ab803f8881d8227540b7980b37e723b69a8849edb31734a90b7e7964e2"
+    },
+    {
+      "path": "frontend-1f4c6715-attempt2-03.log",
+      "size_bytes": 134,
+      "sha256": "27cd05d560ad7941b33eca863cadaf418bc12a6d83cff5fd503b255a08c990d5"
+    },
+    {
+      "path": "frontend-1f4c6715-attempt2-04.log",
+      "size_bytes": 662,
+      "sha256": "1d92601fabb0b114c28bc285aabd8bbab79c5dc5e1109ff5de378d2e39ace2cf"
+    },
+    {
+      "path": "frontend-1f4c6715-attempt2-05.log",
+      "size_bytes": 2574,
+      "sha256": "ff216dd5e91a02fdf2c1a0a667ee8e1a911e79f56c38398da07d933359468c3f"
+    },
+    {
+      "path": "frontend-1f4c6715-attempt2-06.log",
+      "size_bytes": 275,
+      "sha256": "fc7a6676a26936fb4cbfb11f652982406cda90120b0f8f18050361b6e85a19bc"
+    },
+    {
+      "path": "frontend-1f4c6715-attempt2-07.log",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "frontend-1f4c6715-attempt2.json",
+      "size_bytes": 2901,
+      "sha256": "e6cadef10fc63b4953991e0d528dffc5828eb5a0d43a1495d7f961dd12e291e1"
+    },
+    {
+      "path": "frontend-1f4c6715.json",
+      "size_bytes": 1335,
+      "sha256": "17306b498c679cb34c6549d8e93f8ef00ee798ccc15c159ff82c170b1c9a7f29"
+    },
+    {
+      "path": "release-1f4c6715-01.log",
+      "size_bytes": 830813,
+      "sha256": "1424ad74b3224e82cca35719548a124fa964d084c218697dd02e74cb4d9bdde8"
+    },
+    {
+      "path": "release-1f4c6715.json",
+      "size_bytes": 694,
+      "sha256": "addcb4c8f1676363fbf26ac99ee65fb08dd215827e042ee3179f5c4b6d006dbc"
+    },
+    {
+      "path": "static-1f4c6715-01.log",
+      "size_bytes": 28,
+      "sha256": "cff9559a33adee749bee6eb9e365f28d587fcc0feeba3d0d6aea9b73c7058bc1"
+    },
+    {
+      "path": "static-1f4c6715-02.log",
+      "size_bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "path": "static-1f4c6715-03.log",
+      "size_bytes": 45,
+      "sha256": "94882b1e63fe8106bb88760dee36f04ff9da4c04c4a227407a77f38bb94eada1"
+    },
+    {
+      "path": "static-1f4c6715-04.log",
+      "size_bytes": 113,
+      "sha256": "eb7647bc0ac7774988d01e5a43a00f8b91e1cc7ade21e2961a9631bbfee81d11"
+    },
+    {
+      "path": "static-1f4c6715-05.log",
+      "size_bytes": 49,
+      "sha256": "6b48938a96c040d7dcdf2e2bf72b75321dcc1e7d33e489b70a1a5ad4667bef2f"
+    },
+    {
+      "path": "static-1f4c6715.json",
+      "size_bytes": 2167,
+      "sha256": "9728255e92dde53483d0d042834f9c0d98f0641bf1fab2308d0d6b69c980f746"
+    }
+  ]
+}

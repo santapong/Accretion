@@ -37,6 +37,7 @@ from sqlalchemy.exc import IntegrityError
 
 from accretion.contracts import (
     EvidenceClass,
+    Principal,
     PrincipalRef,
     PrincipalStatus,
     Project,
@@ -185,6 +186,16 @@ async def setup_experience(
         )
     )
     await store.create_task(task)
+    # Run attribution is now persisted with a real principal foreign key. The
+    # fixed writer identity already used by these fixtures must exist first.
+    await store.upsert_principal(
+        Principal(
+            principal_id=PRINCIPAL.principal_id,
+            issuer="test:v04-m3-postgres-twin",
+            subject=PRINCIPAL.principal_id,
+            display_name=PRINCIPAL.display_name,
+        )
+    )
     run = Run(
         run_id=new_id("run"),
         task_id=task.envelope.task_id,

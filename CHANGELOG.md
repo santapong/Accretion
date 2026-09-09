@@ -7,8 +7,24 @@ from `main`. Detailed milestone entries are retained in the
 
 ## [Unreleased]
 
-Post-v0.4.1 maintenance and the completed, approved v0.4 closure. No new release
-tag or change to the published v0.4.1 tree is implied.
+Post-v0.4.1 maintenance, the approved v0.4 closure, and v0.5 construction through
+the Wave 2 execution boundary. Complete robotics episodes and qualification
+remain pending; v0.4.1 is still the latest released version.
+
+### Added
+
+- Introduce the v0.5 simulation contract overlay, scoped immutable registry,
+  additive persistence, adapter SDK and pure safety evaluator.
+  ([#182](https://github.com/santapong/Accretion/pull/182),
+  [#183](https://github.com/santapong/Accretion/pull/183))
+- Add UR5e/Robotiq translation and pure captured-evidence verification modules.
+  Historical development evidence remains tied to its exact earlier source;
+  it does not qualify the changed adapter or establish task acceptance.
+  ([#184](https://github.com/santapong/Accretion/pull/184))
+- Add fenced simulation authority, bounded private host channels, inspected
+  container supervision and durable creation/cleanup recovery. Preflight
+  evidence assembly refuses missing proof and grants no operational activation.
+  See the [Wave 2 checkpoint](docs/releases/v0.5/execution-2026-09-09.md).
 
 ### Fixed
 
@@ -55,8 +71,9 @@ tag or change to the published v0.4.1 tree is implied.
   PASS/FAIL/INCONCLUSIVE evidence and zero provider calls.
   ([#179](https://github.com/santapong/Accretion/pull/179))
 
-**Compatibility:** no public contract or database migration changes. Routing
-stays off by default. Budget accounting is cumulative normalized cost; drain or
+**Compatibility:** v0.5 adds versioned simulation contracts and migrations
+0021–0024; no operational robot episode is enabled by these construction modules.
+Simulation dependencies remain optional. Routing stays off by default. Budget accounting is cumulative normalized cost; drain or
 disable older AUTO writers before a mixed-version rollout. See the
 [accounting runbook](docs/runbooks/v04-routing-accounting.md),
 [closure record](docs/releases/v0.4/closure-execution-2026-09-08.md) and

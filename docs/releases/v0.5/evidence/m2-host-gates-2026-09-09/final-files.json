@@ -1,0 +1,87 @@
+{
+  "candidate": "45156481b22d2c9501fbae55950284c7b018d84d",
+  "tree": "ee3ab2b4322891eeed8c4fcd4fd258825af9f1cb",
+  "scope": "WAVE2_ENGINEERING_CI_REGRESSION_ONLY",
+  "files": [
+    {
+      "path": "01-create-one-fresh-db.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "02-lock.log",
+      "bytes": 31,
+      "sha256": "0633a9e978dc7b85a53c4db27421764b9529e4612378d478e61212ce2a9e3048"
+    },
+    {
+      "path": "03-sync.log",
+      "bytes": 27,
+      "sha256": "893ba619463d8ae42c77937362f5d1b1d975f79da9847054a7e724195f825a37"
+    },
+    {
+      "path": "04-ruff.log",
+      "bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "path": "05-mypy.log",
+      "bytes": 45,
+      "sha256": "d9d12c8bee9454137f2a97af320cf042670ce8556a268e95376f71ca63fff9bd"
+    },
+    {
+      "path": "06-docs.log",
+      "bytes": 113,
+      "sha256": "e3912becd7e33dc81482c7e1f9d8154961c3adbf56d5cf1e7c8f63d7538cd865"
+    },
+    {
+      "path": "07-schemas.log",
+      "bytes": 49,
+      "sha256": "6b48938a96c040d7dcdf2e2bf72b75321dcc1e7d33e489b70a1a5ad4667bef2f"
+    },
+    {
+      "path": "08-upgrade-empty.log",
+      "bytes": 4188,
+      "sha256": "7e5d5cc672cffa693817bee911d51866955831087117c5ce7f39644093d70a9f"
+    },
+    {
+      "path": "09-downgrade-empty.log",
+      "bytes": 4236,
+      "sha256": "d1389353e3498e0894acecda50e9959f2559abe5a0457cdeb9bfe0441afef1c1"
+    },
+    {
+      "path": "10-upgrade-final.log",
+      "bytes": 4188,
+      "sha256": "7e5d5cc672cffa693817bee911d51866955831087117c5ce7f39644093d70a9f"
+    },
+    {
+      "path": "11-full-pytest.log",
+      "bytes": 23445,
+      "sha256": "286432df37acf03d32392e78a7fc11d357d7aaf356efa6765578a963593e33c1"
+    },
+    {
+      "path": "12-acceptance-same-db.log",
+      "bytes": 7426,
+      "sha256": "4b59809e2437154e40dfc51ef36630ac2b89eb47de14c2318f0bae32c38c4986"
+    },
+    {
+      "path": "13-release-gate-same-db.log",
+      "bytes": 469,
+      "sha256": "a1fb6725cc31f78589f4d8767f62081678ba78469a320f52e3325c3d585a5c0a"
+    },
+    {
+      "path": "result.json",
+      "bytes": 9369,
+      "sha256": "e42a8aca9cec890df02063bb5203862d2aaa4d206157be4377c0246d07b11b6b"
+    },
+    {
+      "path": "run-wave2-host-ci-sequence.py.txt",
+      "bytes": 8781,
+      "sha256": "ee85265f868045bf1595c5a23622f5522ad89caeef290a2ec6c732118c1161cc"
+    },
+    {
+      "path": "independent-review.json",
+      "bytes": 2220,
+      "sha256": "330c3cc52bad5aca665d7f950184e2598ea866340d596ecf102f31d2d667eb85"
+    }
+  ]
+}

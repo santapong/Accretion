@@ -139,7 +139,8 @@ Explore the [frontend guide](docs/guides/frontend.md) and
 | v0.4 M0–M10 | Delivered | [Milestone index](docs/releases/v0.4/README.md) and [acceptance baseline](docs/releases/v0.4/acceptance-baseline.md) |
 | Approved post-release closure | Merged into `develop` on 9 September 2026 | [Closure execution](docs/releases/v0.4/closure-execution-2026-09-08.md) and [dependency review](docs/releases/v0.4/dependency-review-2026-09-09.md) |
 | Earlier releases | Preserved as versioned baselines | [v0.1](docs/releases/v0.1/baseline.md), [v0.2](docs/releases/v0.2/baseline.md), [v0.3](docs/releases/v0.3/baseline.md) |
-| v0.5–v1.8 | Forward designs, with separate implementation and research gates | [v0.5–v1.0 package](docs/sdd/future/v0.4-v1.0/00_READ_ME_FIRST.md) and [v1.1–v1.8 package](docs/sdd/future/v1.1-v1.8/README.md) |
+| v0.5 | Wave 2 construction boundary; complete episodes and qualification remain pending | [Execution checkpoint](docs/releases/v0.5/execution-2026-09-09.md) and [approved plan](docs/releases/v0.5/completion-plan-2026-09-09.md) |
+| v0.6–v1.8 | Forward designs, with separate implementation and research gates | [v0.5–v1.0 package](docs/sdd/future/v0.4-v1.0/00_READ_ME_FIRST.md) and [v1.1–v1.8 package](docs/sdd/future/v1.1-v1.8/README.md) |
 
 Node routing is **off by default**, and the shipped fallback catalog is
 **FAKE-only**. Selected TOOL nodes enforce exact capability bindings; routed

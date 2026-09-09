@@ -1,0 +1,55 @@
+import asyncio
+from datetime import UTC,datetime,timedelta
+import hashlib,json,time
+from pathlib import Path
+from accretion.contracts.robotics.values import LeaseBinding
+from accretion.robotics.host.docker import DockerSupervisor,HostLimits,LaunchProfile
+
+base=Path('/mnt/data/accretion-v05-execution-2026-09-09')
+source=base/'integration-wave2'
+evidence=base/'watchdog-probe-evidence'
+evidence.mkdir(exist_ok=True)
+run=datetime.now(UTC).strftime('%H%M%S')
+image='sha256:d31688dd8c103271b237e48d2347be7f3320e92ea7834d8736ca2d19a45b1bdd'
+lease=LeaseBinding.model_validate(json.loads((source/'tests/fixtures/contracts/v0.5/PreparedCommand/complete.json').read_text())['lease'])
+async def one(mode):
+ directory=Path('/tmp')/f'accretion-v05-watchdog-{run}-{mode.lower()}'
+ directory.mkdir(mode=0o700)
+ budget=dict(mode=mode, authority_expires_at=(datetime.now(UTC)+timedelta(seconds=30)).isoformat(),wall_seconds=1 if mode=='WALL_STALL' else 20,cpu_seconds=2 if mode=='CPU_DESCENDANTS' else 10)
+ (directory/'bootstrap.json').write_text(json.dumps(budget))
+ (directory/'bootstrap.json').chmod(0o400)
+ profile=LaunchProfile(resource_id='watchdog-construction-probe',image_id=image,adapter_artifact_digest=hashlib.sha256((base/'watchdog-probe-image/accretion/robotics/host/watchdog.py').read_bytes()).hexdigest(),model_bundle_digest=hashlib.sha256(b'NO_ROBOT_MODEL').hexdigest(),worker_kind='CONFORMANCE',limits=HostLimits(cpu_millicores=1000,memory_bytes=128*1024**2,temporary_bytes=1024**2,shared_memory_bytes=1024**2,pids=16,cpu_seconds=10,wall_seconds=25))
+ supervisor=DockerSupervisor(instance_id=f'v05-watchdog-probe-{run}-{mode.lower()}',profiles=[profile])
+ record={'scope':'WATCHDOG_CONSTRUCTION_ONLY_NO_ROBOT_NO_AC5','mode':mode,'profile':profile.model_dump(mode='json'),'bootstrap':budget,'source_files':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in (source/'src/accretion/robotics/host').glob('*.py')},'started_at':datetime.now(UTC).isoformat()}
+ witness=process=None
+ start=time.monotonic()
+ try:
+  witness=await supervisor.prepare(profile,episode_id='watchdog-development-probe',lease=lease,bootstrap_directory=directory)
+  (evidence/f'{run}-{mode}-created.json').write_bytes(witness.inspection_bytes)
+  process=await supervisor.start(witness)
+  stdout,stderr=await asyncio.wait_for(process.communicate(),timeout=12)
+  assert len(stdout)<4096 and len(stderr)<4096
+  (evidence/f'{run}-{mode}-stdout.txt').write_bytes(stdout)
+  (evidence/f'{run}-{mode}-stderr.txt').write_bytes(stderr)
+  record.update(exit_code=process.returncode,wall_seconds=time.monotonic()-start,stdout=stdout.decode(),stderr=stderr.decode())
+  assert process.returncode == (0 if mode=='NORMAL' else 124),record
+  report=json.loads(stdout)
+  assert report['mode']==mode and report['worker_pid']>1
+  if mode=='CPU_DESCENDANTS': assert len(report['descendants'])==2
+  record['passed']=True
+ except BaseException as exc:
+  record['failure_type']=type(exc).__name__
+  raise
+ finally:
+  if witness:
+   cleanup=await supervisor.cleanup(witness)
+   record['removed']=cleanup.removed
+   record['container_id']=cleanup.container_id
+   (evidence/f'{run}-{mode}-stopped.json').write_bytes(cleanup.stopped_inspection)
+  if process and process.returncode is None: await asyncio.wait_for(process.wait(),timeout=5)
+  record['ended_at']=datetime.now(UTC).isoformat()
+  (evidence/f'{run}-{mode}-record.json').write_text(json.dumps(record,indent=2)+'\n')
+  print(json.dumps(record),flush=True)
+async def main():
+ for mode in ('NORMAL','WALL_STALL','CPU_DESCENDANTS'): await one(mode)
+asyncio.run(main())

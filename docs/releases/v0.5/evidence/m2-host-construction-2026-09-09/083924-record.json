@@ -1,0 +1,31 @@
+{
+  "scope": "CONSTRUCTION_ISOLATION_PROBE_ONLY_NO_AC5_CLAIM",
+  "started_at": "2026-09-09T08:39:24.067361+00:00",
+  "profile": {
+    "resource_id": "construction-host-probe",
+    "image_id": "sha256:297234df2302c6230fdf021f396732f66aeabe39c9fa72b013865cd526bb3365",
+    "adapter_artifact_digest": "9d33d381674eb77fdd348e16c0ef489bc1146a5f92848df00ce6d8c0e0138aa8",
+    "model_bundle_digest": "a49e0a0b828b1d35fd71fcb5ad89d13376c575d9e32640710eb5de80c8282f0f",
+    "worker_kind": "CONFORMANCE",
+    "limits": {
+      "cpu_millicores": 500,
+      "memory_bytes": 134217728,
+      "temporary_bytes": 1048576,
+      "shared_memory_bytes": 1048576,
+      "pids": 16,
+      "cpu_seconds": 10,
+      "wall_seconds": 20
+    }
+  },
+  "files": {
+    "authority_channel.py": "6ecd9508ecd9a106ffc68dff365d0582b100a88b4cc0ea7adfc1578d7e7e42d1",
+    "docker.py": "dd7d5de10f80eb0f95d93262bd6891103c2ade0b175a1e4f84bf88901f609a70",
+    "transport.py": "d3a500d925e048b4b4f4ad70bd3d2e3624a303bdf4a4476d7a3c7e8033bd2332",
+    "__init__.py": "0f88d7a0ca42babc5797d047cdb484e0f6b68daf3f97d3cd379828bc4a7da674"
+  },
+  "probe_passed": true,
+  "container_id": "212ab0b5a0ac61a54fd8aa264dae1863764c85443172484532b74761289843f4",
+  "cleanup_removed": true,
+  "attach_exit": 137,
+  "ended_at": "2026-09-09T08:39:25.137445+00:00"
+}

@@ -119,6 +119,7 @@ class DynamicWorkflowService:
         task = await self.store.get_task(task_id)
         if task is None:
             raise KeyError(task_id)
+        await self.manager.require_software_task(task_id)
         await self._require_enabled(task.envelope.project_id)
         if planner_runtime in {PlannerRuntime.CLAUDE, PlannerRuntime.CODEX}:
             raise ValueError(
@@ -526,6 +527,7 @@ class DynamicWorkflowService:
     async def _require_proposal(
         self, run_id: str, proposal_id: str
     ) -> WorkflowProposal:
+        run = await self.manager._require_run(run_id)
         proposal = await self.store.get_workflow_proposal(proposal_id)
         if proposal is None:
             raise KeyError(proposal_id)
@@ -533,7 +535,6 @@ class DynamicWorkflowService:
             raise DynamicWorkflowConflictError(
                 f"proposal {proposal_id} does not belong to run {run_id}"
             )
-        run = await self.manager._require_run(run_id)
         await self._require_enabled(run.project_id)
         return proposal
 

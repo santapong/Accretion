@@ -1,0 +1,117 @@
+{
+  "scope": "CONSTRUCTION_ONLY_NO_AC5_CLAIM",
+  "reviewed_head": "22ac4886e25afa261566da0f432ee339fe19cbdb",
+  "merge_commit": "f380bf08fd9e45a44bc749723f21bafc7644c56d",
+  "reviewed_and_merge_tree": "c432b939b23db8505b1142451182604208ab833e",
+  "pr": "https://github.com/santapong/Accretion/pull/184",
+  "ci_observed": "8 successful checks, backend/frontend/browser/clean-checkout on push and pull_request",
+  "backend": {
+    "passed": 4345,
+    "skipped": 7,
+    "seconds": 194.67
+  },
+  "acceptance": {
+    "proven": 159,
+    "in_scope": 167,
+    "unmet_must": 0,
+    "ac5_not_yet_due": 30
+  },
+  "release_local_limitation": "Release log reports all conditions pass, but wrapper ended143 before final exit was recorded. Protected CI independently passed the release checks.",
+  "files": [
+    {
+      "path": "backend-22ac4886-01.log",
+      "size_bytes": 3658,
+      "sha256": "eb25623451255704fcb2839bb041799a07de819e82d64656f6c6ad97ad0761f1"
+    },
+    {
+      "path": "backend-22ac4886-02.log",
+      "size_bytes": 3700,
+      "sha256": "fffdf0c296e28cf1f48a0656b3dfa14463e4303af68e0671c27b6e8be281052b"
+    },
+    {
+      "path": "backend-22ac4886-03.log",
+      "size_bytes": 3658,
+      "sha256": "eb25623451255704fcb2839bb041799a07de819e82d64656f6c6ad97ad0761f1"
+    },
+    {
+      "path": "backend-22ac4886-04.log",
+      "size_bytes": 5776,
+      "sha256": "d9fc8f3bb56b3e72069e020fc0aa38282548887835002e36a5f041b440f280fd"
+    },
+    {
+      "path": "backend-22ac4886-prepare-01-01.log",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "backend-22ac4886.json",
+      "size_bytes": 2477,
+      "sha256": "fedb756058676f995c46084be1c13be846149da3c85d9f2b2c16ce24d8340f55"
+    },
+    {
+      "path": "release-22ac4886-01.log",
+      "size_bytes": 6198,
+      "sha256": "184d25dfd525b911af80a8389910cc6b70c77fb847e1a9c2d189c6342cd709e8"
+    },
+    {
+      "path": "release-22ac4886-02.log",
+      "size_bytes": 468,
+      "sha256": "c4f3e2f3b570decd99052cc9f41b711fd01b2ab843beb0f485a106a8f90e8418"
+    },
+    {
+      "path": "release-22ac4886-prepare-01-01.log",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "release-22ac4886-prepare-01-02.log",
+      "size_bytes": 3658,
+      "sha256": "eb25623451255704fcb2839bb041799a07de819e82d64656f6c6ad97ad0761f1"
+    },
+    {
+      "path": "release-22ac4886-prepare-02-01.log",
+      "size_bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "release-22ac4886-prepare-02-02.log",
+      "size_bytes": 3658,
+      "sha256": "eb25623451255704fcb2839bb041799a07de819e82d64656f6c6ad97ad0761f1"
+    },
+    {
+      "path": "release-22ac4886.json",
+      "size_bytes": 3314,
+      "sha256": "d93a19bb6bc4f1641804dcaca00d0b32619df5e14d5b99f07315edc85b24a696"
+    },
+    {
+      "path": "static-22ac4886-01.log",
+      "size_bytes": 28,
+      "sha256": "df442c9d57f07c5fbfa31675425f65434b53e13420ceaf27a1ac1db1ba1e165e"
+    },
+    {
+      "path": "static-22ac4886-02.log",
+      "size_bytes": 19,
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "path": "static-22ac4886-03.log",
+      "size_bytes": 45,
+      "sha256": "2d4c80e25c189cc34a4e9898928cc9b22e6fc70fd4d5f60e41db934c074bdae3"
+    },
+    {
+      "path": "static-22ac4886-04.log",
+      "size_bytes": 113,
+      "sha256": "d1f599165c58a37e21a9b2aeffc1e3f130bc9d7ca8b9ae017aa7f214948694b0"
+    },
+    {
+      "path": "static-22ac4886-05.log",
+      "size_bytes": 49,
+      "sha256": "6b48938a96c040d7dcdf2e2bf72b75321dcc1e7d33e489b70a1a5ad4667bef2f"
+    },
+    {
+      "path": "static-22ac4886.json",
+      "size_bytes": 2235,
+      "sha256": "e51e752add4d53f2f6fd60e17e6ef62d136535e90ef3a035c0511b3f93c1fae0"
+    }
+  ]
+}
