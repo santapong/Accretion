@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import asyncio
 import re
-from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
+from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from copy import copy, deepcopy
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from functools import wraps
 from hashlib import sha256
-from typing import Any, NamedTuple, Protocol, cast
+from typing import Any, Concatenate, NamedTuple, Protocol, cast
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -1358,6 +1359,60 @@ class StateStore(Protocol):
     ) -> RouterActivation | None: ...
 
 
+class _MemoryAuthorityLock:
+    """One task-reentrant lock for runtime UoWs and legacy authority state.
+
+    Reentrancy is limited to the owning asyncio task, never inherited by child
+    tasks. It permits existing public-method nesting while preserving the order
+    authority lock -> legacy `_lock` for Task/Run updates and routing commits.
+    """
+
+    def __init__(self) -> None:
+        self._lock = asyncio.Lock()
+        self._owner: asyncio.Task[Any] | None = None
+        self._depth = 0
+
+    def locked(self) -> bool:
+        return self._lock.locked()
+
+    async def __aenter__(self) -> None:
+        owner = asyncio.current_task()
+        if owner is None:
+            raise RuntimeError("Memory authority state requires an asyncio task")
+        if self._owner is owner:
+            self._depth += 1
+            return
+        await self._lock.acquire()
+        self._owner, self._depth = owner, 1
+
+    async def __aexit__(self, *_: object) -> None:
+        if self._owner is not asyncio.current_task() or self._depth < 1:
+            raise RuntimeError("Memory authority lock released by a different task")
+        self._depth -= 1
+        if not self._depth:
+            self._owner = None
+            self._lock.release()
+
+
+def _memory_authority_state[**P, R](
+    function: Callable[Concatenate[MemoryStore, P], Coroutine[Any, Any, R]],
+) -> Callable[Concatenate[MemoryStore, P], Coroutine[Any, Any, R]]:
+    """Isolate public Task/Run and identity/governance calls from runtime UoWs.
+
+    Store-owned inputs and outputs must never alias caller-owned mutable models:
+    an in-place mutation must not bypass a held lock or an immutable-version check.
+    RuntimeTransaction uses internal dictionaries only while it owns this lock.
+    """
+
+    @wraps(function)
+    async def guarded(self: MemoryStore, /, *args: P.args, **kwargs: P.kwargs) -> R:
+        inputs, keywords = deepcopy(args), deepcopy(kwargs)
+        async with self.robotics_registry_lock:
+            return deepcopy(await function(self, *inputs, **keywords))
+
+    return guarded
+
+
 class MemoryStore:
     """Deterministic store for unit tests and protocol development, never production."""
 
@@ -1398,7 +1453,8 @@ class MemoryStore:
         # Focused robotics store adapters share one transaction state per legacy
         # store; principals, projects and memberships remain owned above.
         self.robotics_registry_state: dict[str, Any] = {}
-        self.robotics_registry_lock = asyncio.Lock()
+        self.robotics_registry_lock = _MemoryAuthorityLock()
+        self.robotics_runtime_state: dict[str, Any] = {}
         # One dict per §13 table, table name -> contract id -> row. Keyed by the
         # shared table list so a table added to the schema without a store method
         # is a KeyError here rather than a silently missing surface.
@@ -1496,7 +1552,7 @@ class MemoryStore:
         on the one this scope already holds.
         """
 
-        async with self._lock:
+        async with self.robotics_registry_lock, self._lock:
             scoped = copy(self)
             scoped._lock = asyncio.Lock()
             scoped.v04_contracts = deepcopy(self.v04_contracts)
@@ -1505,9 +1561,8 @@ class MemoryStore:
             yield scoped
             self.v04_contracts = scoped.v04_contracts
             self.run_events = scoped.run_events
-            # Routing only changes a run's event sequence. Other run updates do
-            # not acquire this lock, so publishing the copied runs dictionary
-            # would overwrite concurrent state transitions or newly created runs.
+            # Publish only routing-owned sequence fields. The outer authority
+            # mutex also serializes legacy Task/Run calls and runtime rollback.
             for key, events in scoped.run_events.items():
                 if events and key in self.runs:
                     self.runs[key] = self.runs[key].model_copy(
@@ -1548,10 +1603,12 @@ class MemoryStore:
     async def list_projects(self) -> list[Project]:
         return sorted(self.projects.values(), key=lambda project: project.created_at)
 
+    @_memory_authority_state
     async def create_task(self, task: Task) -> Task:
         self.tasks[task.envelope.task_id] = task
         return task
 
+    @_memory_authority_state
     async def create_task_with_planning(
         self,
         task: Task,
@@ -1577,9 +1634,11 @@ class MemoryStore:
             self.overrides[task.envelope.task_id] = []
             return planned
 
+    @_memory_authority_state
     async def get_task(self, task_id: str) -> Task | None:
         return self.tasks.get(task_id)
 
+    @_memory_authority_state
     async def save_task_planning(
         self,
         task_id: str,
@@ -1609,6 +1668,7 @@ class MemoryStore:
             raise RuntimeError("planning records were not saved")
         return planning
 
+    @_memory_authority_state
     async def get_task_planning(self, task_id: str) -> TaskPlanning | None:
         task = self.tasks.get(task_id)
         if (
@@ -1647,6 +1707,7 @@ class MemoryStore:
             override_history=self.overrides.get(task_id, []),
         )
 
+    @_memory_authority_state
     async def revise_context_with_experience(
         self, selection: ExperienceSelection, context: ContextBundle
     ) -> ExperienceSelection:
@@ -1669,6 +1730,7 @@ class MemoryStore:
             self.experience_selections.setdefault(selection.task_id, []).append(selection)
         return selection
 
+    @_memory_authority_state
     async def append_strategy_override(
         self, override: StrategyOverride, decision: StrategyDecision | None
     ) -> None:
@@ -1681,16 +1743,20 @@ class MemoryStore:
                     update={"current_strategy_decision_id": decision.decision_id}
                 )
 
+    @_memory_authority_state
     async def create_run(self, run: Run) -> Run:
         self.runs[run.run_id] = run
         return run
 
+    @_memory_authority_state
     async def get_run(self, run_id: str) -> Run | None:
         return self.runs.get(run_id)
 
+    @_memory_authority_state
     async def list_runs(self, limit: int = 100) -> list[Run]:
         return sorted(self.runs.values(), key=lambda run: run.created_at, reverse=True)[:limit]
 
+    @_memory_authority_state
     async def update_run(
         self,
         run_id: str,
@@ -1756,6 +1822,7 @@ class MemoryStore:
     async def get_acceptance_policy(self, policy_id: str) -> AcceptancePolicy | None:
         return self.acceptance_policies.get(policy_id)
 
+    @_memory_authority_state
     async def create_loop_execution(self, execution: LoopExecution) -> LoopExecution:
         async with self._lock:
             if execution.acceptance_policy_ref not in self.acceptance_policies:
@@ -1837,6 +1904,7 @@ class MemoryStore:
                 expected_revision=expected_revision,
             )
 
+    @_memory_authority_state
     async def append_loop_iteration(
         self,
         loop_execution_id: str,
@@ -1902,6 +1970,7 @@ class MemoryStore:
     async def list_loop_iterations(self, loop_execution_id: str) -> list[LoopIteration]:
         return list(self.loop_iterations.get(loop_execution_id, []))
 
+    @_memory_authority_state
     async def save_verification(self, result: VerificationResult) -> None:
         async with self._lock:
             current = self.verifications.get(result.verification_id)
@@ -2025,6 +2094,7 @@ class MemoryStore:
     async def list_artifacts(self, run_id: str) -> list[ArtifactRef]:
         return self.artifacts.get(run_id, [])
 
+    @_memory_authority_state
     async def append_event(self, event: AgentEvent) -> AgentEvent:
         async with self._lock:
             events = self.run_events.setdefault(event.run_id, [])
@@ -2078,6 +2148,7 @@ class MemoryStore:
         ]
         return sorted(templates, key=lambda template: (template.template_id, template.version))
 
+    @_memory_authority_state
     async def create_run_graph(self, graph: RunGraph) -> RunGraph:
         async with self._lock:
             if graph.run_id not in self.runs:
@@ -2187,6 +2258,7 @@ class MemoryStore:
         stored_list.append(checkpoint)
         return checkpoint
 
+    @_memory_authority_state
     async def append_checkpoint(
         self, checkpoint: Checkpoint, events: Sequence[AgentEvent] = ()
     ) -> Checkpoint:
@@ -2214,6 +2286,7 @@ class MemoryStore:
     async def list_checkpoints(self, run_id: str) -> list[Checkpoint]:
         return sorted(self.checkpoints.get(run_id, []), key=lambda checkpoint: checkpoint.sequence)
 
+    @_memory_authority_state
     async def save_approval(self, approval: ApprovalRecord) -> ApprovalRecord:
         async with self._lock:
             if approval.run_id not in self.runs:
@@ -2259,6 +2332,7 @@ class MemoryStore:
             self.approvals[approval_id] = decided
             return decided
 
+    @_memory_authority_state
     async def add_budget_spent(
         self, run_id: str, *, turns: int = 0, tool_calls: int = 0
     ) -> dict[str, int]:
@@ -2273,6 +2347,7 @@ class MemoryStore:
     async def get_budget_spent(self, run_id: str) -> dict[str, int]:
         return dict(self.budget_spent.get(run_id, {"turns": 0, "tool_calls": 0}))
 
+    @_memory_authority_state
     async def upsert_capability(self, capability: Capability) -> Capability:
         key = (capability.capability_id, capability.version)
         current = self.capabilities.get(key)
@@ -2283,6 +2358,7 @@ class MemoryStore:
         self.capabilities[key] = capability
         return capability
 
+    @_memory_authority_state
     async def get_capability(
         self, capability_id: str, version: str | None = None
     ) -> Capability | None:
@@ -2293,6 +2369,7 @@ class MemoryStore:
         ]
         return max(candidates, key=lambda item: item.created_at) if candidates else None
 
+    @_memory_authority_state
     async def list_capabilities(self, enabled_only: bool = True) -> list[Capability]:
         return sorted(
             (item for item in self.capabilities.values() if item.enabled or not enabled_only),
@@ -2324,27 +2401,32 @@ class MemoryStore:
             key=lambda item: (item.plugin_id, item.version),
         )
 
+    @_memory_authority_state
     async def upsert_principal(self, principal: Principal) -> Principal:
-        existing = await self.get_principal_by_identity(principal.issuer, principal.subject)
-        if existing is not None:
-            principal = principal.model_copy(
-                update={
-                    "principal_id": existing.principal_id,
-                    "created_at": existing.created_at,
-                }
-            )
-        self.principals[principal.principal_id] = principal
-        return principal
+        async with self.robotics_registry_lock:
+            existing = await self.get_principal_by_identity(principal.issuer, principal.subject)
+            if existing is not None:
+                principal = principal.model_copy(
+                    update={
+                        "principal_id": existing.principal_id,
+                        "created_at": existing.created_at,
+                    }
+                )
+            self.principals[principal.principal_id] = principal
+            return principal
 
+    @_memory_authority_state
     async def get_principal(self, principal_id: str) -> Principal | None:
         return self.principals.get(principal_id)
 
+    @_memory_authority_state
     async def get_principal_by_identity(self, issuer: str, subject: str) -> Principal | None:
         for item in self.principals.values():
             if item.issuer == issuer and item.subject == subject:
                 return item
         return None
 
+    @_memory_authority_state
     async def list_principals(self) -> list[Principal]:
         return sorted(self.principals.values(), key=lambda item: item.principal_id)
 
@@ -2352,6 +2434,7 @@ class MemoryStore:
         self.workspaces[workspace.workspace_id] = workspace
         return workspace
 
+    @_memory_authority_state
     async def list_workspaces_for_principal(self, principal_id: str) -> list[WorkspaceEntity]:
         member_of = {
             item.workspace_id
@@ -2363,23 +2446,26 @@ class MemoryStore:
             key=lambda item: item.workspace_id,
         )
 
+    @_memory_authority_state
     async def upsert_workspace_membership(
         self, membership: WorkspaceMembership
     ) -> WorkspaceMembership:
-        key = (membership.workspace_id, membership.principal_id)
-        existing = self.workspace_memberships.get(key)
-        if existing is not None:
-            membership = membership.model_copy(
-                update={
-                    "membership_id": existing.membership_id,
-                    "created_at": existing.created_at,
-                    "revision": existing.revision
-                    + (1 if existing.role != membership.role else 0),
-                }
-            )
-        self.workspace_memberships[key] = membership
-        return membership
+        async with self.robotics_registry_lock:
+            key = (membership.workspace_id, membership.principal_id)
+            existing = self.workspace_memberships.get(key)
+            if existing is not None:
+                membership = membership.model_copy(
+                    update={
+                        "membership_id": existing.membership_id,
+                        "created_at": existing.created_at,
+                        "revision": existing.revision
+                        + (1 if existing.role != membership.role else 0),
+                    }
+                )
+            self.workspace_memberships[key] = membership
+            return membership
 
+    @_memory_authority_state
     async def list_workspace_memberships(
         self,
         workspace_id: str | None = None,
@@ -2674,6 +2760,7 @@ class MemoryStore:
             key=lambda event: (event.created_at, event.plugin_event_id),
         )
 
+    @_memory_authority_state
     async def upsert_capability_policy(self, policy: CapabilityPolicy) -> CapabilityPolicy:
         key = (policy.policy_id, policy.version)
         current = self.capability_policies.get(key)
@@ -2682,6 +2769,7 @@ class MemoryStore:
         self.capability_policies[key] = policy
         return policy
 
+    @_memory_authority_state
     async def get_capability_policy(
         self, policy_id: str, version: str | None = None
     ) -> CapabilityPolicy | None:
@@ -2890,6 +2978,7 @@ class MemoryStore:
             key=lambda item: item.created_at,
         )
 
+    @_memory_authority_state
     async def create_search(self, record: SearchRecord) -> SearchRecord:
         if record.plan.run_id not in self.runs:
             raise KeyError(record.plan.run_id)
@@ -7457,6 +7546,7 @@ class PostgresStore:
             task_id=run.task_id,
             project_id=run.project_id,
             provider=run.provider.value,
+            principal_id=run.principal_id,
             state=run.state.value,
             last_sequence=run.last_sequence,
             revision=run.revision,
@@ -8384,6 +8474,7 @@ class PostgresStore:
             task_id=row.task_id,
             project_id=row.project_id,
             provider=Provider(row.provider),
+            principal_id=row.principal_id,
             state=RunState(row.state),
             last_sequence=row.last_sequence,
             revision=row.revision,

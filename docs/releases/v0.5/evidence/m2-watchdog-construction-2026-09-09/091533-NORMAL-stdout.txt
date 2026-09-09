@@ -1,0 +1,1 @@
+{"scope": "WATCHDOG_CONSTRUCTION_ONLY_NO_ROBOT", "worker_pid": 7, "descendants": [], "mode": "NORMAL"}

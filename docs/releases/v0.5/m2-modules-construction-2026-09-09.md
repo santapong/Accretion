@@ -44,3 +44,13 @@ adapter/verifier implementation bytes. This narrower candidate requires its own
 construction tests and protected CI before merge; those results are recorded
 only after their actual completion. Shared SDK initialization pins are additive.
 The frozen 187-file imported SDD package and the released v0.4.1 line are unchanged.
+
+## Protected integration verified
+
+[PR #184](https://github.com/santapong/Accretion/pull/184) merged after all eight
+CI checks passed. The fetched merge tree matched reviewed head `22ac4886` and
+the clean canonical checkout was fast-forwarded to `f380bf0`. The
+[gate bundle](evidence/m2-modules-gates-2026-09-09/README.md) records 4,345 backend
+passes, seven explicit skips, migration/static/acceptance results and the local
+release-wrapper limitation. This supersedes earlier pending-validation wording;
+module and composite acceptance limitations remain unchanged.

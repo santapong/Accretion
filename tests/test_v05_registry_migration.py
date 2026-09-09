@@ -13,7 +13,11 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 
 from accretion.persistence.database import create_engine
-from accretion.persistence.models import V05_REGISTRY_TABLES
+from accretion.persistence.models import (
+    V05_AUTHORITY_INVENTORY_TABLES,
+    V05_AUTHORITY_TABLES,
+    V05_REGISTRY_TABLES,
+)
 
 POSTGRES_URL = os.getenv("ACCRETION_TEST_POSTGRES_URL")
 pytestmark = [
@@ -22,8 +26,8 @@ pytestmark = [
 ]
 
 
-def migration() -> Any:
-    path = Path(__file__).resolve().parents[1] / "migrations/versions/0021_v05_robotics_registry.py"
+def migration(filename: str = "0021_v05_robotics_registry.py") -> Any:
+    path = Path(__file__).resolve().parents[1] / "migrations/versions" / filename
     spec = importlib.util.spec_from_file_location("v05_registry_migration", path)
     assert spec and spec.loader
     module = importlib.util.module_from_spec(spec)
@@ -63,6 +67,17 @@ async def test_additive_registry_migration_restores_same_constraints_and_only_ow
         async with engine.connect() as connection:
             transaction = await connection.begin()
             try:
+                if "simulation_host_creations" in await connection.run_sync(names):
+                    journal = migration("0024_v05_host_creation_journal.py")
+                    await connection.run_sync(direction, journal.downgrade)
+                if set(V05_AUTHORITY_INVENTORY_TABLES) <= await connection.run_sync(names):
+                    inventory = migration("0023_v05_authority_inventory.py")
+                    await connection.run_sync(direction, inventory.downgrade)
+                # Match actual Alembic downgrade order: remove the0022 child
+                # inside this rollback-only transaction before exercising0021.
+                if set(V05_AUTHORITY_TABLES) <= await connection.run_sync(names):
+                    child = migration("0022_v05_runtime_authority.py")
+                    await connection.run_sync(direction, child.downgrade)
                 before = await connection.run_sync(names)
                 original = await connection.run_sync(constraints)
                 assert set(V05_REGISTRY_TABLES) <= before

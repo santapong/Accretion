@@ -1,0 +1,193 @@
+{
+  "Id": "63b87d5334578ef21bb052882dceb52cf66f5da745ed6388bc41ac85add3a949",
+  "Image": "sha256:297234df2302c6230fdf021f396732f66aeabe39c9fa72b013865cd526bb3365",
+  "AppArmorProfile": "docker-default",
+  "Config": {
+    "Image": "sha256:297234df2302c6230fdf021f396732f66aeabe39c9fa72b013865cd526bb3365",
+    "Entrypoint": [
+      "/opt/accretion/bin/simulation-worker"
+    ],
+    "Cmd": [
+      "--bootstrap",
+      "/run/accretion/bootstrap.json"
+    ],
+    "User": "1000:1000",
+    "WorkingDir": "/tmp",
+    "Tty": false,
+    "OpenStdin": true,
+    "AttachStdin": true,
+    "AttachStdout": true,
+    "AttachStderr": true,
+    "StdinOnce": true,
+    "Labels": {
+      "dev.draveniq.accretion.scope": "CONSTRUCTION_ISOLATION_PROBE_ONLY",
+      "dev.draveniq.accretion.simulation-host": "v05-development-probe-083301"
+    },
+    "Env": [
+      "MUJOCO_GL=osmesa",
+      "OMP_NUM_THREADS=1",
+      "OPENBLAS_NUM_THREADS=1",
+      "PYTHONDONTWRITEBYTECODE=1",
+      "PYTHONUNBUFFERED=1",
+      "TMPDIR=/tmp",
+      "HOME=/tmp",
+      "MKL_NUM_THREADS=1"
+    ]
+  },
+  "HostConfig": {
+    "Binds": null,
+    "ContainerIDFile": "",
+    "LogConfig": {
+      "Type": "none",
+      "Config": {}
+    },
+    "NetworkMode": "none",
+    "PortBindings": {},
+    "RestartPolicy": {
+      "Name": "no",
+      "MaximumRetryCount": 0
+    },
+    "AutoRemove": false,
+    "VolumeDriver": "",
+    "VolumesFrom": null,
+    "ConsoleSize": [
+      0,
+      0
+    ],
+    "CapAdd": null,
+    "CapDrop": [
+      "ALL"
+    ],
+    "CgroupnsMode": "private",
+    "Dns": null,
+    "DnsOptions": [],
+    "DnsSearch": [],
+    "ExtraHosts": null,
+    "GroupAdd": null,
+    "IpcMode": "private",
+    "Cgroup": "",
+    "Links": null,
+    "OomScoreAdj": 0,
+    "PidMode": "",
+    "Privileged": false,
+    "PublishAllPorts": false,
+    "ReadonlyRootfs": true,
+    "SecurityOpt": [
+      "no-new-privileges=true",
+      "apparmor=docker-default"
+    ],
+    "Tmpfs": {
+      "/tmp": "rw,noexec,nosuid,nodev,size=1048576,mode=1777"
+    },
+    "UTSMode": "",
+    "UsernsMode": "",
+    "ShmSize": 1048576,
+    "Runtime": "runc",
+    "Isolation": "",
+    "CpuShares": 0,
+    "Memory": 134217728,
+    "NanoCpus": 500000000,
+    "CgroupParent": "",
+    "BlkioWeight": 0,
+    "BlkioWeightDevice": [],
+    "BlkioDeviceReadBps": [],
+    "BlkioDeviceWriteBps": [],
+    "BlkioDeviceReadIOps": [],
+    "BlkioDeviceWriteIOps": [],
+    "CpuPeriod": 0,
+    "CpuQuota": 0,
+    "CpuRealtimePeriod": 0,
+    "CpuRealtimeRuntime": 0,
+    "CpusetCpus": "",
+    "CpusetMems": "",
+    "Devices": [],
+    "DeviceCgroupRules": null,
+    "DeviceRequests": null,
+    "MemoryReservation": 0,
+    "MemorySwap": 134217728,
+    "MemorySwappiness": null,
+    "OomKillDisable": false,
+    "PidsLimit": 16,
+    "Ulimits": [
+      {
+        "Name": "core",
+        "Hard": 0,
+        "Soft": 0
+      },
+      {
+        "Name": "cpu",
+        "Hard": 10,
+        "Soft": 10
+      },
+      {
+        "Name": "nofile",
+        "Hard": 256,
+        "Soft": 256
+      }
+    ],
+    "CpuCount": 0,
+    "CpuPercent": 0,
+    "IOMaximumIOps": 0,
+    "IOMaximumBandwidth": 0,
+    "Mounts": [
+      {
+        "Type": "bind",
+        "Source": "/tmp/accretion-v05-probe-083301",
+        "Target": "/run/accretion",
+        "ReadOnly": true,
+        "BindOptions": {
+          "Propagation": "rprivate"
+        }
+      }
+    ],
+    "MaskedPaths": [
+      "/proc/acpi",
+      "/proc/asound",
+      "/proc/interrupts",
+      "/proc/kcore",
+      "/proc/keys",
+      "/proc/latency_stats",
+      "/proc/sched_debug",
+      "/proc/scsi",
+      "/proc/timer_list",
+      "/proc/timer_stats",
+      "/sys/devices/virtual/powercap",
+      "/sys/firmware",
+      "/sys/devices/system/cpu/cpu0/thermal_throttle",
+      "/sys/devices/system/cpu/cpu1/thermal_throttle",
+      "/sys/devices/system/cpu/cpu2/thermal_throttle",
+      "/sys/devices/system/cpu/cpu3/thermal_throttle"
+    ],
+    "ReadonlyPaths": [
+      "/proc/bus",
+      "/proc/fs",
+      "/proc/irq",
+      "/proc/sys",
+      "/proc/sysrq-trigger"
+    ]
+  },
+  "Mounts": [
+    {
+      "Type": "bind",
+      "Source": "/tmp/accretion-v05-probe-083301",
+      "Destination": "/run/accretion",
+      "Mode": "",
+      "RW": false,
+      "Propagation": "rprivate"
+    }
+  ],
+  "State": {
+    "Status": "created",
+    "Running": false,
+    "Paused": false,
+    "Restarting": false,
+    "OOMKilled": false,
+    "Dead": false,
+    "Pid": 0,
+    "ExitCode": 0,
+    "Error": "",
+    "StartedAt": "0001-01-01T00:00:00Z",
+    "FinishedAt": "0001-01-01T00:00:00Z"
+  },
+  "RestartCount": 0
+}

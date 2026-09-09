@@ -1,0 +1,16 @@
+"""Synthetic watchdog workload. Never a robot adapter or production bootstrap."""
+import os, json, time
+
+def run_worker(bootstrap, source, destination):
+    children=[]
+    if bootstrap.mode == 'CPU_DESCENDANTS':
+        for _ in range(2):
+            pid=os.fork()
+            if pid == 0:
+                x=0
+                while True: x=(x+1)%1000003
+            children.append(pid)
+    destination.write((json.dumps({'scope':'WATCHDOG_CONSTRUCTION_ONLY_NO_ROBOT','worker_pid':os.getpid(),'descendants':children,'mode':bootstrap.mode})+'\n').encode())
+    destination.flush()
+    if bootstrap.mode == 'NORMAL': return
+    while True: time.sleep(1)

@@ -8,14 +8,16 @@ adapter shares state and its lock across wrappers of the same MemoryStore.
 
 from __future__ import annotations
 
+import asyncio
 import builtins
-from collections.abc import AsyncIterator
-from contextlib import AbstractAsyncContextManager, asynccontextmanager
+from collections.abc import AsyncIterator, Iterator
+from contextlib import AbstractAsyncContextManager, asynccontextmanager, contextmanager
+from contextvars import ContextVar
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,6 +46,30 @@ from accretion.robotics.errors import RoboticsError
 from accretion.robotics.errors import RoboticsErrorCode as Code
 
 MAINTAINER_ROLES = frozenset({WorkspaceRole.OWNER, WorkspaceRole.ADMIN, WorkspaceRole.DEVELOPER})
+
+_ACTIVE_UNITS: ContextVar[tuple[tuple[object, asyncio.Task[Any]], ...]] = ContextVar(
+    "robotics_active_registry_units", default=()
+)
+
+
+@contextmanager
+def _unit_of_work(store_key: object) -> Iterator[None]:
+    """Refuse a second same-store UoW, not ordinary reentrant store methods.
+
+    Runtime transactions enter through this registry boundary too. Independent
+    snapshots cannot report an inner commit that an outer rollback then erases.
+    A child task inherits context variables but not its parent's UoW ownership;
+    its independent transaction still waits for the normal backend lock.
+    """
+    owner = asyncio.current_task()
+    active = _ACTIVE_UNITS.get()
+    if owner is None or any(key is store_key and task is owner for key, task in active):
+        raise RoboticsError(Code.SIMULATION_UNAVAILABLE)
+    token = _ACTIVE_UNITS.set((*active, (store_key, owner)))
+    try:
+        yield
+    finally:
+        _ACTIVE_UNITS.reset(token)
 
 
 @dataclass(frozen=True)
@@ -130,6 +156,7 @@ def _authorize(
 
 
 class RegistryTransaction(Protocol):
+    def require_active(self) -> None: ...
     async def authorize(
         self,
         actor_id: str,
@@ -192,14 +219,20 @@ class MemoryRoboticsStore:
 
     @asynccontextmanager
     async def transaction(self, project_id: str) -> AsyncIterator[RegistryTransaction]:
-        async with self.state.robotics_registry_lock:
-            saved = deepcopy(self.state.robotics_registry_state)
-            try:
-                yield _MemoryTransaction(self.state, project_id)
-            except BaseException:
-                self.state.robotics_registry_state.clear()
-                self.state.robotics_registry_state.update(saved)
-                raise
+        # The mutex identifies the backing state across registry wrappers and
+        # MemoryStore's scoped copies, unlike the wrapper object's identity.
+        with _unit_of_work(self.state.robotics_registry_lock):
+            async with self.state.robotics_registry_lock:
+                saved = deepcopy(self.state.robotics_registry_state)
+                tx = _MemoryTransaction(self.state, project_id)
+                try:
+                    yield tx
+                except BaseException:
+                    self.state.robotics_registry_state.clear()
+                    self.state.robotics_registry_state.update(saved)
+                    raise
+                finally:
+                    tx.close()
 
     async def bootstrap_bind_project(self, *, workspace_id: str, project_id: str) -> None:
         """Deployment-only binding; never call from a registration/header handler."""
@@ -207,8 +240,24 @@ class MemoryRoboticsStore:
             await tx.bootstrap_bind(workspace_id, project_id)
 
 
-class _MemoryTransaction:
+class _RegistryLifetime:
+    """A retained registry handle never outlives its lock or moves to another task."""
+
+    def __init__(self) -> None:
+        self._owner = asyncio.current_task()
+        self._active = True
+
+    def require_active(self) -> None:
+        if not self._active or self._owner is None or asyncio.current_task() is not self._owner:
+            raise RoboticsError(Code.SIMULATION_UNAVAILABLE)
+
+    def close(self) -> None:
+        self._active = False
+
+
+class _MemoryTransaction(_RegistryLifetime):
     def __init__(self, state: MemoryStore, project_id: str) -> None:
+        super().__init__()
         self.state, self.project_id = state, project_id
         self.data = state.robotics_registry_state
 
@@ -221,6 +270,7 @@ class _MemoryTransaction:
         write: bool = False,
         service: bool = False,
     ) -> Principal:
+        self.require_active()
         if project_id != self.project_id or project_id not in self.state.projects:
             raise RoboticsError(Code.RESOURCE_NOT_FOUND)
         principal = self.state.principals.get(actor_id)
@@ -231,16 +281,19 @@ class _MemoryTransaction:
             membership.workspace_id != workspace_id or membership.principal_id != actor_id
         ):
             raise RoboticsError(Code.INVALID_CONTRACT)
-        return _authorize(
-            principal,
-            membership,
-            self.data["bindings"].get(project_id),
-            workspace_id,
-            write=write,
-            service=service,
+        return deepcopy(
+            _authorize(
+                principal,
+                membership,
+                self.data["bindings"].get(project_id),
+                workspace_id,
+                write=write,
+                service=service,
+            )
         )
 
     async def bootstrap_bind(self, workspace_id: str, project_id: str) -> None:
+        self.require_active()
         if (
             project_id != self.project_id
             or project_id not in self.state.projects
@@ -253,6 +306,7 @@ class _MemoryTransaction:
         self.data["bindings"][project_id] = workspace_id
 
     async def get(self, contract_id: str) -> RegistryRecord | None:
+        self.require_active()
         return cast(RegistryRecord | None, self.data["records"].get(contract_id))
 
     async def lookup(
@@ -265,6 +319,7 @@ class _MemoryTransaction:
         version: str | None = None,
         digest: str | None = None,
     ) -> RegistryRecord | None:
+        self.require_active()
         matches = [
             r
             for r in self.data["records"].values()
@@ -281,6 +336,7 @@ class _MemoryTransaction:
     async def list(
         self, workspace_id: str, project_id: str, contract_type: str, after: str, limit: int
     ) -> builtins.list[RegistryRecord]:
+        self.require_active()
         records: builtins.list[RegistryRecord] = sorted(
             (
                 r
@@ -294,6 +350,7 @@ class _MemoryTransaction:
         return records[:limit]
 
     async def insert(self, record: RegistryRecord) -> None:
+        self.require_active()
         if record.id in self.data["records"] or await self.lookup(
             record.workspace_id,
             record.project_id,
@@ -305,29 +362,34 @@ class _MemoryTransaction:
         self.data["records"][record.id] = record
 
     async def set_revision(self, contract_id: str, revision: int) -> None:
+        self.require_active()
         record = self.data["records"][contract_id]
         self.data["records"][contract_id] = RegistryRecord(
             **{**asdict(record), "revision": revision}
         )
 
     async def ledger(self, scope: IdempotencyScope) -> LedgerRecord | None:
+        self.require_active()
         record = cast(LedgerRecord | None, self.data["ledger"].get(scope.identity))
         if record and record.scope != scope:
             raise RoboticsError(Code.INVALID_CONTRACT)
         return record
 
     async def remember(self, record: LedgerRecord) -> None:
+        self.require_active()
         if record.scope.identity in self.data["ledger"]:
             raise RoboticsError(Code.IDEMPOTENCY_CONFLICT)
         self.data["ledger"][record.scope.identity] = record
 
     async def append_event(self, event: StoredEvent) -> None:
+        self.require_active()
         key = (event.aggregate_id, event.sequence)
         if key in self.data["events"]:
             raise RoboticsError(Code.REVISION_CONFLICT)
         self.data["events"][key] = event
 
     async def events(self, aggregate_id: str, after: int, limit: int) -> builtins.list[StoredEvent]:
+        self.require_active()
         events: builtins.list[StoredEvent] = sorted(
             (
                 e
@@ -339,6 +401,7 @@ class _MemoryTransaction:
         return events[:limit]
 
     async def link_conformance(self, link: ConformanceLink) -> None:
+        self.require_active()
         if link.report_id in self.data["conformance"]:
             raise RoboticsError(Code.CONTRACT_CONFLICT)
         self.data["conformance"][link.report_id] = link
@@ -346,6 +409,7 @@ class _MemoryTransaction:
     async def conformance(
         self, adapter_id: str, closure_hash: str | None = None, limit: int = 100
     ) -> builtins.list[ConformanceLink]:
+        self.require_active()
         return sorted(
             (
                 r
@@ -367,9 +431,14 @@ class PostgresRoboticsStore:
         lock = int.from_bytes(
             sha256(("robotics-registry:" + project_id).encode()).digest()[:8], "big", signed=True
         )
-        async with self.state.sessions.begin() as session:
-            await session.execute(select(func.pg_advisory_xact_lock(lock)))
-            yield _PostgresTransaction(session, project_id)
+        with _unit_of_work(self.state):
+            async with self.state.sessions.begin() as session:
+                await session.execute(select(func.pg_advisory_xact_lock(lock)))
+                tx = _PostgresTransaction(session, project_id)
+                try:
+                    yield tx
+                finally:
+                    tx.close()
 
     async def bootstrap_bind_project(self, *, workspace_id: str, project_id: str) -> None:
         """Deployment-only binding; no ordinary caller can claim a legacy project."""
@@ -381,8 +450,9 @@ def _record(row: RoboticsContractRow) -> RegistryRecord:
     return RegistryRecord(**{key: getattr(row, key) for key in RegistryRecord.__dataclass_fields__})
 
 
-class _PostgresTransaction:
+class _PostgresTransaction(_RegistryLifetime):
     def __init__(self, session: AsyncSession, project_id: str) -> None:
+        super().__init__()
         self.session, self.project_id = session, project_id
 
     async def authorize(
@@ -394,6 +464,7 @@ class _PostgresTransaction:
         write: bool = False,
         service: bool = False,
     ) -> Principal:
+        self.require_active()
         if project_id != self.project_id:
             raise RoboticsError(Code.RESOURCE_NOT_FOUND)
         principal_row = await self.session.scalar(
@@ -445,6 +516,7 @@ class _PostgresTransaction:
         )
 
     async def bootstrap_bind(self, workspace_id: str, project_id: str) -> None:
+        self.require_active()
         if project_id != self.project_id:
             raise RoboticsError(Code.RESOURCE_NOT_FOUND)
         project = await self.session.get(ProjectRow, project_id)
@@ -465,6 +537,7 @@ class _PostgresTransaction:
             await self.session.flush()
 
     async def get(self, contract_id: str) -> RegistryRecord | None:
+        self.require_active()
         row = await self.session.get(RoboticsContractRow, contract_id)
         return _record(row) if row else None
 
@@ -478,6 +551,7 @@ class _PostgresTransaction:
         version: str | None = None,
         digest: str | None = None,
     ) -> RegistryRecord | None:
+        self.require_active()
         query = select(RoboticsContractRow).where(
             RoboticsContractRow.workspace_id == workspace_id,
             RoboticsContractRow.project_id == project_id,
@@ -497,6 +571,7 @@ class _PostgresTransaction:
     async def list(
         self, workspace_id: str, project_id: str, contract_type: str, after: str, limit: int
     ) -> builtins.list[RegistryRecord]:
+        self.require_active()
         rows = await self.session.scalars(
             select(RoboticsContractRow)
             .where(
@@ -511,6 +586,7 @@ class _PostgresTransaction:
         return [_record(row) for row in rows]
 
     async def insert(self, record: RegistryRecord) -> None:
+        self.require_active()
         if await self.get(record.id) or await self.lookup(
             record.workspace_id,
             record.project_id,
@@ -523,6 +599,7 @@ class _PostgresTransaction:
         await self.session.flush()
 
     async def set_revision(self, contract_id: str, revision: int) -> None:
+        self.require_active()
         row = await self.session.get(RoboticsContractRow, contract_id)
         if row is None:
             raise RoboticsError(Code.RESOURCE_NOT_FOUND)
@@ -530,6 +607,7 @@ class _PostgresTransaction:
         await self.session.flush()
 
     async def ledger(self, scope: IdempotencyScope) -> LedgerRecord | None:
+        self.require_active()
         row = await self.session.get(RoboticsIdempotencyRow, scope.identity)
         if row is None:
             return None
@@ -538,6 +616,7 @@ class _PostgresTransaction:
         return LedgerRecord(scope, row.request_hash, row.response_json)
 
     async def remember(self, record: LedgerRecord) -> None:
+        self.require_active()
         if await self.ledger(record.scope):
             raise RoboticsError(Code.IDEMPOTENCY_CONFLICT)
         self.session.add(
@@ -551,10 +630,12 @@ class _PostgresTransaction:
         await self.session.flush()
 
     async def append_event(self, event: StoredEvent) -> None:
+        self.require_active()
         self.session.add(RoboticsEventRow(**asdict(event)))
         await self.session.flush()
 
     async def events(self, aggregate_id: str, after: int, limit: int) -> builtins.list[StoredEvent]:
+        self.require_active()
         rows = await self.session.scalars(
             select(RoboticsEventRow)
             .where(
@@ -570,12 +651,14 @@ class _PostgresTransaction:
         ]
 
     async def link_conformance(self, link: ConformanceLink) -> None:
+        self.require_active()
         self.session.add(RoboticsConformanceRow(**asdict(link)))
         await self.session.flush()
 
     async def conformance(
         self, adapter_id: str, closure_hash: str | None = None, limit: int = 100
     ) -> builtins.list[ConformanceLink]:
+        self.require_active()
         query = select(RoboticsConformanceRow).where(
             RoboticsConformanceRow.adapter_id == adapter_id
         )

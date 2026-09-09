@@ -1,6 +1,6 @@
 # v0.5 — Robotics Simulation and Embodiment Foundation
 
-Status: **M0 merged through PR #182; wave 1 locally verified, protected review pending**
+Status: **Waves 0–1 and Wave 2 adapter/verifier modules merged; host boundary under final validation**
 (9 September 2026).
 
 Start with the [multi-agent completion plan](completion-plan-2026-09-09.md).
@@ -18,6 +18,15 @@ bounded parallel work with a coordinator and at most three workers.
 | [M0 API contract](m0-api-contract.md) | Scoped operations, idempotency, concurrency, state and Studio integration |
 | [M1 foundation boundaries](m1-foundations.md) | Scoped registry API, explicit local project binding, bounded artifacts and pending host authority |
 | [M1 persistence boundary](m1-registry-2026-09-09.md) | Additive migration, canonical reference resolution, transactional events and trusted conformance joins |
+| [M2 runtime boundaries](m2-runtime-boundaries.md) | Fenced authority, scoped IPC, staged worker and inspected host construction |
+| [M2 current authority inventory](m2-authority-inventory-boundaries.md) | Durable policy/conformance grants, current transactional checks and commit-time expiry rollback |
+| [M2 durable host journal](host-journal-boundary.md) | Persisted creation identity and cleanup-only restart authority |
+| [M2 worker image](m2-worker-image.md) | Allowlisted build context, immutable dependency/model inputs and fixed staged worker entrypoint |
+| [M2 intermediate gate evidence](evidence/m2-intermediate-gates-2026-09-09/README.md) | Confirmed intermediate backend/frontend results and preserved environment failures; final candidate still requires checks |
+| [M2 initial integration gate](evidence/m2-initial-integration-gate-2026-09-09/README.md) | Retained full-suite failure, raw log hashes and fixture/schema repairs |
+| [M4 lifecycle boundaries](m4-lifecycle-boundaries.md) | Generic-run ownership refusal, exact normal termination and entry into verification without producer acceptance |
+| [M5 verifier construction](../../../src/accretion/robotics/verification/README.md) | Independently pinned evidence correlation and explicit incomplete findings |
+| [M6 UR5e development](m6-ur5e-development-2026-09-09.md) | Recorded real development run, exact source identity and unresolved dynamics limitations |
 | [Canonical contract inventory](../../contracts/v0.5/README.md) | Twenty-one simulation records, writer provenance and synthetic fixtures |
 | [M0 construction validation](evidence/m0-construction-2026-09-09/validation.json) | Tested candidates, confirmed local exits and review-repair evidence |
 | [M1 construction validation](evidence/m1-construction-2026-09-09/README.md) | Combined tests, exact source identities, immutable logs and migration recovery |

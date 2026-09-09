@@ -76,6 +76,10 @@ Supporting records are `SimulationLease`, `SimulationRunBinding`,
 - Domain events support pre-run registration and use an explicit bounded payload
   digest. Mutable episode state, outbox delivery and trace/SSE projection belong
   to persistence/services. The immutable EpisodeRecord is final evidence.
+  The explicit `simulation_authority.policy_changed` and
+  `simulation_authority.conformance_changed` events record internal authority
+  inventory changes; [runtime inventory boundaries](../../releases/v0.5/m2-authority-inventory-boundaries.md)
+  describe their attribution and expiry checks. They issue no episode approval.
 - Content-addressed artifact values preserve media type, byte size, retention and
   evidence class. They do not weaken the older run/path ArtifactRef. Final episode
   artifacts are SIMULATION and cannot be relabeled PHYSICAL.

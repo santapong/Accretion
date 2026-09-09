@@ -209,7 +209,8 @@ from accretion.plugins.registration import PluginDetail
 from accretion.plugins.trust import PluginTrustVerifier, load_trusted_keys
 from accretion.research.transforms import default_transform_registry
 from accretion.resolver import CapabilityResolver
-from accretion.robotics.errors import RoboticsError
+from accretion.robotics.errors import RoboticsError, RoboticsErrorCode
+from accretion.robotics.runtime_store import runtime_store_for
 from accretion.routing.artifacts import ArtifactStore
 from accretion.routing.bootstrap import build_node_routing
 from accretion.routing.calibration import CalibrationReport
@@ -485,6 +486,37 @@ async def session_middleware(request: Request, call_next: Any) -> Any:
         return _error(401, "UNAUTHENTICATED", str(exc))
     except AuthorizationError as exc:
         return _error(403, "FORBIDDEN", str(exc))
+    # These legacy routes carry only a run/task ID. Resolve persisted project
+    # membership before disclosing that it belongs to the episode service.
+    parts = request.url.path.strip("/").split("/")
+    if len(parts) >= 4 and parts[:2] in (["api", "v1"], ["api", "v2"]):
+        try:
+            actor_id = current_principal(request).principal_id
+            if parts[2] == "runs":
+                if await manager(request).store.get_run(parts[3]) is None:
+                    return await key_error_handler(request, KeyError(parts[3]))
+                owner = await runtime_store_for(manager(request).store).lookup_run_owner(
+                    parts[3], actor_id=actor_id
+                )
+                if owner is not None and (
+                    request.method != "GET"
+                    or (len(parts) > 4 and parts[4] in {"audit", "trace", "graph", "loop"})
+                ):
+                    conflict = RoboticsError(RoboticsErrorCode.EPISODE_STATE_CONFLICT)
+                    conflict.recovery_action = (
+                        f"Use the episode service at /api/v1/episodes/{owner.episode_id}."
+                    )
+                    raise conflict
+            elif parts[2] == "tasks" and request.method != "GET":
+                if await manager(request).store.get_task(parts[3]) is None:
+                    return await key_error_handler(request, KeyError(parts[3]))
+                await manager(request).require_software_task(parts[3], actor_id=actor_id)
+        except RoboticsError as exc:
+            if exc.code is RoboticsErrorCode.RESOURCE_NOT_FOUND:
+                # Match the legacy unknown-ID response: the error vocabulary
+                # must not reveal that an inaccessible simulator run exists.
+                return await key_error_handler(request, KeyError(parts[3]))
+            return await robotics_error_response(request, exc)
     return await call_next(request)
 
 
@@ -1314,7 +1346,9 @@ async def list_approvals(
 async def decide_approval(
     approval_id: str, payload: ApprovalDecisionCreate, request: Request
 ) -> ApprovalRecord:
-    return await manager(request).resolve_approval(approval_id, payload.decision)
+    return await manager(request).resolve_approval(
+        approval_id, payload.decision, actor_id=current_principal(request).principal_id
+    )
 
 
 @app.get(

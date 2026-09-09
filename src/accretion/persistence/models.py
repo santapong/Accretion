@@ -6,6 +6,7 @@ from typing import Any
 from pgvector.sqlalchemy import VECTOR
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     DateTime,
     Float,
@@ -238,6 +239,10 @@ class RunRow(Base):
     task_id: Mapped[str] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
     project_id: Mapped[str] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
     provider: Mapped[str] = mapped_column(String(32))
+    principal_id: Mapped[str | None] = mapped_column(
+        ForeignKey("principals.principal_id", name="fk_runs_principal", ondelete="RESTRICT"),
+        nullable=True,
+    )
     state: Mapped[str] = mapped_column(String(32))
     last_sequence: Mapped[int] = mapped_column(Integer, default=0)
     revision: Mapped[int] = mapped_column(Integer, default=0)
@@ -2241,3 +2246,209 @@ list it creates. Without it the two migrations would both read the same seventee
 0017 would silently start creating tables that did not exist when it was written, and a
 database migrated to 0017 would no longer be reproducible from the revision it records.
 """
+
+
+class SimulationRuntimeRow:
+    """Indexed identity plus a digest-checked internal DTO; never a writer contract."""
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    project_id: Mapped[str] = mapped_column(String(40))
+    revision: Mapped[int] = mapped_column(BigInteger)
+    record: Mapped[str] = mapped_column(Text)
+    record_hash: Mapped[str] = mapped_column(String(64))
+
+    @declared_attr.directive
+    def __table_args__(cls) -> tuple[ForeignKeyConstraint | UniqueConstraint, ...]:
+        return (
+            ForeignKeyConstraint(
+                ["project_id", "workspace_id"],
+                [
+                    "simulation_project_bindings.project_id",
+                    "simulation_project_bindings.workspace_id",
+                ],
+                ondelete="RESTRICT",
+            ),
+        )
+
+
+class SimulationRunBindingRow(SimulationRuntimeRow, Base):
+    __tablename__ = "simulation_run_bindings"
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="RESTRICT"), unique=True)
+    episode_id: Mapped[str] = mapped_column(String(40), unique=True)
+    contract_id: Mapped[str] = mapped_column(
+        ForeignKey("robotics_contracts.id", ondelete="RESTRICT")
+    )
+    initiator_id: Mapped[str] = mapped_column(
+        ForeignKey("principals.principal_id", ondelete="RESTRICT")
+    )
+    orchestrator_id: Mapped[str] = mapped_column(
+        ForeignKey("principals.principal_id", ondelete="RESTRICT")
+    )
+
+
+class SimulationResourceRow(SimulationRuntimeRow, Base):
+    __tablename__ = "simulation_resources"
+    generation: Mapped[int] = mapped_column(BigInteger)
+    host_principal_id: Mapped[str] = mapped_column(
+        ForeignKey("principals.principal_id", ondelete="RESTRICT")
+    )
+
+
+class SimulationLeaseRow(SimulationRuntimeRow, Base):
+    __tablename__ = "simulation_leases"
+    resource_id: Mapped[str] = mapped_column(
+        ForeignKey("simulation_resources.id", ondelete="RESTRICT")
+    )
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("simulation_run_bindings.run_id", ondelete="RESTRICT")
+    )
+    generation: Mapped[int] = mapped_column(BigInteger)
+    contract_id: Mapped[str] = mapped_column(
+        ForeignKey("robotics_contracts.id", ondelete="RESTRICT")
+    )
+    __table_args__ = (
+        UniqueConstraint("resource_id", "generation", name="uq_simulation_resource_generation"),
+        ForeignKeyConstraint(
+            ["project_id", "workspace_id"],
+            ["simulation_project_bindings.project_id", "simulation_project_bindings.workspace_id"],
+            ondelete="RESTRICT",
+        ),
+    )
+
+
+class SimulationEpisodeStateRow(SimulationRuntimeRow, Base):
+    __tablename__ = "simulation_episode_state"
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("simulation_run_bindings.run_id", ondelete="RESTRICT"), unique=True
+    )
+
+
+class SimulationApprovalStateRow(SimulationRuntimeRow, Base):
+    __tablename__ = "simulation_approval_state"
+    episode_id: Mapped[str] = mapped_column(
+        ForeignKey("simulation_episode_state.id", ondelete="RESTRICT")
+    )
+    contract_id: Mapped[str] = mapped_column(
+        ForeignKey("robotics_contracts.id", ondelete="RESTRICT")
+    )
+    consumed_episode_id: Mapped[str | None] = mapped_column(
+        ForeignKey("simulation_episode_state.id", ondelete="RESTRICT"), nullable=True, unique=True
+    )
+
+
+class SimulationSafetyIssuanceRow(SimulationRuntimeRow, Base):
+    __tablename__ = "simulation_safety_issuances"
+    episode_id: Mapped[str] = mapped_column(
+        ForeignKey("simulation_episode_state.id", ondelete="RESTRICT")
+    )
+    receipt_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    contract_id: Mapped[str] = mapped_column(
+        ForeignKey("robotics_contracts.id", ondelete="RESTRICT")
+    )
+
+
+class SimulationDispatchRow(SimulationRuntimeRow, Base):
+    __tablename__ = "simulation_dispatches"
+    episode_id: Mapped[str] = mapped_column(
+        ForeignKey("simulation_episode_state.id", ondelete="RESTRICT")
+    )
+    request_sequence: Mapped[int] = mapped_column(BigInteger)
+    prepared_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    receipt_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    __table_args__ = (
+        UniqueConstraint("episode_id", "request_sequence", name="uq_simulation_dispatch_sequence"),
+        ForeignKeyConstraint(
+            ["project_id", "workspace_id"],
+            ["simulation_project_bindings.project_id", "simulation_project_bindings.workspace_id"],
+            ondelete="RESTRICT",
+        ),
+    )
+
+
+V05_AUTHORITY_TABLES = (
+    "simulation_run_bindings",
+    "simulation_resources",
+    "simulation_leases",
+    "simulation_episode_state",
+    "simulation_approval_state",
+    "simulation_safety_issuances",
+    "simulation_dispatches",
+)
+
+
+class SimulationPolicyGrantRow(SimulationRuntimeRow, Base):
+    __tablename__ = "simulation_policy_grants"
+    event_stream_id: Mapped[str] = mapped_column(
+        ForeignKey("robotics_contracts.id", ondelete="RESTRICT"), unique=True
+    )
+    operator_id: Mapped[str] = mapped_column(
+        ForeignKey("principals.principal_id", ondelete="RESTRICT")
+    )
+    orchestrator_id: Mapped[str] = mapped_column(
+        ForeignKey("principals.principal_id", ondelete="RESTRICT")
+    )
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "project_id", "operator_id", "orchestrator_id",
+                         name="uq_simulation_policy_grant_scope"),
+        ForeignKeyConstraint(
+            ["project_id", "workspace_id"],
+            ["simulation_project_bindings.project_id", "simulation_project_bindings.workspace_id"],
+            ondelete="RESTRICT",
+        ),
+    )
+
+
+class SimulationConformanceAdmissionRow(SimulationRuntimeRow, Base):
+    __tablename__ = "simulation_conformance_admissions"
+    event_stream_id: Mapped[str] = mapped_column(
+        ForeignKey("robotics_contracts.id", ondelete="RESTRICT"), unique=True
+    )
+    adapter_contract_id: Mapped[str] = mapped_column(
+        ForeignKey("robotics_contracts.id", ondelete="RESTRICT")
+    )
+    report_id: Mapped[str] = mapped_column(
+        ForeignKey("robotics_contracts.id", ondelete="RESTRICT")
+    )
+    closure_hash: Mapped[str] = mapped_column(String(64))
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "project_id", "adapter_contract_id", "closure_hash",
+                         name="uq_simulation_conformance_admission_scope"),
+        ForeignKeyConstraint(
+            ["project_id", "workspace_id"],
+            ["simulation_project_bindings.project_id", "simulation_project_bindings.workspace_id"],
+            ondelete="RESTRICT",
+        ),
+    )
+
+
+V05_AUTHORITY_INVENTORY_TABLES = (
+    "simulation_policy_grants",
+    "simulation_conformance_admissions",
+)
+"""Only 0023 owns these tables; 0022's creation/downgrade list stays immutable."""
+
+
+class SimulationHostCreationRow(SimulationRuntimeRow, Base):
+    __tablename__ = "simulation_host_creations"
+    episode_id: Mapped[str] = mapped_column(
+        ForeignKey("simulation_episode_state.id", ondelete="RESTRICT")
+    )
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id", ondelete="RESTRICT"))
+    lease_id: Mapped[str] = mapped_column(
+        ForeignKey("simulation_leases.id", ondelete="RESTRICT"), unique=True
+    )
+    lease_generation: Mapped[int] = mapped_column(BigInteger)
+    resource_id: Mapped[str] = mapped_column(
+        ForeignKey("simulation_resources.id", ondelete="RESTRICT")
+    )
+    host_principal_id: Mapped[str] = mapped_column(
+        ForeignKey("principals.principal_id", ondelete="RESTRICT")
+    )
+    docker_name: Mapped[str] = mapped_column(String(64), unique=True)
+    container_id: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    status: Mapped[str] = mapped_column(String(32))
+
+
+V05_HOST_JOURNAL_TABLES = ("simulation_host_creations",)
+"""Only 0024 owns the durable host creation/cleanup table."""

@@ -1,0 +1,75 @@
+{
+  "scope": "CONSTRUCTION_ONLY_NO_ROBOT_NO_AC5",
+  "image_id": "sha256:d31688dd8c103271b237e48d2347be7f3320e92ea7834d8736ca2d19a45b1bdd",
+  "source_identity": "exact file hashes in probe records; uncommitted construction candidate after114b6de",
+  "files": {
+    "091533-CPU_DESCENDANTS-record.json": {
+      "sha256": "b1a4d592eb43ae9a5cb0f8f69e8806bd925d86c30e05d6fb86ebda20c186da85",
+      "size_bytes": 1999
+    },
+    "091533-CPU_DESCENDANTS-stderr.txt": {
+      "sha256": "7c342fd16a96bf764d7592bc719c99b25e0a6495593fa5a07976891abc5d9b19",
+      "size_bytes": 42
+    },
+    "091533-CPU_DESCENDANTS-stdout.txt": {
+      "sha256": "9763d5e910788e7cfd145b19f8a7d33775596ee7dc3b734d0ad713d09dcc8384",
+      "size_bytes": 116
+    },
+    "091533-NORMAL-record.json": {
+      "sha256": "ba8d4c60951d109f05b6b9b214e3cb0d671d7b5ae6cba5e847af4100ee4bf17f",
+      "size_bytes": 1966
+    },
+    "091533-NORMAL-stderr.txt": {
+      "sha256": "07c2d6fcf439c43448817b74489bb7423a49da8a3b1333c6eff57b617e61d5cf",
+      "size_bytes": 41
+    },
+    "091533-NORMAL-stdout.txt": {
+      "sha256": "d3e92e65ce74723733ceeee3369d818fbe1caf12e7468654ddc42099d4b9efa3",
+      "size_bytes": 103
+    },
+    "091533-WALL_STALL-record.json": {
+      "sha256": "24ba19b0bdb18e6bf74488524e5db265f65d96f5916609ef1ea2b72d7e03be2f",
+      "size_bytes": 1979
+    },
+    "091533-WALL_STALL-stderr.txt": {
+      "sha256": "8d56179fb2df3a078704841f8603eb2aa02264b51e9d2853a9d14f1ef77b654b",
+      "size_bytes": 41
+    },
+    "091533-WALL_STALL-stdout.txt": {
+      "sha256": "bf995abe7bc71bf8910853c551ab6ba0363536d0dd77d827541aac77714dcd0a",
+      "size_bytes": 107
+    },
+    "091547-isolation-probe.json": {
+      "sha256": "eba146dcff31bbc5c54fc304c6eb0e3bc5fc1897e19d2b21f67f0975d40509a8",
+      "size_bytes": 551
+    },
+    "091547-isolation-record.json": {
+      "sha256": "bba8895e907046c0231dc73a11fd7054666bd305d259ee63dc9ee67573c30a45",
+      "size_bytes": 1574
+    },
+    "probe-source/Dockerfile": {
+      "sha256": "9c554049e605552893a4ad96adaff495f434ded6add6002786680ee7cfdc2e86",
+      "size_bytes": 267
+    },
+    "probe-source/accretion/robotics/errors.py.txt": {
+      "sha256": "47b9dad79bfabd72def094769f53b77ca4c54285c70dc2314487a08623bd8477",
+      "size_bytes": 8407
+    },
+    "probe-source/accretion/robotics/host/watchdog.py.txt": {
+      "sha256": "7fd644761ca92f6b6c6a85990cc43c4ee2d7a828ec7a57b736963268cabbf43a",
+      "size_bytes": 5772
+    },
+    "probe-source/accretion/robotics/host/worker.py.txt": {
+      "sha256": "835c7d5944f5675f0974c6503047c8a74a79208845cf0f7b1510e203f437fe09",
+      "size_bytes": 653
+    },
+    "probe-source/probe.py.txt": {
+      "sha256": "f858ab631608eda72e139b321737721455d32643dfe1dc89b22fb68ac3e31c59",
+      "size_bytes": 440
+    },
+    "run-watchdog-probe.py.txt": {
+      "sha256": "29ba4bc5eeb5f0d7ba002fc1f29f23b23a74e532a30e23a243fd8f64eabc7de1",
+      "size_bytes": 3576
+    }
+  }
+}

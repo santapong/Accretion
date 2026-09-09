@@ -212,7 +212,6 @@ async def test_postgres_preserves_read_lineage_but_refuses_unknown_dispatch_inpu
         assert project is not None
         await postgres.create_project(project)
         await postgres.create_task(execution.task)
-        await postgres.create_run(execution.run)
         for principal in memory.principals.values():
             # PostgreSQL also keys identity by issuer/subject. Give each fixture
             # principal a unique subject so reruns do not resolve to an older id.
@@ -223,6 +222,9 @@ async def test_postgres_preserves_read_lineage_but_refuses_unknown_dispatch_inpu
                     }
                 )
             )
+        # Attribution now survives PostgreSQL round trips and has a foreign key;
+        # import the actual fixture identities before the run that references one.
+        await postgres.create_run(execution.run)
         for workspace in memory.workspaces.values():
             await postgres.upsert_workspace(workspace)
         for membership in memory.workspace_memberships.values():
