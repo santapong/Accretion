@@ -102,5 +102,5 @@ The ten-check preflight builder refuses missing evidence and always reports
 commit remain with episode integration. This is not a complete operational M2
 service or a production-qualified robot image.
 The probe uses a dedicated image with no robot or simulator and cannot activate
-an adapter or satisfy composite AC5 criteria. Continuous actual-physics preview,
+an adapter or satisfy composite AC5 criteria. The parked numerical-stage evidence correction,
 actual independent conformance and verification remain separate obligations.

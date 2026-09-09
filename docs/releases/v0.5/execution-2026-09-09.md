@@ -167,3 +167,10 @@ exits and raw log hashes are retained in the
 
 All thirty composite AC5 criteria remain pending. Wave 2 host validation is
 continuing within the approved stopping point; no registered campaign or release is claimed.
+
+The focused host candidate's [initial gate bundle](evidence/m2-host-gates-2026-09-09/README.md)
+records 5,078 backend passes and four PostgreSQL test-order failures. A provider
+negative test was another source of retained identity corruption. Its exact
+binding now restores in `finally`; the reproduced failure, 38 ordered passes
+and eight fresh-process PostgreSQL passes are retained. This is a test repair;
+production integrity checks continue to reject corrupted identities.
