@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -369,6 +370,63 @@ class HostCreationJournal:
             await self.authority._remember(tx, scope, "host.created", row.id, evidence, result)
             return result
 
+    async def starting(
+        self,
+        scope: AuthorityScope,
+        *,
+        attempt: CreationAttempt,
+        witness: ContainerWitness,
+    ) -> datetime:
+        """Fresh pre-start check after host inspection; never a historical receipt.
+
+        The supervisor consumes its local start latch before this call and must
+        enforce the returned deadline immediately before starting the exact CID.
+        Cancellation or uncertainty permits cleanup only, never another start.
+        """
+        values = _attempt_values(attempt, None)
+        async with self.authority._transaction(scope) as tx:
+            row = await self.authority._get(
+                tx, scope, RuntimeHostCreation, creation_identity(values["lease_id"])
+            )
+            ep, lease, resource = await self._context(tx, scope, row.episode_id)
+            await self._configuration(tx, row, ep, lease, resource)
+            self.authority._revision(scope, row)
+            require(
+                row.status == "CREATED" and row.container_id is not None,
+                Code.EPISODE_STATE_CONFLICT,
+            )
+            require(creation_attempt(row) == attempt, Code.INVALID_CONTRACT)
+            require(
+                witness.container_id == row.container_id
+                and witness.creation_name == row.docker_name
+                and witness.bootstrap_digest == row.bootstrap_digest
+                and witness.host_instance_id == row.host_instance_id
+                and witness.profile_bytes == row.profile_original.encode()
+                and witness.profile_hash == row.profile_hash
+                and witness.episode_id == row.episode_id
+                and witness.lease_bytes == row.lease_original.encode()
+                and str(witness.bootstrap_directory) == row.bootstrap_directory,
+                Code.INVALID_CONTRACT,
+            )
+            require(self.verifier is not None, Code.ISOLATION_UNAVAILABLE)
+            assert self.verifier is not None
+            self.verifier.verify_created(attempt, witness)
+            require(ep.status == "LEASED", Code.EPISODE_STATE_CONFLICT)
+            await self.authority._lease(tx, scope, ep)
+            await self.authority._check(tx, scope, "HEARTBEAT", ep, lease, resource)
+            tx.require_valid_interval(row.created_at, row.creation_valid_until, Code.LEASE_INVALID)
+            tx.require_valid_interval(
+                lease.last_heartbeat_at,
+                min(lease.expires_at, lease.heartbeat_deadline),
+                Code.LEASE_INVALID,
+            )
+            # These intervals are checked again at transaction exit, after all
+            # awaited current-authority reads. Nothing is published on failure.
+            deadline = tx.authority_valid_until
+            assert deadline is not None
+            require(await tx.now() < deadline, Code.LEASE_INVALID)
+            return deadline
+
     async def _fence(
         self,
         tx: RuntimeTransaction,
@@ -590,6 +648,11 @@ class HostJournalHooks:
         identity = creation_identity(LeaseBinding.model_validate_json(attempt.lease_bytes).lease_id)
         await self.journal.cleanup_started(
             self._scope("cleanup-started", attempt), attempt_id=identity
+        )
+
+    async def starting(self, attempt: CreationAttempt, witness: ContainerWitness) -> datetime:
+        return await self.journal.starting(
+            self._scope("starting", attempt, 2), attempt=attempt, witness=witness
         )
 
     async def cleaned(self, attempt: CreationAttempt, witness: CleanupWitness) -> None:

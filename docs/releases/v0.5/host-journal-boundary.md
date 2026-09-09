@@ -21,6 +21,7 @@ owned processes even if journal publication fails.
 | --- | --- |
 | `begin` / `planned` | Exact name, image/profile/lease originals, bootstrap digest and absolute directory committed before create; only a fresh result permits create. |
 | `created` | Exact supervisor-issued container witness and bounded raw inspection originals, after inspection and before worker start. |
+| `starting` | Fresh current CREATED row, exact issued witness/CID and live lease/identity/policy/profile checks after Docker's final inspection; returns the earliest immutable creation, lease, heartbeat and provider deadline only after commit. No historical receipt permits start. |
 | `cleanup_started` | Latest owned lease fenced, resource quarantined, pending dispatch marked uncertain, cleanup attempt appended atomically. |
 | `authorize_recovery` | Committed fence followed by a fresh current-state read; returns only the exact cleanup identity. Never authorizes attach/start. |
 | `cleaned` | Exact supervisor-issued stopped/removal proof retained; resource stays quarantined until `SimulationAuthority.confirm_cleanup` calls the journal's `CleanupAuthority.verify`. |
@@ -32,6 +33,12 @@ to the independently observed exact CID. Each record has at most 32 ordered,
 hash-chained lifecycle entries and at most 1 MiB of original retained JSON.
 A changed-body idempotency retry conflicts. A historical receipt cannot reopen
 creation, reverse cleanup or restore execution permission.
+
+The supervisor consumes its local one-use start latch before `starting`, then
+checks the returned deadline immediately before the external start operation.
+The callback cannot extend the original creation deadline or heartbeat. A lost
+callback result or uncertain start remains cleanup-only; restart never reuses
+this freshness read as permission to start the recorded container.
 
 If create commits at the daemon but its reply is lost, the planned row survives.
 Restart first fences the old lease, then Docker verifies the recorded exact

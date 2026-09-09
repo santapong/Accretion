@@ -29,7 +29,13 @@ from accretion.robotics.host_journal import (
     creation_attempt,
     creation_identity,
 )
-from accretion.robotics.runtime_store import RuntimeHostCreation, RuntimeLease, RuntimeResource
+from accretion.robotics.runtime_store import (
+    RuntimeEpisode,
+    RuntimeHostCreation,
+    RuntimeLease,
+    RuntimeResource,
+    RuntimeTransaction,
+)
 
 
 class SyntheticWitnesses:
@@ -333,8 +339,159 @@ async def test_hooks_do_not_escape_transaction_or_replay_create(journal_case):
     assert await asyncio.create_task(hooks.planned(c.attempt)) is True
     assert await hooks.planned(c.attempt) is False
     await asyncio.create_task(hooks.created(c.attempt, c.witness))
+    attempt = replace(c.attempt, container_id=c.witness.container_id)
+    assert await asyncio.create_task(hooks.starting(attempt, c.witness)) > datetime.now(UTC)
     await asyncio.create_task(hooks.cleanup_started(c.attempt))
+    with pytest.raises(RoboticsError):
+        await asyncio.create_task(hooks.starting(attempt, c.witness))
     await asyncio.create_task(hooks.cleaned(c.attempt, c.cleanup))
+
+
+async def test_start_requires_current_created_row_and_returns_earliest_cap(journal_case):
+    c = journal_case
+    row = (await begin(c)).record
+    attempt = replace(c.attempt, container_id=c.witness.container_id)
+    hooks = HostJournalHooks(c.journal, c.scope)
+    with pytest.raises(RoboticsError):
+        await hooks.starting(attempt, c.witness)
+    row = await created(c)
+    cap = datetime.now(UTC) + timedelta(seconds=30)
+    old = c.lab.trust.check
+
+    async def current_policy(tx, check):
+        await old(tx, check)
+        tx.require_valid_interval(cap - timedelta(minutes=1), cap, Code.CAPABILITY_DENIED)
+
+    c.lab.trust.check = current_policy
+    assert await hooks.starting(attempt, c.witness) == min(cap, row.creation_valid_until)
+    assert (await get(c)) == row  # A freshness read is not a lifecycle/approval claim.
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        "copied_witness",
+        "cid",
+        "attempt_name",
+        "bootstrap",
+        "scope",
+        "actor",
+        "human_disabled",
+        "host_disabled",
+        "policy",
+        "conformance",
+        "host",
+        "revoked",
+        "quarantined",
+        "generation",
+        "episode_running",
+        "expired_profile",
+    ],
+)
+async def test_start_rechecks_current_identity_fence_configuration_and_proof(journal_case, change):
+    c = journal_case
+    row = await created(c)
+    attempt = creation_attempt(row)
+    witness = c.witness
+    scope = c.lab.scope(c.lab.host, row.revision)
+    if change == "copied_witness":
+        witness = replace(witness)
+    elif change == "cid":
+        witness = replace(witness, container_id="f" * 64)
+    elif change == "attempt_name":
+        attempt = replace(attempt, name="accretion-sim-" + "e" * 32)
+    elif change == "bootstrap":
+        attempt = replace(attempt, bootstrap_digest="f" * 64)
+    elif change == "scope":
+        scope = scope.model_copy(update={"workspace_id": "different-workspace"})
+    elif change == "actor":
+        scope = c.lab.scope(c.lab.adapter, row.revision)
+    elif change in {"human_disabled", "host_disabled"}:
+        principal = c.lab.human if change == "human_disabled" else c.lab.host
+        await c.lab.state.upsert_principal(
+            principal.model_copy(update={"status": PrincipalStatus.DISABLED})
+        )
+    elif change in {"policy", "conformance", "host"}:
+        setattr(c.lab.authority, change, None)
+    elif change == "expired_profile":
+        c.journal = HostCreationJournal(
+            c.lab.authority,
+            profiles=[
+                c.host.model_copy(
+                    update={
+                        "valid_from": datetime.now(UTC) - timedelta(minutes=2),
+                        "valid_until": datetime.now(UTC) - timedelta(minutes=1),
+                    }
+                )
+            ],
+            verifier=c.verifier,
+        )
+    else:
+        # Synthetic durable state changes isolate each current fence predicate.
+        model = (
+            RuntimeLease
+            if change == "revoked"
+            else RuntimeEpisode
+            if change == "episode_running"
+            else RuntimeResource
+        )
+        identity = (
+            c.lab.lease.id
+            if model is RuntimeLease
+            else row.episode_id
+            if model is RuntimeEpisode
+            else row.resource_id
+        )
+        updates = {
+            "revoked": {"status": "REVOKED"},
+            "quarantined": {"quarantined": True},
+            "generation": {"generation": c.lab.lease.generation + 1},
+            "episode_running": {"status": "RUNNING"},
+        }[change]
+        async with c.lab.authority.store.transaction(c.lab.project) as tx:
+            old = await tx.get(model, identity)
+            await tx.put(old.model_copy(update={**updates, "revision": old.revision + 1}))
+    with pytest.raises(RoboticsError):
+        await c.journal.starting(scope, attempt=attempt, witness=witness)
+    assert (await get(c)) == row
+
+
+async def test_historical_created_receipt_after_cleanup_cannot_authorize_start(journal_case):
+    c = journal_case
+    original = await created(c)
+    await fence(c)
+    previous = await c.journal.created(
+        c.lab.scope(c.lab.host, 1, key="created"), attempt_id=original.id, witness=c.witness
+    )
+    assert previous == original
+    with pytest.raises(RoboticsError):
+        await HostJournalHooks(c.journal, c.scope).starting(creation_attempt(previous), c.witness)
+    assert (await get(c)).status == "CLEANUP_PENDING"
+
+
+async def test_start_final_commit_expiry_never_publishes_deadline(journal_case, monkeypatch):
+    c = journal_case
+    row = await created(c)
+    original_validate = RuntimeTransaction.validate_time_guards
+    original_now = RuntimeTransaction.now
+    late = False
+
+    async def now(tx):
+        actual = await original_now(tx)  # PostgreSQL still performs its real clock query.
+        return row.creation_valid_until if late else actual
+
+    async def validate(tx):
+        nonlocal late
+        late = True
+        await original_validate(tx)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(RuntimeTransaction, "now", now)
+        patch.setattr(RuntimeTransaction, "validate_time_guards", validate)
+        with pytest.raises(RoboticsError) as error:
+            await HostJournalHooks(c.journal, c.scope).starting(creation_attempt(row), c.witness)
+        assert error.value.code is Code.LEASE_INVALID
+    assert late and (await get(c)) == row
 
 
 async def test_missing_verifier_refuses_before_any_creation_plan(journal_case):
