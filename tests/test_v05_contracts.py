@@ -378,6 +378,71 @@ def test_domain_events_allow_registration_before_a_run_but_pin_payload_digest() 
         SimulationDomainEvent.model_validate(payload)
 
 
+@pytest.mark.parametrize("version", ["1.0.0", "1.1.0"])
+@pytest.mark.parametrize("mutation", ["incorrect_pin", "missing_pin", "missing_payload"])
+def test_event_projection_verifies_original_derived_pin_before_resealing(
+    version: str, mutation: str,
+) -> None:
+    payload = fixture("SimulationDomainEvent")
+    payload["schema_version"] = version
+    if version == "1.1.0":
+        payload["future_optional"] = {"retained": True}
+    payload["content_hash"] = content_hash(payload)
+    original = json.dumps(payload)
+    good = CanonicalWriterEnvelope(original)
+    projection = good.read_projection(SimulationDomainEvent)
+    assert projection.payload_hash == payload["payload_hash"]
+    assert good.forward_json() == original
+
+    if mutation == "incorrect_pin":
+        payload["payload_hash"] = "f" * 64
+    elif mutation == "missing_pin":
+        del payload["payload_hash"]
+    else:
+        del payload["payload"]
+    # This is a coherent outer writer seal, not an ordinary tampered-envelope
+    # rejection. The failure must depend on the independent inner derivation.
+    payload["content_hash"] = content_hash(payload)
+    invalid = CanonicalWriterEnvelope(json.dumps(payload))
+    with pytest.raises(ValueError, match="original writer payload"):
+        invalid.read_projection(SimulationDomainEvent)
+
+
+def test_event_projection_does_not_admit_unknown_major() -> None:
+    payload = fixture("SimulationDomainEvent")
+    payload.update(schema_version="2.0.0", future_optional=True)
+    payload["content_hash"] = content_hash(payload)
+    with pytest.raises(ValueError, match="unknown or malformed major"):
+        CanonicalWriterEnvelope(json.dumps(payload))
+
+
+def test_robotics_derived_hash_inventory_requires_explicit_read_boundary_review() -> None:
+    # A new derived field needs its own original-writer derivation check; a
+    # generic drop/reseal must not silently become sufficient for a new model.
+    assert {
+        model.CONTRACT_TYPE: model.DERIVED_HASH_FIELDS
+        for model in CONTRACT_INVENTORY if model.DERIVED_HASH_FIELDS
+    } == {SimulationDomainEvent.CONTRACT_TYPE: ("payload_hash",)}
+
+
+@pytest.mark.parametrize("model", [PreparedCommand, SafetyDecisionReceipt])
+def test_embedded_command_and_signature_pins_remain_checked_on_future_minor_read(
+    model: type[CanonicalContract],
+) -> None:
+    payload = fixture(model.__name__)
+    payload.update(schema_version="1.1.0", future_optional=True)
+    if model is PreparedCommand:
+        payload["command_ref"]["digest"] = "f" * 64
+        payload["command_ref"]["uri"] = "artifact://sha256/" + "f" * 64
+        message = "exact typed prepared payload"
+    else:
+        payload["signature"]["unsigned_payload_digest"] = "f" * 64
+        message = "does not name this unsigned payload"
+    payload["content_hash"] = content_hash(payload)
+    with pytest.raises(ValidationError, match=message):
+        CanonicalWriterEnvelope(json.dumps(payload)).read_projection(model)
+
+
 def test_simulation_artifacts_never_relabel_as_physical_or_resolve_external_urls() -> None:
     artifact = fixture("EpisodeRecord")["trajectory_ref"]
     artifact["evidence_class"] = "PHYSICAL"

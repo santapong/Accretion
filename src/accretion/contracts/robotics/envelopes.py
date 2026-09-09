@@ -14,6 +14,8 @@ from typing import Any
 from accretion.contracts.canonical import CanonicalContract, canonical_json, content_hash
 from accretion.contracts.upcast import UPCAST_DROPPED_KEYS_LABEL, upcast
 
+from .models import SimulationDomainEvent
+
 
 def _unique_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
@@ -84,6 +86,15 @@ class CanonicalWriterEnvelope:
         payload = self.payload()
         if payload["contract_type"] != model.CONTRACT_TYPE:
             raise ValueError("writer contract type does not match the requested reader")
+        if issubclass(model, SimulationDomainEvent):
+            # The outer seal commits to a claimed payload_hash, but does not
+            # prove that claim. Upcast discards/recomputes derived hashes, so
+            # validate this known writer pin before it can launder a bad value.
+            # Do not guess other contracts' derivations from field names.
+            if not isinstance(payload.get("payload"), dict) or payload.get(
+                "payload_hash"
+            ) != content_hash(payload["payload"], exclude=()):
+                raise ValueError("event payload_hash does not match its original writer payload")
         return upcast(payload, model)
 
     def for_execution[C: CanonicalContract](self, model: type[C]) -> C:
