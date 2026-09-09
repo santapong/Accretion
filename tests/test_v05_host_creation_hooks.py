@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import hashlib
 from dataclasses import replace
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from test_v05_host_docker_profile import fixture
@@ -34,6 +35,11 @@ class Journal:
         if self.fail_created:
             raise RuntimeError("journal created write failed")
         self.attempt = attempt
+
+    async def starting(self, attempt, witness):
+        self.daemon.supervisor.verify_created(attempt, witness)
+        self.events.append("STARTING")
+        return datetime.now(UTC) + timedelta(seconds=5)
 
     async def cleanup_started(self, attempt):
         assert self.attempt is not None
@@ -262,6 +268,58 @@ async def test_bootstrap_change_after_create_prevents_start(tmp_path):
     with pytest.raises(RoboticsError):
         await daemon.supervisor.start(witness)
     assert (len(daemon.commands), len(daemon.inspections)) == before
+
+
+@pytest.mark.parametrize("refusal", ["revoked", "expired", "naive", "changed"])
+async def test_fresh_start_guard_refuses_before_spawn(tmp_path, refusal):
+    daemon = DurableDaemon(tmp_path)
+    witness = await daemon.prepare()
+    spawns = []
+
+    async def spawn(arguments):
+        spawns.append(arguments)
+        raise AssertionError("refused start must never reach Docker")
+
+    async def starting(attempt, issued):
+        daemon.supervisor.verify_created(attempt, issued)
+        if refusal == "revoked":
+            raise RoboticsError("LEASE_INVALID")
+        if refusal == "changed":
+            daemon.bootstrap.chmod(0o644)
+            daemon.bootstrap.write_bytes(b'{"changed":true}')
+            daemon.bootstrap.chmod(0o444)
+        return (
+            datetime.now()
+            if refusal == "naive"
+            else datetime.now(UTC) + timedelta(seconds=-1 if refusal == "expired" else 5)
+        )
+
+    daemon.supervisor._spawn = spawn
+    daemon.journal.starting = starting
+    with pytest.raises(RoboticsError):
+        await daemon.supervisor.start(witness)
+    with pytest.raises(RoboticsError):
+        await daemon.supervisor.start(witness)
+    assert not spawns
+
+
+async def test_start_claim_is_once_only_before_awaited_inspection(tmp_path):
+    daemon = DurableDaemon(tmp_path)
+    witness = await daemon.prepare()
+    spawns = []
+    result = object()
+
+    async def spawn(arguments):
+        spawns.append(arguments)
+        return result
+
+    daemon.supervisor._spawn = spawn
+    results = await asyncio.gather(
+        daemon.supervisor.start(witness), daemon.supervisor.start(witness), return_exceptions=True
+    )
+    assert sum(item is result for item in results) == 1
+    assert sum(isinstance(item, RoboticsError) for item in results) == 1
+    assert len(spawns) == 1 and daemon.journal.events.count("STARTING") == 1
 
 
 async def test_stubborn_journal_cancellation_cannot_delay_cleanup_forever(tmp_path):

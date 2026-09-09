@@ -24,6 +24,7 @@ def fixture():
     supervisor = object.__new__(DockerSupervisor)
     supervisor.instance_id = row["Config"]["Labels"][LABEL]
     supervisor._journal = None
+    supervisor._start_claims = set()
     supervisor._cleanup_witnesses = {}
     profile = LaunchProfile(
         resource_id="construction-host-probe",

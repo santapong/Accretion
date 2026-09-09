@@ -19,6 +19,7 @@ import signal
 import stat
 from collections.abc import Awaitable, Sequence
 from dataclasses import dataclass, replace
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal, Protocol
 from uuid import uuid4
@@ -142,6 +143,10 @@ class CreationJournal(Protocol):
 
     async def created(self, attempt: CreationAttempt, witness: ContainerWitness) -> None: ...
 
+    async def starting(self, attempt: CreationAttempt, witness: ContainerWitness) -> datetime:
+        """Fresh current authority only; return its earliest permitted start deadline."""
+        ...
+
     async def cleanup_started(self, attempt: CreationAttempt) -> None: ...
 
     async def cleaned(self, attempt: CreationAttempt, witness: CleanupWitness) -> None: ...
@@ -178,6 +183,7 @@ class DockerSupervisor:
                 raise ValueError("duplicate admitted resource")
             self._profiles[parsed.resource_id] = raw
         self._owned: dict[str, ContainerWitness] = {}
+        self._start_claims: set[str] = set()
         self._unresolved_creations: dict[str, CreationAttempt] = {}
         self._creation_cleanup_tasks: set[asyncio.Task[None]] = set()
 
@@ -594,6 +600,11 @@ class DockerSupervisor:
 
     async def start(self, witness: ContainerWitness) -> asyncio.subprocess.Process:
         self._require_owned(witness)
+        # Claim synchronously before inspection/authority IO. An uncertain start
+        # is cleanup-only; neither a concurrent caller nor an exact retry starts
+        # this container a second time. Recovery never imports this capability.
+        _require(witness.container_id not in self._start_claims)
+        self._start_claims.add(witness.container_id)
         if self._journal is not None:
             _require(
                 witness.bootstrap_digest == self._bootstrap_digest(witness.bootstrap_directory)
@@ -607,6 +618,15 @@ class DockerSupervisor:
             cid=witness.container_id,
             directory=witness.bootstrap_directory,
         )
+        if self._journal is not None:
+            deadline = await self._journal_wait(
+                self._journal.starting(self._attempt(witness), witness)
+            )
+            _require(isinstance(deadline, datetime) and deadline.tzinfo is not None)
+            _require(
+                witness.bootstrap_digest == self._bootstrap_digest(witness.bootstrap_directory)
+            )
+            _require(datetime.now(UTC) < deadline)
         return await self._spawn(
             ["container", "start", "--attach", "--interactive", witness.container_id]
         )
@@ -639,6 +659,7 @@ class DockerSupervisor:
         if remaining.strip():
             raise RoboticsError(Code.ISOLATION_UNAVAILABLE)
         del self._owned[cid]
+        self._start_claims.discard(cid)
         return CleanupWitness(
             cid, self.instance_id, witness.episode_id, witness.lease_bytes, True, stopped
         )
@@ -727,6 +748,7 @@ class DockerSupervisor:
                     raise journal_failure
                 await self._journal_wait(self._journal.cleaned(attempt, old_witness))
                 self._owned.pop(old_witness.container_id, None)
+                self._start_claims.discard(old_witness.container_id)
                 self._unresolved_creations.pop(attempt.name, None)
                 return old_witness
         entries, _ = await self._json(
@@ -774,5 +796,6 @@ class DockerSupervisor:
             raise journal_failure
         await self._journal_wait(self._journal.cleaned(attempt, witness))
         self._owned.pop(cid, None)
+        self._start_claims.discard(cid)
         self._unresolved_creations.pop(attempt.name, None)
         return witness
