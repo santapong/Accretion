@@ -1,0 +1,453 @@
+{
+  "architecture": "x86_64",
+  "artifacts": {
+    "model-files.json": {
+      "bytes": 13181,
+      "sha256": "902d1ae8fa3dc1c8f3b1915124d330a1056a0c3f2c8d1f5b39efcc966897efc9"
+    },
+    "panda/compiled.xml": {
+      "bytes": 16507,
+      "sha256": "ca263027a85e52489ed9871c1a9a117655af7ef1bafd45a1bfffc0f141c4ab6d"
+    },
+    "panda/depth-metres.npy": {
+      "bytes": 307328,
+      "sha256": "1da1d1cb73596adad4c90ec3050df80c64e66f62ac27061c7cdc4f088f72f0d7"
+    },
+    "panda/rgb.png": {
+      "bytes": 74602,
+      "sha256": "a4de9df6c3b374d4bfe7a07667eb4c62316400267d0bb2ba7d2e257e526519c8"
+    },
+    "panda/trace-first.npy": {
+      "bytes": 26528,
+      "sha256": "6a9b9332c4fb050e3b3dcebffd98c08f87d6a5b44a872d84ce9af7e8ef14f746"
+    },
+    "panda/trace-reset.npy": {
+      "bytes": 26528,
+      "sha256": "6a9b9332c4fb050e3b3dcebffd98c08f87d6a5b44a872d84ce9af7e8ef14f746"
+    },
+    "ur5e_2f85/compiled.xml": {
+      "bytes": 18642,
+      "sha256": "e2102326dd9d8505d574b02c7d28689ed2a82cf11505abfe4781740ae79de42a"
+    },
+    "ur5e_2f85/depth-metres.npy": {
+      "bytes": 307328,
+      "sha256": "6179093deb434a092eca8586decc4757c641c1d975e94982e1c85b3fa3246d29"
+    },
+    "ur5e_2f85/rgb.png": {
+      "bytes": 68667,
+      "sha256": "8fe37304602335bf637b771fea2c4bbc03a4e3d7db816bbd8d2774ed88aef603"
+    },
+    "ur5e_2f85/trace-first.npy": {
+      "bytes": 34528,
+      "sha256": "4bbdc10c7748f479f53904cc3591a09de2a9731ad38777fbdb9d56f8a8e44511"
+    },
+    "ur5e_2f85/trace-reset.npy": {
+      "bytes": 34528,
+      "sha256": "4bbdc10c7748f479f53904cc3591a09de2a9731ad38777fbdb9d56f8a8e44511"
+    }
+  },
+  "assemblies": [
+    {
+      "arm_dof": 6,
+      "assembly": "ur5e_2f85",
+      "compiled_xml_sha256": "e2102326dd9d8505d574b02c7d28689ed2a82cf11505abfe4781740ae79de42a",
+      "controller": "pinned upstream position servos; 0.015 rad sine on first arm joint; other targets held",
+      "cube_floor_contact_steps_first_reset": 906,
+      "first_joint_observed_motion_rad": 0.014341914910252829,
+      "joint_metadata": [
+        {
+          "limited": true,
+          "name": "shoulder_pan_joint",
+          "position_unit": "rad",
+          "range": [
+            -6.28319,
+            6.28319
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "shoulder_lift_joint",
+          "position_unit": "rad",
+          "range": [
+            -6.28319,
+            6.28319
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "elbow_joint",
+          "position_unit": "rad",
+          "range": [
+            -3.1415,
+            3.1415
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "wrist_1_joint",
+          "position_unit": "rad",
+          "range": [
+            -6.28319,
+            6.28319
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "wrist_2_joint",
+          "position_unit": "rad",
+          "range": [
+            -6.28319,
+            6.28319
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "wrist_3_joint",
+          "position_unit": "rad",
+          "range": [
+            -6.28319,
+            6.28319
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "2f85/right_driver_joint",
+          "position_unit": "rad",
+          "range": [
+            0.0,
+            0.8
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "2f85/right_coupler_joint",
+          "position_unit": "rad",
+          "range": [
+            -1.57,
+            0.0
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "2f85/right_spring_link_joint",
+          "position_unit": "rad",
+          "range": [
+            -0.29670597283,
+            0.8
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "2f85/right_follower_joint",
+          "position_unit": "rad",
+          "range": [
+            -0.872664,
+            0.872664
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "2f85/left_driver_joint",
+          "position_unit": "rad",
+          "range": [
+            0.0,
+            0.8
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "2f85/left_coupler_joint",
+          "position_unit": "rad",
+          "range": [
+            -1.57,
+            0.0
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "2f85/left_spring_link_joint",
+          "position_unit": "rad",
+          "range": [
+            -0.29670597283,
+            0.8
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "2f85/left_follower_joint",
+          "position_unit": "rad",
+          "range": [
+            -0.872664,
+            0.872664
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        }
+      ],
+      "max_arm_tracking_error_rad": 0.010666032751308396,
+      "max_cube_floor_normal_force_newtons": 2.4898794612725865,
+      "ngeom": 59,
+      "nq": 21,
+      "nu": 7,
+      "nv": 20,
+      "observation": {
+        "clock": "SIMULATION",
+        "cube_final_height_m": 0.024892244579783816,
+        "depth_dtype": "float32",
+        "depth_max": 65.9976577758789,
+        "depth_min": 1.340705156326294,
+        "depth_shape": [
+          240,
+          320
+        ],
+        "depth_unit": "m",
+        "rgb_dtype": "uint8",
+        "rgb_shape": [
+          240,
+          320,
+          3
+        ],
+        "rgb_std": 29.42865165271403,
+        "sample_time_seconds": 2.0000000000000013
+      },
+      "physics": {
+        "cone": "ELLIPTIC",
+        "engine": "MuJoCo",
+        "impratio": 10.0
+      },
+      "resets": 2,
+      "same_process_reset_trace_max_abs_delta": 0.0,
+      "seed": 707,
+      "status": "PASS_DEVELOPMENT_FEASIBILITY",
+      "steps_per_reset": 1000,
+      "timestep_seconds": 0.002
+    },
+    {
+      "arm_dof": 7,
+      "assembly": "panda",
+      "compiled_xml_sha256": "ca263027a85e52489ed9871c1a9a117655af7ef1bafd45a1bfffc0f141c4ab6d",
+      "controller": "pinned upstream position servos; 0.015 rad sine on first arm joint; other targets held",
+      "cube_floor_contact_steps_first_reset": 906,
+      "first_joint_observed_motion_rad": 0.014832869825743738,
+      "joint_metadata": [
+        {
+          "limited": true,
+          "name": "joint1",
+          "position_unit": "rad",
+          "range": [
+            -2.8973,
+            2.8973
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "joint2",
+          "position_unit": "rad",
+          "range": [
+            -1.7628,
+            1.7628
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "joint3",
+          "position_unit": "rad",
+          "range": [
+            -2.8973,
+            2.8973
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "joint4",
+          "position_unit": "rad",
+          "range": [
+            -3.0718,
+            -0.0698
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "joint5",
+          "position_unit": "rad",
+          "range": [
+            -2.8973,
+            2.8973
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "joint6",
+          "position_unit": "rad",
+          "range": [
+            -0.0175,
+            3.7525
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "joint7",
+          "position_unit": "rad",
+          "range": [
+            -2.8973,
+            2.8973
+          ],
+          "type": "hinge",
+          "velocity_unit": "rad/s"
+        },
+        {
+          "limited": true,
+          "name": "finger_joint1",
+          "position_unit": "m",
+          "range": [
+            0.0,
+            0.04
+          ],
+          "type": "slide",
+          "velocity_unit": "m/s"
+        },
+        {
+          "limited": true,
+          "name": "finger_joint2",
+          "position_unit": "m",
+          "range": [
+            0.0,
+            0.04
+          ],
+          "type": "slide",
+          "velocity_unit": "m/s"
+        }
+      ],
+      "max_arm_tracking_error_rad": 0.0065817392011729365,
+      "max_cube_floor_normal_force_newtons": 2.4898794612725865,
+      "ngeom": 83,
+      "nq": 16,
+      "nu": 8,
+      "nv": 15,
+      "observation": {
+        "clock": "SIMULATION",
+        "cube_final_height_m": 0.024892244579783816,
+        "depth_dtype": "float32",
+        "depth_max": 66.2967300415039,
+        "depth_min": 1.3407052755355835,
+        "depth_shape": [
+          240,
+          320
+        ],
+        "depth_unit": "m",
+        "rgb_dtype": "uint8",
+        "rgb_shape": [
+          240,
+          320,
+          3
+        ],
+        "rgb_std": 40.06031548286589,
+        "sample_time_seconds": 2.0000000000000013
+      },
+      "physics": {
+        "cone": "ELLIPTIC",
+        "engine": "MuJoCo",
+        "impratio": 10.0
+      },
+      "resets": 2,
+      "same_process_reset_trace_max_abs_delta": 0.0,
+      "seed": 707,
+      "status": "PASS_DEVELOPMENT_FEASIBILITY",
+      "steps_per_reset": 1000,
+      "timestep_seconds": 0.002
+    }
+  ],
+  "cpu_seconds": 5.657476000000001,
+  "exit_code": 0,
+  "gl_version": "4.6 (Compatibility Profile) Mesa 26.1.6-1",
+  "installed_packages": {
+    "PyOpenGL": "3.1.10",
+    "absl-py": "2.5.0",
+    "etils": "1.14.0",
+    "fsspec": "2026.7.0",
+    "glfw": "2.10.2",
+    "mujoco": "3.10.0",
+    "numpy": "2.3.3",
+    "pillow": "11.3.0",
+    "typing_extensions": "4.16.0",
+    "zipp": "4.1.0"
+  },
+  "model_commit": "e4049d0a3bfd58d2a3081614e6777d4007e3f86a",
+  "model_file_manifest_sha256": "902d1ae8fa3dc1c8f3b1915124d330a1056a0c3f2c8d1f5b39efcc966897efc9",
+  "model_license_sha256": {
+    "franka_emika_panda": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+    "robotiq_2f85": "3d5edd18d1e22a17666e9bb84270171ed5ac90b192d24e0177fd171708ea2316",
+    "universal_robots_ur5e": "5ec71ccf66c8d03261448f2441a586765b97f2248c860a1ae19689fb1c45cee6"
+  },
+  "model_tree_git_oids": {
+    "franka_emika_panda": "3d2262eeb81ecec19abfa31dd509e35abbb33e67",
+    "robotiq_2f85": "3c3ba06388c189616c59bc55ba8cd0e1923309f5",
+    "universal_robots_ur5e": "2a3464301404aba712e25a68701afeeff4ddedf8"
+  },
+  "not_proven": [
+    "grasp/lift/release",
+    "adapter conformance",
+    "Accretion gateway integration",
+    "safety admission",
+    "independent verification",
+    "cross-process replay",
+    "benchmark claim",
+    "physical execution"
+  ],
+  "platform": "Linux-7.1.5+kali-amd64-x86_64-with-glibc2.43",
+  "python": "3.12.9 (main, Feb 12 2025, 14:50:50) [Clang 19.1.6 ]",
+  "renderer": "llvmpipe (LLVM 21.1.8, 256 bits)",
+  "requirements_lock_sha256": "e5f5a482cff325de1560f03fb1d1ea256edaee8e5a60d99d3ac29a36a9750f04",
+  "scope": "M0 local development feasibility only",
+  "script_sha256": "bc1208bc552b43a8320d5d462b715b0c8d32d9ef7db154b11ee88be24588d640",
+  "software_environment": {
+    "EGL_PLATFORM": "surfaceless",
+    "LIBGL_ALWAYS_SOFTWARE": "1",
+    "LP_NUM_THREADS": "1",
+    "MESA_LOADER_DRIVER_OVERRIDE": "llvmpipe",
+    "MUJOCO_GL": "egl",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "PYOPENGL_PLATFORM": "egl"
+  },
+  "status": "PASS_DEVELOPMENT_FEASIBILITY",
+  "wall_seconds": 4.916517468998791
+}
