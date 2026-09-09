@@ -9,8 +9,8 @@ implemented route map and React data model, use the
 
 ## 1. Choose a baseline
 
-- Evaluate the current release from `v0.3.0`, the previous release from `v0.2.0`,
-  and the frozen static control from `v0.1.0`.
+- Evaluate the current release from `v0.4.1`. Earlier releases remain available
+  as immutable tags; `v0.1.0` is the frozen static control.
 - Build the next release from the latest `develop`.
 - Do not base work on the historical `codex/v0.1-local-control-plane` prototype.
 
@@ -22,11 +22,12 @@ git switch develop
 
 ## 2. Install and initialize
 
-Prerequisites are Python 3.12+, `uv`, Node.js 22+, npm, Git, and Docker Compose.
+Prerequisites are Python 3.12+, `uv`, Node.js 24, npm, Git, and Docker Compose.
+Node 24 is the version used by CI.
 
 ```bash
 cp .env.example .env
-uv sync --all-groups
+uv sync --locked --all-groups
 npm ci
 make dev-db
 make migrate
@@ -46,13 +47,14 @@ make ui
 
 Open the operator UI at `http://localhost:5173` and API documentation at
 `http://localhost:8000/docs`. Start with the `FAKE` runtime. Signed-in Codex and
-Claude sessions remain opt-in and are not required for local development.
+Claude Code and opencode sessions remain opt-in and are not required for local
+development.
 
 <img src="../assets/operator-ui-map.svg" alt="Implemented Accretion operator frontend routes and their authoritative FastAPI snapshot, React Query, and resumable event flow" width="100%" />
 
-The UI is complete for the P0–P7 and v0.3 M6 administration scope. It renders
-API-backed evidence across eighteen routes; it does not own run state or
-acceptance. The v0.3 clean-checkout and accessibility evidence is recorded in the
+The UI covers P0–P7, v0.3 administration, Experiment Studio and v0.4 router
+administration. It renders API-backed evidence; the control plane owns run
+state and acceptance. The historical v0.3 clean-checkout and accessibility evidence is recorded in the
 [release audit](../releases/v0.3/audit.md) and
 [browser and accessibility evidence](../releases/v0.3/browser-a11y-evidence.md).
 
