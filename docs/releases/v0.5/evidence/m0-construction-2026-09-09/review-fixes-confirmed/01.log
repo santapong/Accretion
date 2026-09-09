@@ -1,0 +1,23 @@
+============================= test session starts ==============================
+platform linux -- Python 3.12.9, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/data/accretion-v05-execution-2026-09-09/integration
+configfile: pyproject.toml
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 548 items
+
+tests/test_v05_contracts.py ............................................ [  8%]
+........................................................................ [ 21%]
+..................................................................       [ 33%]
+tests/test_v05_m0_acceptance.py ........................................ [ 40%]
+..................................                                       [ 46%]
+tests/test_acceptance_harness.py ....................................... [ 53%]
+......                                                                   [ 54%]
+tests/test_v03_m8_release_gate.py ...............                        [ 57%]
+tests/test_v04_m0_canonical.py ......................................... [ 65%]
+.................................                                        [ 71%]
+tests/test_v04_m8_upcast.py ............................................ [ 79%]
+........................................................................ [ 92%]
+..................                                                       [ 95%]
+tests/test_v04_upcast_references.py ........................             [100%]
+
+============================= 548 passed in 15.41s =============================

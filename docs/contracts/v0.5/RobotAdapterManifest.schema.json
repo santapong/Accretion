@@ -1,0 +1,618 @@
+{
+  "$defs": {
+    "CapabilityRef": {
+      "additionalProperties": false,
+      "description": "A capability at one schema version.\n\nRegistry \u00a74 asks for \"canonical capability ID and schema version\".\n\nThe version field is spelled ``capability_version``, the spelling\n``CapabilityRequest.capability_version`` already uses, and not ``schema_version``: every\npersisted aggregate in this repository opens with a ``schema_version`` describing *its\nown* contract, and a reference whose ``schema_version`` described something else would\nbe a trap for every reader and every hash. The value is the version of the capability's\ndeclared input/output schema \u2014 what ``Capability.version`` carries \u2014 so the repository\nkeeps two spellings of one value (``version`` on the aggregate, ``capability_version`` on\nanything that points at it) rather than three.",
+      "properties": {
+        "capability_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Capability Id",
+          "type": "string"
+        },
+        "capability_version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Capability Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "capability_id",
+        "capability_version"
+      ],
+      "title": "CapabilityRef",
+      "type": "object"
+    },
+    "ContentAddressedArtifactRef": {
+      "additionalProperties": false,
+      "description": "Run-independent blob identity; the URI is derived from its exact digest.\n\nThis does not weaken the existing run/path-based ArtifactRef. The artifact\nstore must enforce retention and byte limits when resolving this reference.",
+      "properties": {
+        "digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Digest",
+          "type": "string"
+        },
+        "evidence_class": {
+          "$ref": "#/$defs/EvidenceClass"
+        },
+        "media_type": {
+          "maxLength": 255,
+          "minLength": 3,
+          "pattern": "^[^\\s/]+/[^\\s/]+$",
+          "title": "Media Type",
+          "type": "string"
+        },
+        "retention_class": {
+          "enum": [
+            "RUN",
+            "PROJECT",
+            "RESEARCH_ARCHIVE"
+          ],
+          "title": "Retention Class",
+          "type": "string"
+        },
+        "size_bytes": {
+          "minimum": 0,
+          "title": "Size Bytes",
+          "type": "integer"
+        },
+        "uri": {
+          "pattern": "^artifact://sha256/[0-9a-f]{64}$",
+          "title": "Uri",
+          "type": "string"
+        }
+      },
+      "required": [
+        "uri",
+        "digest",
+        "media_type",
+        "size_bytes",
+        "retention_class",
+        "evidence_class"
+      ],
+      "title": "ContentAddressedArtifactRef",
+      "type": "object"
+    },
+    "ControllerMode": {
+      "enum": [
+        "JOINT_TRAJECTORY"
+      ],
+      "title": "ControllerMode",
+      "type": "string"
+    },
+    "EvidenceClass": {
+      "description": "How the world was observed. Names are pinned by the v0.4 cross-release registry.",
+      "enum": [
+        "DIGITAL",
+        "SIMULATION",
+        "PHYSICAL",
+        "HUMAN_ATTESTATION",
+        "EXTERNAL_SOURCE"
+      ],
+      "title": "EvidenceClass",
+      "type": "string"
+    },
+    "ObjectiveContractRef": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.1. The exact objective revision a node was authorised against.\n\nThis is the type of the registry \u00a73 optional header field ``objective_contract_ref``,\nwhich is why it is defined before every other contract in this module and why\n:class:`~accretion.contracts.canonical.CanonicalContract` is rebuilt immediately below\nit.\n\n**Field coverage (SDD \u00a77.1 \u2192 here).** ``project_id`` \u2192 the header's ``project_id``.\n``objective_contract_id`` \u2192 ``objective_contract_id``. ``version`` \u2192 ``revision``, the\nregistry \u00a77.1 spelling, which is also what the ``ObjectiveContract`` aggregate calls its\nown counter. ``content_hash`` \u2192 ``objective_contract_hash``. ``verified_success_floor``,\n``utility_profile_id``, ``approved_at`` \u2192 unchanged. ``risk_policy_id`` \u2192 ``risk_policy``,\na typed :class:`~accretion.contracts.refs.PolicyRef` (registry \u00a73.1 requires policies to\nuse immutable typed references, and an authority decision audited against \"policy v3\" is\naudited against a label). ``approved_by`` \u2192 a typed\n:class:`~accretion.contracts.PrincipalRef` for the same reason.\n\n**Why the target's identity is qualified.** Registry \u00a73 describes the header field as\n``{contract_id, revision, content_hash}``, but inside a :class:`CanonicalContract` those\ntwo unqualified names already mean *this reference's own* id and digest. The target's\nare therefore spelled ``objective_contract_id`` and ``objective_contract_hash``. Nothing\nis lost and the ambiguity that would otherwise sit in every receipt is.\n\n``ID_KIND`` is ``None``: ADR-055 mints no prefix for a reference, because a reference is\ncreated and owned by the contract that embeds it and has no id space to collide in.\n``verified_success_floor`` is copied onto the reference rather than dereferenced because\n\u00a78.3 requires routing to run against an exact snapshot \u2014 a router that re-read the floor\nfrom the live objective would be routing against a number the receipt cannot prove.",
+      "properties": {
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.objective-contract-ref",
+          "default": "accretion.objective-contract-ref",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "objective_contract_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Objective Contract Hash",
+          "type": "string"
+        },
+        "objective_contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Objective Contract Id",
+          "type": "string"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "risk_policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "utility_profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Utility Profile Id",
+          "type": "string"
+        },
+        "verified_success_floor": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Verified Success Floor",
+          "type": "number"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "objective_contract_id",
+        "revision",
+        "objective_contract_hash",
+        "verified_success_floor",
+        "utility_profile_id",
+        "risk_policy",
+        "approved_by",
+        "approved_at"
+      ],
+      "title": "ObjectiveContractRef",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "description": "A policy by id, version and content digest (registry \u00a74).\n\nAuthority decisions are audited against the exact policy text that produced them, so the\ncontent digest is required: \"policy v3\" is a label, and labels are editable.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "policy_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version",
+        "content_digest"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "PrincipalRef": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "principal_id": {
+          "title": "Principal Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PrincipalStatus"
+        }
+      },
+      "required": [
+        "principal_id",
+        "status"
+      ],
+      "title": "PrincipalRef",
+      "type": "object"
+    },
+    "PrincipalStatus": {
+      "enum": [
+        "ACTIVE",
+        "DISABLED"
+      ],
+      "title": "PrincipalStatus",
+      "type": "string"
+    },
+    "ProcessBudget": {
+      "additionalProperties": false,
+      "properties": {
+        "max_cpu_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Max Cpu Seconds",
+          "type": "number"
+        },
+        "max_memory_bytes": {
+          "exclusiveMinimum": 0,
+          "title": "Max Memory Bytes",
+          "type": "integer"
+        },
+        "max_output_bytes": {
+          "exclusiveMinimum": 0,
+          "title": "Max Output Bytes",
+          "type": "integer"
+        },
+        "max_wall_seconds": {
+          "exclusiveMinimum": 0,
+          "title": "Max Wall Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "max_cpu_seconds",
+        "max_wall_seconds",
+        "max_memory_bytes",
+        "max_output_bytes"
+      ],
+      "title": "ProcessBudget",
+      "type": "object"
+    },
+    "SimulatorProfile": {
+      "additionalProperties": false,
+      "description": "Exact simulator/middleware profile; only simulation transports are representable.",
+      "properties": {
+        "family": {
+          "enum": [
+            "MUJOCO",
+            "GAZEBO"
+          ],
+          "title": "Family",
+          "type": "string"
+        },
+        "middleware": {
+          "enum": [
+            "NONE",
+            "ROS2"
+          ],
+          "title": "Middleware",
+          "type": "string"
+        },
+        "middleware_version": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Middleware Version"
+        },
+        "profile_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^\\s*]+$",
+          "title": "Profile Id",
+          "type": "string"
+        },
+        "transport": {
+          "enum": [
+            "LOCAL_PROCESS",
+            "ROS2_SIMULATION"
+          ],
+          "title": "Transport",
+          "type": "string"
+        },
+        "version": {
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "family",
+        "version",
+        "middleware",
+        "transport",
+        "profile_id"
+      ],
+      "title": "SimulatorProfile",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Immutable declaration. Current conformance is a registry join, never a hash cycle.",
+  "properties": {
+    "action_intent_schema_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Action Intent Schema Hash",
+      "type": "string"
+    },
+    "adapter_id": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[^\\s*]+$",
+      "title": "Adapter Id",
+      "type": "string"
+    },
+    "adapter_version": {
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "title": "Adapter Version",
+      "type": "string"
+    },
+    "artifact_digest": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Artifact Digest",
+      "type": "string"
+    },
+    "artifact_signature_ref": {
+      "$ref": "#/$defs/ContentAddressedArtifactRef"
+    },
+    "capabilities": {
+      "items": {
+        "$ref": "#/$defs/CapabilityRef"
+      },
+      "minItems": 1,
+      "title": "Capabilities",
+      "type": "array"
+    },
+    "content_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "contract_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "accretion.robot-adapter-manifest",
+      "default": "accretion.robot-adapter-manifest",
+      "title": "Contract Type",
+      "type": "string"
+    },
+    "controller_modes": {
+      "items": {
+        "$ref": "#/$defs/ControllerMode"
+      },
+      "minItems": 1,
+      "title": "Controller Modes",
+      "type": "array"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/PrincipalRef"
+    },
+    "embodiment_descriptor_hashes": {
+      "items": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Embodiment Descriptor Hashes",
+      "type": "array"
+    },
+    "endpoint_profile_id": {
+      "maxLength": 255,
+      "minLength": 1,
+      "pattern": "^[^\\s*]+$",
+      "title": "Endpoint Profile Id",
+      "type": "string"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "objective_contract_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectiveContractRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "observation_spec_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Observation Spec Hash",
+      "type": "string"
+    },
+    "prepared_command_schema_hash": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Prepared Command Schema Hash",
+      "type": "string"
+    },
+    "process_budget": {
+      "$ref": "#/$defs/ProcessBudget"
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "retention_class": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention Class"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "pattern": "^1\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "simulator": {
+      "$ref": "#/$defs/SimulatorProfile"
+    },
+    "supersedes_contract_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Contract Id"
+    },
+    "workspace_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_id",
+    "created_by",
+    "workspace_id",
+    "adapter_id",
+    "adapter_version",
+    "embodiment_descriptor_hashes",
+    "simulator",
+    "capabilities",
+    "observation_spec_hash",
+    "action_intent_schema_hash",
+    "prepared_command_schema_hash",
+    "artifact_digest",
+    "artifact_signature_ref",
+    "controller_modes",
+    "process_budget",
+    "endpoint_profile_id"
+  ],
+  "title": "RobotAdapterManifest",
+  "type": "object"
+}

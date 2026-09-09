@@ -1,0 +1,37 @@
+{
+  "causation_id": null,
+  "contract_id": "sde_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "contract_type": "accretion.simulation-domain-event",
+  "correlation_id": "dev-fixture-correlation",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "episode_id": null,
+  "event_type": "embodiment.registered",
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "node_id": null,
+  "objective_contract_ref": null,
+  "occurred_at": "2026-09-09T00:00:00Z",
+  "payload": {
+    "descriptor_hash": "b39f45790905df553ac65e89f8c65de457d665c4b3f9623a5e135c278be57467",
+    "fixture_only": true
+  },
+  "payload_hash": "2d9d72767ffc24bfa5d9ac6874c762eb710b53dbc698a14dac8567c53e888fe2",
+  "producer": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "project_id": null,
+  "retention_class": null,
+  "run_id": null,
+  "schema_version": "1.0.0",
+  "sequence": 0,
+  "supersedes_contract_id": null,
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}

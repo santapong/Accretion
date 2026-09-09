@@ -36,6 +36,7 @@ folder root stays uncluttered.
 | Reproduce the release gate | [Release-hardening runbook](runbooks/v03-release-hardening.md) | [SDD v0.3 §24.8](sdd/Accretion_SDD_v0.3.md), [`scripts/release_gate.py`](../scripts/release_gate.py) |
 | Review the historical v0.2 release | [Frozen v0.2 baseline](releases/v0.2/baseline.md) | [release audit](releases/v0.2/audit.md), [release notes](releases/v0.2/notes.md), [delivery plan](releases/v0.2/plan.md) |
 | Review the completed v0.4 closure | [Closure execution](releases/v0.4/closure-execution-2026-09-08.md) | [Approved plan](releases/v0.4/completion-plan-2026-09-08.md), [research handoff](releases/v0.4/research-handoff-2026-09-08.md), [provider-pilot preparation](research/v0.4/provider-pilot-2026-09-08/README.md) |
+| Build v0.5 simulation and embodiment support | [Approved multi-agent completion plan](releases/v0.5/completion-plan-2026-09-09.md) | [Execution checkpoint](releases/v0.5/execution-2026-09-09.md), [canonical contracts](contracts/v0.5/README.md), [index and three audits](releases/v0.5/README.md); M0 locally verified, integration/evaluation pending |
 | Reconcile v0.4 closure and plan remaining work | [Completion and handoff plan](releases/v0.4/completion-plan-2026-09-08.md) | [Release audit](releases/v0.4/planning/release-closure-audit-2026-09-08.md), [runtime audit](releases/v0.4/planning/runtime-gap-audit-2026-09-08.md), [research readiness](releases/v0.4/planning/research-readiness-audit-2026-09-08.md) |
 | Review planned v1.1–v1.8 capabilities | [Revision 4 setup and release sequence](sdd/future/v1.1-v1.8/README.md) | [Full SDD, research and diagrams](sdd/future/v1.1-v1.8/package/index.html); forward designs, acceptance pending |
 | Inspect delivered v0.4 milestones | [v0.4 milestone index](releases/v0.4/README.md) | [SDD v0.4](sdd/Accretion_SDD_v0.4.md), [M0 plan](releases/v0.4/m0-plan.md), [v0.4 backlog](releases/v0.4/backlog.md), [forward package](sdd/future/v0.4-v1.0/00_READ_ME_FIRST.md) |
@@ -50,7 +51,7 @@ folder root stays uncluttered.
 | [`research/`](research/) | Experiment design, frozen results, acceptance evidence, and decisions |
 | [`releases/`](releases/) | Versioned plans, audits, notes, and released baselines |
 | [`governance/`](governance/) | Branch workflow and documentation maintenance rules |
-| [`sdd/`](sdd/) | Normative versioned system designs (v0.1-v0.4), the v0.5-v1.0 forward package, and [planned v1.1-v1.8 designs](sdd/future/v1.1-v1.8/README.md) |
+| [`sdd/`](sdd/) | Normative versioned system designs (v0.1-v0.5), including the [active v0.5 implementation baseline](sdd/Accretion_SDD_v0.5.md), preserved forward packages and [planned v1.1-v1.8 designs](sdd/future/v1.1-v1.8/README.md) |
 | [`assets/`](assets/) | Accessible repository-native diagrams and illustrative images |
 
 See [documentation maintenance](governance/documentation.md) for ownership,
@@ -79,6 +80,8 @@ naming, experiment-update, and review rules.
 | [P7 experience lifecycle](assets/p7-experience-replay.svg) | Materialization, compatibility, frozen selection, fresh-control replay, and revalidation | [P7 runbook](runbooks/p7-verified-experience.md) |
 | [P7 transfer gate](assets/p7-transfer-gate.svg) | Frozen uplift, tool use, stale rejection, false accepts, and negative transfer | [P7 acceptance report](research/p7/acceptance.md) |
 | [Approved v0.4 closure sequence](releases/v0.4/completion-plan-2026-09-08.md#execution-waves-and-ownership) | Parallel documentation, targeted runtime witnesses, repair and research handoff; execution is complete | [Closure execution](releases/v0.4/closure-execution-2026-09-08.md) |
+| [Proposed v0.5 researcher journey](releases/v0.5/completion-plan-2026-09-09.md#7-researcher-journey-and-frontend-scope) | Register embodiments, freeze and approve an experiment, run bounded episodes, independently verify, replay and compare | [v0.5 planning index](releases/v0.5/README.md) |
+| [v0.5 development simulator renders](releases/v0.5/feasibility-2026-09-09.md#executed-witness) | Actual CPU-only UR5e/gripper and Panda feasibility scenes; contact evidence, with manipulation and conformance still pending | [M0 feasibility record](releases/v0.5/feasibility-2026-09-09.md) |
 | [Planned v1.8 architecture](sdd/future/v1.1-v1.8/package/accretion-v1.8-review-2026-09-06/architecture.html) | Full future logical architecture; interactive HTML and PNG export | [v1.x design setup](sdd/future/v1.1-v1.8/README.md) |
 | [Planned v1.8 user workflow](sdd/future/v1.1-v1.8/package/accretion-v1.8-review-2026-09-06/user-journey.html) | Goal, scope, execution, verification, recovery and export | [v1.8 capability review](sdd/future/v1.1-v1.8/package/accretion-v1.8-review-2026-09-06/README.md) |
 | [Planned physical trial workflow](sdd/future/v1.1-v1.8/package/accretion-v1.8-review-2026-09-06/physical-trial.html) | Advisory preparation through exact approval and the existing safety gateway | [v1.x design setup](sdd/future/v1.1-v1.8/README.md) |

@@ -317,8 +317,8 @@ def test_the_sdds_still_parse_and_the_policy_is_well_formed() -> None:
     """Guards against an SDD edit that silently drops criteria from the gate."""
 
     criteria = harness.load_criteria()
-    assert len(criteria) == 167, "expected 167 criteria across the four SDDs"
-    assert sum(1 for c in criteria.values() if c.priority == "MUST") == 165
+    assert len(criteria) == 197, "expected 197 criteria across the five active SDDs"
+    assert sum(1 for c in criteria.values() if c.priority == "MUST") == 195
     assert harness.apply_policy(criteria) == []
 
 

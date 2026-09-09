@@ -1,0 +1,60 @@
+{
+  "action_intent_schema_hash": "cc4b420729d95213de7ee3c0f08a007c7d2aa2463eb7ae3cce45160795e3086b",
+  "adapter_id": "dev.sim.arm.adapter",
+  "adapter_version": "0.5.0",
+  "artifact_digest": "0afa09e18f5bd67a249efa6cd39c21d732f277ee5e0e4140c50179dc2727f444",
+  "artifact_signature_ref": {
+    "digest": "29c1600dfb7ae9b9fbcc77e7615e793feed56faac26616d86445896666c83040",
+    "evidence_class": "DIGITAL",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/29c1600dfb7ae9b9fbcc77e7615e793feed56faac26616d86445896666c83040"
+  },
+  "capabilities": [
+    {
+      "capability_id": "robotics.sim.observe",
+      "capability_version": "1.0.0"
+    }
+  ],
+  "contract_id": "ram_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "contract_type": "accretion.robot-adapter-manifest",
+  "controller_modes": [
+    "JOINT_TRAJECTORY"
+  ],
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "embodiment_descriptor_hashes": [
+    "b39f45790905df553ac65e89f8c65de457d665c4b3f9623a5e135c278be57467"
+  ],
+  "endpoint_profile_id": "dev-local-cpu",
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "objective_contract_ref": null,
+  "observation_spec_hash": "9c80f5c16a23dc224487ca09dd23f5efaf56d34fdf89700523cad777927bc559",
+  "prepared_command_schema_hash": "823083d0070d62d32dd1ea52b3e90ccad82b0a503db37c231b346bd165ff661c",
+  "process_budget": {
+    "max_cpu_seconds": 120.0,
+    "max_memory_bytes": 1000000000,
+    "max_output_bytes": 1000000,
+    "max_wall_seconds": 180.0
+  },
+  "project_id": null,
+  "retention_class": null,
+  "schema_version": "1.0.0",
+  "simulator": {
+    "family": "MUJOCO",
+    "middleware": "NONE",
+    "middleware_version": null,
+    "profile_id": "dev-cpu-contract-fixture",
+    "transport": "LOCAL_PROCESS",
+    "version": "3.3.7"
+  },
+  "supersedes_contract_id": null,
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}

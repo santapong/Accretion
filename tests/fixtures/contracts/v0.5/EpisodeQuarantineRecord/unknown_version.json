@@ -1,0 +1,35 @@
+{
+  "affected_experience_ids": [],
+  "affected_snapshot_ids": [],
+  "content_hash": "812fef27c4c08b7a4f3bb0cdfbd83d0c1356b46f691ebe27df1227192a0ec89a",
+  "contract_id": "eqr_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "contract_type": "accretion.episode-quarantine",
+  "contradiction_evidence_ref": {
+    "digest": "4d50785de4d6c2a57a2df424a56d171783bd51866c6668499643fc8d0f43ec7b",
+    "evidence_class": "SIMULATION",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/4d50785de4d6c2a57a2df424a56d171783bd51866c6668499643fc8d0f43ec7b"
+  },
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "episode_id": "sep_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "episode_record_hash": "2d22fbb6f01255002904f9b6a23160e4e78cc6145c444aa13e16175b5afb5d94",
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "objective_contract_ref": null,
+  "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "reason_code": "SYNTHETIC_NOT_EXECUTED",
+  "resolution_evidence_ref": null,
+  "resolves_quarantine_ref": null,
+  "retention_class": null,
+  "schema_version": "2.0.0",
+  "supersedes_contract_id": null,
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}

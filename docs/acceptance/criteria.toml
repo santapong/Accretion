@@ -158,3 +158,40 @@ AC3-UI-03 = { verification = "test", frontend_evidence = "apps/ui/src/pages/McpS
 # two frontend criteria retain their explicit evidence pointers above. The empty
 # deferral section does not mean all fifty are claimed by pytest. The heading stays
 # so that a future v0.4 patch adding a criterion has the place to put its policy.
+
+# --- v0.5 active registration (M0, approved 2026-09-09) ----------------------
+# All 30 requirements remain explicit pending implementation/composite proof.
+# Accountability is declared in the active SDD; owner milestones do not waive
+# later simulator/browser/study evidence. Remove each deferral only when its
+# actual required witnesses exist. --release v0.5 refuses every such deferral.
+# Authority: docs/releases/v0.5/m0-decisions-2026-09-09.md and the approved plan.
+AC5-001 = { verification = "not_yet_due", reason = "Approved v0.5 program: M0 owns eventual A evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-002 = { verification = "not_yet_due", reason = "Approved v0.5 program: M2 owns eventual A evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-003 = { verification = "not_yet_due", reason = "Approved v0.5 program: M1 owns eventual A evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-004 = { verification = "not_yet_due", reason = "Approved v0.5 program: M0 owns eventual A evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-005 = { verification = "not_yet_due", reason = "Approved v0.5 program: M4 owns eventual A evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-006 = { verification = "not_yet_due", reason = "Approved v0.5 program: M7 owns eventual A+S evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-007 = { verification = "not_yet_due", reason = "Approved v0.5 program: M7 owns eventual A+S evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-008 = { verification = "not_yet_due", reason = "Approved v0.5 program: M2 owns eventual A+S evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-009 = { verification = "not_yet_due", reason = "Approved v0.5 program: M4 owns eventual A+S evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-010 = { verification = "not_yet_due", reason = "Approved v0.5 program: M1 owns eventual A+S evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-011 = { verification = "not_yet_due", reason = "Approved v0.5 program: M3 owns eventual A+S evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-012 = { verification = "not_yet_due", reason = "Approved v0.5 program: M3 owns eventual A+S evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-013 = { verification = "not_yet_due", reason = "Approved v0.5 program: M4 owns eventual A+S evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-014 = { verification = "not_yet_due", reason = "Approved v0.5 program: M4 owns eventual A+S evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-015 = { verification = "not_yet_due", reason = "Approved v0.5 program: M3 owns eventual A evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-016 = { verification = "not_yet_due", reason = "Approved v0.5 program: M5 owns eventual A+S evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-017 = { verification = "not_yet_due", reason = "Approved v0.5 program: M5 owns eventual A+U evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-018 = { verification = "not_yet_due", reason = "Approved v0.5 program: M5 owns eventual A evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-019 = { verification = "not_yet_due", reason = "Approved v0.5 program: M5 owns eventual A+S+B evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-020 = { verification = "not_yet_due", reason = "Approved v0.5 program: M5 owns eventual A+U evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-021 = { verification = "not_yet_due", reason = "Approved v0.5 program: M5 owns eventual A evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-022 = { verification = "not_yet_due", reason = "Approved v0.5 program: M5 owns eventual A evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-023 = { verification = "not_yet_due", reason = "Approved v0.5 program: M0 owns eventual A+B evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-024 = { verification = "not_yet_due", reason = "Approved v0.5 program: M9 owns eventual B evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-025 = { verification = "not_yet_due", reason = "Approved v0.5 program: M9 owns eventual A+B evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-026 = { verification = "not_yet_due", reason = "Approved v0.5 program: M8 owns eventual A+U evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-027 = { verification = "not_yet_due", reason = "Approved v0.5 program: M4 owns eventual A evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-028 = { verification = "not_yet_due", reason = "Approved v0.5 program: M4 owns eventual A+U evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-029 = { verification = "not_yet_due", reason = "Approved v0.5 program: M4 owns eventual A+S+U evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }
+AC5-030 = { verification = "not_yet_due", reason = "Approved v0.5 program: M2 owns eventual A+S evidence; implementation/composite proof pending", issue = "docs/releases/v0.5/completion-plan-2026-09-09.md" }

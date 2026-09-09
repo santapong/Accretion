@@ -1,0 +1,8 @@
+
+> accretion@0.4.1 check
+> npm run check --workspace @accretion/ui
+
+
+> @accretion/ui@0.4.1 check
+> eslint . && tsc -b --pretty false
+

@@ -1,0 +1,64 @@
+{
+  "content_hash": "584c18e33f530f70b9746475db8566a7ff242268d24bdf2698210b49547eccab",
+  "contract_id": "evs_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "contract_type": "accretion.embodied-verification-spec",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "evidence_completeness_verifier": {
+    "deterministic": true,
+    "independent": true,
+    "required": true,
+    "verifier": {
+      "implementation_digest": "038724510d6ff863fc5a134935988fd3a04ddcb75c360cbe58afc59561f75f70",
+      "verifier_contract_id": "dev-fixture-verifier"
+    }
+  },
+  "inconclusive_policy": "HUMAN_REVIEW",
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "objective_contract_ref": null,
+  "optional_model_verifiers": [],
+  "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "reproducibility_verifier": {
+    "deterministic": true,
+    "independent": true,
+    "required": true,
+    "verifier": {
+      "implementation_digest": "038724510d6ff863fc5a134935988fd3a04ddcb75c360cbe58afc59561f75f70",
+      "verifier_contract_id": "dev-fixture-verifier"
+    }
+  },
+  "retention_class": null,
+  "safety_verifiers": [
+    {
+      "deterministic": true,
+      "independent": true,
+      "required": true,
+      "verifier": {
+        "implementation_digest": "038724510d6ff863fc5a134935988fd3a04ddcb75c360cbe58afc59561f75f70",
+        "verifier_contract_id": "dev-fixture-verifier"
+      }
+    }
+  ],
+  "schema_version": "2.0.0",
+  "separate_identity_required": true,
+  "separate_process_required": true,
+  "supersedes_contract_id": null,
+  "task_verifiers": [
+    {
+      "deterministic": true,
+      "independent": true,
+      "required": true,
+      "verifier": {
+        "implementation_digest": "038724510d6ff863fc5a134935988fd3a04ddcb75c360cbe58afc59561f75f70",
+        "verifier_contract_id": "dev-fixture-verifier"
+      }
+    }
+  ],
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}

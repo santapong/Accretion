@@ -1,0 +1,21 @@
+
+> accretion@0.4.1 test
+> npm run test --workspace @accretion/ui
+
+
+> @accretion/ui@0.4.1 test
+> vitest run
+
+
+ RUN  v5.0.0 /mnt/data/accretion-v05-execution-2026-09-09/integration/apps/ui
+
+
+ Test Files  27 passed (27)
+      Tests  286 passed (286)
+   Start at  13:57:10
+   Duration  73.15s (environment 65%, setup 13%, tests 12%, import 6%, transform 4%)
+
+Environment  jsdom was created 27 times · 131.85s total, 65% of tracked time
+             create it once per worker with pool: 'vmThreads' (keeps per-file isolation) or isolate: false (shares it across files)
+             learn more: https://vitest.dev/guide/improving-performance#test-environments
+

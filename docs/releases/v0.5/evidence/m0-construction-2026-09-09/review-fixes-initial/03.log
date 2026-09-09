@@ -1,0 +1,10 @@
+ERROR: file or directory not found: tests/test_release_gate_harness.py
+
+============================= test session starts ==============================
+platform linux -- Python 3.12.9, pytest-9.1.1, pluggy-1.6.0
+rootdir: /mnt/data/accretion-v05-execution-2026-09-09/integration
+configfile: pyproject.toml
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 0 items
+
+============================ no tests ran in 0.01s =============================

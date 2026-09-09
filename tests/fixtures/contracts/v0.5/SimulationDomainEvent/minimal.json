@@ -1,0 +1,24 @@
+{
+  "content_hash": "9b07bf0c47ee74ee77bb5fd7f040b08bba5dc65c07bb9860ce13a92b09b79a55",
+  "contract_id": "sde_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "correlation_id": "dev-fixture-correlation",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "event_type": "embodiment.registered",
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "occurred_at": "2026-09-09T00:00:00Z",
+  "producer": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "sequence": 0,
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}

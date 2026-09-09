@@ -1,0 +1,51 @@
+{
+  "constraints": {
+    "acceleration_scale": 0.15,
+    "planning_time_ms": 500,
+    "speed_scale": 0.2
+  },
+  "content_hash": "6cb314c511b440012a09b030bf928f1ef0117f187ba814365fa8a549554acf71",
+  "contract_id": "ain_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "contract_type": "accretion.action-intent",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "episode_id": "sep_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "expires_at_sim_time_ns": 1000000000,
+  "idempotency_key": "15c56b46430884018aac8a119178b3e7564bd687eb5e797cab93dddf23ef58d5",
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "objective_contract_ref": null,
+  "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "retention_class": null,
+  "schema_version": "1.0.0",
+  "semantic_action": "MOVE_END_EFFECTOR",
+  "sequence": 0,
+  "state": {
+    "frame_transform_digest": "929eefa81a574c0386ea764407bc143277cc826b3013ffaa92be306fa5858cfb",
+    "observation_digest": "7dfc7e882a14ad23139e8045e67db6b0f8d5c8b2572d00412fa82433f29b66db",
+    "observation_sequence": 0,
+    "sim_time_ns": 0
+  },
+  "supersedes_contract_id": null,
+  "target": {
+    "frame_id": "base",
+    "kind": "MOVE_END_EFFECTOR",
+    "orientation_xyzw": [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ],
+    "position_m": [
+      0.4,
+      0.0,
+      0.3
+    ]
+  },
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}

@@ -1,0 +1,32 @@
+{
+  "status": "PLANNING_ONLY",
+  "observed_at": "2026-09-09T06:09:36.756371+00:00",
+  "base_commit": "01e2268b3b602a12eeaf81f55fb4670a1fe7636f",
+  "freshly_fetched_origin_develop": "01e2268b3b602a12eeaf81f55fb4670a1fe7636f",
+  "released_main": "f60c7faae68a4ebae7ad4e15696746957690ce7b",
+  "released_v041": "f60c7faae68a4ebae7ad4e15696746957690ce7b",
+  "v05_criteria_in_source": 30,
+  "source_hashes": {
+    "docs/sdd/future/v0.4-v1.0/02_SDDS/Accretion_SDD_v0.5.md": "90d8ca2d909288f76d619f6db908e0fc87d8d0b286af9e1900361d3a0a3b2e02",
+    "docs/sdd/future/v0.4-v1.0/01_GOVERNANCE/Accretion_Cross_Release_Contract_Registry_v0.4_to_v1.0.md": "50d6f5d2074524f53212b29470ea3256f2fa9a62ec25bda40d3e27a5220d39bd",
+    "docs/sdd/future/v0.4-v1.0/MANIFEST.sha256": "317b83fb705fe8889c9651e7af9bba82a34264f2d1f103c785dd122220840112",
+    "docs/sdd/future/v1.1-v1.8/package/MANIFEST.sha256": "986746757512f62a440d169497a47cd01846be73617362ead928dd000fc82bf8",
+    "docs/research/v0.4/preregistration.md": "6b45998b3a9847298ba878a6414211ce38d64c775e5addd587509fdd70cf04ea",
+    "docs/research/v0.4/amendment-1.md": "139f60692de5e9faa545d3e169fcf92e8aab3e45ac41a7ec1b0891cdae4e3914",
+    "docs/research/v0.4/access-log.jsonl": "976f3357bc6b4850a9183a5d497158a8c1dafaf284546bc5dfbd2d553d04ca9e"
+  },
+  "v04_scientific_access_rows": 4,
+  "planning_worktrees": {
+    "integration": "docs/v05-completion-plan-20260909",
+    "contracts": "docs/v05-contract-plan-20260909",
+    "runtime": "docs/v05-runtime-plan-20260909",
+    "evidence": "docs/v05-evidence-plan-20260909"
+  },
+  "fresh_execution": {
+    "application_tests": false,
+    "simulation": false,
+    "providers": false,
+    "physical_actions": false
+  },
+  "inherited_gate_evidence": "docs/releases/v0.4/research-handoff-2026-09-08.md"
+}

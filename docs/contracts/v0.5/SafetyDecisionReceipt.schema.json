@@ -1,0 +1,631 @@
+{
+  "$defs": {
+    "DetachedSignature": {
+      "additionalProperties": false,
+      "properties": {
+        "algorithm": {
+          "const": "ED25519",
+          "default": "ED25519",
+          "title": "Algorithm",
+          "type": "string"
+        },
+        "domain": {
+          "const": "accretion.simulation.safety-decision.v1",
+          "default": "accretion.simulation.safety-decision.v1",
+          "title": "Domain",
+          "type": "string"
+        },
+        "key_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^\\s*]+$",
+          "title": "Key Id",
+          "type": "string"
+        },
+        "signature_base64": {
+          "maxLength": 88,
+          "minLength": 88,
+          "title": "Signature Base64",
+          "type": "string"
+        },
+        "signer_principal_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^\\s*]+$",
+          "title": "Signer Principal Id",
+          "type": "string"
+        },
+        "unsigned_payload_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Unsigned Payload Digest",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key_id",
+        "signer_principal_id",
+        "unsigned_payload_digest",
+        "signature_base64"
+      ],
+      "title": "DetachedSignature",
+      "type": "object"
+    },
+    "LeaseBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "generation": {
+          "exclusiveMinimum": 0,
+          "title": "Generation",
+          "type": "integer"
+        },
+        "lease_id": {
+          "pattern": "^sle_[0-9A-HJKMNP-TV-Z]{26}$",
+          "title": "Lease Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "lease_id",
+        "generation"
+      ],
+      "title": "LeaseBinding",
+      "type": "object"
+    },
+    "MotionBudgetState": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "minimum": 0,
+          "title": "Actions",
+          "type": "integer"
+        },
+        "cumulative_joint_motion_rad": {
+          "minimum": 0,
+          "title": "Cumulative Joint Motion Rad",
+          "type": "number"
+        },
+        "elapsed_sim_seconds": {
+          "minimum": 0,
+          "title": "Elapsed Sim Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "actions",
+        "cumulative_joint_motion_rad",
+        "elapsed_sim_seconds"
+      ],
+      "title": "MotionBudgetState",
+      "type": "object"
+    },
+    "ObjectiveContractRef": {
+      "additionalProperties": false,
+      "description": "SDD \u00a77.1. The exact objective revision a node was authorised against.\n\nThis is the type of the registry \u00a73 optional header field ``objective_contract_ref``,\nwhich is why it is defined before every other contract in this module and why\n:class:`~accretion.contracts.canonical.CanonicalContract` is rebuilt immediately below\nit.\n\n**Field coverage (SDD \u00a77.1 \u2192 here).** ``project_id`` \u2192 the header's ``project_id``.\n``objective_contract_id`` \u2192 ``objective_contract_id``. ``version`` \u2192 ``revision``, the\nregistry \u00a77.1 spelling, which is also what the ``ObjectiveContract`` aggregate calls its\nown counter. ``content_hash`` \u2192 ``objective_contract_hash``. ``verified_success_floor``,\n``utility_profile_id``, ``approved_at`` \u2192 unchanged. ``risk_policy_id`` \u2192 ``risk_policy``,\na typed :class:`~accretion.contracts.refs.PolicyRef` (registry \u00a73.1 requires policies to\nuse immutable typed references, and an authority decision audited against \"policy v3\" is\naudited against a label). ``approved_by`` \u2192 a typed\n:class:`~accretion.contracts.PrincipalRef` for the same reason.\n\n**Why the target's identity is qualified.** Registry \u00a73 describes the header field as\n``{contract_id, revision, content_hash}``, but inside a :class:`CanonicalContract` those\ntwo unqualified names already mean *this reference's own* id and digest. The target's\nare therefore spelled ``objective_contract_id`` and ``objective_contract_hash``. Nothing\nis lost and the ambiguity that would otherwise sit in every receipt is.\n\n``ID_KIND`` is ``None``: ADR-055 mints no prefix for a reference, because a reference is\ncreated and owned by the contract that embeds it and has no id space to collide in.\n``verified_success_floor`` is copied onto the reference rather than dereferenced because\n\u00a78.3 requires routing to run against an exact snapshot \u2014 a router that re-read the floor\nfrom the live objective would be routing against a number the receipt cannot prove.",
+      "properties": {
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "content_hash": {
+          "default": "",
+          "maxLength": 64,
+          "title": "Content Hash",
+          "type": "string"
+        },
+        "contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Contract Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "accretion.objective-contract-ref",
+          "default": "accretion.objective-contract-ref",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "created_by": {
+          "$ref": "#/$defs/PrincipalRef"
+        },
+        "labels": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "object"
+        },
+        "objective_contract_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Objective Contract Hash",
+          "type": "string"
+        },
+        "objective_contract_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Objective Contract Id",
+          "type": "string"
+        },
+        "objective_contract_ref": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ObjectiveContractRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "project_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Project Id"
+        },
+        "retention_class": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[A-Z][A-Z0-9_]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retention Class"
+        },
+        "revision": {
+          "minimum": 1,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "risk_policy": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "schema_version": {
+          "default": "1.0.0",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "title": "Schema Version",
+          "type": "string"
+        },
+        "supersedes_contract_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Supersedes Contract Id"
+        },
+        "utility_profile_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Utility Profile Id",
+          "type": "string"
+        },
+        "verified_success_floor": {
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Verified Success Floor",
+          "type": "number"
+        },
+        "workspace_id": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_id",
+        "created_by",
+        "workspace_id",
+        "objective_contract_id",
+        "revision",
+        "objective_contract_hash",
+        "verified_success_floor",
+        "utility_profile_id",
+        "risk_policy",
+        "approved_by",
+        "approved_at"
+      ],
+      "title": "ObjectiveContractRef",
+      "type": "object"
+    },
+    "PolicyRef": {
+      "additionalProperties": false,
+      "description": "A policy by id, version and content digest (registry \u00a74).\n\nAuthority decisions are audited against the exact policy text that produced them, so the\ncontent digest is required: \"policy v3\" is a label, and labels are editable.",
+      "properties": {
+        "content_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Content Digest",
+          "type": "string"
+        },
+        "policy_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "version": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "policy_id",
+        "version",
+        "content_digest"
+      ],
+      "title": "PolicyRef",
+      "type": "object"
+    },
+    "PrincipalRef": {
+      "additionalProperties": false,
+      "properties": {
+        "display_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Display Name"
+        },
+        "principal_id": {
+          "title": "Principal Id",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/PrincipalStatus"
+        }
+      },
+      "required": [
+        "principal_id",
+        "status"
+      ],
+      "title": "PrincipalRef",
+      "type": "object"
+    },
+    "PrincipalStatus": {
+      "enum": [
+        "ACTIVE",
+        "DISABLED"
+      ],
+      "title": "PrincipalStatus",
+      "type": "string"
+    },
+    "SafetyDecisionPayload": {
+      "additionalProperties": false,
+      "description": "The entire authority-relevant unsigned message, before detached signing.",
+      "properties": {
+        "action_intent_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Action Intent Hash",
+          "type": "string"
+        },
+        "budget_after": {
+          "$ref": "#/$defs/MotionBudgetState"
+        },
+        "budget_before": {
+          "$ref": "#/$defs/MotionBudgetState"
+        },
+        "decision": {
+          "enum": [
+            "ALLOW",
+            "DENY"
+          ],
+          "title": "Decision",
+          "type": "string"
+        },
+        "episode_approval_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Episode Approval Hash",
+          "type": "string"
+        },
+        "episode_id": {
+          "pattern": "^sep_[0-9A-HJKMNP-TV-Z]{26}$",
+          "title": "Episode Id",
+          "type": "string"
+        },
+        "evaluator": {
+          "$ref": "#/$defs/VerifierRef"
+        },
+        "evaluator_principal_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^\\s*]+$",
+          "title": "Evaluator Principal Id",
+          "type": "string"
+        },
+        "expires_at_sim_time_ns": {
+          "minimum": 0,
+          "title": "Expires At Sim Time Ns",
+          "type": "integer"
+        },
+        "issued_at": {
+          "format": "date-time",
+          "title": "Issued At",
+          "type": "string"
+        },
+        "lease": {
+          "$ref": "#/$defs/LeaseBinding"
+        },
+        "policy_ref": {
+          "$ref": "#/$defs/PolicyRef"
+        },
+        "prepared_command_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Prepared Command Hash",
+          "type": "string"
+        },
+        "project_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^\\s*]+$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "reason_codes": {
+          "items": {
+            "maxLength": 128,
+            "pattern": "^[A-Z][A-Z0-9_]*$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Reason Codes",
+          "type": "array"
+        },
+        "receipt_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^\\s*]+$",
+          "title": "Receipt Id",
+          "type": "string"
+        },
+        "safety_envelope_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Safety Envelope Hash",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/StateBinding"
+        },
+        "workspace_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "pattern": "^[^\\s*]+$",
+          "title": "Workspace Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "receipt_id",
+        "workspace_id",
+        "project_id",
+        "episode_id",
+        "action_intent_hash",
+        "prepared_command_hash",
+        "safety_envelope_hash",
+        "episode_approval_hash",
+        "policy_ref",
+        "state",
+        "lease",
+        "evaluator",
+        "evaluator_principal_id",
+        "decision",
+        "reason_codes",
+        "budget_before",
+        "budget_after",
+        "issued_at",
+        "expires_at_sim_time_ns"
+      ],
+      "title": "SafetyDecisionPayload",
+      "type": "object"
+    },
+    "StateBinding": {
+      "additionalProperties": false,
+      "properties": {
+        "frame_transform_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Frame Transform Digest",
+          "type": "string"
+        },
+        "observation_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Observation Digest",
+          "type": "string"
+        },
+        "observation_sequence": {
+          "minimum": 0,
+          "title": "Observation Sequence",
+          "type": "integer"
+        },
+        "sim_time_ns": {
+          "minimum": 0,
+          "title": "Sim Time Ns",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "observation_digest",
+        "observation_sequence",
+        "sim_time_ns",
+        "frame_transform_digest"
+      ],
+      "title": "StateBinding",
+      "type": "object"
+    },
+    "VerifierRef": {
+      "additionalProperties": false,
+      "description": "A verifier's contract plus the digest of the implementation that produced a result.\n\n``verifier_contract_id`` names the verifier *contract* \u2014 what is checked and what\ncounts as passing \u2014 and not a single v0.1 verification run. Registry \u00a719 requires that\nverification stay reproducible, which needs both halves: the contract explains what the\nverdict claimed, the implementation digest explains what code made the claim.",
+      "properties": {
+        "implementation_digest": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Implementation Digest",
+          "type": "string"
+        },
+        "verifier_contract_id": {
+          "maxLength": 255,
+          "minLength": 1,
+          "title": "Verifier Contract Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "verifier_contract_id",
+        "implementation_digest"
+      ],
+      "title": "VerifierRef",
+      "type": "object"
+    }
+  },
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "content_hash": {
+      "default": "",
+      "maxLength": 64,
+      "title": "Content Hash",
+      "type": "string"
+    },
+    "contract_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Contract Id",
+      "type": "string"
+    },
+    "contract_type": {
+      "const": "accretion.safety-decision",
+      "default": "accretion.safety-decision",
+      "title": "Contract Type",
+      "type": "string"
+    },
+    "created_at": {
+      "format": "date-time",
+      "title": "Created At",
+      "type": "string"
+    },
+    "created_by": {
+      "$ref": "#/$defs/PrincipalRef"
+    },
+    "decision": {
+      "$ref": "#/$defs/SafetyDecisionPayload"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "objective_contract_ref": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ObjectiveContractRef"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "project_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Project Id"
+    },
+    "retention_class": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "pattern": "^[A-Z][A-Z0-9_]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Retention Class"
+    },
+    "schema_version": {
+      "default": "1.0.0",
+      "pattern": "^1\\.\\d+\\.\\d+$",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "signature": {
+      "$ref": "#/$defs/DetachedSignature"
+    },
+    "supersedes_contract_id": {
+      "anyOf": [
+        {
+          "maxLength": 64,
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Supersedes Contract Id"
+    },
+    "workspace_id": {
+      "maxLength": 64,
+      "minLength": 1,
+      "title": "Workspace Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "contract_id",
+    "created_by",
+    "workspace_id",
+    "decision",
+    "signature"
+  ],
+  "title": "SafetyDecisionReceipt",
+  "type": "object"
+}

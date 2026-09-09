@@ -1,0 +1,2 @@
+Using Python 3.12.9 environment at: /mnt/data/accretion-v05-feasibility-2026-09-09/.venv
+Checked 10 packages in 10ms

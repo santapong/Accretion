@@ -1,0 +1,45 @@
+{
+  "candidate_commit": "77d99396e6bbfc8fd9b32fbc2e2204cfafbcf995",
+  "scope": "M0 combined backend and inherited gates; no v0.5 execution acceptance claimed",
+  "started_at": "2026-09-09T07:12:36.662288+00:00",
+  "steps": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-sync",
+        "pytest",
+        "-p",
+        "pytest_asyncio.plugin",
+        "tests/test_v05_contracts.py",
+        "tests/test_v05_m0_acceptance.py",
+        "tests/test_acceptance_harness.py",
+        "tests/test_v03_m8_release_gate.py",
+        "tests/test_v04_m0_canonical.py",
+        "tests/test_v04_m8_upcast.py",
+        "tests/test_v04_upcast_references.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 16.445,
+      "log": "01.log",
+      "log_sha256": "6715a3e2e643d17ffa60dcca1f6b60efb95fb8475f49ecfe13cfe4f5be277430"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-sync",
+        "python",
+        "scripts/export_contract_schemas.py",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.066,
+      "log": "02.log",
+      "log_sha256": "6b48938a96c040d7dcdf2e2bf72b75321dcc1e7d33e489b70a1a5ad4667bef2f"
+    }
+  ],
+  "finished_at": "2026-09-09T07:12:54.174230+00:00",
+  "candidate_unchanged": true,
+  "checkout_clean": true
+}

@@ -1,0 +1,74 @@
+{
+  "content_hash": "c7a91e7a07b902c1cf9488d468000cd6f2c44625ffa269ee2acda3127cdef74e",
+  "contract_id": "sdr_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "contract_type": "accretion.safety-decision",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_1WT2YHAB9WGWYPJEKV3NAD3SR2",
+    "status": "ACTIVE"
+  },
+  "decision": {
+    "action_intent_hash": "e2dfce2b031b1f51fc7d72904e9db3e4f61785f4459ede64b8b54a2ff770288a",
+    "budget_after": {
+      "actions": 0,
+      "cumulative_joint_motion_rad": 0.0,
+      "elapsed_sim_seconds": 0.0
+    },
+    "budget_before": {
+      "actions": 0,
+      "cumulative_joint_motion_rad": 0.0,
+      "elapsed_sim_seconds": 0.0
+    },
+    "decision": "DENY",
+    "episode_approval_hash": "3dfe2be4afcca37959c1713c053f3ccff3361fb8bbbab31fed812f82b34d147a",
+    "episode_id": "sep_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+    "evaluator": {
+      "implementation_digest": "038724510d6ff863fc5a134935988fd3a04ddcb75c360cbe58afc59561f75f70",
+      "verifier_contract_id": "dev-fixture-verifier"
+    },
+    "evaluator_principal_id": "usr_1WT2YHAB9WGWYPJEKV3NAD3SR2",
+    "expires_at_sim_time_ns": 1000000000,
+    "issued_at": "2026-09-09T00:00:00Z",
+    "lease": {
+      "generation": 1,
+      "lease_id": "sle_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+    },
+    "policy_ref": {
+      "content_digest": "e44565844901abca52e79e5aa23fef5bb53d9aad25f396f2eddab0497320bccb",
+      "policy_id": "dev-fixture-policy",
+      "version": "1.0.0"
+    },
+    "prepared_command_hash": "24ff9c1440935645e6e73419c6910891588ef1a7a57fe7a121ff591f866fee59",
+    "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+    "reason_codes": [
+      "SYNTHETIC_NOT_EXECUTED"
+    ],
+    "receipt_id": "sdr_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+    "safety_envelope_hash": "92ec595c7b1f827ca72f0926f3ec6d465987d833adb99e32a5a9532623c951c1",
+    "state": {
+      "frame_transform_digest": "929eefa81a574c0386ea764407bc143277cc826b3013ffaa92be306fa5858cfb",
+      "observation_digest": "7dfc7e882a14ad23139e8045e67db6b0f8d5c8b2572d00412fa82433f29b66db",
+      "observation_sequence": 0,
+      "sim_time_ns": 0
+    },
+    "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+  },
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "objective_contract_ref": null,
+  "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "retention_class": null,
+  "schema_version": "1.0.0",
+  "signature": {
+    "algorithm": "ED25519",
+    "domain": "accretion.simulation.safety-decision.v1",
+    "key_id": "PUBLIC_DEV_TEST_KEY_NEVER_TRUST",
+    "signature_base64": "i4pgcR9zvnKVgtyaDWFnMcLEgzyy6zJ4DAuK59q9ngo8kT16Gsmnb2D/GAR7ZyQ8M0175qWFDqJDwWyLAKZpCA==",
+    "signer_principal_id": "usr_1WT2YHAB9WGWYPJEKV3NAD3SR2",
+    "unsigned_payload_digest": "0322a7a883188b6fefe4aa7c910e50de964d70bbd7a8f79e1c6346d4d4a011ff"
+  },
+  "supersedes_contract_id": null,
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}

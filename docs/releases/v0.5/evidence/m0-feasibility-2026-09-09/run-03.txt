@@ -1,0 +1,4 @@
+libEGL warning: Not allowed to force software rendering when API explicitly selects a hardware device.
+{"assembly": "ur5e_2f85", "status": "PASS_DEVELOPMENT_FEASIBILITY"}
+{"assembly": "panda", "status": "PASS_DEVELOPMENT_FEASIBILITY"}
+{"status": "PASS_DEVELOPMENT_FEASIBILITY", "wall_seconds": 7.022283352998784, "cpu_seconds": 6.437301, "exit_code": 0}

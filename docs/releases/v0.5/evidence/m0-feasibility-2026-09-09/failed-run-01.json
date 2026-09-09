@@ -1,0 +1,7 @@
+{
+  "cpu_seconds": 1.716492,
+  "error": "FatalError: No XML model loaded",
+  "exit_code": 1,
+  "status": "FAIL",
+  "wall_seconds": 2.3970507379999617
+}
