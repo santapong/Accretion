@@ -115,6 +115,30 @@ _PREFIXES = {
     # reader — or `has_prefix`, or M2's future `RoutingOverride.ID_KIND` check — which
     # record class or which table it names. So the routing override gets its own kind.
     "routing_override": "rov",
+    # v0.5 simulation contracts. Robot/adapter logical names remain separate from
+    # the immutable records and no simulation id conveys physical authority.
+    "embodiment_descriptor": "ebd",
+    "observation_spec": "obs",
+    "action_intent": "ain",
+    "safety_envelope": "sen",
+    "robot_adapter_manifest": "ram",
+    "simulation_experiment": "sxc",
+    "simulation_environment_snapshot": "ssn",
+    "episode_record": "epr",
+    "embodied_verification_spec": "evs",
+    "adapter_conformance_report": "acr",
+    "simulation_episode": "sep",
+    "simulation_lease": "sle",
+    "simulation_preflight": "spf",
+    "simulation_episode_approval": "sea",
+    "simulation_approval_matrix": "sam",
+    "prepared_command": "pcm",
+    "safety_decision": "sdr",
+    "simulation_action_receipt": "sar",
+    "embodied_verification_result": "evr",
+    "simulation_domain_event": "sde",
+    "episode_quarantine": "eqr",
+    "simulation_run_binding": "srb",
 }
 
 

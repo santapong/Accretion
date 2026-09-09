@@ -1,0 +1,56 @@
+{
+  "adapter_digest": "0afa09e18f5bd67a249efa6cd39c21d732f277ee5e0e4140c50179dc2727f444",
+  "content_hash": "2cacbba371744cc07de27d0e8f7a81ecacecaa96ba95d671d011cebaaeb1dee0",
+  "contract_id": "ssn_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "controller_digest": "16605ad2a3e83855c9ec76df0fc51725af2b1a2241810495f6bdbf74403bb2e6",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "environment_profile_hash": "0a7a1dca378f64a23b42fea0ea66294185c3c01ca1bdb396e036b11cffa1cd55",
+  "host_architecture": "x86_64",
+  "host_compatibility_profile_hash": "d80657092899346b48da081665ffb46f90d9434e05842663c49d6a9d9c9865ce",
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "physics_engine": "mujoco",
+  "physics_parameters_ref": {
+    "digest": "c7f88155b94b933aee1adb5afee82c0047f2647b318d0032614bfa32c6cf1680",
+    "evidence_class": "DIGITAL",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/c7f88155b94b933aee1adb5afee82c0047f2647b318d0032614bfa32c6cf1680"
+  },
+  "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "randomization_sample_ref": {
+    "digest": "bf9e4a7bdac5a33518f4a841a5c6ba4cf9900bf4999ef59731f92734e5926919",
+    "evidence_class": "DIGITAL",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/bf9e4a7bdac5a33518f4a841a5c6ba4cf9900bf4999ef59731f92734e5926919"
+  },
+  "rendering_parameters_ref": {
+    "digest": "74b781471cad33a2e9598bf7a089f8a744f7eb6f61796a36ad322615aeb122eb",
+    "evidence_class": "DIGITAL",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/74b781471cad33a2e9598bf7a089f8a744f7eb6f61796a36ad322615aeb122eb"
+  },
+  "robot_model_digest": "e16902e9b9297de0c9b55e65177b4a0537c753500a4671d87a2c27b89d56ab70",
+  "simulator": {
+    "family": "MUJOCO",
+    "middleware": "NONE",
+    "middleware_version": null,
+    "profile_id": "dev-cpu-contract-fixture",
+    "transport": "LOCAL_PROCESS",
+    "version": "3.3.7"
+  },
+  "simulator_image_digest": "b3814a637c6de3fc60f0c27c8c1c18521cf5bfb9a855843bf9d078b7555f7b2b",
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "world_digest": "6d1ed6f24960eae1b2eced7d924c108f45e6e54debf5413f14e76210ca90fe56"
+}

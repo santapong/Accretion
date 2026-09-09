@@ -1,0 +1,55 @@
+{
+  "content_hash": "34deea0c5f2e453d852b11432e86e2f46cf795ad98b26fad02ed000e7b51dc76",
+  "contract_id": "evr_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_1WT2YHAB9WGWYPJEKV3NAD3SR2",
+    "status": "ACTIVE"
+  },
+  "deterministic": true,
+  "episode_id": "sep_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "episode_record_hash": "2d22fbb6f01255002904f9b6a23160e4e78cc6145c444aa13e16175b5afb5d94",
+  "evidence_refs": [
+    {
+      "digest": "293c8df38720876ce8c04f60de777178cb86db1a13535178308e75417a4e9222",
+      "evidence_class": "SIMULATION",
+      "media_type": "application/json",
+      "retention_class": "RESEARCH_ARCHIVE",
+      "size_bytes": 32,
+      "uri": "artifact://sha256/293c8df38720876ce8c04f60de777178cb86db1a13535178308e75417a4e9222"
+    }
+  ],
+  "findings_ref": {
+    "digest": "4e20e7570302386a1f1cb1872ff0e5902db3b5a0b7df118e3aa89496bcc80f47",
+    "evidence_class": "SIMULATION",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/4e20e7570302386a1f1cb1872ff0e5902db3b5a0b7df118e3aa89496bcc80f47"
+  },
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "producer_principal": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_1A4XY98Q73BKJ60BXSWTPYE7X1",
+    "status": "ACTIVE"
+  },
+  "producer_process_id": "dev-producer-process",
+  "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "role": "TASK",
+  "status": "INCONCLUSIVE",
+  "verification_spec_hash": "4e812d6de945a52fb64af396a1ed222a9bcb7a32966b5951abb39319b3267177",
+  "verifier": {
+    "implementation_digest": "038724510d6ff863fc5a134935988fd3a04ddcb75c360cbe58afc59561f75f70",
+    "verifier_contract_id": "dev-fixture-verifier"
+  },
+  "verifier_principal": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_1WT2YHAB9WGWYPJEKV3NAD3SR2",
+    "status": "ACTIVE"
+  },
+  "verifier_process_id": "dev-verifier-process",
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}

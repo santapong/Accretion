@@ -1,0 +1,29 @@
+{
+  "approval_refs": [
+    {
+      "content_hash": "3dfe2be4afcca37959c1713c053f3ccff3361fb8bbbab31fed812f82b34d147a",
+      "contract_id": "sea_V9RYZCV51E5XWXJAABKWVKMTJC",
+      "schema_version": "1.0.0"
+    }
+  ],
+  "content_hash": "0841259490fb5d812bcf1aed2534dc0bd41ee4e70680decf103b6045320b1828",
+  "contract_id": "sam_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "contract_type": "accretion.simulation-approval-matrix",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "experiment_contract_hash": "f72cc6fa7972843cbf40d4f31a69d9e02402a6833ebbce71f03db636958d69b7",
+  "expires_at": "2026-09-09T00:05:00Z",
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "objective_contract_ref": null,
+  "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "retention_class": null,
+  "schema_version": "2.0.0",
+  "supersedes_contract_id": null,
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}

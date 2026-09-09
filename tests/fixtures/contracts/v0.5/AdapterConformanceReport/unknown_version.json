@@ -1,0 +1,64 @@
+{
+  "adapter_manifest_hash": "0afa09e18f5bd67a249efa6cd39c21d732f277ee5e0e4140c50179dc2727f444",
+  "adapter_producer_principal": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_1A4XY98Q73BKJ60BXSWTPYE7X1",
+    "status": "ACTIVE"
+  },
+  "content_hash": "9e72af338e6cf2a3fa1037c2bea33a46fff381c676c1b58415f9f44ffefe65b5",
+  "contract_id": "acr_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "contract_type": "accretion.adapter-conformance-report",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_1WT2YHAB9WGWYPJEKV3NAD3SR2",
+    "status": "ACTIVE"
+  },
+  "dependencies": {
+    "action_intent_schema_hash": "ae728552681ad6a56d1e999aa1773f32e58e2ffae5ee45499aa9ed0403f504fd",
+    "adapter_artifact_digest": "3fea1317ac8b9dd3254b03123395ff1b1512bb112b97681c5c7ca5e72f9f97b4",
+    "controller_digest": "71466ccb212213393d879d24024dc19c81bf3d701eccc92a83b8348636b0bc6b",
+    "environment_profile_hash": "45981a6257f40b9ed9836848008eb9e87f07ef9bd5b14e07112589cd73143e93",
+    "host_compatibility_profile_hash": "3a80c765c518f4cb02b32a28846b9bd43d1703a9267392798fae5231274cf038",
+    "observation_spec_hash": "c003f9edc7f444ee01b6efc80215933e2b729241f6ddb9d287762471755c445a",
+    "physics_parameters_hash": "af931dc022c45dff7dda1bfe0598874ea53e253f671c7fd75fbba1051dbca9e9",
+    "prepared_command_schema_hash": "dd2ded28a38261327e376490a40e85cd74c14eff9b51b9aeb98cc237d532c140",
+    "rendering_parameters_hash": "32d31047ef2c11c515bc3bb70458cdee97b1a4fabe2e394f1d1d31ea62a33d71",
+    "robot_model_digest": "00428552fdc4125b9cbba52babb1765030deb953fd191ec1dc1acf4320196359",
+    "simulator_image_digest": "bbf8ddef94fea39800a894bfc1092cf204eb9e8ad59256f8f8f7635798e17940",
+    "tolerance_profile_hash": "b43f86c83efdb17cea91e95056ec1b479539596abddb85b22ee3886f09632c66",
+    "world_digest": "3a934afb818df9101c03e9cf183d19d4a400175429cbb7684a3ecec56d30b6bd"
+  },
+  "evidence_bundle_ref": {
+    "digest": "0e932a8a4460801b494305e5bc5ae55fac10de95c0eb6c12331f8e3eab548cce",
+    "evidence_class": "SIMULATION",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/0e932a8a4460801b494305e5bc5ae55fac10de95c0eb6c12331f8e3eab548cce"
+  },
+  "expires_on_environment_change": true,
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "objective_contract_ref": null,
+  "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "result": "INCONCLUSIVE",
+  "retention_class": null,
+  "schema_version": "2.0.0",
+  "suite_artifact_digest": "5329a0ace782b2ed11c4c6d0856297f776960671588f785301f3f5bf247b8f0c",
+  "suite_version": "0.5.0",
+  "supersedes_contract_id": null,
+  "tests_passed": 0,
+  "tests_total": 10,
+  "verifier": {
+    "implementation_digest": "038724510d6ff863fc5a134935988fd3a04ddcb75c360cbe58afc59561f75f70",
+    "verifier_contract_id": "dev-fixture-verifier"
+  },
+  "verifier_principal": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_1WT2YHAB9WGWYPJEKV3NAD3SR2",
+    "status": "ACTIVE"
+  },
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}

@@ -1,4 +1,4 @@
-"""Export and check the committed JSON Schema for every v0.4 contract (registry §20 decision 1).
+"""Export/check committed v0.4 and v0.5 schemas (registry §20 decision 1).
 
 Registry §20 settles the schema language as "JSON Schema 2020-12 plus generated
 Python/TypeScript types", and registry §19 gates a contract release on "JSON Schema or
@@ -23,6 +23,7 @@ Usage::
 
     uv run --no-sync python scripts/export_contract_schemas.py           # write
     uv run --no-sync python scripts/export_contract_schemas.py --check   # verify
+    uv run --no-sync python scripts/export_contract_schemas.py --release v0.5
 
 ``--check`` exits non-zero naming the **first** model whose committed file differs, together
 with whether the file is missing, extra, or merely stale. One name and one reason is more
@@ -38,9 +39,15 @@ from pathlib import Path
 from typing import Any
 
 from accretion.contracts.canonical import CanonicalContract
+from accretion.contracts.robotics import CONTRACT_INVENTORY as ROBOTICS_CONTRACT_INVENTORY
 from accretion.contracts.routing import CONTRACT_INVENTORY
 
 SCHEMA_ROOT = Path(__file__).resolve().parents[1] / "docs" / "contracts" / "v0.4"
+ROBOTICS_SCHEMA_ROOT = SCHEMA_ROOT.parent / "v0.5"
+RELEASE_INVENTORIES = {
+    "v0.4": CONTRACT_INVENTORY,
+    "v0.5": ROBOTICS_CONTRACT_INVENTORY,
+}
 
 JSON_SCHEMA_DIALECT = "https://json-schema.org/draft/2020-12/schema"
 """Registry §20 decision 1. Declared explicitly because pydantic does not declare it."""
@@ -69,28 +76,42 @@ def render(model: type[CanonicalContract]) -> str:
 def schema_path(model: type[CanonicalContract]) -> Path:
     """``docs/contracts/v0.4/<Model>.schema.json`` — the class name, not the module path."""
 
-    return SCHEMA_ROOT / f"{model.__name__}.schema.json"
+    root = ROBOTICS_SCHEMA_ROOT if model in ROBOTICS_CONTRACT_INVENTORY else SCHEMA_ROOT
+    return root / f"{model.__name__}.schema.json"
 
 
-def expected_filenames() -> set[str]:
+def expected_filenames(release: str = "v0.4") -> set[str]:
     """Every filename the inventory owns, so an orphan left by a rename is detected."""
 
-    return {schema_path(model).name for model in CONTRACT_INVENTORY}
+    return {schema_path(model).name for model in RELEASE_INVENTORIES[release]}
 
 
-def write_all() -> int:
+def write_all(release: str = "all") -> int:
     """Write every schema. Returns the number of files written."""
 
-    SCHEMA_ROOT.mkdir(parents=True, exist_ok=True)
-    for model in CONTRACT_INVENTORY:
-        schema_path(model).write_text(render(model), encoding="utf-8")
-    return len(CONTRACT_INVENTORY)
+    inventory = (
+        tuple(model for group in RELEASE_INVENTORIES.values() for model in group)
+        if release == "all"
+        else RELEASE_INVENTORIES[release]
+    )
+    for model in inventory:
+        target = schema_path(model)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(render(model), encoding="utf-8")
+    return len(inventory)
 
 
-def check_all() -> str | None:
+def check_all(release: str = "all") -> str | None:
     """Return a message naming the first disagreement, or ``None`` if everything matches."""
 
-    for model in CONTRACT_INVENTORY:
+    if release == "all":
+        for name in RELEASE_INVENTORIES:
+            problem = check_all(name)
+            if problem is not None:
+                return problem
+        return None
+    inventory = RELEASE_INVENTORIES[release]
+    for model in inventory:
         target = schema_path(model)
         if not target.exists():
             return (
@@ -102,9 +123,10 @@ def check_all() -> str | None:
                 f"{model.__name__}: the committed schema differs from the model; "
                 "run scripts/export_contract_schemas.py"
             )
-    if SCHEMA_ROOT.exists():
-        committed = {path.name for path in SCHEMA_ROOT.glob("*.schema.json")}
-        orphans = sorted(committed - expected_filenames())
+    root = SCHEMA_ROOT.parent / release
+    if root.exists():
+        committed = {path.name for path in root.glob("*.schema.json")}
+        orphans = sorted(committed - expected_filenames(release))
         if orphans:
             return (
                 f"{orphans[0]}: a committed schema belongs to no contract in "
@@ -118,6 +140,12 @@ def main(argv: list[str] | None = None) -> int:
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument(
+        "--release",
+        choices=("all", "v0.4", "v0.5"),
+        default="all",
+        help="select a contract family; existing schemas remain byte-stable",
+    )
+    parser.add_argument(
         "--check",
         action="store_true",
         help="verify the committed schemas instead of writing them; exit 1 on a difference",
@@ -125,15 +153,20 @@ def main(argv: list[str] | None = None) -> int:
     arguments = parser.parse_args(argv)
 
     if arguments.check:
-        problem = check_all()
+        problem = check_all(arguments.release)
         if problem is not None:
             print(problem, file=sys.stderr)
             return 1
-        print(f"{len(CONTRACT_INVENTORY)} committed contract schemas match their models")
+        count = (
+            sum(len(group) for group in RELEASE_INVENTORIES.values())
+            if arguments.release == "all"
+            else len(RELEASE_INVENTORIES[arguments.release])
+        )
+        print(f"{count} committed contract schemas match their models")
         return 0
 
-    written = write_all()
-    print(f"wrote {written} contract schemas to {SCHEMA_ROOT}")
+    written = write_all(arguments.release)
+    print(f"wrote {written} contract schemas under {SCHEMA_ROOT.parent}")
     return 0
 
 

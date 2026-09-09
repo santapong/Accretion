@@ -1,0 +1,49 @@
+{
+  "action_intent_hash": "e2dfce2b031b1f51fc7d72904e9db3e4f61785f4459ede64b8b54a2ff770288a",
+  "adapter_artifact_digest": "0afa09e18f5bd67a249efa6cd39c21d732f277ee5e0e4140c50179dc2727f444",
+  "command_payload": {
+    "acceleration_m_s2": 0.02,
+    "command_type": "GRIPPER_OPENING",
+    "force_limit_n": 10.0,
+    "opening_m": 0.04,
+    "schema_version": "1.0.0",
+    "velocity_m_s": 0.01
+  },
+  "command_ref": {
+    "digest": "ff41077988ed1ab1666332f250c218a91cad19861a2cbae54d637087401cb7a4",
+    "evidence_class": "DIGITAL",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 142,
+    "uri": "artifact://sha256/ff41077988ed1ab1666332f250c218a91cad19861a2cbae54d637087401cb7a4"
+  },
+  "command_schema_hash": "823083d0070d62d32dd1ea52b3e90ccad82b0a503db37c231b346bd165ff661c",
+  "content_hash": "e28b7998f0cd9dbb571f20664e9b6370494495039c7e8c6169300969fab8bd24",
+  "contract_id": "pcm_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "controller_digest": "16605ad2a3e83855c9ec76df0fc51725af2b1a2241810495f6bdbf74403bb2e6",
+  "controller_mode": "JOINT_TRAJECTORY",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "episode_id": "sep_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "expires_at_sim_time_ns": 1000000000,
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "lease": {
+    "generation": 1,
+    "lease_id": "sle_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+  },
+  "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "sequence": 0,
+  "state": {
+    "frame_transform_digest": "929eefa81a574c0386ea764407bc143277cc826b3013ffaa92be306fa5858cfb",
+    "observation_digest": "7dfc7e882a14ad23139e8045e67db6b0f8d5c8b2572d00412fa82433f29b66db",
+    "observation_sequence": 0,
+    "sim_time_ns": 0
+  },
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}

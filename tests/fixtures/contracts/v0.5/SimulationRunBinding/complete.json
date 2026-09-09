@@ -1,0 +1,29 @@
+{
+  "content_hash": "55e0bf95c1a320a3c2b78e8d3b83e990dc6fe37a476f08fb2522e1dae9a9c00c",
+  "contract_id": "srb_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "contract_type": "accretion.simulation-run-binding",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_1A4XY98Q73BKJ60BXSWTPYE7X1",
+    "status": "ACTIVE"
+  },
+  "episode_id": "sep_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "experiment_contract_hash": "f72cc6fa7972843cbf40d4f31a69d9e02402a6833ebbce71f03db636958d69b7",
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "objective_contract_ref": null,
+  "orchestrator_principal": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_1A4XY98Q73BKJ60BXSWTPYE7X1",
+    "status": "ACTIVE"
+  },
+  "owner": "EMBODIED_ORCHESTRATOR",
+  "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "retention_class": null,
+  "run_id": "run_V9RYZCV51E5XWXJAABKWVKMTJC",
+  "schema_version": "1.0.0",
+  "supersedes_contract_id": null,
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}

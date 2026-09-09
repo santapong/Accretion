@@ -1,0 +1,37 @@
+{
+  "acquired_at": "2026-09-09T00:00:00Z",
+  "adapter_manifest_hash": "0afa09e18f5bd67a249efa6cd39c21d732f277ee5e0e4140c50179dc2727f444",
+  "content_hash": "7507d0cc4ddabdaba8d1c86eb2a1adea8fd987ce9988ab25670939626ec6df35",
+  "contract_id": "sle_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "contract_type": "accretion.simulation-lease",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "endpoint_handle": "simh_aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "environment_snapshot_hash": "95a9afd524e00a72bb6baa723b69d6e283af7f89a045c4025c91d2921251244e",
+  "episode_id": "sep_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "experiment_contract_hash": "f72cc6fa7972843cbf40d4f31a69d9e02402a6833ebbce71f03db636958d69b7",
+  "expires_at": "2026-09-09T00:05:00Z",
+  "generation": 1,
+  "heartbeat_timeout_seconds": 5.0,
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "objective_contract_ref": null,
+  "owner_principal": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_1A4XY98Q73BKJ60BXSWTPYE7X1",
+    "status": "ACTIVE"
+  },
+  "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "resource_id": "dev-fixture-resource",
+  "retention_class": null,
+  "revoked": false,
+  "run_id": "run_V9RYZCV51E5XWXJAABKWVKMTJC",
+  "schema_version": "2.0.0",
+  "supersedes_contract_id": null,
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}

@@ -1,0 +1,105 @@
+{
+  "adapter_ref": {
+    "content_hash": "a96bd36dab4db0f5b0a33ac9a0944bdcbaf13ec11d72946743f00d2b4577df2e",
+    "contract_id": "ebd_QKNPGQ31413BJ5XZQ4MAE2D26X",
+    "schema_version": "1.0.0"
+  },
+  "contract_id": "sxc_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "contract_type": "accretion.simulation-experiment",
+  "controller_artifact_digest": "16605ad2a3e83855c9ec76df0fc51725af2b1a2241810495f6bdbf74403bb2e6",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "embodiment_ref": {
+    "content_hash": "a96bd36dab4db0f5b0a33ac9a0944bdcbaf13ec11d72946743f00d2b4577df2e",
+    "contract_id": "ebd_QKNPGQ31413BJ5XZQ4MAE2D26X",
+    "schema_version": "1.0.0"
+  },
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "node_contract_ref": {
+    "immutable_hash": "55b458a12954d6e886224200c76448a63ea296c9ff463036d95b5f69522fbe07",
+    "node_contract_id": "nct_V9RYZCV51E5XWXJAABKWVKMTJC"
+  },
+  "objective_contract_ref": {
+    "approved_at": "2026-09-09T00:00:00Z",
+    "approved_by": {
+      "display_name": "SYNTHETIC schema fixture; not an operational approval",
+      "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+      "status": "ACTIVE"
+    },
+    "content_hash": "40ffc1296bf0bd51e17b8c032d5df9bb619c672a26cd1ef085eb3b68b5586579",
+    "contract_id": "dev-fixture-objective-ref",
+    "contract_type": "accretion.objective-contract-ref",
+    "created_at": "2026-09-09T00:00:00Z",
+    "created_by": {
+      "display_name": "SYNTHETIC schema fixture; not an operational approval",
+      "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+      "status": "ACTIVE"
+    },
+    "labels": {},
+    "objective_contract_hash": "d9e464df22e4be6d017ddd522dc8914e1c91b69d2d8c584f6163fc175dbaa3de",
+    "objective_contract_id": "obj_V9RYZCV51E5XWXJAABKWVKMTJC",
+    "objective_contract_ref": null,
+    "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+    "retention_class": null,
+    "revision": 1,
+    "risk_policy": {
+      "content_digest": "e44565844901abca52e79e5aa23fef5bb53d9aad25f396f2eddab0497320bccb",
+      "policy_id": "dev-fixture-policy",
+      "version": "1.0.0"
+    },
+    "schema_version": "1.0.0",
+    "supersedes_contract_id": null,
+    "utility_profile_id": "dev-fixture-utility",
+    "verified_success_floor": 0.9,
+    "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+  },
+  "project_id": null,
+  "protocol_ref": {
+    "digest": "45db7cc7c7b6ebb051434a93c595e9a0370ce6ccf5b96240bd23c60713a63148",
+    "evidence_class": "DIGITAL",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/45db7cc7c7b6ebb051434a93c595e9a0370ce6ccf5b96240bd23c60713a63148"
+  },
+  "randomization_spec_ref": {
+    "digest": "61b2df380b0e1deacc397a827b226cda8ed22e77dc55650f86bd76ce08fa58a4",
+    "evidence_class": "DIGITAL",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/61b2df380b0e1deacc397a827b226cda8ed22e77dc55650f86bd76ce08fa58a4"
+  },
+  "replay_class": "TOLERANT",
+  "resource_budget": {
+    "max_artifact_bytes": 1000000,
+    "max_episodes": 4,
+    "max_wall_seconds": 3600.0
+  },
+  "retention_class": null,
+  "risk_class": "SIMULATION",
+  "safety_envelope_hash": "92ec595c7b1f827ca72f0926f3ec6d465987d833adb99e32a5a9532623c951c1",
+  "schema_version": "1.0.0",
+  "seed_set": [
+    101,
+    102
+  ],
+  "supersedes_contract_id": null,
+  "tolerance_profile_ref": {
+    "digest": "5aad23d678311d33370eba0c2294d5a09593cd2c0e2349b87cc8792be528a72b",
+    "evidence_class": "DIGITAL",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/5aad23d678311d33370eba0c2294d5a09593cd2c0e2349b87cc8792be528a72b"
+  },
+  "verification_spec_hash": "4e812d6de945a52fb64af396a1ed222a9bcb7a32966b5951abb39319b3267177",
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "world_artifact_digest": "6d1ed6f24960eae1b2eced7d924c108f45e6e54debf5413f14e76210ca90fe56"
+}

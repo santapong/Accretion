@@ -1,0 +1,84 @@
+{
+  "action_receipts_ref": {
+    "digest": "510faa101b449704076c3675188b4f0806411743c6eb001fd044104540e5cf95",
+    "evidence_class": "SIMULATION",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/510faa101b449704076c3675188b4f0806411743c6eb001fd044104540e5cf95"
+  },
+  "content_hash": "80daab0eb64ffdbc474e007d372ff4c101ecc9840f53b5bb0f8d63092219eb45",
+  "contract_id": "epr_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "contract_type": "accretion.episode-record",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "environment_snapshot_hash": "95a9afd524e00a72bb6baa723b69d6e283af7f89a045c4025c91d2921251244e",
+  "episode_id": "sep_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "evidence_class": "SIMULATION",
+  "experiment_contract_hash": "f72cc6fa7972843cbf40d4f31a69d9e02402a6833ebbce71f03db636958d69b7",
+  "finished_at": "2026-09-09T00:05:00Z",
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "metrics_ref": {
+    "digest": "25d07e53135d7e910311629551dc3e815f9500c83c5a5e815734c9dca281ffcd",
+    "evidence_class": "SIMULATION",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/25d07e53135d7e910311629551dc3e815f9500c83c5a5e815734c9dca281ffcd"
+  },
+  "objective_contract_ref": null,
+  "producer_principal": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_1A4XY98Q73BKJ60BXSWTPYE7X1",
+    "status": "ACTIVE"
+  },
+  "producer_runtime_ref": "dev-fixture-runtime",
+  "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "provenance_manifest_ref": {
+    "digest": "3a9996e0eeb437ebaae66ff884664e11aa7edfe071f39d8d0c59e640a622d6b7",
+    "evidence_class": "SIMULATION",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/3a9996e0eeb437ebaae66ff884664e11aa7edfe071f39d8d0c59e640a622d6b7"
+  },
+  "replay_class": "TOLERANT",
+  "retention_class": null,
+  "run_id": "run_V9RYZCV51E5XWXJAABKWVKMTJC",
+  "safety_events_ref": {
+    "digest": "c7e3b53898c3a3d2431f36c1f2407560a1b069c779028d6c015dfef59fe05be2",
+    "evidence_class": "SIMULATION",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/c7e3b53898c3a3d2431f36c1f2407560a1b069c779028d6c015dfef59fe05be2"
+  },
+  "schema_version": "1.0.0",
+  "seed": 101,
+  "sensor_manifest_ref": {
+    "digest": "7aae0c7962968d006097e29eae5905f30a4534eef4ccdc04d9971567c603f097",
+    "evidence_class": "SIMULATION",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/7aae0c7962968d006097e29eae5905f30a4534eef4ccdc04d9971567c603f097"
+  },
+  "started_at": "2026-09-09T00:00:00Z",
+  "supersedes_contract_id": null,
+  "termination_reason": "CANCELLED",
+  "trajectory_ref": {
+    "digest": "6dd71b0ddb5a3838394e596083e73ba9db3a477d282ebe47508df280601f93e5",
+    "evidence_class": "SIMULATION",
+    "media_type": "application/json",
+    "retention_class": "RESEARCH_ARCHIVE",
+    "size_bytes": 32,
+    "uri": "artifact://sha256/6dd71b0ddb5a3838394e596083e73ba9db3a477d282ebe47508df280601f93e5"
+  },
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}

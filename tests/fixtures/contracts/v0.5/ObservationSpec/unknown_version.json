@@ -1,0 +1,39 @@
+{
+  "content_hash": "2fb1a96ca0385cf63b4d306cdd9d136c631d439cc94d571c53631dbfdfc1f3f1",
+  "contract_id": "obs_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "contract_type": "accretion.observation-spec",
+  "created_at": "2026-09-09T00:00:00Z",
+  "created_by": {
+    "display_name": "SYNTHETIC schema fixture; not an operational approval",
+    "principal_id": "usr_2HSYHYMGM8QKB5NX8F4W20R090",
+    "status": "ACTIVE"
+  },
+  "labels": {
+    "fixture": "SYNTHETIC_NOT_EXECUTION_OR_AUTHORIZATION"
+  },
+  "missing_data_policy": "FAIL_EPISODE",
+  "objective_contract_ref": null,
+  "optional": [],
+  "project_id": "prj_NQ9N47Q5P26HN3BCN2RMVHS7FX",
+  "required": [
+    {
+      "dtype": "float64",
+      "field": "joint_position",
+      "frame_id": "base",
+      "modality": "JOINT_STATE",
+      "sensor_id": "joint_state",
+      "shape": [
+        6
+      ],
+      "unit": "rad"
+    }
+  ],
+  "retention_class": null,
+  "schema_version": "2.0.0",
+  "supersedes_contract_id": null,
+  "time_alignment": {
+    "clock": "SIMULATION",
+    "maximum_skew_ms": 20.0
+  },
+  "workspace_id": "wks_NQ9N47Q5P26HN3BCN2RMVHS7FX"
+}
