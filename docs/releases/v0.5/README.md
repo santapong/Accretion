@@ -1,6 +1,6 @@
 # v0.5 — Robotics Simulation and Embodiment Foundation
 
-Status: **M0 construction locally verified; protected integration pending**
+Status: **M0 merged through PR #182; wave 1 locally verified, protected review pending**
 (9 September 2026).
 
 Start with the [multi-agent completion plan](completion-plan-2026-09-09.md).
@@ -13,8 +13,11 @@ bounded parallel work with a coordinator and at most three workers.
 | [Execution checkpoint](execution-2026-09-09.md) | Current implementation disposition and observed validation |
 | [M0 decisions](m0-decisions-2026-09-09.md) | Adopted contract, authority, simulation and evidence directions |
 | [M0 API contract](m0-api-contract.md) | Scoped operations, idempotency, concurrency, state and Studio integration |
+| [M1 foundation boundaries](m1-foundations.md) | Scoped registry API, explicit local project binding, bounded artifacts and pending host authority |
+| [M1 persistence boundary](m1-registry-2026-09-09.md) | Additive migration, canonical reference resolution, transactional events and trusted conformance joins |
 | [Canonical contract inventory](../../contracts/v0.5/README.md) | Twenty-one simulation records, writer provenance and synthetic fixtures |
 | [M0 construction validation](evidence/m0-construction-2026-09-09/validation.json) | Tested candidates, confirmed local exits and review-repair evidence |
+| [M1 construction validation](evidence/m1-construction-2026-09-09/README.md) | Combined tests, exact source identities, immutable logs and migration recovery |
 | [M0 simulator feasibility](feasibility-2026-09-09.md) | Executed CPU-only UR5e/gripper and Panda reset, stepping, observations and contact evidence |
 | [Active SDD](../../sdd/Accretion_SDD_v0.5.md) | Active requirements with stable acceptance IDs and separate evidence obligations |
 | [Prospective protocol draft](../../research/v0.5/protocol-draft.md) | Study design decisions and implemented composite-evidence format; not a registered study |

@@ -691,6 +691,7 @@ class SimulationDomainEvent(RoboticsContract):
         "accretion.simulation-domain-event"
     )
     event_type: Literal[
+        "simulation_contract.registered",
         "embodiment.registered",
         "robot_adapter.registered",
         "robot_adapter.conformance_completed",

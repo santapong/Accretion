@@ -295,6 +295,7 @@
     },
     "event_type": {
       "enum": [
+        "simulation_contract.registered",
         "embodiment.registered",
         "robot_adapter.registered",
         "robot_adapter.conformance_completed",

@@ -1,0 +1,35 @@
+{
+  "lane": "release",
+  "candidate": "ea9d0f6c485c63705d24cf5e263035014e3962d1",
+  "tree": "c6709b4c95b30ba5349872822ce2b6052a568c57",
+  "scope": "CONSTRUCTION_ONLY_NO_COMPOSITE_AC5_CLAIM",
+  "started_at": "2026-09-09T08:06:58.793499+00:00",
+  "steps": [
+    {
+      "argv": [
+        ".venv/bin/python",
+        "scripts/check_acceptance.py"
+      ],
+      "started_at": "2026-09-09T08:06:58.794148+00:00",
+      "log": "release-ea9d0f6c-01.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T08:10:14.025489+00:00",
+      "sha256": "19299b3049fc223385160b0104ae35e75908fc8fb27c0ddff853bce349789685"
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        "scripts/release_gate.py"
+      ],
+      "started_at": "2026-09-09T08:10:14.029089+00:00",
+      "log": "release-ea9d0f6c-02.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T08:13:39.500150+00:00",
+      "sha256": "304c019f682db3709c4b15215ed7b89c47e4be20c56b2ee4a34e1f2a22483c6f"
+    }
+  ],
+  "complete": true,
+  "disposable_database": "accretion_v05_wave1_gate",
+  "ended_at": "2026-09-09T08:13:39.501448+00:00",
+  "source_unchanged": true
+}

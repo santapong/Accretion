@@ -1,0 +1,62 @@
+{
+  "lane": "backend",
+  "candidate": "ea9d0f6c485c63705d24cf5e263035014e3962d1",
+  "tree": "c6709b4c95b30ba5349872822ce2b6052a568c57",
+  "scope": "CONSTRUCTION_ONLY_NO_COMPOSITE_AC5_CLAIM",
+  "started_at": "2026-09-09T08:02:51.606730+00:00",
+  "steps": [
+    {
+      "argv": [
+        ".venv/bin/alembic",
+        "upgrade",
+        "head"
+      ],
+      "started_at": "2026-09-09T08:02:51.614828+00:00",
+      "log": "backend-ea9d0f6c-01.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T08:02:57.886328+00:00",
+      "sha256": "eb25623451255704fcb2839bb041799a07de819e82d64656f6c6ad97ad0761f1"
+    },
+    {
+      "argv": [
+        ".venv/bin/alembic",
+        "downgrade",
+        "base"
+      ],
+      "started_at": "2026-09-09T08:02:57.891065+00:00",
+      "log": "backend-ea9d0f6c-02.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T08:03:01.364145+00:00",
+      "sha256": "fffdf0c296e28cf1f48a0656b3dfa14463e4303af68e0671c27b6e8be281052b"
+    },
+    {
+      "argv": [
+        ".venv/bin/alembic",
+        "upgrade",
+        "head"
+      ],
+      "started_at": "2026-09-09T08:03:01.364858+00:00",
+      "log": "backend-ea9d0f6c-03.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T08:03:05.342349+00:00",
+      "sha256": "eb25623451255704fcb2839bb041799a07de819e82d64656f6c6ad97ad0761f1"
+    },
+    {
+      "argv": [
+        ".venv/bin/pytest",
+        "-p",
+        "pytest_asyncio.plugin",
+        "-q"
+      ],
+      "started_at": "2026-09-09T08:03:05.342922+00:00",
+      "log": "backend-ea9d0f6c-04.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T08:06:20.740216+00:00",
+      "sha256": "8bdff1734fb206d99c04b6113ac790e4016bbf012be9f0f8d62342af714e0a92"
+    }
+  ],
+  "complete": true,
+  "disposable_database": "accretion_v05_wave1_gate",
+  "ended_at": "2026-09-09T08:06:20.763340+00:00",
+  "source_unchanged": true
+}

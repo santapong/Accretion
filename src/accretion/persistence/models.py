@@ -10,6 +10,7 @@ from sqlalchemy import (
     DateTime,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     String,
@@ -21,6 +22,114 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, declared_attr, mapped_column
 
 class Base(DeclarativeBase):
     pass
+
+
+class SimulationProjectBindingRow(Base):
+    __tablename__ = "simulation_project_bindings"
+
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("projects.id", ondelete="RESTRICT"), primary_key=True
+    )
+    workspace_id: Mapped[str] = mapped_column(
+        ForeignKey("workspaces.workspace_id", ondelete="RESTRICT")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    __table_args__ = (
+        UniqueConstraint("project_id", "workspace_id", name="uq_simulation_project_scope"),
+    )
+
+
+class RoboticsContractRow(Base):
+    __tablename__ = "robotics_contracts"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    project_id: Mapped[str] = mapped_column(String(40))
+    contract_type: Mapped[str] = mapped_column(String(96))
+    logical_name: Mapped[str] = mapped_column(String(255))
+    version: Mapped[str] = mapped_column(String(64))
+    schema_version: Mapped[str] = mapped_column(String(32))
+    content_hash: Mapped[str] = mapped_column(String(64))
+    original_json: Mapped[str] = mapped_column(Text)
+    created_by: Mapped[str] = mapped_column(
+        ForeignKey("principals.principal_id", ondelete="RESTRICT")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["project_id", "workspace_id"],
+            ["simulation_project_bindings.project_id", "simulation_project_bindings.workspace_id"],
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "workspace_id", "project_id", "contract_type", "logical_name", "version",
+            name="uq_robotics_contract_slot",
+        ),
+        UniqueConstraint("workspace_id", "project_id", "content_hash", name="uq_robotics_digest"),
+        Index(
+            "ix_robotics_contract_scope_type_id",
+            "workspace_id", "project_id", "contract_type", "id",
+        ),
+    )
+
+
+class RoboticsIdempotencyRow(Base):
+    __tablename__ = "robotics_idempotency"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    project_id: Mapped[str] = mapped_column(
+        ForeignKey("simulation_project_bindings.project_id", ondelete="RESTRICT")
+    )
+    principal_id: Mapped[str] = mapped_column(
+        ForeignKey("principals.principal_id", ondelete="RESTRICT")
+    )
+    operation: Mapped[str] = mapped_column(String(64))
+    resource: Mapped[str] = mapped_column(String(255))
+    key: Mapped[str] = mapped_column(String(128))
+    request_hash: Mapped[str] = mapped_column(String(64))
+    response_json: Mapped[str] = mapped_column(Text)
+
+
+class RoboticsEventRow(Base):
+    __tablename__ = "robotics_domain_events"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    aggregate_id: Mapped[str] = mapped_column(
+        ForeignKey("robotics_contracts.id", ondelete="RESTRICT")
+    )
+    workspace_id: Mapped[str] = mapped_column(String(255))
+    project_id: Mapped[str] = mapped_column(String(40))
+    sequence: Mapped[int] = mapped_column(Integer)
+    content_hash: Mapped[str] = mapped_column(String(64))
+    original_json: Mapped[str] = mapped_column(Text)
+    __table_args__ = (
+        UniqueConstraint("aggregate_id", "sequence", name="uq_robotics_event_sequence"),
+    )
+
+
+class RoboticsConformanceRow(Base):
+    __tablename__ = "robotics_conformance"
+
+    report_id: Mapped[str] = mapped_column(
+        ForeignKey("robotics_contracts.id", ondelete="RESTRICT"), primary_key=True
+    )
+    adapter_id: Mapped[str] = mapped_column(
+        ForeignKey("robotics_contracts.id", ondelete="RESTRICT")
+    )
+    closure_hash: Mapped[str] = mapped_column(String(64))
+    revision: Mapped[int] = mapped_column(Integer)
+    __table_args__ = (
+        UniqueConstraint("adapter_id", "revision", name="uq_robotics_conformance_revision"),
+        Index("ix_robotics_conformance_closure", "adapter_id", "closure_hash", "revision"),
+    )
+
+
+V05_REGISTRY_TABLES = (
+    "simulation_project_bindings", "robotics_contracts", "robotics_idempotency",
+    "robotics_domain_events", "robotics_conformance",
+)
 
 
 class ProjectRow(Base):

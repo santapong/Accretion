@@ -1,0 +1,71 @@
+{
+  "lane": "static",
+  "candidate": "ea9d0f6c485c63705d24cf5e263035014e3962d1",
+  "tree": "c6709b4c95b30ba5349872822ce2b6052a568c57",
+  "scope": "CONSTRUCTION_ONLY_NO_COMPOSITE_AC5_CLAIM",
+  "started_at": "2026-09-09T08:02:51.708325+00:00",
+  "steps": [
+    {
+      "argv": [
+        "uv",
+        "lock",
+        "--check"
+      ],
+      "started_at": "2026-09-09T08:02:51.708870+00:00",
+      "log": "static-ea9d0f6c-01.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T08:02:51.920706+00:00",
+      "sha256": "7298ab1f3f0441441028fb2815a089d83d3f8f3293c1d7accad717b2c8119627"
+    },
+    {
+      "argv": [
+        ".venv/bin/ruff",
+        "check",
+        "."
+      ],
+      "started_at": "2026-09-09T08:02:51.925075+00:00",
+      "log": "static-ea9d0f6c-02.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T08:02:52.379316+00:00",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "argv": [
+        ".venv/bin/mypy",
+        "src"
+      ],
+      "started_at": "2026-09-09T08:02:52.402849+00:00",
+      "log": "static-ea9d0f6c-03.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T08:02:55.004899+00:00",
+      "sha256": "866f135eda15a6396df37bd084c95fd89cee94239a37fcd17a9f9b0eb3878445"
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        "scripts/check_docs.py"
+      ],
+      "started_at": "2026-09-09T08:02:55.005291+00:00",
+      "log": "static-ea9d0f6c-04.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T08:02:57.223768+00:00",
+      "sha256": "3cab6bbae26180ee72125a1004ce32414b1ccf0471acedea61cc56c31d589b5a"
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        "scripts/export_contract_schemas.py",
+        "--check"
+      ],
+      "started_at": "2026-09-09T08:02:57.228625+00:00",
+      "log": "static-ea9d0f6c-05.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T08:02:59.130880+00:00",
+      "sha256": "6b48938a96c040d7dcdf2e2bf72b75321dcc1e7d33e489b70a1a5ad4667bef2f"
+    }
+  ],
+  "complete": true,
+  "disposable_database": "accretion_v05",
+  "ended_at": "2026-09-09T08:02:59.134359+00:00",
+  "source_unchanged": true
+}

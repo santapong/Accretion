@@ -24,6 +24,9 @@ from accretion.api.auth import (
 from accretion.api.auth import principal as current_principal
 from accretion.api.benchmarks_router import router as router_benchmark_router
 from accretion.api.feedback import router as feedback_router
+from accretion.api.robotics import build_registry
+from accretion.api.robotics import error_response as robotics_error_response
+from accretion.api.robotics import router as robotics_router
 from accretion.api.router_admin import router as router_admin_router
 from accretion.api.routing import router as routing_router
 from accretion.api.schemas import (
@@ -206,6 +209,7 @@ from accretion.plugins.registration import PluginDetail
 from accretion.plugins.trust import PluginTrustVerifier, load_trusted_keys
 from accretion.research.transforms import default_transform_registry
 from accretion.resolver import CapabilityResolver
+from accretion.robotics.errors import RoboticsError
 from accretion.routing.artifacts import ArtifactStore
 from accretion.routing.bootstrap import build_node_routing
 from accretion.routing.calibration import CalibrationReport
@@ -434,6 +438,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         store, ArtifactStore(settings.router_artifact_dir), lambda: datetime.now(UTC)
     )
     app.state.auth = build_auth_runtime(store, settings, enterprise_auth=enterprise_auth)
+    app.state.robotics_registry = await build_registry(store, settings, app.state.auth)
     await seed_templates(store)
     await seed_governance(store)
     await seed_acr_arch(store)
@@ -458,13 +463,15 @@ app.include_router(router_admin_router)
 app.include_router(feedback_router)
 app.include_router(shadow_router)
 app.include_router(router_benchmark_router)
+app.include_router(robotics_router)
 settings = get_settings()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["Content-Type", "Last-Event-ID", "X-Request-ID"],
+    allow_headers=["Content-Type", "Last-Event-ID", "X-Request-ID", "Idempotency-Key", "If-Match"],
+    expose_headers=["ETag"],
 )
 
 
@@ -536,6 +543,11 @@ def enterprise_auth(request: Request) -> EnterpriseAuthManager | None:
 @app.exception_handler(KeyError)
 async def key_error_handler(request: Request, exc: KeyError) -> JSONResponse:
     return _error(404, "NOT_FOUND", f"Resource {exc.args[0]} was not found")
+
+
+@app.exception_handler(RoboticsError)
+async def robotics_error_handler(request: Request, exc: RoboticsError) -> JSONResponse:
+    return await robotics_error_response(request, exc)
 
 
 @app.exception_handler(RoutingError)
