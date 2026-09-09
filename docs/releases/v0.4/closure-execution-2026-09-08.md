@@ -1,7 +1,7 @@
 # Approved v0.4 closure execution
 
 Started 2026-09-08 (Asia/Bangkok). Local validation completed 2026-09-09.
-Status: **LOCAL IMPLEMENTATION VERIFIED — protected integration remains the exit gate.**
+Status: **MERGED INTO DEVELOP — approved closure complete on 2026-09-09.**
 Santapong approved the [parallel completion plan](completion-plan-2026-09-08.md)
 in the Codex conversation. This record distinguishes executed checks from the
 original planning audits and existing v0.4.0/v0.4.1 releases.
@@ -89,11 +89,17 @@ dispatch events from the rejected overrides. There are no remaining blockers
 within the reviewed implementation scope. Later changes to this candidate only
 record validation and handoff documentation; check those links before pushing.
 
-The protected integration gate requires successful backend, frontend, browser
-and clean-checkout checks for the pushed branch, plus resolved PR review
-conversations and squash merge into `develop`. This record is not evidence that
-the remote gate or merge has happened. At preparation, Codex has no connected
-signed-in browser for PR creation/merge; the access request is pending.
+The protected integration gate completed on 2026-09-09 through
+[PR #179](https://github.com/santapong/Accretion/pull/179). All eight checks passed:
+backend, frontend, browser and clean-checkout for both the
+[branch push](https://github.com/santapong/Accretion/actions/runs/34259320348) and
+[pull request](https://github.com/santapong/Accretion/actions/runs/34303998036).
+There were no unresolved review conversations. GitHub recorded a squash merge
+into `develop` at `abd3e0d8d0bd36b86ab28b47d1b789d87f7a7e30`; a fresh Git fetch
+and tree comparison matched the reviewed `4796611` exactly. The original
+checkout was fast-forwarded to that merged commit. The earlier missing-browser
+access condition is historical and resolved. Subsequent dependency maintenance
+is recorded in the [dependency review](dependency-review-2026-09-09.md).
 
 Version decision, 2026-09-09: the bounded runtime repairs are compatible with a
 future patch release. They introduce no public contract or database migration,

@@ -35,8 +35,8 @@ catalog remains FAKE-only; no activation or new experiment is claimed here.
 
 | Work | Owner and next trigger | Current disposition |
 |---|---|---|
-| Exploration budget admission and settlement recovery | Runtime maintainer; protected PR checks and integration | Reproduced defects repaired in the [closure candidate](closure-execution-2026-09-08.md): shared transaction lock, durable cost replay, conservative revisions and fail-closed malformed accounting. Focused process/database witnesses and all combined local gates pass. The [runbook](../../runbooks/v04-routing-accounting.md) limits claims to cumulative normalized workspace/node-kind accounting and requires older AUTO writers to drain or disable. |
-| Stored writer identity after read-boundary upcasting | Compatibility maintainer; protected PR checks and integration | Reproduced reference and projection defects repaired and independently reviewed in the [closure candidate](closure-execution-2026-09-08.md); both-store witnesses and combined local gates pass. Reads use verified writer identity; unknown execution/accounting fields and executable projection amendments remain denied. Original stored bytes and legacy digests are retained. |
+| Exploration budget admission and settlement recovery | Closed in #179; runtime maintainer owns any later patch rollout | Reproduced defects repaired in the [merged closure](closure-execution-2026-09-08.md): shared transaction lock, durable cost replay, conservative revisions and fail-closed malformed accounting. Focused process/database witnesses, all combined local gates and all eight protected PR/push checks passed before squash merge into `develop`. The [runbook](../../runbooks/v04-routing-accounting.md) limits claims to cumulative normalized workspace/node-kind accounting and requires older AUTO writers to drain or disable. |
+| Stored writer identity after read-boundary upcasting | Closed in #179; compatibility maintainer owns any later patch rollout | Reproduced reference and projection defects repaired and independently reviewed in the [merged closure](closure-execution-2026-09-08.md); both-store witnesses, combined local gates and all eight protected PR/push checks passed before squash merge into `develop`. Reads use verified writer identity; unknown execution/accounting fields and executable projection amendments remain denied. Original stored bytes and legacy digests are retained. |
 | Full research claim and next study | Research owner; complete and explicitly authorize the prospective study before provider execution | [Adopted scoped NO-GO](research-handoff-2026-09-08.md) preserves PARTIAL paired evidence and the frozen amendment. [R1 fake preparation](../../research/v0.4/provider-pilot-2026-09-08/instrumentation-report-2026-09-09.md) is verified with zero provider calls. No priced live-routing result; qualified evaluation, monetary accounting and explicit call/money/time limits remain required. |
 | Pin-aware routed AGENT tool sessions | Runtime/capability maintainer; explicit SDD/version scope | Deferred capability extension. TOOL-node binding enforcement exists; AGENT sessions carrying selected tools remain denied. |
 | OQ-409 minimum shadow evidence | Research owner; prospective power analysis on permitted development data | Open. The implemented default is 30 complete pairs workspace-wide, not proof of a per-configuration quota or a completed power calculation. |
@@ -54,7 +54,7 @@ plans. It does not silently amend the frozen SDD's open-question table.
 | OQ-417 override reasons | [M2 plan](m2-plan.md): uppercase reason code and nonempty explanation | Closed taxonomy and a new canonical override contract remain deferred. |
 | OQ-418 verifier independence | [M3 plan](m3-plan.md) and [IndependenceCheck](../../../src/accretion/feedback/verification.py): separate producer/verifier context required | A distinct runtime is preferred; this is not a measured numeric independence score. |
 | OQ-420 v0.5 hook | [M0 plan](m0-plan.md), ADR-059: no reserved slot | Robotics remains outside v0.4. |
-| Read-boundary upcaster and digest convergence | [M8 plan](m8-plan.md), [upcaster](../../../src/accretion/contracts/upcast.py), and M8 digest outcome below | Upcasting is implemented; three digest sites converged and four deliberately keep legacy bytes. The post-release reference repair and its remaining integration gates are recorded above. |
+| Read-boundary upcaster and digest convergence | [M8 plan](m8-plan.md), [upcaster](../../../src/accretion/contracts/upcast.py), and M8 digest outcome below | Upcasting is implemented; three digest sites converged and four deliberately keep legacy bytes. The merged post-release reference repair and its integration evidence are recorded above. |
 
 The following milestone sections retain the decisions and observations recorded
 while the program was built. Dated clarifications identify superseded readings
@@ -69,7 +69,7 @@ identity-provider interoperability as an expiring manual criterion, and the toke
 allowlist. None is a v0.4 acceptance criterion; each is scheduled when a v0.4 milestone touches
 its surface, and none is added to the M0 freeze. The read-boundary schema upcaster
 (registry §20.5, ADR-057) was delivered in M8; its recorded implementation and
-remaining reference-boundary check are distinguished above.
+completed reference-boundary repair are distinguished above.
 
 ## Recorded during M0
 
