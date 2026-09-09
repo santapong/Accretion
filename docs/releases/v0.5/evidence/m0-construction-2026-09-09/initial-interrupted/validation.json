@@ -1,0 +1,46 @@
+{
+  "candidate_commit": "9549a466fa3ed2349d8cba392364225372e76fde",
+  "scope": "M0 combined backend and inherited gates; no v0.5 execution acceptance claimed",
+  "started_at": "2026-09-09T06:56:04.773462+00:00",
+  "steps": [
+    {
+      "command": [
+        "uv",
+        "lock",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.035,
+      "log": "01.log",
+      "log_sha256": "df442c9d57f07c5fbfa31675425f65434b53e13420ceaf27a1ac1db1ba1e165e"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-sync",
+        "alembic",
+        "downgrade",
+        "base"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.532,
+      "log": "02.log",
+      "log_sha256": "a94be0a80f9f1a0b7fbb3d02e276df0457e5a1f804daae6acc147f5cbf62233a"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-sync",
+        "alembic",
+        "upgrade",
+        "head"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 6.966,
+      "log": "03.log",
+      "log_sha256": "d0e14ddc6751841adca94f27285f2cf574cafb8ed05cd372769cba366cc380e1"
+    }
+  ]
+}

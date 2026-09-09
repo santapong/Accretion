@@ -1,0 +1,60 @@
+{
+  "status": "M0_CONSTRUCTION_LOCALLY_VERIFIED_REMOTE_REVIEW_PENDING",
+  "code_candidate": "77d99396e6bbfc8fd9b32fbc2e2204cfafbcf995",
+  "full_suite_candidate": "9549a466fa3ed2349d8cba392364225372e76fde",
+  "review_delta": [
+    "23f7bdf",
+    "77d9939"
+  ],
+  "validation": {
+    "backend_passed": 3871,
+    "live_provider_skipped": 6,
+    "frontend_passed": 286,
+    "review_delta_focused_passed": 548,
+    "inherited_release_conditions_passed": 5,
+    "schemas": 42,
+    "new_v05_schemas": 21,
+    "synthetic_fixture_files": 84,
+    "v05_registered_criteria": 30,
+    "v05_composite_criteria_proven": 0,
+    "local_node": "26.8.1",
+    "ci_node": "24 (pending remote run)"
+  },
+  "recovery_notes": [
+    "Initial backend runner exited143 without recording pytest exit; cause unknown. Its successful lock/migration steps are preserved. Rerun confirmed pytest exit0 plus the previously unstarted inherited gates on unchanged clean candidate.",
+    "Initial review-delta command named two nonexistent test files and exited4 before collection. Corrected existing paths passed548 tests. Prior successful Ruff/mypy results were retained.",
+    "Full backend/frontend suites ran before two independently reviewed focused repairs. The repaired candidate passed548 relevant tests plus schema/lint/type checks. The protected PR must rerun required CI on its final head."
+  ],
+  "limits": [
+    "M0 construction only; no AC5 composite execution criterion, adapter conformance, grasp, independent replay, benchmark, physical action or v0.5 release claimed.",
+    "Negative release/stage probes intentionally return1/2.",
+    "Retained construction logs and feasibility are distinct from future authenticated release witness reports."
+  ],
+  "files": {
+    "backend-confirmed/01.log": "96577fca999b94674a203d1fd4ae72f298e00f08ec3027b0906047bfbd5ee5ab",
+    "backend-confirmed/02.log": "e209bba4168b2368784a93a3a727b841ab675dc3f917333d7a9a46a693f241c3",
+    "backend-confirmed/03.log": "19b8f0c9ca7ce4ac8b903cf2a4a08c8659b48347ae3ac3582a1f1f0220f30071",
+    "backend-confirmed/validation.json": "79901b1fdfd5a177b6311a9d8c2f27ab0072e8d6f5347dd7c69e80e07d146225",
+    "frontend/01.log": "4445de76e667507ec85269f33fd1fc4520c0b011e5d1c55cb8ec568498aa76e3",
+    "frontend/02.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "frontend/03.log": "27cd05d560ad7941b33eca863cadaf418bc12a6d83cff5fd503b255a08c990d5",
+    "frontend/04.log": "fc8f788bd2b52ad180f26e3701d1dffe41c4d11dbd9474341ed316c4a581d9d5",
+    "frontend/05.log": "a265890bb64cd31924c1a26c6a2b73d0d56a939636f366fc221c589fe17973cc",
+    "frontend/validation.json": "5cf06f6b54e28b6e55bdd1924138316c9ed6bb8d0872b0101b5bfaa2bc4159ca",
+    "initial-interrupted/01.log": "df442c9d57f07c5fbfa31675425f65434b53e13420ceaf27a1ac1db1ba1e165e",
+    "initial-interrupted/02.log": "a94be0a80f9f1a0b7fbb3d02e276df0457e5a1f804daae6acc147f5cbf62233a",
+    "initial-interrupted/03.log": "d0e14ddc6751841adca94f27285f2cf574cafb8ed05cd372769cba366cc380e1",
+    "initial-interrupted/04.log": "c44086c3f4af19d61fc4ed3473e1159207140a8df4c1f46d6c069c8b272368cd",
+    "initial-interrupted/validation.json": "ee3ea3dbac2f46cde3e18e887ea967baefa0bfaa71d082639da05e2a484d6d10",
+    "negative-gates/01.log": "2ecad619ac6d30c6b8162f020287c89fe850daa0dbe1fe391279eb9892499df1",
+    "negative-gates/02.log": "ad4b1b62aee4e60a982e232b86341592d0ebca29094fe0b223a20e651b5ba181",
+    "negative-gates/validation.json": "938b9619c13524d553fde6cf63de9ede12809e6daa918ebb79730b282cd5b2fe",
+    "review-fixes-confirmed/01.log": "6715a3e2e643d17ffa60dcca1f6b60efb95fb8475f49ecfe13cfe4f5be277430",
+    "review-fixes-confirmed/02.log": "6b48938a96c040d7dcdf2e2bf72b75321dcc1e7d33e489b70a1a5ad4667bef2f",
+    "review-fixes-confirmed/validation.json": "59717b2cb49ce7a42b42244d73401612df45ef0b0215e531bb396d026269d954",
+    "review-fixes-initial/01.log": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18",
+    "review-fixes-initial/02.log": "a4be80670a49e40967d7663defa16bbef3d09cd6a5dbd3e7d61ae68cbaf7a2e4",
+    "review-fixes-initial/03.log": "42fc5fee01aac6ec5c666ea4de0830162ce91bbfdeb4c46ecbbf5af5880fc7a1",
+    "review-fixes-initial/validation.json": "5242e5c649cae9136ce01d765b47f2d4045cf69b20b7a23999efdb2c55716626"
+  }
+}

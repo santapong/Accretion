@@ -1,6 +1,7 @@
 # v0.5 — Robotics Simulation and Embodiment Foundation
 
-Status: **plan approved; M0 implementation in progress** (9 September 2026).
+Status: **M0 construction locally verified; protected integration pending**
+(9 September 2026).
 
 Start with the [multi-agent completion plan](completion-plan-2026-09-09.md).
 It maps the ten SDD implementation steps and all thirty acceptance criteria into
@@ -12,6 +13,8 @@ bounded parallel work with a coordinator and at most three workers.
 | [Execution checkpoint](execution-2026-09-09.md) | Current implementation disposition and observed validation |
 | [M0 decisions](m0-decisions-2026-09-09.md) | Adopted contract, authority, simulation and evidence directions |
 | [M0 API contract](m0-api-contract.md) | Scoped operations, idempotency, concurrency, state and Studio integration |
+| [Canonical contract inventory](../../contracts/v0.5/README.md) | Twenty-one simulation records, writer provenance and synthetic fixtures |
+| [M0 construction validation](evidence/m0-construction-2026-09-09/validation.json) | Tested candidates, confirmed local exits and review-repair evidence |
 | [M0 simulator feasibility](feasibility-2026-09-09.md) | Executed CPU-only UR5e/gripper and Panda reset, stepping, observations and contact evidence |
 | [Active SDD](../../sdd/Accretion_SDD_v0.5.md) | Active requirements with stable acceptance IDs and separate evidence obligations |
 | [Prospective protocol draft](../../research/v0.5/protocol-draft.md) | Study design decisions and implemented composite-evidence format; not a registered study |
@@ -22,11 +25,11 @@ bounded parallel work with a coordinator and at most three workers.
 | [Planning validation](planning/plan-validation-2026-09-09.json) | Static link, criterion-mapping and preservation checks; not implementation or research execution |
 
 The [forward SDD](../../sdd/future/v0.4-v1.0/02_SDDS/Accretion_SDD_v0.5.md)
-remains preserved. Active specification and registry reconciliation proceed
-through the approved M0 work. The [v0.4 handoff](../v0.4/research-handoff-2026-09-08.md)
+remains preserved. The active specification and M0 contract overlay are now
+implemented. The [v0.4 handoff](../v0.4/research-handoff-2026-09-08.md)
 records inherited technical entry evidence; it does not establish a v0.5
 simulation result.
 
-The recommended plan uses MuJoCo, UR5e with a Robotiq gripper, and an independent
-Panda adapter, subject to the explicit M0 ADR. v0.5 is simulation-only. Engineering
+The adopted profile uses MuJoCo, UR5e with a Robotiq gripper, and an independent
+Panda adapter under the M0 ADR. v0.5 is simulation-only. Engineering
 readiness, research qualification and a tagged release remain distinct gates.

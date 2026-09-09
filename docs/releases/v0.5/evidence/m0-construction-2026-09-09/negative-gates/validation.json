@@ -1,0 +1,37 @@
+{
+  "candidate_commit": "77d99396e6bbfc8fd9b32fbc2e2204cfafbcf995",
+  "checked_at": "2026-09-09T07:13:01.900797+00:00",
+  "steps": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-sync",
+        "python",
+        "scripts/check_acceptance.py",
+        "--release",
+        "v0.5"
+      ],
+      "exit_code": 1,
+      "expected_exit": 1,
+      "log": "01.log",
+      "sha256": "2ecad619ac6d30c6b8162f020287c89fe850daa0dbe1fe391279eb9892499df1"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-sync",
+        "python",
+        "scripts/check_acceptance.py",
+        "--stage",
+        "v0.5-M0",
+        "--no-tests"
+      ],
+      "exit_code": 2,
+      "expected_exit": 2,
+      "log": "02.log",
+      "sha256": "ad4b1b62aee4e60a982e232b86341592d0ebca29094fe0b223a20e651b5ba181"
+    }
+  ]
+}

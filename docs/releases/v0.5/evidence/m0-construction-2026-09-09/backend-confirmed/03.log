@@ -1,0 +1,40 @@
+{
+  "passed": true,
+  "conditions": [
+    {
+      "name": "acceptance",
+      "expression": "all(MUST acceptance criteria pass)",
+      "passed": true,
+      "detail": "in scope: 167   proven: 159   unmet MUST: 0",
+      "missing": []
+    },
+    {
+      "name": "secret_exposure_incidents",
+      "expression": "secret_exposure_incidents == 0",
+      "passed": true,
+      "detail": "2 suite(s): 6 passed in 5.07s",
+      "missing": []
+    },
+    {
+      "name": "capability_policy_bypass",
+      "expression": "capability_policy_bypass == 0",
+      "passed": true,
+      "detail": "2 suite(s): 21 passed in 2.61s",
+      "missing": []
+    },
+    {
+      "name": "connection_isolation_tests",
+      "expression": "connection_isolation_tests == PASS",
+      "passed": true,
+      "detail": "4 suite(s): 53 passed in 3.78s",
+      "missing": []
+    },
+    {
+      "name": "regression_suite",
+      "expression": "v0.1/v0.2 regression suite == PASS",
+      "passed": true,
+      "detail": "8 suite(s): 87 passed in 9.71s",
+      "missing": []
+    }
+  ]
+}

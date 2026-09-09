@@ -1,0 +1,52 @@
+{
+  "candidate_commit": "9549a466fa3ed2349d8cba392364225372e76fde",
+  "scope": "M0 combined backend and inherited gates; no v0.5 execution acceptance claimed",
+  "started_at": "2026-09-09T07:02:43.730741+00:00",
+  "steps": [
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-sync",
+        "pytest",
+        "-p",
+        "pytest_asyncio.plugin"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 185.085,
+      "log": "01.log",
+      "log_sha256": "96577fca999b94674a203d1fd4ae72f298e00f08ec3027b0906047bfbd5ee5ab"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-sync",
+        "python",
+        "scripts/check_acceptance.py"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 168.015,
+      "log": "02.log",
+      "log_sha256": "e209bba4168b2368784a93a3a727b841ab675dc3f917333d7a9a46a693f241c3"
+    },
+    {
+      "command": [
+        "uv",
+        "run",
+        "--no-sync",
+        "python",
+        "scripts/release_gate.py",
+        "--json"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 177.855,
+      "log": "03.log",
+      "log_sha256": "19b8f0c9ca7ce4ac8b903cf2a4a08c8659b48347ae3ac3582a1f1f0220f30071"
+    }
+  ],
+  "resume_note": "Original runner exited 143 before recording pytest exit. Original lock and migration results preserved in m0-validation-20260909T065604Z; rerun only unrecorded or unstarted steps. Signal cause unknown.",
+  "finished_at": "2026-09-09T07:11:34.689259+00:00",
+  "candidate_unchanged": true,
+  "checkout_clean": true
+}

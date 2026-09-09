@@ -1,0 +1,64 @@
+{
+  "candidate_commit": "9549a466fa3ed2349d8cba392364225372e76fde",
+  "node": "v26.8.1",
+  "steps": [
+    {
+      "command": [
+        "npm",
+        "run",
+        "api:generate"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 13.054,
+      "log": "01.log",
+      "sha256": "4445de76e667507ec85269f33fd1fc4520c0b011e5d1c55cb8ec568498aa76e3"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--exit-code",
+        "--",
+        "apps/ui/src/api/schema.d.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.174,
+      "log": "02.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 26.711,
+      "log": "03.log",
+      "sha256": "27cd05d560ad7941b33eca863cadaf418bc12a6d83cff5fd503b255a08c990d5"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 76.482,
+      "log": "04.log",
+      "sha256": "fc8f788bd2b52ad180f26e3701d1dffe41c4d11dbd9474341ed316c4a581d9d5"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 5.127,
+      "log": "05.log",
+      "sha256": "a265890bb64cd31924c1a26c6a2b73d0d56a939636f366fc221c589fe17973cc"
+    }
+  ],
+  "finished_at": "2026-09-09T06:58:28.811574+00:00"
+}
