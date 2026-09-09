@@ -37,7 +37,7 @@ Docker inspections, original wire bytes, persisted reservations and journals.
 | Case | Observed result |
 |---|---|
 | Ownership and heartbeat loss | Two durable contenders produced one lease winner; foreign/stale pins and duplicate RPCs caused no extra mutation. One admitted RESET received its correlated acknowledgement. Heartbeat loss fenced the lease and led to confirmed cleanup. |
-| Revocation and recovery | Revocation after create refused start while the actual container remained created with PID zero. A fresh supervisor performed cleanup only; an injected journal outage accepted redelivery of the same observed cleanup proof. Old recovery left the newer lease generation intact. |
+| Revocation and recovery | Revocation after create refused start while the actual container remained created with PID zero. A fresh supervisor in the same Python process reconstructed durable state and performed cleanup only; an injected journal outage accepted redelivery of the same observed cleanup proof. Old recovery left the newer lease generation intact. |
 | Lost acknowledgement | One counter mutation followed by a partial acknowledgement/EOF left the reservation uncertain, episode aborted and resource quarantined. Resend was refused; original partial bytes were retained. |
 | Expired dispatch deadline | The persisted reservation carried the actual 750 ms fixture cap. The worker received permission and waited past that deadline; the parent refused it at expiry, with zero counter mutation. |
 
@@ -48,13 +48,15 @@ after confirmed cleanup. The fixed counter image was
 `sha256:2bebcf88f8a54bb6878cec60c77bb361fe0532fa783f4815ce912a7229d79c5a`.
 
 Measured use was **17.227375 wall seconds**, **30.56 whole-host active CPU
-seconds as a conservative upper bound**, and **731,546 output bytes**, within
+seconds as a conservative upper bound**, and **731,546 output bytes at the
+recorded measurement** (731,846 bytes after finalizing the execution record), within
 the reviewed 600-second, 180-CPU-second and 128 MiB envelope. Whole-host CPU
 includes daemon/database/container activity and unrelated host work; it is not
 an exact task cost. Missing per-container counters are not treated as zero.
 
 This closes the combined persisted-authority/host construction witness. It does
 not run a robot, qualify the UR5e adapter, activate production preflight, prove
-hard realtime enforcement, complete an episode, or discharge composite AC5
+hard realtime enforcement or an OS host-crash/restart recovery, complete an
+episode, or discharge composite AC5
 criteria. Final regression checks and protected integration remain separate
 Wave 2 exit requirements.
