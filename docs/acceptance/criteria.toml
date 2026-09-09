@@ -154,7 +154,7 @@ AC3-UI-03 = { verification = "test", frontend_evidence = "apps/ui/src/pages/McpS
 # than set to `test`: `test` is the default for a criterion with no policy row, and a row
 # that restated the default would be one more place to keep in step with the SDD.
 #
-# The section is now empty, and that is what "M10 closed the program" means here: every
-# one of the fifty v0.4 rows has a claiming test, so none of them needs a policy row. The
-# heading stays so that a future v0.4 patch adding a criterion has the place to put it,
-# and so that the empty section is visibly empty rather than missing.
+# No v0.4 criterion remains deferred: 48 use the default Python-test policy and
+# two frontend criteria retain their explicit evidence pointers above. The empty
+# deferral section does not mean all fifty are claimed by pytest. The heading stays
+# so that a future v0.4 patch adding a criterion has the place to put its policy.

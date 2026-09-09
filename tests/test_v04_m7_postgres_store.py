@@ -49,6 +49,7 @@ from accretion.contracts.routing import (
     DecisionType,
     ExperienceRecord,
     IndependentVerificationResult,
+    NodeContract,
     RouterModelVersion,
     RouterPromotionReport,
     RouterTrainingSnapshot,
@@ -254,10 +255,9 @@ async def test_both_backends_rebuild_the_same_exploration_ledger_from_receipts()
     entries, their charges and both cumulative sums — rather than on the totals alone, because
     two ledgers can agree on a sum while disagreeing about which exploration cost what.
 
-    The three non-qualifying receipts are the three ways a row is *not* a charge on this
-    ledger: it exploited, it named another node class, or its labels cannot be read. Each must
-    be skipped identically by both backends; a registry that guessed at the unparseable one
-    would invent a number.
+    Exploitation and a valid independently scoped receipt do not charge this ledger.
+    A receipt with unreadable charge labels instead makes accounting unavailable on both
+    backends; it must not become an empty budget by being skipped.
     """
 
     assert POSTGRES_URL is not None
@@ -299,11 +299,30 @@ async def test_both_backends_rebuild_the_same_exploration_ledger_from_receipts()
                 baseline_cost_lcb="0.9",
             ),
         ]
-        receipts = [*charged, *skipped]
+        unreadable = skipped.pop()
+        node = build(NodeContract, workspace_id=workspace_id,
+                     project_id=project_id, node_kind=NODE_CLASS)
+        other_node = build(NodeContract, workspace_id=workspace_id,
+                           project_id=project_id, node_kind="VERIFIER")
+        unreadable_payload = unreadable.model_dump(mode="python")
+        unreadable_payload["node_contract_hash"] = node.immutable_hash
+        unreadable_payload["content_hash"] = ""
+        unreadable = RoutingDecisionReceipt.model_validate(unreadable_payload)
+        receipts = []
+        for row in [*charged, *skipped]:
+            payload = row.model_dump(mode="python")
+            payload["node_contract_hash"] = (
+                other_node.immutable_hash if row.labels.get(NODE_CLASS_LABEL) == "VERIFIER"
+                else node.immutable_hash
+            )
+            payload["content_hash"] = ""
+            receipts.append(RoutingDecisionReceipt.model_validate(payload))
 
         snapshots: list[dict[str, object]] = []
         for store in (memory, postgres):
             await seed_project(store, project_id)
+            await store.put_node_contract(node)
+            await store.put_node_contract(other_node)
             # Descending, so neither backend's natural order is the ledger's.
             for receipt in sorted(receipts, key=lambda item: item.contract_id, reverse=True):
                 await store.put_routing_receipt(receipt)
@@ -311,6 +330,11 @@ async def test_both_backends_rebuild_the_same_exploration_ledger_from_receipts()
                 workspace_id=workspace_id, node_class=NODE_CLASS
             )
             snapshots.append(ledger.snapshot())
+            await store.put_routing_receipt(unreadable)
+            with pytest.raises(ValueError, match="unreadable charge"):
+                await LedgerRegistry(store).ledger(
+                    workspace_id=workspace_id, node_class=NODE_CLASS
+                )
 
         assert snapshots[0] == snapshots[1]
         assert snapshots[0]["explore_count"] == 4

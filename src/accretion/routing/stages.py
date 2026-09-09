@@ -292,6 +292,7 @@ class BehaviorPolicy(Protocol):
         node: NodeContract,
         objective: ObjectiveContract,
         snapshot: RoutingSnapshot,
+        store: StateStore | None = None,
     ) -> BehaviorDecision:
         """Choose the action actually taken, within the gates ``baseline`` already applied."""
         ...
@@ -383,9 +384,7 @@ class StatusActiveVersionResolver:
         self.store = store
 
     async def resolve(self, *, workspace_id: str, project_id: str) -> ActiveVersions:
-        workspace_versions = await self.store.list_router_model_versions(
-            workspace_id=workspace_id
-        )
+        workspace_versions = await self.store.list_router_model_versions(workspace_id=workspace_id)
         project_versions = await self.store.list_router_model_versions(
             workspace_id=workspace_id, project_id=project_id
         )
@@ -399,9 +398,7 @@ class StatusActiveVersionResolver:
         )
 
     @staticmethod
-    def _latest_active(
-        versions: Sequence[RouterModelVersion], scope: RouterScope
-    ) -> str | None:
+    def _latest_active(versions: Sequence[RouterModelVersion], scope: RouterScope) -> str | None:
         active = [
             version
             for version in versions
@@ -429,10 +426,9 @@ class DeterministicBehavior:
         node: NodeContract,
         objective: ObjectiveContract,
         snapshot: RoutingSnapshot,
+        store: StateStore | None = None,
     ) -> BehaviorDecision:
-        return BehaviorDecision(
-            selection=baseline, propensity=DETERMINISTIC_PROPENSITY, labels={}
-        )
+        return BehaviorDecision(selection=baseline, propensity=DETERMINISTIC_PROPENSITY, labels={})
 
 
 __all__ = [

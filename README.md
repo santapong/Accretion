@@ -12,7 +12,7 @@ isolated workspaces, and a durable normalized execution trace.
 [![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-22%2B-339933?logo=nodedotjs&logoColor=white)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-MIT-6f42c1.svg)](LICENSE)
-[![Status](https://img.shields.io/badge/status-v0.4.0%20released-2ea44f)](#project-status)
+[![Status](https://img.shields.io/badge/status-v0.4.1%20released-2ea44f)](#project-status)
 
 [Author: resume.draveniq.dev](https://resume.draveniq.dev) ·
 [Documentation](docs/README.md) · [Frontend guide](docs/guides/frontend.md) ·
@@ -27,7 +27,7 @@ isolated workspaces, and a durable normalized execution trace.
 </div>
 
 > [!IMPORTANT]
-> The `v0.4.0` release makes node configuration routing evidence-aware: every
+> The current `v0.4.1` release includes evidence-aware node configuration routing: each eligible
 > AGENT, TOOL and VERIFIER node is routed over the 6-tuple (runtime, model,
 > tools, skills, verifier, environment) by a receipt-first deterministic router,
 > learned from verified experience through an offline ranker, a project adapter
@@ -38,9 +38,10 @@ isolated workspaces, and a durable normalized execution trace.
 > a pre-registered, locked benchmark. Every v0.4 feature is **off by default**
 > (`ACCRETION_ENABLE_NODE_ROUTING`). The [release notes](docs/releases/v0.4/notes.md)
 > and [release audit](docs/releases/v0.4/audit.md) record the gate evidence and
-> the disclosed limitations; every acceptance criterion is claimed
-> (`in scope: 167   proven: 159   unmet MUST: 0`), and axe-core reports zero
-> violations across all eighteen routes.
+> the disclosed limitations. The dated release acceptance record is
+> `in scope: 167   proven: 159   unmet MUST: 0`: 159 Python-test criteria,
+> five frontend criteria and three recorded manual witnesses. These are release
+> results, not a new test run against the current checkout.
 >
 > The preceding `v0.2.0` release added opt-in P5 validated dynamic workflows, P6
 > bounded candidate search and P7 verified-experience replay; its
@@ -56,7 +57,7 @@ isolated workspaces, and a durable normalized execution trace.
 
 <div align="center">
   <a href="docs/assets/project-overview.svg">
-    <img src="docs/assets/project-overview.svg" alt="Accretion project overview showing operator intent flowing through deterministic control, isolated runtime execution, and independent verification, with the v0.3.0 release, the preceding v0.2.0 release, and immutable v0.1.0 static-control evidence" width="100%" />
+    <img src="docs/assets/project-overview.svg" alt="Accretion project overview showing operator intent flowing through deterministic control, isolated runtime execution, and independent verification, with the v0.4.1 release, bounded follow-up work, and immutable v0.1.0 static-control evidence" width="100%" />
   </a>
 </div>
 
@@ -70,8 +71,8 @@ fixtures, examples, and operational documentation in one workspace.
 
 | I want to… | Use | Release position |
 |---|---|---|
-| Evaluate the current release | Clone the `v0.4.0` tag, check the [frozen baseline](docs/releases/v0.4/baseline.md), read the [release notes](docs/releases/v0.4/notes.md) and [audit](docs/releases/v0.4/audit.md), and follow [Quick start](#quick-start) | Released and immutable |
-| Follow ongoing development | Check out `develop` | Post-v0.3 work toward v0.4 |
+| Evaluate the current release | Clone the `v0.4.1` tag, check the [frozen baseline](docs/releases/v0.4/baseline.md), read the [release notes](docs/releases/v0.4/notes.md) and [audit](docs/releases/v0.4/audit.md), and follow [Quick start](#quick-start) | Released and immutable |
+| Follow ongoing development | Check out `develop` and the [current follow-up backlog](docs/releases/v0.4/backlog.md#remaining-bounded-work) | Post-v0.4.1 maintenance and explicitly scoped research |
 | Reproduce the static control | Clone `v0.1.0` and read the [frozen baseline](docs/releases/v0.1/baseline.md) | Preserved v0.1 evidence |
 | Understand the safety model | Read [Architecture](#architecture), the [trust boundary](docs/assets/trust-boundary.svg), and [SECURITY.md](SECURITY.md) | Applies across releases |
 | Build a contribution | Start with the [developer guide](docs/guides/developer.md) and [CONTRIBUTING.md](CONTRIBUTING.md) | Pull requests target `develop` |
@@ -137,7 +138,7 @@ events, and exposes the decision and verifier evidence needed to explain a run.
 | User-facing scope | Dashboard, New Task/Planning, Live Run, Runtimes, History, Approvals, Capabilities, ACR-ARCH, P5 Dynamic, P6 Search, P7 Experience, and the v0.3 administration pages (Plugins, Connections, MCP Servers, Capability Inspector, Identity) |
 | API safety | Generated OpenAPI TypeScript schema; backend remains the authority for policy and transitions |
 | Live behavior | Snapshot-first state, monotonic SSE, reconnect and sequence-gap recovery |
-| Verification | The component test suite, ESLint, TypeScript, OpenAPI idempotence, and production build all pass; axe-core 4.13.0 reports zero violations across all eighteen routes (the v0.2 exception in [issue #52](https://github.com/santapong/Accretion/issues/52) was discharged in v0.3.0) — see [browser and accessibility evidence](docs/releases/v0.3/browser-a11y-evidence.md) |
+| Verification | The [dated v0.4 release audit](docs/releases/v0.4/audit.md) records frontend checks and accessibility coverage; the [v0.3 browser evidence](docs/releases/v0.3/browser-a11y-evidence.md) preserves the earlier run that discharged [issue #52](https://github.com/santapong/Accretion/issues/52). These records do not claim a fresh browser run on this checkout. |
 
 See the [operator frontend guide](docs/guides/frontend.md) for every route, the
 operator journey, data flow, P5–P7 coverage, source map, and frontend commands.
@@ -326,7 +327,7 @@ records the axe-core results. The
 [v0.3 SDD](docs/sdd/Accretion_SDD_v0.3.md) remains the normative contract for that
 surface.
 
-The current `v0.4.0` release makes node configuration routing evidence-aware:
+The current `v0.4.1` release includes the completed v0.4 node-routing program:
 the receipt-first deterministic router, the experience and feedback pipeline,
 the offline ranker and candidate gate, cold start and the project adapter,
 shadow evaluation by branched live rollouts, the guarded bandit, the activation
@@ -340,7 +341,13 @@ the release identifiers, and the
 [research results](docs/research/v0.4/results.md) the locked benchmark's
 numbers with their [pre-registration](docs/research/v0.4/preregistration.md).
 The [v0.4 SDD](docs/sdd/Accretion_SDD_v0.4.md) is the normative contract for
-this release.
+this release. The v0.4.1 hardening addendum records the run-projected experience
+join, aligned selector defaults, the explicit benchmark pooling rule and the
+frozen amendment-1 re-read. M0–M10 are delivered; the [follow-up backlog](docs/releases/v0.4/backlog.md#remaining-bounded-work)
+separates remaining correctness checks and research decisions from that release.
+Selected TOOL nodes enforce exact bindings through the capability gateway;
+routed AGENT sessions carrying selected tools remain denied. A released
+implementation does not establish hosted-provider routing benefit.
 
 ## Quick start
 
@@ -358,7 +365,7 @@ The validated live-provider range is carried unchanged from v0.2: Codex CLI
 v0.3.0 evidence was recorded against Codex CLI `0.148.0` and Claude Code
 `2.1.252` — see
 [live-acceptance-2026-09-01.md](docs/releases/v0.3/evidence/live-acceptance-2026-09-01.md).
-v0.4.0 recorded no new live-provider run: its routing, learning and benchmark
+The v0.4.0 and v0.4.1 releases recorded no new priced routing-provider run: its routing, learning and benchmark
 evidence is replay-only on the FAKE runtime, and the three `manual` criteria are
 still carried by the v0.3.0 record until it expires on 2027-02-28.
 
@@ -367,7 +374,7 @@ still carried by the v0.3.0 record until it expires on 2027-02-28.
 For the current immutable release:
 
 ```bash
-git clone --branch v0.4.0 https://github.com/santapong/Accretion.git
+git clone --branch v0.4.1 https://github.com/santapong/Accretion.git
 cd Accretion
 ```
 

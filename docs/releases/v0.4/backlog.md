@@ -1,25 +1,64 @@
 # v0.4 prioritized backlog
 
-Status: **M1, M3, M4 and M5 delivered; M2 locally verified, awaiting remote review.** The normative contract is [SDD v0.4](../../sdd/Accretion_SDD_v0.4.md);
-its §19 orders the milestones and its §20 owns the criteria. This ledger records status only.
+Status: **v0.4.1 released; M0–M10 delivered.** Reconciled on 2026-09-08
+against the [frozen baseline](baseline.md) and [acceptance baseline](acceptance-baseline.md).
+The normative contract is [SDD v0.4](../../sdd/Accretion_SDD_v0.4.md): §19 owns
+milestone exits and §20 owns the fifty acceptance criteria. This ledger records
+status and decisions; it does not add criteria or authorize activation.
 
-## Delivery order
+## Delivered milestones
 
-| Priority | Milestone | Owns (SDD §20) | Status |
-|---:|---|---|---|
-| 1 | M0 contract and feature freeze | none (ADR-052) | delivered (#123) ([plan](m0-plan.md), [freeze record](m0-freeze.md)) |
-| 2 | M1 compatibility engine | 005-008 | delivered ([plan](m1-plan.md)) |
-| 3 | M2 hierarchical deterministic selector | 001, 002, 004, 009-015, 022 | locally verified; remote review pending ([evidence](m2-plan.md), [runbook](m2-runbook.md)) |
-| 4 | M3 experience and feedback pipeline | 003, 023-034 | delivered ([plan](m3-plan.md), [runbook](../../runbooks/v04-feedback.md)) |
-| 5 | M4 offline ranker and calibration | 016 | delivered ([plan](m4-plan.md)); activation remains disabled |
-| 6 | M5 project adapter and cold start | 021 | delivered ([plan](m5-plan.md)) |
-| 7 | M6 shadow routing | 017, 041 | not started |
-| 8 | M7 guarded bandit | 018-020 | not started |
-| 9 | M8 promotion and rollback | 035-039, 042 | not started |
-| 10 | M9 Experiment Studio | 040, 043, 044 | not started |
-| 11 | M10 research benchmark integration | 045-050 | delivered ([plan](m10-plan.md), [results](../../research/v0.4/results.md)) |
+| Milestone | Owns (SDD §20) | Closure and evidence |
+|---|---|---|
+| M0 contract and feature freeze | none (ADR-052) | delivered #123; [plan](m0-plan.md), [freeze record](m0-freeze.md) |
+| M1 compatibility engine | 005-008 | delivered #128/#136; [plan](m1-plan.md) |
+| M2 hierarchical deterministic selector | 001, 002, 004, 009-015, 022 | delivered #139; [evidence](m2-plan.md), [runbook](m2-runbook.md) |
+| M3 experience and feedback pipeline | 003, 023-034 | delivered #146; [plan](m3-plan.md), [runbook](../../runbooks/v04-feedback.md) |
+| M4 offline ranker and calibration | 016 | delivered #138; [plan](m4-plan.md); live activation requires its separate gates |
+| M5 project adapter and cold start | 021 | delivered #141; [plan](m5-plan.md) |
+| M6 shadow routing | 017, 041 | delivered #145; [plan](m6-plan.md); OQ-409 retains an interim evidence floor |
+| M7 guarded bandit | 018-020 | delivered #151; [plan](m7-plan.md); post-release accounting disposition below |
+| M8 promotion and rollback | 035-039, 042 | delivered #147; [plan](m8-plan.md) |
+| M9 Experiment Studio | 040, 043, 044 | delivered #153; [plan](m9-plan.md) |
+| M10 research benchmark integration | 045-050 | delivered #156; [plan](m10-plan.md), [results](../../research/v0.4/results.md) |
 
-No milestone may enable online exploration before the M0-M6 gates pass (SDD v0.4 §19).
+The release audit reports all fifty v0.4 criteria covered: 48 Python-test rows
+and two frontend rows. Milestone-local counts below are historical. Delivered
+code does not by itself enable exploration, prove a provider experiment or
+reopen a frozen protocol.
+
+## Remaining bounded work
+
+These are post-release dispositions as of 2026-09-09, not unfinished M0–M10
+milestones. The released flag remains off by default and the shipped fallback
+catalog remains FAKE-only; no activation or new experiment is claimed here.
+
+| Work | Owner and next trigger | Current disposition |
+|---|---|---|
+| Exploration budget admission and settlement recovery | Runtime maintainer; protected PR checks and integration | Reproduced defects repaired in the [closure candidate](closure-execution-2026-09-08.md): shared transaction lock, durable cost replay, conservative revisions and fail-closed malformed accounting. Focused process/database witnesses and all combined local gates pass. The [runbook](../../runbooks/v04-routing-accounting.md) limits claims to cumulative normalized workspace/node-kind accounting and requires older AUTO writers to drain or disable. |
+| Stored writer identity after read-boundary upcasting | Compatibility maintainer; protected PR checks and integration | Reproduced reference and projection defects repaired and independently reviewed in the [closure candidate](closure-execution-2026-09-08.md); both-store witnesses and combined local gates pass. Reads use verified writer identity; unknown execution/accounting fields and executable projection amendments remain denied. Original stored bytes and legacy digests are retained. |
+| Full research claim and next study | Research owner; complete and explicitly authorize the prospective study before provider execution | [Adopted scoped NO-GO](research-handoff-2026-09-08.md) preserves PARTIAL paired evidence and the frozen amendment. [R1 fake preparation](../../research/v0.4/provider-pilot-2026-09-08/instrumentation-report-2026-09-09.md) is verified with zero provider calls. No priced live-routing result; qualified evaluation, monetary accounting and explicit call/money/time limits remain required. |
+| Pin-aware routed AGENT tool sessions | Runtime/capability maintainer; explicit SDD/version scope | Deferred capability extension. TOOL-node binding enforcement exists; AGENT sessions carrying selected tools remain denied. |
+| OQ-409 minimum shadow evidence | Research owner; prospective power analysis on permitted development data | Open. The implemented default is 30 complete pairs workspace-wide, not proof of a per-configuration quota or a completed power calculation. |
+| OQ-419 benchmark name | Research owner; protocol publication preparation | Deferred naming decision; no benchmark re-read follows from naming it. |
+| Legacy digest migration and v0.3 enterprise/UI carryovers | Relevant maintainer; separately scoped compatibility or product decision | Deferred as described below; no automatic addition to v0.4 acceptance. |
+
+## Decision status reconciled 2026-09-08
+
+This map points to decisions already recorded in this ledger and the milestone
+plans. It does not silently amend the frozen SDD's open-question table.
+
+| Question or deferred item | Recorded implementation or decision | Remaining limit |
+|---|---|---|
+| OQ-401 initial learner | ADR4-M4-001 chose the in-repository gradient-boosted learner; [M4 plan](m4-plan.md) | The SDD's earlier external-library choice is historical decision drift; a normative correction needs an explicit amendment. |
+| OQ-417 override reasons | [M2 plan](m2-plan.md): uppercase reason code and nonempty explanation | Closed taxonomy and a new canonical override contract remain deferred. |
+| OQ-418 verifier independence | [M3 plan](m3-plan.md) and [IndependenceCheck](../../../src/accretion/feedback/verification.py): separate producer/verifier context required | A distinct runtime is preferred; this is not a measured numeric independence score. |
+| OQ-420 v0.5 hook | [M0 plan](m0-plan.md), ADR-059: no reserved slot | Robotics remains outside v0.4. |
+| Read-boundary upcaster and digest convergence | [M8 plan](m8-plan.md), [upcaster](../../../src/accretion/contracts/upcast.py), and M8 digest outcome below | Upcasting is implemented; three digest sites converged and four deliberately keep legacy bytes. The post-release reference repair and its remaining integration gates are recorded above. |
+
+The following milestone sections retain the decisions and observations recorded
+while the program was built. Dated clarifications identify superseded readings
+without rewriting historical measurements.
 
 ## Carried from v0.3
 
@@ -28,7 +67,9 @@ The items the v0.3 release deliberately deferred are listed under "M7 deferrals"
 `SERVICE_ACCOUNT` enterprise authorization, session enumeration in the identity page, real
 identity-provider interoperability as an expiring manual criterion, and the token-exchange egress
 allowlist. None is a v0.4 acceptance criterion; each is scheduled when a v0.4 milestone touches
-its surface, and none is added to the M0 freeze. Also carried: the read-boundary schema upcaster (registry §20.5) scheduled for M8 (ADR-057).
+its surface, and none is added to the M0 freeze. The read-boundary schema upcaster
+(registry §20.5, ADR-057) was delivered in M8; its recorded implementation and
+remaining reference-boundary check are distinguished above.
 
 ## Recorded during M0
 
@@ -447,12 +488,14 @@ deployment with the P7 retrieval gate closed projects nothing, and that is the r
 routing memory assembled without the experience layer's redaction and moderation would be a
 second, unreviewed copy of the trajectory record.
 
-**ADR4-M2-001 (the executing-provider constraint) is superseded by the M2 seam.** M2 recorded
-that a routed AGENT configuration carrying tool bindings could not be dispatched, because the
-session boundary carried capability ids rather than exact bindings. The executing-provider seam
-landed with that milestone's later PRs and the golden-trace test pins the flag-off path
-byte-for-byte; M3's dispatch path reaches the runtime through the same seam and adds no
-provider constraint of its own.
+**ADR4-M2-001 clarification (2026-09-08): the executing-provider seam superseded
+only the provider constraint.** The seam landed with M2's later PRs and the
+golden-trace test pins the flag-off path byte-for-byte; M3 adds no provider
+constraint of its own. It did not add exact tool pins to AGENT sessions.
+`RunManager` still refuses a routed AGENT configuration carrying selected tools
+before claiming dispatch or creating a session. Selected TOOL nodes use
+`invoke_selected` through the existing capability gateway with exact binding
+checks. The two dispatch paths must not be treated as interchangeable.
 ## Recorded during M8
 
 Five decisions taken while building the activation ledger and the promotion gate. Each answers a
@@ -561,6 +604,15 @@ conservative in the only direction a budget may be wrong in — an unsettled exp
 upper bound, so a fresh process holds a **tighter** budget than the measured one, never a looser.
 A durable ledger is worth revisiting when a deployment runs long enough for the difference to
 bind; it is not worth a table in v0.4.
+
+**Clarification (2026-09-08):** receipt reconstruction is implemented, but the
+unconditional “tighter after restart” conclusion above assumes an observation
+never exceeds its reservation. `CostLedger.settle` accepts normalized measured
+cost above that reservation; its adjustment is volatile. Cross-process admission,
+settlement overruns after restart, skipped unreadable charges and the cumulative
+workspace/node-class scope need the bounded witnesses listed above. This source
+inspection is not evidence that those concerns have been repaired, or that
+absolute caps provide an independent durable account.
 
 ## Recorded during M10
 
@@ -717,7 +769,9 @@ moved `results.md` — a page whose every table is regenerated and compared byte
 rule a registered field moves the decision into the document a reviewer diffs and leaves the
 release's numbers where the release put them.
 
-**The amendment this ADR also covers is a draft, and the re-read is not this pull request.**
+**Historical #163 state — the amendment was a draft and its re-read was outside that PR.**
+The subsequent #164 decision is recorded immediately below as ADR4.1-004; the
+following paragraph preserves #163's expectations, not the current protocol state.
 `docs/research/v0.4/amendment-1.md` proposes reading both gates as rates with the floor (0.70) and
 the ceiling (0.05) unchanged, and states its expected outcome *before* any re-read: the
 false-acceptance gate is expected to pass at ≈ 0.04 and the verified-success gate is expected to

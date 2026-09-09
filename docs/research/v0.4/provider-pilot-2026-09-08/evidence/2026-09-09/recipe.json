@@ -1,0 +1,54 @@
+{
+  "allowed_decision_kinds": [
+    "EXPLOIT",
+    "FALLBACK"
+  ],
+  "allowed_risk_class": "LOW_DIGITAL",
+  "allowed_runtime_providers": [
+    "FAKE"
+  ],
+  "excluded_runtime_paths": [
+    "M6 branched rollout and its budget",
+    "M7 exploration admission and settlement",
+    "M8 promotion",
+    "selected AGENT tool sessions"
+  ],
+  "execution_source": "FAKE_INSTRUMENTATION",
+  "exploration_enabled": false,
+  "external_network_enabled": false,
+  "fixture_cases": [
+    "valid-output",
+    "incorrect-output",
+    "missing-required-evidence"
+  ],
+  "instrumentation_limits": {
+    "maximum_artifact_bytes": 65536,
+    "maximum_attempts_per_case": 1,
+    "maximum_case_seconds": 30,
+    "maximum_cases": 3,
+    "maximum_concurrent_executions": 1,
+    "maximum_provider_calls": 0,
+    "maximum_total_seconds": 120
+  },
+  "learned_scorer_enabled": false,
+  "live_execution_authority": "NOT_AUTHORIZED",
+  "live_providers_enabled": false,
+  "output_policy": {
+    "hash_manifest_required": true,
+    "new_directory_required": true,
+    "overwrite_existing_evidence": false,
+    "schema": "trial-record.schema.json"
+  },
+  "promotion_enabled": false,
+  "provider_cost_basis": "NO_PROVIDER_CALLS",
+  "qualification": [
+    "Values above are bounded local instrumentation limits, not live-study quotas or scientific sample sizes.",
+    "The implementation must prove the exclusion assertions before its first accepted dry-run report."
+  ],
+  "routing_mode": "BASELINE_ONLY",
+  "schema_version": "0.1.0",
+  "selected_agent_tools": [],
+  "shadow_enabled": false,
+  "status": "REVIEWED_FAKE_RECIPE",
+  "study_id": "ACR-ROUTER-DEV-20260908"
+}

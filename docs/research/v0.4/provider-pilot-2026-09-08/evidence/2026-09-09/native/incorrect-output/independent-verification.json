@@ -1,0 +1,71 @@
+{
+  "claim_results": [
+    {
+      "claim_id": "verifier.output-contract",
+      "confidence": null,
+      "coverage": 1.0,
+      "evidence_refs": [
+        {
+          "content_digest": "9fab8758ecd62a4bf8609d1d36eb453e4953b1d1bb5719dc37df3f5edaeb2a5e",
+          "evidence_class": "DIGITAL",
+          "evidence_id": "file-sha256:result.json:9fab8758ecd62a4bf8609d1d36eb453e4953b1d1bb5719dc37df3f5edaeb2a5e"
+        }
+      ],
+      "limitations": [
+        "SAME_RUNTIME_AS_PRODUCER"
+      ],
+      "status": "FAIL"
+    },
+    {
+      "claim_id": "output.result.json",
+      "confidence": null,
+      "coverage": 1.0,
+      "evidence_refs": [
+        {
+          "content_digest": "9fab8758ecd62a4bf8609d1d36eb453e4953b1d1bb5719dc37df3f5edaeb2a5e",
+          "evidence_class": "DIGITAL",
+          "evidence_id": "file-sha256:result.json:9fab8758ecd62a4bf8609d1d36eb453e4953b1d1bb5719dc37df3f5edaeb2a5e"
+        }
+      ],
+      "limitations": [
+        "SAME_RUNTIME_AS_PRODUCER"
+      ],
+      "status": "FAIL"
+    }
+  ],
+  "conflict_refs": [],
+  "content_hash": "d6ee6623fb28fb2b403841fd01c7f8647175b05638395fb55736962e4e958d15",
+  "contract_id": "ivr_DC2SXGWKN26ABNMG251TPPDQC4",
+  "contract_type": "accretion.independent-verification-result",
+  "created_at": "2026-09-08T17:20:23.092437Z",
+  "created_by": {
+    "display_name": "Fake instrumentation",
+    "principal_id": "usr_01M210J001WP7RWXZW9571M6H7",
+    "status": "ACTIVE"
+  },
+  "deterministic_evidence_refs": [
+    {
+      "content_digest": "9fab8758ecd62a4bf8609d1d36eb453e4953b1d1bb5719dc37df3f5edaeb2a5e",
+      "evidence_class": "DIGITAL",
+      "evidence_id": "file-sha256:result.json:9fab8758ecd62a4bf8609d1d36eb453e4953b1d1bb5719dc37df3f5edaeb2a5e"
+    }
+  ],
+  "execution_instance_id": "exe_FZHJE8AV4FJZN31JPVZXW2AK7D",
+  "labels": {},
+  "model_review_refs": [],
+  "objective_contract_ref": null,
+  "project_id": "prj_01M210J00169D5PMSJ3JBW351Z",
+  "retention_class": null,
+  "schema_version": "1.0.0",
+  "signed_at": "2026-09-08T17:20:23.092437Z",
+  "source_verification_id": "ver_01M210J01M0EV4HMEVAH5DG43A",
+  "status": "FAIL",
+  "supersedes_contract_id": null,
+  "verification_spec_hash": "25b161ba0effe1aff82a21bc5e7da0476084bdd1472f4ce206436127a45ee0f3",
+  "verifier": {
+    "implementation_digest": "b12de164996ddaf0c73ee08197058fca6764a025e3acdd23b544f6cfb82b2917",
+    "verifier_contract_id": "output-contract"
+  },
+  "verifier_version": "output-contract-v1",
+  "workspace_id": "wks_01M210J001E0Z50Z5FJS0GQGH8"
+}

@@ -1,0 +1,186 @@
+{
+  "started_at_utc": "20260908T173527Z",
+  "candidate_commit": "f8b47a8a56226a729097273624dbcc2d65c20608",
+  "checkout": "/mnt/data/accretion-v04-execution-2026-09-08/integration",
+  "database": "task-owned accretion_integration on loopback:55441",
+  "live_provider_tests_enabled": false,
+  "steps": [
+    {
+      "name": "migration-upgrade",
+      "command": [
+        "uv",
+        "run",
+        "--no-sync",
+        "alembic",
+        "upgrade",
+        "head"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.005,
+      "log": "migration-upgrade.log",
+      "log_sha256": "d0e14ddc6751841adca94f27285f2cf574cafb8ed05cd372769cba366cc380e1"
+    },
+    {
+      "name": "migration-downgrade",
+      "command": [
+        "uv",
+        "run",
+        "--no-sync",
+        "alembic",
+        "downgrade",
+        "base"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.098,
+      "log": "migration-downgrade.log",
+      "log_sha256": "a94be0a80f9f1a0b7fbb3d02e276df0457e5a1f804daae6acc147f5cbf62233a"
+    },
+    {
+      "name": "migration-restore",
+      "command": [
+        "uv",
+        "run",
+        "--no-sync",
+        "alembic",
+        "upgrade",
+        "head"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.507,
+      "log": "migration-restore.log",
+      "log_sha256": "d0e14ddc6751841adca94f27285f2cf574cafb8ed05cd372769cba366cc380e1"
+    },
+    {
+      "name": "check",
+      "command": [
+        "make",
+        "check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 31.202,
+      "log": "check.log",
+      "log_sha256": "f68ac97b05b88b5f58fe94914e8d841fc136730a815ae8e38ae624ae9cf3ebb4"
+    },
+    {
+      "name": "test",
+      "command": [
+        "make",
+        "test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 150.065,
+      "log": "test.log",
+      "log_sha256": "a4bb1ecf0f7feaa436a1cba3dde68866134ed1ad219c5141c285e3997dd75fa3"
+    },
+    {
+      "name": "acceptance",
+      "command": [
+        "make",
+        "acceptance"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 121.11,
+      "log": "acceptance.log",
+      "log_sha256": "e76f9ceed14abe13d6004ddfb15b294cc5b284e5dd35af4ad9cc67e7ac4872c5"
+    },
+    {
+      "name": "release-gate",
+      "command": [
+        "make",
+        "release-gate"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 145.048,
+      "log": "release-gate.log",
+      "log_sha256": "a397c01b2daa55dc23de764f675d218e34cab99d6cf6629ed3ff7c4149294161"
+    },
+    {
+      "name": "future-package",
+      "command": [
+        "make",
+        "future-sdd-check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.153,
+      "log": "future-package.log",
+      "log_sha256": "def5cd7cfc30dc5cd2ae56cf726e9bd043416b9a599974935ec2a1ff65c57755"
+    },
+    {
+      "name": "fake-instrumentation",
+      "command": [
+        "uv",
+        "run",
+        "--no-sync",
+        "python",
+        "scripts/provider_pilot_dry_run.py",
+        "--output",
+        "/mnt/data/accretion-v04-execution-2026-09-08/evidence/20260908T173527Z/fake-pilot"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 3.136,
+      "log": "fake-instrumentation.log",
+      "log_sha256": "8ebfa4309a53ccaf5e3d8a86a43100f0e448aa9b5b2a9e1e13cc2e51d49105ff"
+    },
+    {
+      "name": "api-generate",
+      "command": [
+        "npm",
+        "run",
+        "api:generate"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 5.455,
+      "log": "api-generate.log",
+      "log_sha256": "db41206fc2801c993a45e23f6b72a3ffedf2c760f27a8edcfd090d631249e014"
+    },
+    {
+      "name": "api-clean",
+      "command": [
+        "git",
+        "diff",
+        "--exit-code",
+        "--",
+        "apps/ui/src/api/schema.d.ts"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.049,
+      "log": "api-clean.log",
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "build",
+      "command": [
+        "npm",
+        "run",
+        "build"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.655,
+      "log": "build.log",
+      "log_sha256": "fd5cfc2ca9ddf5998c1c07dc04b2544ff426ba619cfe93b5dcfbfdcdca0ea965"
+    }
+  ],
+  "complete": true,
+  "finished_at_utc": "2026-09-08T17:43:14.044756+00:00",
+  "local_execution_directory": "/mnt/data/accretion-v04-execution-2026-09-08/evidence/20260908T173527Z",
+  "summary": {
+    "backend": {
+      "passed": 3544,
+      "skipped_signed_in_providers": 6
+    },
+    "frontend": {
+      "passed": 286,
+      "test_files": 27
+    },
+    "acceptance": {
+      "in_scope": 167,
+      "python_proven": 159,
+      "frontend": 5,
+      "manual": 3,
+      "unmet_must": 0
+    },
+    "release_conditions_passed": 5,
+    "contract_schemas_unchanged": 21,
+    "imported_package_files_unchanged": 187
+  }
+}

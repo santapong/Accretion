@@ -1,5 +1,7 @@
 # v0.4 M8 — Promotion, rollback, and the gate that authorises them
 
+> **Status clarification — 2026-09-08:** Historical milestone measurements below predate the completed release audit. M8 merged in #147; the [release audit](audit.md) carries the later acceptance line. Read-boundary compatibility follow-up is separate from the delivered promotion/upcaster mechanisms.
+
 SDD v0.4 §10.3 gives promotion two words: *atomic* and *reversible*. M0 delivered neither.
 Atomicity was missing because the version rows and the record of which one was serving were
 separate writes; reversibility was missing because "serving" was a `status` column on an

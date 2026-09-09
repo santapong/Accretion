@@ -1,0 +1,6 @@
+
+> accretion@0.4.1 api:generate
+> uv run --no-sync python scripts/export_openapi.py && npm exec --workspace @accretion/ui -- openapi-typescript ../../openapi.json -o src/api/schema.d.ts
+
+✨ openapi-typescript 7.13.0
+🚀 ../../openapi.json → src/api/schema.d.ts [336.6ms]

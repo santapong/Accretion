@@ -1,0 +1,48 @@
+{
+  "deadline": "2026-09-08T17:20:52.970925Z",
+  "directive": {
+    "evidence_refs": [],
+    "findings": [],
+    "kind": "INITIAL",
+    "objective": "Write only the fixed fixture.",
+    "previous_iteration_id": null,
+    "schema_version": "1.0"
+  },
+  "iteration_number": 1,
+  "max_tool_calls": 1,
+  "max_turns": 1,
+  "run_id": "run_01M210HZVVKGZB57Z5D6RGD7H6",
+  "runtime_call_id": "rtc_01M210HZXTVP39GSJM2Z9PA9W4",
+  "schema_version": "1.0",
+  "task": {
+    "allowed_capabilities": [],
+    "budgets": {
+      "max_loop_iterations": 1,
+      "max_parallel_runs": 1,
+      "max_tool_calls": 1,
+      "max_turns": 1,
+      "wall_time_seconds": 30
+    },
+    "constraints": [],
+    "context_policy_ref": "ctx_01M210HZVTYN8MWVTXDF9V0G0C",
+    "denied_capabilities": [],
+    "inputs": [],
+    "objective": "Write the fixed local fixture artifact.",
+    "project_id": "prj_01M210HZVTQ2P5CJ1W790QTDRF",
+    "prompt_contract_ref": "pmt_01M210HZVTFHHANNBHR3YRBW6G",
+    "requested_skills": [],
+    "required_outputs": [
+      {
+        "kind": "json",
+        "path": "result.json",
+        "sha256": "55f66c2c5aeb275ff5b1ae26b321d5c0b8ceda8c034b19c2643e046d024919f3"
+      }
+    ],
+    "risk_level": "LOW",
+    "success_criteria": [],
+    "task_id": "tsk_01M210HZVTTEZAETGVEMHB6CKQ",
+    "task_type": "OTHER",
+    "verifier_policy_ref": "p0-observe-only-v1"
+  },
+  "version": "p2-runtime-request-v1"
+}

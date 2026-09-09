@@ -1,0 +1,91 @@
+{
+  "schema_version": "0.1.0",
+  "study_id": "ACR-ROUTER-DEV-20260908",
+  "checked_on": "2026-09-09",
+  "baseline_commit": "8ded8bab151267ec8e06182f52543dabed6eaca7",
+  "protocol_state": "DRAFT_NOT_FROZEN",
+  "preparation_authority": "USER_APPROVED_COMPLETION_PLAN_2026_09_08",
+  "live_execution_authority": "NOT_AUTHORIZED",
+  "fake_instrumentation_state": "FAKE_INSTRUMENTATION_VERIFIED",
+  "r0_decision": "ADOPTED_SCOPED_NO_GO_FULL_CLAIM",
+  "owners": {
+    "maintainer": "Santapong",
+    "protocol_owner": null,
+    "independent_evaluator": null,
+    "spending_approver": null
+  },
+  "execution": {
+    "provider_accounts": null,
+    "runtime_model_configurations": null,
+    "currency": null,
+    "total_monetary_ceiling": null,
+    "maximum_calls": null,
+    "maximum_wall_seconds": null,
+    "per_run_limits": null,
+    "task_count": null,
+    "repeats": null,
+    "price_snapshot": null
+  },
+  "scientific_parameters": {
+    "primary_contrast": null,
+    "false_acceptance_ceiling": null,
+    "verified_success_floor": null,
+    "non_inferiority_margin": null,
+    "confidence_level": null,
+    "cluster_interval_method": null,
+    "critical_cohorts": null,
+    "missingness_rule": null,
+    "power_analysis": null
+  },
+  "data_inventory": {
+    "FAKE_INSTRUMENTATION": "THREE_EXECUTED_FIXED_LOCAL_CASES_NON_SCIENTIFIC",
+    "VERIFIER_QUALIFICATION": null,
+    "PILOT_DEVELOPMENT": null,
+    "CANDIDATE_TRAINING": null,
+    "BASELINE_SELECTION": null,
+    "CALIBRATION": null,
+    "FINAL_EVALUATION": "NOT_ASSIGNED_NOT_AUTHORIZED"
+  },
+  "readiness_gates": {
+    "mechanical_fake_only_exclusion": "VERIFIED_FAKE_ONLY",
+    "record_join_validation": "VERIFIED_FAKE_ONLY",
+    "frozen_verifier_qualification": "MISSING",
+    "candidate_eligibility": "MISSING",
+    "effective_setting_observability": "MISSING",
+    "measured_usage_and_prices": "MISSING",
+    "absolute_external_cost_guard": "MISSING",
+    "independent_evaluator_assignment": "MISSING",
+    "signed_exact_live_protocol": "MISSING"
+  },
+  "old_scientific_evidence": {
+    "mutated": false,
+    "new_locked_access_rows": 0,
+    "total_existing_access_rows": 4
+  },
+  "limits": [
+    "Schema fixtures are illustrative, not executed evidence.",
+    "No prices, accounts, owner choices or scientific sample sizes are inferred.",
+    "R0 closes the old claim assessment; it does not make v0.5 implementation unconditionally ready.",
+    "The clean-commit fake export verifies a single manually orchestrated AGENT node per case; full production scheduling, feedback persistence and live accounting remain outside this evidence.",
+    "No scientific verifier qualification, live success rate, provider price or local-compute split is inferred from fake outcomes."
+  ],
+  "fake_evidence": {
+    "report": "instrumentation-report-2026-09-09.md",
+    "archive": "evidence/2026-09-09",
+    "source_commit": "cb122b742c33f588be1c2749a085b4078305814a",
+    "source_status_porcelain": [],
+    "completed_at_utc": "2026-09-08T17:20:23.170186+00:00",
+    "completed_on_asia_bangkok": "2026-09-09",
+    "manifest_sha256": "4cd7298c199ca15d3232d7e5aa8a9772615cfd9ca20a42193332c3a92e00cf7c",
+    "manifested_files": 47,
+    "outcomes": {
+      "valid-output": "PASS",
+      "incorrect-output": "FAIL",
+      "missing-required-evidence": "INCONCLUSIVE"
+    },
+    "provider_calls": 0,
+    "priced_measurement_complete": false,
+    "focused_tests_passed": 39,
+    "dependency_setup": "OWN_WORKTREE_VENV_UV_SYNC_LOCKED_ALL_GROUPS"
+  }
+}

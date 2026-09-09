@@ -1,0 +1,10 @@
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync python scripts/release_gate.py
+=== Release gate (SDD 24.8) ===
+
+  PASS  all(MUST acceptance criteria pass)   in scope: 167   proven: 159   unmet MUST: 0
+  PASS  secret_exposure_incidents == 0       2 suite(s): 6 passed in 4.31s
+  PASS  capability_policy_bypass == 0        2 suite(s): 21 passed in 2.23s
+  PASS  connection_isolation_tests == PASS   4 suite(s): 53 passed in 3.11s
+  PASS  v0.1/v0.2 regression suite == PASS   8 suite(s): 87 passed in 8.88s
+
+PASS: every release-gate condition holds.

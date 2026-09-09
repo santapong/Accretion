@@ -1,0 +1,71 @@
+{
+  "checked_at": "2026-09-08T16:24:38.207780+00:00",
+  "scope": "READ_ONLY_PLANNING_BASELINE",
+  "remote_fetch_performed": true,
+  "develop_commit": "8ded8bab151267ec8e06182f52543dabed6eaca7",
+  "main_commit": "f60c7faae68a4ebae7ad4e15696746957690ce7b",
+  "source_checkout_status": "## develop...origin/develop",
+  "tags": {
+    "v0.4.0": {
+      "tag_object": "c4067684a7de6f820cdf0703c6d70afc5a29ebae",
+      "commit": "dd1d9f300ba05dc5875b964322c34b47a5288c39",
+      "tree": "2e59ad70ad36b0934c189ec698bbf7658928b57d"
+    },
+    "v0.4.1": {
+      "tag_object": "3674ab717f0fd10a71f71140be29137955a491eb",
+      "commit": "f60c7faae68a4ebae7ad4e15696746957690ce7b",
+      "tree": "2e61bcc7b34de7ac56be9fdd66b9eececd19cddd"
+    }
+  },
+  "frozen_source_identities": {
+    "docs/research/v0.4/preregistration.md": {
+      "sha256": "6b45998b3a9847298ba878a6414211ce38d64c775e5addd587509fdd70cf04ea"
+    },
+    "docs/research/v0.4/amendment-1.md": {
+      "sha256": "139f60692de5e9faa545d3e169fcf92e8aab3e45ac41a7ec1b0891cdae4e3914"
+    },
+    "docs/research/v0.4/access-log.jsonl": {
+      "sha256": "976f3357bc6b4850a9183a5d497158a8c1dafaf284546bc5dfbd2d553d04ca9e",
+      "nonempty_rows": 4
+    },
+    "docs/sdd/future/v1.1-v1.8/package/MANIFEST.sha256": {
+      "sha256": "986746757512f62a440d169497a47cd01846be73617362ead928dd000fc82bf8"
+    }
+  },
+  "validation_limits": [
+    "No new application test run during planning",
+    "No raw locked/drift trace read or locked evaluator execution",
+    "No provider or physical experiment",
+    "Historical release counts are read from their dated records, not recertified here"
+  ],
+  "worktrees": [
+    {
+      "path": "/mnt/data/accretion-v04-plan-2026-09-08/integration",
+      "branch": "docs/v04-completion-plan",
+      "base_commit": "8ded8bab151267ec8e06182f52543dabed6eaca7",
+      "role": "Parent integration and final plan",
+      "scope": "planning only; no runtime implementation"
+    },
+    {
+      "path": "/mnt/data/accretion-v04-plan-2026-09-08/release-audit",
+      "branch": "docs/v04-release-audit",
+      "base_commit": "8ded8bab151267ec8e06182f52543dabed6eaca7",
+      "role": "Release and acceptance audit",
+      "scope": "planning only; no runtime implementation"
+    },
+    {
+      "path": "/mnt/data/accretion-v04-plan-2026-09-08/runtime-audit",
+      "branch": "docs/v04-runtime-audit",
+      "base_commit": "8ded8bab151267ec8e06182f52543dabed6eaca7",
+      "role": "Runtime boundaries and gaps",
+      "scope": "planning only; no runtime implementation"
+    },
+    {
+      "path": "/mnt/data/accretion-v04-plan-2026-09-08/research-audit",
+      "branch": "docs/v04-research-audit",
+      "base_commit": "8ded8bab151267ec8e06182f52543dabed6eaca7",
+      "role": "Research evidence and pilot readiness",
+      "scope": "planning only; no runtime implementation"
+    }
+  ]
+}

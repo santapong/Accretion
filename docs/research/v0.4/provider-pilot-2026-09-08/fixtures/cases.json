@@ -1,0 +1,82 @@
+{
+  "schema_version": "0.1.0",
+  "artifact_kind": "SCHEMA_TEST_CASES_NOT_EXECUTED_RUNS",
+  "valid": [
+    "fake-pass.json",
+    "fake-fail.json",
+    "fake-inconclusive.json"
+  ],
+  "structural_rejections": [
+    {
+      "name": "live-source",
+      "base": "fake-pass.json",
+      "pointer": "/execution_source",
+      "value": "LIVE"
+    },
+    {
+      "name": "hosted-provider",
+      "base": "fake-pass.json",
+      "pointer": "/configuration/provider",
+      "value": "CODEX"
+    },
+    {
+      "name": "auto-mode",
+      "base": "fake-pass.json",
+      "pointer": "/routing/mode",
+      "value": "AUTO"
+    },
+    {
+      "name": "shadow-mode",
+      "base": "fake-pass.json",
+      "pointer": "/routing/mode",
+      "value": "SHADOW"
+    },
+    {
+      "name": "explore-decision",
+      "base": "fake-pass.json",
+      "pointer": "/routing/decision_kind",
+      "value": "EXPLORE"
+    },
+    {
+      "name": "selected-agent-tool",
+      "base": "fake-pass.json",
+      "pointer": "/configuration/selected_agent_tools",
+      "value": [
+        "unapproved-tool"
+      ]
+    },
+    {
+      "name": "paid-call",
+      "base": "fake-pass.json",
+      "pointer": "/accounting/provider_calls",
+      "value": 1
+    },
+    {
+      "name": "self-accept-marked-pass",
+      "base": "fake-pass.json",
+      "pointer": "/verification/independent",
+      "value": false
+    },
+    {
+      "name": "missing-pass-record",
+      "base": "fake-pass.json",
+      "pointer": "/verification/record_id",
+      "value": null
+    },
+    {
+      "name": "missing-pass-evidence",
+      "base": "fake-pass.json",
+      "pointer": "/verification/evidence_hashes",
+      "value": []
+    }
+  ],
+  "semantic_rejections_required_after_implementation": [
+    "producer and model-verifier session IDs equal",
+    "configuration/receipt/execution/spec/result link mismatch",
+    "artifact digest differs from captured bytes",
+    "completed_at precedes started_at",
+    "requested/accepted/observed effective settings conflict",
+    "unaccounted execution missing from admission or terminal log"
+  ],
+  "limits": "Schema rejection only proves document structure; admission-before-submit and store joins require actual implementation tests."
+}

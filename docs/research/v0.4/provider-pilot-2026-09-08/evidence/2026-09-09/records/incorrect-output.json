@@ -1,0 +1,77 @@
+{
+  "accounting": {
+    "currency": null,
+    "elapsed_ms": 10.098,
+    "executed_tool_calls": 0,
+    "external_tokens": 0,
+    "human_adjudication_ms": 0,
+    "local_compute_ms": null,
+    "provider_calls": 0,
+    "provider_charge": 0,
+    "provider_cost_basis": "NO_PROVIDER_CALLS",
+    "provider_wait_ms": 0,
+    "usage_source": "LOCAL_FAKE_INSTRUMENTATION"
+  },
+  "artifact_kind": "DRY_RUN_RECORD",
+  "configuration": {
+    "accepted_model": "fake-model",
+    "configuration_hash": "d9a65ebb3de5c70eae12e73686bc9cd6c06a72dc3fca4c3f8bee0b3275b5fd1a",
+    "content_hash": "ce82669eaf4105c1d2fcfa37483ac05286a0b65d572e963459bfefb92806d375",
+    "id": "cfg_6XMSV0STE5X9DD36HP14EX65R5",
+    "model": "fake-model",
+    "observed_model": "fake-model",
+    "provider": "FAKE",
+    "requested_model": "fake-model",
+    "runtime_version": "fake-p2-v1",
+    "selected_agent_tools": []
+  },
+  "data_role": "FAKE_INSTRUMENTATION",
+  "execution": {
+    "completed_at": "2026-09-08T17:20:23.089886+00:00",
+    "execution_instance_id": "exe_FZHJE8AV4FJZN31JPVZXW2AK7D",
+    "producer_session_id": "ses_01M210J01C0XE1VWY2EAH55KHF",
+    "started_at": "2026-09-08T17:20:23.084692+00:00",
+    "status": "COMPLETED"
+  },
+  "execution_source": "FAKE_INSTRUMENTATION",
+  "input_revision": "56d3de68a31e907753455c6ac403bdf29f02ecb0",
+  "limitations": [
+    "Fake single-node instrumentation; no hosted or learned-router result.",
+    "Zero provider charge means no provider calls; no prices were measured.",
+    "Local compute and full production scheduler/feedback integration are not measured."
+  ],
+  "live_execution_authority": "NOT_AUTHORIZED",
+  "measurement_status": "COMPLETE_FAKE_RECORD",
+  "pair_id": null,
+  "project_lineage": "fake-instrumentation:incorrect-output",
+  "routing": {
+    "decision_kind": "FALLBACK",
+    "exploration_enabled": false,
+    "mode": "BASELINE_ONLY",
+    "node_contract_hash": "3e6a1184d35ee1aeff199367249bdf1f50c065f8c45711b3e4400020542310be",
+    "promotion_enabled": false,
+    "receipt_hash": "c71e32a87f9e1c0b92cb428de93f7c53e43ad7c7c0bc698970878d4f872201d1",
+    "receipt_id": "rcp_CJAVT92FBAD1ZBN63NPWWCKE9D",
+    "shadow_enabled": false
+  },
+  "schema_version": "0.1.0",
+  "study_id": "ACR-ROUTER-DEV-20260908",
+  "task_id": "tsk_01M210J001PC4MBWHWV8WH6EMA",
+  "trial_id": "incorrect-output",
+  "verification": {
+    "adjudication_status": "NOT_NEEDED_FAKE",
+    "deterministic": true,
+    "evidence_hashes": [
+      "9fab8758ecd62a4bf8609d1d36eb453e4953b1d1bb5719dc37df3f5edaeb2a5e"
+    ],
+    "execution_instance_id": "exe_FZHJE8AV4FJZN31JPVZXW2AK7D",
+    "independent": true,
+    "record_id": "ivr_DC2SXGWKN26ABNMG251TPPDQC4",
+    "required_claim_coverage": 1.0,
+    "spec_hash": "25b161ba0effe1aff82a21bc5e7da0476084bdd1472f4ce206436127a45ee0f3",
+    "status": "FAIL",
+    "verifier_id": "output-contract",
+    "verifier_session_id": null,
+    "verifier_version": "output-contract-v1"
+  }
+}

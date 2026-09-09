@@ -120,16 +120,10 @@ def build_node_routing(
         post_route = (ShadowRoutingHook(manager.store, artifact_store, mode=mode),)
         post_node = (BranchedRolloutExecutor(manager),)
     if mode is RoutingMode.AUTO:
-        # M7's two stages, attached together and only under AUTO, for the same reason M6's
-        # pair is: the bandit charges an exploration at its upper bound and the settlement
-        # hook is the only thing that ever replaces that bound with the measurement, so an
-        # assembly with one and not the other would either hold a budget nobody could release
-        # or release a budget nobody had taken. They share one `LedgerRegistry` because two
-        # registries over one store would each rebuild the same ledger from the same receipts
-        # and only one of them would ever see a settlement. Under SHADOW the learned router
-        # selects and the *baseline* executes (§11.1), so exploring there would be a decision
-        # nothing acts on and a cost nothing incurs — which is why this is `is AUTO` and not
-        # `is not BASELINE_ONLY`.
+        # AUTO alone consults exploration accounting. The registry rebuilds
+        # reservations and observations from durable facts under the route's
+        # shared budget lock; the post-node hook validates eagerly but owns no
+        # volatile settlement credit. SHADOW still executes the baseline.
         ledgers = LedgerRegistry(manager.store)
         behavior = GuardedBandit(manager.store, artifact_store, ledgers=ledgers)
         post_node = (*post_node, ExplorationSettlement(manager.store, ledgers))

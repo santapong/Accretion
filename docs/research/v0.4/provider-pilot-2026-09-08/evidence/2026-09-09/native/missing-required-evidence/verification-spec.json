@@ -1,0 +1,46 @@
+{
+  "accepted_outcomes": [
+    "PASS"
+  ],
+  "claims": [
+    {
+      "claim_id": "verifier.output-contract",
+      "criticality": "REQUIRED",
+      "description": "verifier output-contract accepts this node's work under acceptance policy acp_01M210J02GRX7HGNH85W43MFKF",
+      "required_evidence_types": [
+        "DIGITAL"
+      ]
+    },
+    {
+      "claim_id": "output.result.json",
+      "criticality": "REQUIRED",
+      "description": "the required output 'result.json' declared by task tsk_01M210J02FA2KWC4GP6F30V4CB is present and well formed",
+      "required_evidence_types": [
+        "DIGITAL"
+      ]
+    }
+  ],
+  "content_hash": "582dadb62cf60470f983b7811fae1106b07c66431c0a3e0531c1bb4bc6c45d83",
+  "contract_id": "vsp_3P455EVAP8VE0TXGTS6YGZ8DK7",
+  "contract_type": "accretion.verification-spec",
+  "created_at": "2026-09-08T17:20:23.119339Z",
+  "created_by": {
+    "display_name": null,
+    "principal_id": "usr_01M210J02FECX56S9Q83057VAG",
+    "status": "ACTIVE"
+  },
+  "independence": {
+    "distinct_runtime_preferred": true,
+    "producer_cannot_self_accept": true,
+    "separate_context_required": true
+  },
+  "labels": {},
+  "metrics": [],
+  "objective_contract_ref": null,
+  "project_id": "prj_01M210J02FVMV66YC23D8NWE5Y",
+  "retention_class": null,
+  "revision": 1,
+  "schema_version": "1.0.0",
+  "supersedes_contract_id": null,
+  "workspace_id": "wks_01M210J02FANMHGQSVFK6R3K08"
+}

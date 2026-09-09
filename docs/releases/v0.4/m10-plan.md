@@ -1,5 +1,7 @@
 # v0.4 M10 — The research instrument
 
+> **Status clarification — 2026-09-08:** Historical M10 record, merged in #156. The [release audit](audit.md) records the later complete acceptance run; [results](../../research/v0.4/results.md) also retain the separately frozen amendment-1 re-read from #164. Original worktree failures/counts below are not current release blockers.
+
 SDD v0.4 §18 asks for a benchmark that can answer one question honestly: does choosing a
 configuration per node beat choosing one good configuration and keeping it? M10 builds the
 instrument and then uses it exactly once. The milestone owns six criteria — `AC4-M10-045`

@@ -1,0 +1,13 @@
+{
+  "acquired_at": "2026-09-08T17:20:23.084650Z",
+  "base_revision": "56d3de68a31e907753455c6ac403bdf29f02ecb0",
+  "branch_name": "accretion/run/run_01M210J002G0SAYZWB3E0HRWJ2",
+  "cleanup_policy": "KEEP_ON_FAILURE",
+  "expires_at": null,
+  "isolation": "WORKTREE",
+  "lease_id": "wsp_01M210J01CF92BZVGSPJM0MW7V",
+  "path": "/tmp/accretion-fake-pilot-p043p_op/incorrect-output/worktrees/run_01M210J002G0SAYZWB3E0HRWJ2",
+  "project_id": "prj_01M210J00169D5PMSJ3JBW351Z",
+  "run_id": "run_01M210J002G0SAYZWB3E0HRWJ2",
+  "writable": true
+}

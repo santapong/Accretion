@@ -1,0 +1,50 @@
+
+> accretion@0.4.1 build
+> npm run build --workspace @accretion/ui
+
+
+> @accretion/ui@0.4.1 build
+> tsc -b && vite build
+
+vite v8.2.2 building client environment for production...
+transforming...
+✓ 270 modules transformed.
+rendering chunks...
+[plugin accretion:bundle-budget] 
+bundle budget
+
+  chunk                                     raw B      gzip B  load
+  assets/index-Cy9WI5rv.js                154,043      35,476  initial
+  assets/rolldown-runtime-CbXtAM7H.js         589         368  initial
+  assets/vendor-data-CkxBMWr0.js           73,768      23,641  initial
+  assets/vendor-flow-BzOdHE_h.js          177,375      56,740  initial
+  assets/vendor-react-BicOiEU0.js         189,604      58,953  initial
+  assets/index-BMZieohM.css                53,181      10,638  initial
+
+  initial JS  595,379 B raw / 175,178 B gzip   initial CSS  53,181 B raw / 10,638 B gzip
+
+  PASS  per-chunk-raw:assets/index-Cy9WI5rv.js             154,043 B <= 500,000 B cap (raw)
+  PASS  per-chunk-raw:assets/rolldown-runtime-CbXtAM7H.js  589 B <= 500,000 B cap (raw)
+  PASS  per-chunk-raw:assets/vendor-data-CkxBMWr0.js       73,768 B <= 500,000 B cap (raw)
+  PASS  per-chunk-raw:assets/vendor-flow-BzOdHE_h.js       177,375 B <= 500,000 B cap (raw)
+  PASS  per-chunk-raw:assets/vendor-react-BicOiEU0.js      189,604 B <= 500,000 B cap (raw)
+  PASS  initial-js-raw                                     595,379 B <= 622,146 B cap (raw)
+  PASS  initial-js-gzip                                    175,178 B <= 183,105 B cap (gzip)
+  PASS  initial-css-raw                                    53,181 B <= 54,066 B cap (raw)
+  PASS  initial-css-gzip                                   10,638 B <= 10,870 B cap (gzip)
+  PASS  chunk-of:node_modules[\\/]react-dom[\\/]           all 1 matching module(s) in chunk "vendor-react"
+  PASS  chunk-of:node_modules[\\/]@xyflow[\\/]react[\\/]   all 1 matching module(s) in chunk "vendor-flow"
+  PASS  lazy-only                                          no matching modules (vacuous until PR7)
+
+  budget satisfied
+
+computing gzip size...
+dist/index.html                             0.78 kB │ gzip:  0.37 kB
+dist/assets/index-BMZieohM.css             53.18 kB │ gzip: 10.71 kB
+dist/assets/rolldown-runtime-CbXtAM7H.js    0.58 kB │ gzip:  0.36 kB
+dist/assets/vendor-data-CkxBMWr0.js        73.75 kB │ gzip: 23.82 kB
+dist/assets/index-Cy9WI5rv.js             154.04 kB │ gzip: 35.55 kB
+dist/assets/vendor-flow-BzOdHE_h.js       177.37 kB │ gzip: 57.29 kB
+dist/assets/vendor-react-BicOiEU0.js      189.60 kB │ gzip: 59.61 kB
+
+✓ built in 339ms

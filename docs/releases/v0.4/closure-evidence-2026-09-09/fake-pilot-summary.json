@@ -1,0 +1,49 @@
+{
+  "scope": "INTEGRATED_FAKE_RUN_SUMMARY",
+  "report": {
+    "cases": {
+      "incorrect-output": "FAIL",
+      "missing-required-evidence": "INCONCLUSIVE",
+      "valid-output": "PASS"
+    },
+    "completed_at": "2026-09-08T17:43:06.473937+00:00",
+    "limitations": [
+      "Fake single-node instrumentation; no hosted or learned-router result.",
+      "Zero provider charge means no provider calls; no prices were measured.",
+      "Local compute and full production scheduler/feedback integration are not measured."
+    ],
+    "live_execution_authority": "NOT_AUTHORIZED",
+    "provider_calls": 0,
+    "runtime_environment": {
+      "accretion_module": "/mnt/data/accretion-v04-execution-2026-09-08/integration/src/accretion/__init__.py",
+      "dependency_versions": {
+        "SQLAlchemy": "2.0.52",
+        "jsonschema": "4.26.0",
+        "pydantic": "2.13.4"
+      },
+      "instrumentation_module": "/mnt/data/accretion-v04-execution-2026-09-08/integration/src/accretion/provider_pilot.py",
+      "pyproject_sha256": "4b5401ecf51f0a0ebb3c708e34a2997a52e8f3a1f41cd7af9ff3002e0d8e65cb",
+      "python_executable": "/mnt/data/accretion-v04-execution-2026-09-08/integration/.venv/bin/python3",
+      "python_version": "3.12.9 (main, Feb 12 2025, 14:50:50) [Clang 19.1.6 ]",
+      "uv_lock_sha256": "de48b5ada4e50bf9dcfdd48d2f1fff24c4b455b2bb7e9eba7daa32940afdf563"
+    },
+    "source_commit": "f8b47a8a56226a729097273624dbcc2d65c20608",
+    "source_sha256": {
+      "scripts/provider_pilot_dry_run.py": "2027daf4db902be1ae22dfd44a901c3e597588f9e8d2e5f8811a7e3c7a05074c",
+      "src/accretion/feedback/verification.py": "b455b3ef049c04aa854ab1f8a90624ae0494643c0643886055758ef28964ac02",
+      "src/accretion/provider_pilot.py": "546005645ebb08b5c07d51613491e1200bd9ffb1addbfb6e32d5b5c422d837ed",
+      "src/accretion/routing/bootstrap.py": "bb8f8f54c8637ebe144c273017c9979b5fd0fd085830182751f8a05ad182d950",
+      "src/accretion/routing/service.py": "298db4fdc4bb286bc1eb38982ea4d19bad0814dbceabcb6cec236a3396e963b0",
+      "src/accretion/runtimes/fake.py": "8933bfaf52e518149afaf53b7e3600c9fed4e6bf4c05b1b62dce5e73c35fef85",
+      "src/accretion/verifiers/output_contract.py": "1fb03bbcae65660b8818536c8cfbb74e197d9e51c64f0998fe66f0b292a31d96"
+    },
+    "source_status_porcelain": [],
+    "status": "FAKE_INSTRUMENTATION_VERIFIED",
+    "study_id": "ACR-ROUTER-DEV-20260908"
+  },
+  "local_full_export_directory": "/mnt/data/accretion-v04-execution-2026-09-08/evidence/20260908T173527Z/fake-pilot",
+  "full_export_file_count": 48,
+  "full_export_manifest_sha256": "f1435a83ac5ec56925246c77fff52b5eaa806f8b4cf55ba7b7d6309117d38112",
+  "note": "The complete integrated rerun export remains task-local; the separately committed worker export retains its own source identity and all native bytes.",
+  "portable_worker_export_from_repository_root": "docs/research/v0.4/provider-pilot-2026-09-08/evidence/2026-09-09/"
+}

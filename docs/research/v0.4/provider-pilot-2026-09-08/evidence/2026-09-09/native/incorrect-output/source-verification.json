@@ -1,0 +1,29 @@
+{
+  "duration_ms": 0,
+  "evidence_refs": [
+    "file-sha256:result.json:9fab8758ecd62a4bf8609d1d36eb453e4953b1d1bb5719dc37df3f5edaeb2a5e"
+  ],
+  "executed_at": "2026-09-08T17:20:23.092410Z",
+  "false_accept_risk_estimate": null,
+  "findings": [
+    {
+      "code": "OUTPUT_DIGEST_MISMATCH",
+      "evidence_ref": "file-sha256:result.json:9fab8758ecd62a4bf8609d1d36eb453e4953b1d1bb5719dc37df3f5edaeb2a5e",
+      "fingerprint": "e901429601d01c48e3827c89c9fe940e25389db11b4be5e5763c9da2900d8f1f",
+      "line": null,
+      "message": "Required output digest does not match the contract.",
+      "path": "result.json",
+      "schema_version": "1.0",
+      "severity": "ERROR"
+    }
+  ],
+  "iteration_id": null,
+  "run_id": "run_01M210J002G0SAYZWB3E0HRWJ2",
+  "schema_version": "1.0",
+  "score": 0.0,
+  "status": "FAIL",
+  "target_ref": "exe_FZHJE8AV4FJZN31JPVZXW2AK7D",
+  "verification_id": "ver_01M210J01M0EV4HMEVAH5DG43A",
+  "verifier_id": "output-contract",
+  "verifier_version": "output-contract-v1"
+}
