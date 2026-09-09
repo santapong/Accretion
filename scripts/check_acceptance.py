@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
+import re
+import subprocess
 import sys
 from collections import defaultdict
+from pathlib import Path
 
 from accretion.acceptance import (
     _FAILING,
@@ -13,7 +17,50 @@ from accretion.acceptance import (
     classify,
     load_criteria,
     run_tests,
+    v05_release_evidence_errors,
 )
+
+
+def current_candidate() -> tuple[str, str]:
+    root = Path(__file__).resolve().parents[1]
+    status = subprocess.run(
+        ["git", "status", "--porcelain"], cwd=root, capture_output=True, text=True, check=True
+    )
+    if status.stdout.strip():
+        raise ValueError(
+            "release gate requires a clean candidate checkout; keep evidence outside it"
+        )
+    identities = subprocess.run(
+        ["git", "rev-parse", "HEAD", "HEAD^{tree}"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.splitlines()
+    return identities[0], identities[1]
+
+
+def evidence_candidate(root: Path, commit: str, tree: str) -> str:
+    """A protected release bridge may reuse evidence only for an identical tree."""
+    if not re.fullmatch(r"[0-9a-f]{40}", commit):
+        raise ValueError("--evidence-candidate requires a full commit ID")
+    identities = subprocess.run(
+        ["git", "rev-parse", "--verify", f"{commit}^{{commit}}"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    resolved_tree = subprocess.run(
+        ["git", "rev-parse", "--verify", f"{commit}^{{tree}}"],
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout.strip()
+    if identities != commit or resolved_tree != tree:
+        raise ValueError("evidence candidate does not have the exact current candidate tree")
+    return commit
 
 
 def main() -> int:
@@ -21,12 +68,55 @@ def main() -> int:
     parser.add_argument(
         "--no-tests", action="store_true", help="report coverage without running the suite"
     )
-    parser.add_argument("--stage", help="only report one phase or milestone, e.g. M2 or P3")
+    scope = parser.add_mutually_exclusive_group()
+    scope.add_argument("--stage", help="only report one phase or milestone, e.g. M2 or P3")
+    scope.add_argument(
+        "--release", choices=["v0.5"], help="also require all v0.5 composite evidence"
+    )
+    parser.add_argument(
+        "--evidence-manifest", type=Path, help="candidate-bound v0.5 evidence bundle"
+    )
+    parser.add_argument(
+        "--evidence-candidate",
+        help="audited commit for an identical-tree release bridge; defaults to HEAD",
+    )
     parser.add_argument("--quiet", action="store_true", default=True)
     options = parser.parse_args()
+    if options.release and options.no_tests:
+        parser.error("release validation cannot omit claiming tests with --no-tests")
+    if (options.evidence_manifest or options.evidence_candidate) and not options.release:
+        parser.error("evidence options require --release v0.5")
 
     criteria = load_criteria()
     errors = apply_policy(criteria)
+    candidate: tuple[str, str] | None = None
+    manifest_digest: str | None = None
+    audited_commit = ""
+    if options.release:
+        try:
+            candidate = current_candidate()
+            audited_commit = evidence_candidate(
+                Path(__file__).resolve().parents[1],
+                options.evidence_candidate or candidate[0],
+                candidate[1],
+            )
+            errors.extend(
+                v05_release_evidence_errors(
+                    criteria,
+                    options.evidence_manifest,
+                    audited_commit,
+                    candidate[1],
+                )
+            )
+            if not errors and options.evidence_manifest:
+                manifest_digest = hashlib.sha256(options.evidence_manifest.read_bytes()).hexdigest()
+        except (OSError, subprocess.SubprocessError, ValueError, IndexError) as error:
+            errors.append(str(error))
+        if errors:
+            print("FAIL: v0.5 release evidence is not complete.")
+            for error in errors:
+                print(f"    {error}")
+            return 1
 
     if not options.no_tests:
         plugin = run_tests(options.quiet)
@@ -37,6 +127,26 @@ def main() -> int:
                 continue
             criterion.tests = nodes
             criterion.outcomes = [plugin.outcomes.get(node, "missing") for node in nodes]
+    if options.release:
+        try:
+            if current_candidate() != candidate:
+                errors.append("candidate changed while acceptance tests were running")
+            if options.evidence_manifest and candidate:
+                if (
+                    hashlib.sha256(options.evidence_manifest.read_bytes()).hexdigest()
+                    != manifest_digest
+                ):
+                    errors.append("evidence manifest changed while acceptance tests were running")
+                errors.extend(
+                    v05_release_evidence_errors(
+                        criteria,
+                        options.evidence_manifest,
+                        audited_commit,
+                        candidate[1],
+                    )
+                )
+        except (OSError, subprocess.SubprocessError, ValueError, IndexError) as error:
+            errors.append(str(error))
 
     selected = [
         criterion
@@ -53,6 +163,12 @@ def main() -> int:
         return 2
 
     statuses = {criterion.id: classify(criterion) for criterion in selected}
+    if not any(criterion.in_scope for criterion in selected):
+        print(
+            "NOT READY: selected criteria are all deferred; registration is not acceptance proof.",
+            file=sys.stderr,
+        )
+        return 2
 
     by_status: dict[str, list[Criterion]] = defaultdict(list)
     for criterion in selected:
@@ -85,7 +201,11 @@ def main() -> int:
         print("\nFAIL: every in-scope MUST criterion needs a passing claim, a current")
         print("manual record, or an unexpired waiver.")
         return 1
-    print("\nPASS")
+    print(
+        "\nPASS"
+        if not options.release
+        else "\nPASS: acceptance and composite evidence integrity checks"
+    )
     return 0
 
 
