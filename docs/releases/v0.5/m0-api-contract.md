@@ -69,3 +69,15 @@ under the same strict envelope; new fields are versioned. The mutable state
 projection is rebuilt from ordered committed events and compared with its
 authoritative revision. Generated OpenAPI and frontend types must agree with
 the actual implemented DTOs before M4/M8 completion.
+
+## Existing run API compatibility
+
+The episode service creates a real attributable run with an internal
+`SimulationRunBinding` before acquiring the simulation lease. The existing run
+list may show that run, but generic software reconciliation and controls cannot
+take ownership of it. Resolve the binding before pause/resume/cancel/audit:
+dispatch supported operations to the episode service, or return a typed state
+conflict with the episode detail path. Do not index an absent DETERMINISTIC CLI,
+invent runtime health, resume an uncertain simulator or require a fake Git diff.
+Independent episode acceptance is the only successful-completion source for
+this bound run. Existing unbound software runs retain their established path.

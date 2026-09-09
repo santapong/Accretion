@@ -139,6 +139,29 @@ permissions. Acceptance requires independent task, safety and completeness
 PASS; unresolved inconclusive state reaches human review. Contradiction and
 quarantine append evidence without erasing original records.
 
+Every episode and lease retains a real `run_id`: current capability policy
+resolves persisted run → task → project/principal. The episode service creates
+a genuine `Task(EXPERIMENT)`, `Run(provider=DETERMINISTIC)` and robotics-owned
+`SimulationRunBinding` atomically before leasing. The immutable binding records
+episode/experiment and `EMBODIED_ORCHESTRATOR` ownership. It is internal service
+state with a run FK, never a client-writable manifest grant. No dummy FAKE run or
+weakening of legacy `Run`/`ArtifactRef` is needed.
+
+`Provider.DETERMINISTIC` is an attribution label, not an installed agent CLI.
+Generic run creation/reconciliation/pause/resume/cancel/audit must consult the
+authoritative binding before mutation and dispatch to the episode owner or
+return a typed unsupported-operation response. Never infer ownership from a
+provider string or caller label. The episode service owns startup reconciliation
+and uncertain-action termination. A standalone episode has no invented software
+workflow graph or worktree; a graph mode is recorded only for a real graph.
+
+The current generic TOOL path sends a `query`, tolerates ordinary capability
+failures and verifies a Git diff. It cannot execute simulation work unchanged.
+The future workflow seam must pass an exact typed episode/experiment reference,
+propagate denial/uncertainty/failure and await independent episode verification.
+Gateway acknowledgement alone must never mark the episode or parent run as
+successful. These dispatch and outcome boundaries require integration witnesses.
+
 Idempotency keys are scoped by workspace, principal, operation and resource.
 Persist canonical request digest and original response: identical retries return
 that response; changed-body reuse conflicts. Every existing-resource write uses
