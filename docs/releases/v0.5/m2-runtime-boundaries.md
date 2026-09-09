@@ -96,7 +96,8 @@ budget accounting still needs integration.
 
 The durable host journal now persists immutable launch identity before Docker
 creation, fences the owned lease for cleanup and supports cleanup-only restart
-reconciliation. Its final combined host witness remains a Wave 2 exit gate.
+reconciliation. Its [four-case actual host witness](m2-host-lease-probe-2026-09-09.md)
+passed with all containers removed and original attempt evidence retained.
 The ten-check preflight builder refuses missing evidence and always reports
 `activation_eligible=False`; trusted production checkers and operational receipt
 commit remain with episode integration. This is not a complete operational M2

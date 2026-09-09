@@ -58,5 +58,6 @@ This closes the combined persisted-authority/host construction witness. It does
 not run a robot, qualify the UR5e adapter, activate production preflight, prove
 hard realtime enforcement or an OS host-crash/restart recovery, complete an
 episode, or discharge composite AC5
-criteria. Final regression checks and protected integration remain separate
-Wave 2 exit requirements.
+criteria. The [final regression gates](evidence/m2-host-gates-2026-09-09/README.md)
+subsequently passed in CI order on one retained database. Protected integration
+follows current required CI and reviewed-tree verification.

@@ -32,7 +32,8 @@ later integrated capture work. Until its producers, readers and independent
 checks agree, the current sampled traces cannot become accepted verifier input.
 Continuous commanded-path checks and the original safety limits remain required.
 
-The real isolated host, complete episodes, independent verifier process, grasp,
+The isolated host now has separate [construction evidence](m2-host-lease-probe-2026-09-09.md).
+Complete episodes, an independent verifier process, grasp,
 recovery, new-process physics replay, second-adapter qualification, Studio and
 benchmark/release evidence remain later integration obligations. All thirty
 composite AC5 criteria stay pending.

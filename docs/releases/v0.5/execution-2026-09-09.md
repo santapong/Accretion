@@ -10,7 +10,7 @@ independent robot qualification and the study/release program.
 | Wave 0 / M0 | [PR #182](https://github.com/santapong/Accretion/pull/182), merge `e9cd6503ba139770de61f627d8b2aa0cb063c094`; all eight CI checks passed |
 | Wave 1 / M1 and pure M3 | [PR #183](https://github.com/santapong/Accretion/pull/183), merge `da7e806f7ab3a4eef0b6844b5777d9cb66370ccd`; all eight CI checks passed |
 | Wave 2 / UR5e and verifier modules | [PR #184](https://github.com/santapong/Accretion/pull/184), merge `f380bf08fd9e45a44bc749723f21bafc7644c56d`; all eight CI checks passed |
-| Wave 2 / host, gateway, leases and preflight foundation | Implementation and four-case actual host/lease probe passed; final regression checks and protected integration pending |
+| Wave 2 / host, gateway, leases and preflight foundation | Four-case actual host/lease probe and all final CI-order local gates passed; integration follows protected develop review |
 | Wave 3 onward | Parked; no complete episode, Studio, independent replay, task qualification or study/release claim |
 
 Each fetched merge tree matched its reviewed PR head. Canonical `develop` was
@@ -25,7 +25,7 @@ three reused agents implement and independently review bounded work. The wider
 historical evidence; those files are excluded from this host slice. Episode API
 and numerical-evidence drafts remain in separate parked worktrees.
 
-## Wave 2 implementation and remaining exit
+## Wave 2 implementation and verified construction exit
 
 Additive migrations 0022–0024 provide atomic attributed Task/Run ownership,
 fenced leases and reservations, scoped policy/conformance inventory and a
@@ -167,8 +167,8 @@ new empty database. Both attempts, exact commands, source identities, confirmed
 exits and raw log hashes are retained in the
 [construction evidence bundle](evidence/m1-construction-2026-09-09/README.md).
 
-All thirty composite AC5 criteria remain pending. Wave 2 host validation is
-continuing within the approved stopping point; no registered campaign or release is claimed.
+All thirty composite AC5 criteria remain pending. Wave 2 construction witnesses
+are verified; Wave 3 is parked. No registered campaign or release is claimed.
 
 The focused host candidate's [initial gate bundle](evidence/m2-host-gates-2026-09-09/README.md)
 records 5,078 backend passes and four PostgreSQL test-order failures. A provider
@@ -176,3 +176,14 @@ negative test was another source of retained identity corruption. Its exact
 binding now restores in `finally`; the reproduced failure, 38 ordered passes
 and eight fresh-process PostgreSQL passes are retained. This is a test repair;
 production integrity checks continue to reject corrupted identities.
+
+
+The final host source `45156481b22d2c9501fbae55950284c7b018d84d` passed
+**5,250 backend tests with ten explicit skips**, migration round trip, static and
+schema checks, then acceptance and all five inherited release conditions on the
+**same retained disposable database**. All exits were confirmed and source
+remained unchanged. The [final gate bundle](evidence/m2-host-gates-2026-09-09/README.md)
+retains original results, failed predecessors and three independent reviews.
+Report-only additions preserve the actual probe and tested executable closure.
+Protected integration requires green CI on the submitted head and a fetched
+merge tree equal to that reviewed head. After integration, park before Wave 3.
