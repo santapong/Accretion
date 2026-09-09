@@ -12,6 +12,7 @@ bounded parallel work with a coordinator and at most three workers.
 | [Execution checkpoint](execution-2026-09-09.md) | Current implementation disposition and observed validation |
 | [M0 decisions](m0-decisions-2026-09-09.md) | Adopted contract, authority, simulation and evidence directions |
 | [M0 API contract](m0-api-contract.md) | Scoped operations, idempotency, concurrency, state and Studio integration |
+| [M0 simulator feasibility](feasibility-2026-09-09.md) | Executed CPU-only UR5e/gripper and Panda reset, stepping, observations and contact evidence |
 | [Contract audit](planning/contract-audit-2026-09-09.md) | Entry evidence, canonical contract conflicts and authority decisions |
 | [Runtime audit](planning/runtime-audit-2026-09-09.md) | Existing code, missing simulation components, adapter choices and fault witnesses |
 | [Acceptance audit](planning/acceptance-audit-2026-09-09.md) | Every source criterion, harness changes and research/release completion evidence |
