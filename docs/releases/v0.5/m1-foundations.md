@@ -1,6 +1,6 @@
 # v0.5 registry and execution foundations
 
-Status: implementation under integrated review. This record does not claim
+Status: combined local construction checks passed; protected review pending. This record does not claim
 complete M1/M3 acceptance or actual simulator conformance. Follow the
 [execution checkpoint](execution-2026-09-09.md) for confirmed results and the
 [API contract](m0-api-contract.md) for the full planned surface.
@@ -70,6 +70,7 @@ compare the live phase, physics step, dependency closure, lease, approval and
 budgets before consuming authority once. Unknown acknowledgements never
 authorize a resend to the original episode.
 
-Combined tests, PostgreSQL parity, the actual isolated host and both real
-adapters remain separate evidence obligations. All thirty composite AC5
+Combined tests and PostgreSQL parity passed on the candidates identified in
+the [construction validation](evidence/m1-construction-2026-09-09/README.md).
+The actual isolated host and both real adapters remain separate evidence obligations. All thirty composite AC5
 criteria remain pending until their required evidence classes are complete.

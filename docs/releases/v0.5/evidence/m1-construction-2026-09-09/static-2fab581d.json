@@ -1,0 +1,70 @@
+{
+  "lane": "static",
+  "candidate": "2fab581d6965e201794951f7cba96283680e6585",
+  "tree": "fadd945a6bc29761f03ca1df362ad83a13e83dc5",
+  "scope": "CONSTRUCTION_ONLY_NO_COMPOSITE_AC5_CLAIM",
+  "started_at": "2026-09-09T07:56:05.383332+00:00",
+  "steps": [
+    {
+      "argv": [
+        "uv",
+        "lock",
+        "--check"
+      ],
+      "started_at": "2026-09-09T07:56:05.383949+00:00",
+      "log": "static-2fab581d-01.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T07:56:05.420059+00:00",
+      "sha256": "df442c9d57f07c5fbfa31675425f65434b53e13420ceaf27a1ac1db1ba1e165e"
+    },
+    {
+      "argv": [
+        ".venv/bin/ruff",
+        "check",
+        "."
+      ],
+      "started_at": "2026-09-09T07:56:05.420459+00:00",
+      "log": "static-2fab581d-02.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T07:56:05.580987+00:00",
+      "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+    },
+    {
+      "argv": [
+        ".venv/bin/mypy",
+        "src"
+      ],
+      "started_at": "2026-09-09T07:56:05.582104+00:00",
+      "log": "static-2fab581d-03.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T07:57:06.121996+00:00",
+      "sha256": "866f135eda15a6396df37bd084c95fd89cee94239a37fcd17a9f9b0eb3878445"
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        "scripts/check_docs.py"
+      ],
+      "started_at": "2026-09-09T07:57:06.125051+00:00",
+      "log": "static-2fab581d-04.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T07:57:16.362718+00:00",
+      "sha256": "3cab6bbae26180ee72125a1004ce32414b1ccf0471acedea61cc56c31d589b5a"
+    },
+    {
+      "argv": [
+        ".venv/bin/python",
+        "scripts/export_contract_schemas.py",
+        "--check"
+      ],
+      "started_at": "2026-09-09T07:57:16.363615+00:00",
+      "log": "static-2fab581d-05.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T07:57:18.979790+00:00",
+      "sha256": "6b48938a96c040d7dcdf2e2bf72b75321dcc1e7d33e489b70a1a5ad4667bef2f"
+    }
+  ],
+  "complete": true,
+  "ended_at": "2026-09-09T07:57:18.981850+00:00",
+  "source_unchanged": true
+}

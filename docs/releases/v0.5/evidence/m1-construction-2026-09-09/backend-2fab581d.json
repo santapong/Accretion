@@ -1,0 +1,34 @@
+{
+  "lane": "backend",
+  "candidate": "2fab581d6965e201794951f7cba96283680e6585",
+  "tree": "fadd945a6bc29761f03ca1df362ad83a13e83dc5",
+  "scope": "CONSTRUCTION_ONLY_NO_COMPOSITE_AC5_CLAIM",
+  "started_at": "2026-09-09T08:01:21.904634+00:00",
+  "steps": [
+    {
+      "argv": [
+        ".venv/bin/alembic",
+        "upgrade",
+        "head"
+      ],
+      "started_at": "2026-09-09T08:01:21.905480+00:00",
+      "log": "backend-2fab581d-01.log",
+      "exit_code": 0,
+      "ended_at": "2026-09-09T08:01:25.606065+00:00",
+      "sha256": "84b9cfdaaae75628f3cbd7082d9c05399a66f8049b2a84369fcf326d0622ec92"
+    },
+    {
+      "argv": [
+        ".venv/bin/alembic",
+        "downgrade",
+        "base"
+      ],
+      "started_at": "2026-09-09T08:01:25.609254+00:00",
+      "log": "backend-2fab581d-02.log",
+      "exit_code": 1,
+      "ended_at": "2026-09-09T08:01:28.199534+00:00",
+      "sha256": "a161744806653cbdf49e112fa4028b22d7b8a857522c9e29c5d04bb9647429f3"
+    }
+  ],
+  "complete": false
+}

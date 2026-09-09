@@ -1,0 +1,23 @@
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 0001_p0_foundation, P0 authoritative state and append-only events.
+INFO  [alembic.runtime.migration] Running upgrade 0001_p0_foundation -> 0002_p1_planning, P1 immutable prompt, context, profile, decision, and override history.
+INFO  [alembic.runtime.migration] Running upgrade 0002_p1_planning -> 0003_p2_loops_verifiers, P2 loop execution and verifier evidence.
+INFO  [alembic.runtime.migration] Running upgrade 0003_p2_loops_verifiers -> 0004_p3_graphs_checkpoints, P3 workflow templates, run graphs, checkpoints, and approvals.
+INFO  [alembic.runtime.migration] Running upgrade 0004_p3_graphs_checkpoints -> 0005_p4_capability_governance, P4 governed capability registry, policies, plugins, and requests.
+INFO  [alembic.runtime.migration] Running upgrade 0005_p4_capability_governance -> 0006_p4_benchmark_research, P4 benchmark, project version, and research evidence records.
+INFO  [alembic.runtime.migration] Running upgrade 0006_p4_benchmark_research -> 0007_p5_dynamic_workflows, P5 validated dynamic workflow proposals and immutable revisions.
+INFO  [alembic.runtime.migration] Running upgrade 0007_p5_dynamic_workflows -> 0008_p6_search_contracts, P6 candidate-search contracts and durable evidence.
+INFO  [alembic.runtime.migration] Running upgrade 0008_p6_search_contracts -> 0009_p7_experience_contracts, P7 verified-experience contracts and exact vector storage.
+INFO  [alembic.runtime.migration] Running upgrade 0009_p7_experience_contracts -> 0010_v03_m0_connection_contracts, v0.3 M0 connector, connection, and capability-binding contracts.
+INFO  [alembic.runtime.migration] Running upgrade 0010_v03_m0_connection_contracts -> 0011_v03_m1_identity_contracts, v0.3 M1 principal, workspace, and auth-session contracts.
+INFO  [alembic.runtime.migration] Running upgrade 0011_v03_m1_identity_contracts -> 0012_v03_m2_token_broker, v0.3 M2 token handle, secret record, and OAuth transaction contracts.
+INFO  [alembic.runtime.migration] Running upgrade 0012_v03_m2_token_broker -> 0013_v03_m3_remote_mcp, v0.3 M3 remote MCP lifecycle, discovery cache, and audit contracts.
+INFO  [alembic.runtime.migration] Running upgrade 0013_v03_m3_remote_mcp -> 0014_v03_m4_plugin_manager, v0.3 M4 plugin version registry, workspace installations, and audit trail.
+INFO  [alembic.runtime.migration] Running upgrade 0014_v03_m4_plugin_manager -> 0015_v03_m5_research_evidence, v0.3 M5 research evidence store.
+INFO  [alembic.runtime.migration] Running upgrade 0015_v03_m5_research_evidence -> 0016_v03_m7_enterprise_auth, v0.3 M7 enterprise-managed authorization.
+INFO  [alembic.runtime.migration] Running upgrade 0016_v03_m7_enterprise_auth -> 0017_v04_m0_routing_contracts, v0.4 M0 routing contract persistence freeze (SDD v0.4 §13, ADR-058).
+INFO  [alembic.runtime.migration] Running upgrade 0017_v04_m0_routing_contracts -> 0018_v04_freeze_delta, v0.4 freeze delta: branched-rollout results and the router activation ledger.
+INFO  [alembic.runtime.migration] Running upgrade 0018_v04_freeze_delta -> 0020_v04_experience_fk, v0.4 M3a: give ``experience_records`` a separate ``experience_id`` foreign key.
+INFO  [alembic.runtime.migration] Running upgrade 0020_v04_experience_fk -> 0019_v04_m8_activation, v0.4 M8.1: retire the two partial unique indexes the activation ledger replaces.
+INFO  [alembic.runtime.migration] Running upgrade 0019_v04_m8_activation -> 0021_v05_robotics_registry, Add immutable simulation registry, explicit scope binding and transactional outbox.
