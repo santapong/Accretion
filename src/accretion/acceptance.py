@@ -610,6 +610,7 @@ class AcceptancePlugin:
     def __init__(self) -> None:
         self.claims: dict[str, list[str]] = defaultdict(list)
         self.outcomes: dict[str, str] = {}
+        self.exit_code: int | None = None
 
     def pytest_collection_modifyitems(self, items: list[Any]) -> None:
         for item in items:
@@ -646,6 +647,7 @@ def run_tests(quiet: bool) -> AcceptancePlugin:
     args = ["-p", "pytest_asyncio.plugin", "--no-header"]
     args.append("-q" if quiet else "-v")
     code = pytest.main(args, plugins=[plugin])
+    plugin.exit_code = int(code)
     if code not in {0, 1}:  # 1 = tests failed, which we report per criterion
         raise SystemExit(f"pytest exited with {code}")
     return plugin

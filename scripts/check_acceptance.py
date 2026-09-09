@@ -114,12 +114,18 @@ def main() -> int:
             errors.append(str(error))
         if errors:
             print("FAIL: v0.5 release evidence is not complete.")
-            for error in errors:
-                print(f"    {error}")
+            for policy_error in errors:
+                print(f"    {policy_error}")
             return 1
 
     if not options.no_tests:
         plugin = run_tests(options.quiet)
+        if options.release and plugin.exit_code != 0:
+            # Release validation also needs the suite to finish cleanly: an
+            # unmarked regression has no criterion outcome to reject below.
+            errors.append(
+                f"v0.5 release requires a zero pytest exit; observed {plugin.exit_code!r}"
+            )
         for identifier, nodes in plugin.claims.items():
             criterion = criteria.get(identifier)
             if criterion is None:
@@ -194,8 +200,8 @@ def main() -> int:
 
     if errors:
         print("\npolicy errors:")
-        for error in errors:
-            print(f"    {error}")
+        for policy_error in errors:
+            print(f"    {policy_error}")
 
     if errors or unmet:
         print("\nFAIL: every in-scope MUST criterion needs a passing claim, a current")

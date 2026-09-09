@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import importlib.util
 import json
+import os
 import re
 import subprocess
 import sys
@@ -454,7 +455,7 @@ def test_release_rechecks_candidate_and_artifacts_after_claiming_tests(
             (bundle.root / "synthetic-parser-input.txt").write_text("changed during tests")
         claims = {identifier: [f"synthetic::{identifier}"] for identifier in bundle.criteria}
         return SimpleNamespace(
-            claims=claims, outcomes={nodes[0]: "passed" for nodes in claims.values()}
+            claims=claims, outcomes={nodes[0]: "passed" for nodes in claims.values()}, exit_code=0
         )
 
     monkeypatch.setattr(cli, "load_criteria", lambda: bundle.criteria)
@@ -489,6 +490,125 @@ def test_release_cli_cannot_skip_tests_or_select_one_stage(arguments: list[str])
     )
     assert result.returncode == 2
     assert "PASS" not in result.stdout
+
+
+RELEASE_SUITE_RUNNER = """
+import importlib.util
+import json
+import sys
+from pathlib import Path
+from unittest.mock import patch
+
+import pytest
+
+root, manifest, suite, mode = sys.argv[1:]
+spec = importlib.util.spec_from_file_location(
+    "release_cli_test", Path(root) / "scripts/check_acceptance.py"
+)
+cli = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(cli)
+real_pytest = pytest.main
+observed = {}
+
+def isolated_pytest(args, plugins):
+    args = [*args, "-c", "/dev/null", "-p", "no:cacheprovider", suite]
+    if mode == "usage":
+        args.append("--nonexistent-release-witness-option")
+    code = real_pytest(args, plugins=plugins)
+    observed["pytest_exit"] = int(code)
+    return code
+
+# These synthetic records and claiming controls only isolate gate control flow.
+# Neither the records nor the claims are robotics acceptance evidence.
+with (
+    patch.object(cli, "apply_policy", lambda _: []),
+    patch.object(cli, "current_candidate", lambda: ("a" * 40, "b" * 40)),
+    patch.object(cli, "evidence_candidate", lambda *args: "a" * 40),
+    patch.object(pytest, "main", isolated_pytest),
+    patch.object(sys, "argv", ["check_acceptance.py", "--release", "v0.5",
+                              "--evidence-manifest", manifest]),
+):
+    try:
+        observed["cli_exit"] = cli.main()
+    except SystemExit as error:
+        observed["cli_exit"] = error.code if isinstance(error.code, int) else 1
+        print(str(error))
+print("GATE_RESULT " + json.dumps(observed))
+"""
+
+
+@pytest.mark.parametrize(
+    "mode,pytest_exit",
+    [
+        ("control", 0),
+        ("unmarked_failure", 1),
+        ("unmarked_setup", 1),
+        ("unmarked_teardown", 1),
+        ("claimed_failure", 1),
+        ("collection", 2),
+        ("internal", 3),
+        ("usage", 4),
+        ("empty", 5),
+    ],
+)
+def test_release_requires_real_pytest_success_even_for_unmarked_tests(
+    bundle: Bundle, tmp_path: Path, mode: str, pytest_exit: int
+) -> None:
+    """Exercise real pytest exits through the CLI without claiming any AC5 proof."""
+    suite = tmp_path / "isolated-suite"
+    suite.mkdir()
+    source = (
+        "import pytest\n"
+        f"@pytest.mark.acceptance(*{list(bundle.criteria)!r})\n"
+        "def test_claiming_control():\n"
+        f"    assert {mode != 'claimed_failure'}\n"
+    )
+    if mode == "unmarked_failure":
+        source += "def test_unmarked_regression():\n    assert False\n"
+    elif mode == "unmarked_setup":
+        source += (
+            "@pytest.fixture\ndef broken():\n    raise RuntimeError('setup failure')\n"
+            "def test_unmarked_regression(broken):\n    pass\n"
+        )
+    elif mode == "unmarked_teardown":
+        source += (
+            "@pytest.fixture\ndef broken():\n    yield\n"
+            "    raise RuntimeError('teardown failure')\n"
+            "def test_unmarked_regression(broken):\n    pass\n"
+        )
+    elif mode == "collection":
+        source += "raise RuntimeError('collection failure')\n"
+    elif mode == "internal":
+        (suite / "conftest.py").write_text(
+            "def pytest_sessionstart(session):\n    raise RuntimeError('session failure')\n"
+        )
+    elif mode == "empty":
+        source = ""
+    (suite / "test_suite.py").write_text(source)
+    runner = tmp_path / "run_release_gate.py"
+    runner.write_text(RELEASE_SUITE_RUNNER)
+    completed = subprocess.run(
+        [sys.executable, str(runner), str(ROOT), str(bundle.path), str(suite), mode],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        env={**os.environ, "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1"},
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    rows = [line for line in completed.stdout.splitlines() if line.startswith("GATE_RESULT ")]
+    assert rows, completed.stdout + completed.stderr
+    observed = json.loads(rows[-1].removeprefix("GATE_RESULT "))
+    assert observed["pytest_exit"] == pytest_exit, completed.stdout + completed.stderr
+    assert observed["cli_exit"] == (0 if mode == "control" else 1)
+    if mode == "control":
+        assert "PASS: acceptance and composite evidence integrity checks" in completed.stdout
+    else:
+        assert "PASS: acceptance" not in completed.stdout
+    if pytest_exit == 1:
+        assert "v0.5 release requires a zero pytest exit; observed 1" in completed.stdout
+    if mode == "claimed_failure":
+        assert "FAILING:" in completed.stdout
+        assert "AC5-001" in completed.stdout
 
 
 def test_m0_cannot_pass_explicit_release_mode() -> None:
