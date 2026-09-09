@@ -48,6 +48,7 @@ from accretion.robotics.runtime_store import (
     PolicyGrantSpec,
     RuntimeConformanceAdmission,
     RuntimeEpisode,
+    RuntimeLease,
     RuntimePolicyGrant,
     RuntimeTransaction,
 )
@@ -320,11 +321,24 @@ async def test_fresh_reset_reservation_carries_inventory_deadline(inventory: Inv
     i = inventory
     await i.bind()
     await i.lab.running()
+    ep = await i.lab.episode()
+    assert i.lab.lease and i.lab.approval
     async with i.lab.authority.store.transaction(i.lab.project) as tx:
+        lease = await tx.get(RuntimeLease, i.lab.lease.id)
+        assert lease
+        preflight = await i.lab.authority._preflight(tx, i.lab.scope(), ep, lease)
         rows = await tx.list_rows(
             DispatchReservation, workspace_id=i.lab.workspace, project_id=i.lab.project
         )
-    assert len(rows) == 1 and rows[0].authority_valid_until == i.policy_spec.valid_until
+    expected = min(
+        i.policy_spec.valid_until,
+        lease.expires_at,
+        lease.heartbeat_deadline,
+        preflight.valid_until,
+        i.lab.approval.expires_at,
+    )
+    assert expected < i.policy_spec.valid_until
+    assert len(rows) == 1 and rows[0].authority_valid_until == expected
 
 
 async def test_missing_inventory_rolls_back_real_run_creation(inventory: InventoryLab) -> None:
