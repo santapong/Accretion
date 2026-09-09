@@ -1,6 +1,7 @@
 # Wave 2 finite host and lease integration probe
 
-Status: **SOURCE REVIEW PACKET — NOT EXECUTED** (2026-09-09). This is the
+Status: **REVIEWED CONSTRUCTION PACKET** (2026-09-09). Actual attempts are
+recorded in the [probe report](m2-host-lease-probe-2026-09-09.md). This is the
 coordinator's Wave 2 host/lease witness. It does not run a robot, qualify an
 adapter, accept an episode, or establish v0.5 completion. Stop before Wave 3.
 
@@ -41,8 +42,10 @@ convert its construction findings into a production preflight receipt.
   task-owned directory). The wrapper stores context/accounting/logs there and
   passes a new empty `observations/` subdirectory to the harness. Persist all
   failed attempts too.
-- Bootstrap/Unix sockets: task-owned private subdirectories below that output,
-  mode0700 with bootstrap mode0444; sole worker mount read-only.
+- Bootstrap/Unix sockets: verified POSIX private directories under
+  `/tmp/accretion-v05-host-probe-*`, mode0700 with bootstrap mode0444; sole worker
+  mount read-only. Original bootstrap bytes and actual directory metadata are
+  retained under the evidence output. The evidence mount cannot supply IPC privacy.
 - Disposable database: a new `accretion_v05_host_probe_20260909` database on
   task container `accretion-v05-20260909-pg`. Supply its known URL through
   `ACCRETION_DATABASE_URL`/`ACCRETION_TEST_POSTGRES_URL`; do not print URLs or
