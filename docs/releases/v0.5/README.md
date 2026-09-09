@@ -9,6 +9,9 @@ bounded parallel work with a coordinator and at most three workers.
 
 | Document | Purpose |
 |---|---|
+| [Wave 2 adapter/verifier construction](m2-modules-construction-2026-09-09.md) | Bounded UR5e source and pure evidence checks; host integration and actual interval semantics remain pending |
+| [UR5e development evidence](m6-ur5e-development-2026-09-09.md) | Historical real movement and observation witnesses; later source needs new qualification |
+| [Verifier construction boundary](../../../src/accretion/robotics/verification/README.md) | Pure evidence validation without production acceptance authority |
 | [Completion plan](completion-plan-2026-09-09.md) | Product outcome, recommended simulator profile, M0 decisions, milestones, worktrees, UI, evaluation and release gates |
 | [Execution checkpoint](execution-2026-09-09.md) | Current implementation disposition and observed validation |
 | [M0 decisions](m0-decisions-2026-09-09.md) | Adopted contract, authority, simulation and evidence directions |

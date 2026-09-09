@@ -11,7 +11,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from decimal import Decimal
 from threading import Lock
-from typing import Protocol
+from typing import Annotated, Protocol
+
+from pydantic import Field
 
 from accretion.contracts.canonical import canonical_json, content_hash
 from accretion.contracts.refs import PolicyRef, VerifierRef
@@ -30,6 +32,7 @@ from accretion.contracts.robotics.values import (
     EpisodeId,
     EpisodePins,
     Identifier,
+    LeaseBinding,
     MotionBudgetState,
     PreparedTrajectory,
     SequenceNumber,
@@ -76,6 +79,19 @@ from .protocol import (
     parse_message,
     validate_response_binding,
 )
+
+
+class InitializationPins(WireModel):
+    """Time-zero capture identity before preflight/approval exist; never authority."""
+
+    episode_id: EpisodeId
+    lease: LeaseBinding
+    seed: Annotated[int, Field(ge=0, strict=True)]
+    randomization_sample_hash: Digest
+
+    @classmethod
+    def from_episode(cls, episode: EpisodePins | InitializationPins) -> InitializationPins:
+        return cls.model_validate({name: getattr(episode, name) for name in cls.model_fields})
 
 
 class ExecutionPins(WireModel):

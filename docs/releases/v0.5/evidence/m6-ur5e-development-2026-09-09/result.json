@@ -1,0 +1,36 @@
+{
+  "source_hashes": {
+    "src/accretion/robotics/adapters/__init__.py": "78f18159ebb626c4f0bb58121884b21202d00a62c107cd43ccb60c5f5d95cada",
+    "src/accretion/robotics/adapters/mujoco_helpers.py": "674bb2bec67c177f3c083b6000d1c40fdee1d3dbf9262f28eacbafa2124b4dee",
+    "src/accretion/robotics/adapters/ur5e.py": "6b41b523755ff691e4a8914da75c04a079847aa3fd35c27c9ad31f697fd3d3df",
+    "src/accretion/robotics/adapters/ur5e-model-files.json": "f9ff6c0566b3c9dc3ef2ac690203ee165b96b1e883604c71c205c6dc305e680a",
+    "tests/test_v05_ur5e_simulation.py": "8b4b93c1e933a768d2de76f867da738de035e71de47fb7a019d49ff70b02984d",
+    "uv.lock": "f1f12b77da494f7f9840483ec72f356c5b188790c7e39e3b92265ae046667ccf",
+    "scripts/robotics/ur5e_development.py": "6332398f4d467b3c9ed4e1019c98360946c2b5f51946617f3479f9214f49bb15"
+  },
+  "source_hashes_unchanged": true,
+  "command": [
+    "/mnt/data/accretion-v05-execution-2026-09-09/ur5e/.venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "/mnt/data/accretion-v05-execution-2026-09-09/ur5e/tests/test_v05_ur5e_simulation.py",
+    "--basetemp",
+    "/mnt/data/accretion-v05-ur5e-development-2026-09-09/window01/attempt-07/tmp",
+    "--tb=short"
+  ],
+  "exit_code": 0,
+  "wall_seconds": 67.24351279300026,
+  "cpu_seconds": 38.835510000000006,
+  "output_bytes": 16623975,
+  "software_environment": {
+    "MUJOCO_GL": "egl",
+    "PYOPENGL_PLATFORM": "egl",
+    "LIBGL_ALWAYS_SOFTWARE": "1",
+    "MESA_LOADER_DRIVER_OVERRIDE": "llvmpipe",
+    "EGL_PLATFORM": "surfaceless",
+    "LP_NUM_THREADS": "1",
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1"
+  }
+}

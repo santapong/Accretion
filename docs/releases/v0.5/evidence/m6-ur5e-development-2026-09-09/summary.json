@@ -1,0 +1,39 @@
+{
+  "all_attempts_measured_cpu_seconds": 186.33421099999998,
+  "cube_final_position_m": [
+    0.3403529089101993,
+    -0.45,
+    0.0248922445797754
+  ],
+  "gripper_actual_opening_m": 0.061581751116555346,
+  "gripper_commanded_opening_m": 0.06,
+  "gripper_initial_opening_m": 0.08539999999999989,
+  "gripper_steps": 1191,
+  "identity_scope": "contract identities and safety keys are development fixtures; model dynamics are real MuJoCo",
+  "intermediate_attempt_03": "Excluded from final source-attested evidence: source edited during intermediate probe; later runner rejects source drift.",
+  "maximum_contact_penetration_m": 0.01082729560951391,
+  "maximum_individual_contact_force_n": 2.4898794612725865,
+  "maximum_joint_tracking_error_rad": 5.780788059639441e-05,
+  "not_proven": [
+    "continuous conservative physics safety",
+    "production gateway admission",
+    "isolated real host conformance",
+    "grasp/lift/transport/release",
+    "independent replay verifier",
+    "benchmark",
+    "physical execution"
+  ],
+  "reach_position_error_m": 9.518274134087441e-05,
+  "replay_witness": "exact all-tensor snapshot restoration after arm and gripper; exact numerical continuation after arm snapshot",
+  "retained_attempt": "attempt-07",
+  "seed": 707,
+  "source_hashes_unchanged": true,
+  "status": "PASS_BOUNDED_DEVELOPMENT_ONLY",
+  "tests": {
+    "pure_sdk_import_numerical_passed": 126,
+    "real_optional_passed": 7
+  },
+  "tracking_steps": 500,
+  "window_elapsed_wall_seconds": 1051.551968574524,
+  "window_output_bytes": 79028480
+}
