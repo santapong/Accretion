@@ -10,7 +10,7 @@ independent robot qualification and the study/release program.
 | Wave 0 / M0 | [PR #182](https://github.com/santapong/Accretion/pull/182), merge `e9cd6503ba139770de61f627d8b2aa0cb063c094`; all eight CI checks passed |
 | Wave 1 / M1 and pure M3 | [PR #183](https://github.com/santapong/Accretion/pull/183), merge `da7e806f7ab3a4eef0b6844b5777d9cb66370ccd`; all eight CI checks passed |
 | Wave 2 / UR5e and verifier modules | [PR #184](https://github.com/santapong/Accretion/pull/184), merge `f380bf08fd9e45a44bc749723f21bafc7644c56d`; all eight CI checks passed |
-| Wave 2 / host, gateway, leases and preflight foundation | Implementation and scoped checks complete; final combined host/lease probe and protected integration pending |
+| Wave 2 / host, gateway, leases and preflight foundation | Implementation and four-case actual host/lease probe passed; final regression checks and protected integration pending |
 | Wave 3 onward | Parked; no complete episode, Studio, independent replay, task qualification or study/release claim |
 
 Each fetched merge tree matched its reviewed PR head. Canonical `develop` was
@@ -53,9 +53,11 @@ not an operational preflight PASS or a claim that all of M2 is complete.
 The isolated non-robot [host probe](evidence/m2-host-construction-2026-09-09/README.md)
 and [watchdog probe](evidence/m2-watchdog-construction-2026-09-09/README.md) retain
 actual inspection, normal exit, wall expiry and cumulative descendant CPU
-observations. All those containers were removed. Their component evidence alone
-does not close the final combined persisted-authority/host witness, which remains
-pending here. No simulator or physical endpoint is involved in that final probe.
+observations. All those containers were removed. The subsequent
+[combined host/lease probe](m2-host-lease-probe-2026-09-09.md) passed all four
+cases on `3c3acb1`, joining the inspected host with durable authority and journals.
+All four new containers were removed. Its failed pre-create attempt is retained
+with the corrected attempt. No simulator or physical endpoint was involved.
 
 PR #184's reviewed candidate `22ac4886e25afa261566da0f432ee339fe19cbdb`
 passed 4,345 backend tests with seven explicit skips, a fresh-database migration

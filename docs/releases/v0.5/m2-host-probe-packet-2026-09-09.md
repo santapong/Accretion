@@ -119,18 +119,17 @@ historical evidence explicitly. The current packet adds durable lease/journal
 and private authority IPC integration. It does not relabel old watchdog or
 simulator evidence as newly executed.
 
-## Implementation status at packet creation
+## Implemented and executed disposition
 
-Committed: Docker create-before-IO hooks (`ee16d374`), exact cleanup-proof
-redelivery (`6419d79`), preflight assembly (`73c81e2`); A's journal `29f905ee`
-integrated by root as `400a717`; mandatory fresh prestart checks (`d1da55ec`,
-`63d6684`). The fixed counter image and four-case harness are implemented
-construction artifacts awaiting final review, with8 pure source/evidence tests passing and actual
-execution intentionally skipped. The packet also requires A's queued reservation
-deadline repair; the harness asserts its persisted cap includes mandatory lease,
-heartbeat and approval expiry rather than masking missing metadata at IPC.
-Root must pin the final focused host candidate after these repairs, not this
-development tree's broader historical closure. Actual execution remains pending
-final source review. No new production checker or
-Wave 3/4 qualification dependency is required merely to exercise this bounded
-construction-authority Wave 2 gate.
+The fresh journal/prestart checks, mandatory reservation deadlines and bounded
+four-case counter harness were integrated and independently reviewed before
+execution. After the preserved pre-create filesystem refusal, the IPC directory
+moved to verified private POSIX storage without weakening the host guard. The
+[actual report](m2-host-lease-probe-2026-09-09.md) records the successful second
+attempt, exact source/image identities and both unaltered attempts. The second
+attempt used fresh `-attempt2` output and database identities with the same
+reviewed limits and runner functions.
+
+The packet closes the bounded construction-authority witness. Production
+preflight, full episode composition and Wave 3/4 qualification remain separate
+obligations.
