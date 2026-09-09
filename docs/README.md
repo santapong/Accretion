@@ -51,7 +51,7 @@ folder root stays uncluttered.
 | [`research/`](research/) | Experiment design, frozen results, acceptance evidence, and decisions |
 | [`releases/`](releases/) | Versioned plans, audits, notes, and released baselines |
 | [`governance/`](governance/) | Branch workflow and documentation maintenance rules |
-| [`sdd/`](sdd/) | Normative versioned system designs (v0.1-v0.4), the v0.5-v1.0 forward package, and [planned v1.1-v1.8 designs](sdd/future/v1.1-v1.8/README.md) |
+| [`sdd/`](sdd/) | Normative versioned system designs (v0.1-v0.5), including the [active v0.5 implementation baseline](sdd/Accretion_SDD_v0.5.md), preserved forward packages and [planned v1.1-v1.8 designs](sdd/future/v1.1-v1.8/README.md) |
 | [`assets/`](assets/) | Accessible repository-native diagrams and illustrative images |
 
 See [documentation maintenance](governance/documentation.md) for ownership,
