@@ -3,6 +3,7 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import os
+import stat
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -41,6 +42,100 @@ def test_roundtrip_retains_exact_bytes_and_metadata_without_mutating_existing_bl
             len(chunk) <= 7 for chunk in store.iter_bytes(ref, max_bytes=len(data), chunk_size=7)
         )
         assert store.read_bytes(put(store, b""), max_bytes=1) == b""
+
+
+def test_full_quota_still_allows_verified_duplicate_writes(tmp_path: Path) -> None:
+    with ArtifactStore(tmp_path, max_artifact_bytes=8, max_store_bytes=8) as store:
+        data = b"12345678"
+        ref = put(store, data)
+        file = tmp_path / (ref.digest + ".blob")
+        original = file.stat()
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            assert list(pool.map(lambda _: put(store, data), range(8))) == [ref] * 8
+        consumed = []
+
+        def chunks():
+            for value in (b"1234", b"5678"):
+                consumed.append(value)
+                yield value
+
+        assert (
+            store.put_stream(
+                chunks(),
+                expected_digest=ref.digest,
+                media_type=ref.media_type,
+                retention_class=ref.retention_class,
+                evidence_class=ref.evidence_class,
+            )
+            == ref
+        )
+        assert consumed == [b"1234", b"5678"]
+        assert file.stat().st_ino == original.st_ino
+        assert file.stat().st_mtime_ns == original.st_mtime_ns
+        assert not list(tmp_path.glob(".pending-*"))
+        with pytest.raises(RoboticsError) as caught:
+            put(store, b"new")
+        assert caught.value.code is RoboticsErrorCode.RESOURCE_CAP_EXHAUSTED
+
+
+@pytest.mark.parametrize(
+    "kind", ["wrong-input", "short-input", "corrupt-existing", "missing-digest"]
+)
+def test_digest_hint_never_substitutes_for_input_and_existing_integrity(
+    tmp_path: Path, kind: str
+) -> None:
+    with ArtifactStore(tmp_path, max_artifact_bytes=8, max_store_bytes=16) as store:
+        ref = put(store, b"12345678")
+        file = tmp_path / (ref.digest + ".blob")
+        digest = ref.digest
+        data = b"12345678"
+        if kind == "wrong-input":
+            data = b"abcdefgh"
+        elif kind == "short-input":
+            data = b"1234"
+        elif kind == "corrupt-existing":
+            file.chmod(0o600)
+            file.write_bytes(b"abcdefgh")
+        else:
+            digest = "a" * 64
+        with pytest.raises(RoboticsError) as caught:
+            store.put_stream(
+                [data],
+                expected_digest=digest,
+                media_type=ref.media_type,
+                retention_class=ref.retention_class,
+                evidence_class=ref.evidence_class,
+            )
+        assert caught.value.code is RoboticsErrorCode.ARTIFACT_INVALID
+        assert not list(tmp_path.glob(".pending-*"))
+        assert len(list(tmp_path.glob("*.blob"))) == 1
+
+
+def test_reuse_recovers_an_uncommitted_directory_entry_after_sync_failure(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    sync = os.fsync
+    failed = False
+    directory_syncs = 0
+
+    def fault(fd: int) -> None:
+        nonlocal failed, directory_syncs
+        if stat.S_ISDIR(os.fstat(fd).st_mode):
+            if not failed:
+                failed = True
+                raise OSError("test-owned directory sync failure")
+            directory_syncs += 1
+        sync(fd)
+
+    monkeypatch.setattr(os, "fsync", fault)
+    with ArtifactStore(tmp_path, max_artifact_bytes=8, max_store_bytes=8) as store:
+        with pytest.raises(RoboticsError) as caught:
+            put(store, b"12345678")
+        assert caught.value.code is RoboticsErrorCode.ARTIFACT_UNAVAILABLE
+        assert failed and directory_syncs == 0
+        ref = put(store, b"12345678")
+        assert directory_syncs == 1
+        assert store.read_bytes(ref, max_bytes=8) == b"12345678"
 
 
 @pytest.mark.parametrize("mutation", ["digest", "length", "symlink", "fifo", "uri", "missing"])

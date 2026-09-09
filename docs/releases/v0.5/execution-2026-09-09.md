@@ -6,15 +6,22 @@ planning validation remains historical static evidence.
 
 Base: freshly fetched `develop@01e2268b3b602a12eeaf81f55fb4670a1fe7636f`, plus
 the reviewed planning commits through `5d589c53417c97b86f779ce0a86c4611913d5cdb`.
-Canonical develop is preserved while isolated work proceeds.
+That starting checkpoint is historical. M0 was squash-merged through protected
+[PR #182](https://github.com/santapong/Accretion/pull/182) as
+`e9cd6503ba139770de61f627d8b2aa0cb063c094`. All eight checks passed on reviewed
+head `31c538a065e423568c9cb86d57bef2dc87624871`; the fetched merge tree equals
+that reviewed tree. The clean canonical `develop` checkout was fast-forwarded
+to the merge. The released `main`/v0.4.1 line is unchanged.
 
 | Milestone | Current disposition |
 |---|---|
-| M0 | Construction locally verified; protected review/CI pending. See the [validation record](evidence/m0-construction-2026-09-09/validation.json) |
-| M1–M8 | Next: parallel registry/persistence, SDK/fault protocol and pure safety work after M0 integration; remaining dependency gates apply |
+| M0 | Merged through protected PR #182; local and CI construction checks passed. See the [validation record](evidence/m0-construction-2026-09-09/validation.json) |
+| M1 / pure M3 | Wave 1 active: registry/persistence, SDK/fault protocol, safety evaluator and API/artifact integration; combined verification pending |
+| M2 / M4–M8 | Pending the implementation wave dependency gates |
 | M9 | Pending engineering completion and concrete prospective study/release gates |
 
-Worktrees: `/mnt/data/accretion-v05-execution-2026-09-09/{integration,contracts,runtime,evidence}`.
+Active worktrees: `/mnt/data/accretion-v05-execution-2026-09-09/{integration-wave1,registry,sdk,safety}`.
+M0 integration and worker worktrees are retained as historical source evidence.
 One coordinator and three workers; no nested delegation. Source-only integration
 uses plain Git. Simulator feasibility uses one bounded CPU process and no
 physical endpoint or provider calls. Validation/results will be appended only
@@ -48,7 +55,7 @@ projection could replace an invalid original payload pin, and the explicit v0.5
 release command could overlook an unmarked failing test. The repaired candidate
 `77d99396e6bbfc8fd9b32fbc2e2204cfafbcf995` passed 548 relevant tests, full Ruff
 and mypy, and all 42 schema-export checks. The fixtures reproduce byte for byte.
-The final protected PR must run required CI on its own head. Retained logs and
+The final protected PR passed its required CI on its own head. Retained local logs and
 source identities are in the [construction validation bundle](evidence/m0-construction-2026-09-09/validation.json).
 
 All thirty composite AC5 criteria remain explicitly pending. A full v0.5 release

@@ -351,6 +351,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/embodiments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Embodiments */
+        get: operations["list_embodiments_api_v1_embodiments_get"];
+        put?: never;
+        /** Register Embodiment */
+        post: operations["register_embodiment_api_v1_embodiments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/embodiments/{contract_id}/versions/{version}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Embodiment */
+        get: operations["get_embodiment_api_v1_embodiments__contract_id__versions__version__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/enterprise-auth/profile": {
         parameters: {
             query?: never;
@@ -859,6 +894,58 @@ export interface paths {
         put?: never;
         /** Route Node Execution */
         post: operations["route_node_execution_api_v1_projects__project_id__node_executions__execution_instance_id__route_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/robot-adapters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Adapters */
+        get: operations["list_adapters_api_v1_robot_adapters_get"];
+        put?: never;
+        /** Register Adapter */
+        post: operations["register_adapter_api_v1_robot_adapters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/robot-adapters/{contract_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Adapter */
+        get: operations["get_adapter_api_v1_robot_adapters__contract_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/robot-adapters/{contract_id}/conformance-runs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Run Conformance */
+        post: operations["run_conformance_api_v1_robot_adapters__contract_id__conformance_runs_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3349,6 +3436,16 @@ export interface components {
             /** Workspace Id */
             workspace_id: string;
         };
+        /** ConformanceSummary */
+        ConformanceSummary: {
+            /** Closure Hash */
+            closure_hash: string;
+            report_ref: components["schemas"]["RoboticsContractRef"];
+            /** Result */
+            result: string;
+            /** Verifier Principal Id */
+            verifier_principal_id: string;
+        };
         /**
          * ConnectCreate
          * @description Start an authorization. Scopes default to the connector's declared minimum.
@@ -3978,6 +4075,20 @@ export interface components {
             image_digest: string;
             /** Policy Profile */
             policy_profile: string;
+        };
+        /** ErrorEnvelope */
+        ErrorEnvelope: {
+            /** Code */
+            code: string;
+            /** Correlation Id */
+            correlation_id: string;
+            /** Message */
+            message: string;
+            /**
+             * Retryable
+             * @default false
+             */
+            retryable: boolean;
         };
         /** ErrorSummary */
         ErrorSummary: {
@@ -6541,6 +6652,44 @@ export interface components {
             /** Task Count */
             task_count: number;
         };
+        /** RegistryEntry */
+        RegistryEntry: {
+            /** Conformance Reports */
+            conformance_reports?: components["schemas"]["ConformanceSummary"][];
+            /**
+             * Conformance Status
+             * @default PENDING
+             * @enum {string}
+             */
+            conformance_status: "PENDING" | "PASS" | "FAIL" | "INCONCLUSIVE";
+            /** Content Hash */
+            content_hash: string;
+            /** Contract Id */
+            contract_id: string;
+            /** Contract Type */
+            contract_type: string;
+            /** Logical Name */
+            logical_name: string;
+            /** Original Json */
+            original_json: string;
+            /** Project Id */
+            project_id: string;
+            /** Revision */
+            revision: number;
+            /** Schema Version */
+            schema_version: string;
+            /** Version */
+            version: string;
+            /** Workspace Id */
+            workspace_id: string;
+        };
+        /** RegistryPage */
+        RegistryPage: {
+            /** Items */
+            items: components["schemas"]["RegistryEntry"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+        };
         /**
          * RegressionFinding
          * @description A §7.13 ``critical_regressions``/``noncritical_tradeoffs`` entry.
@@ -6678,6 +6827,42 @@ export interface components {
          * @enum {string}
          */
         RiskLevel: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+        /**
+         * RoboticsContractRef
+         * @description Exact persisted robotics record; not a mutable logical alias.
+         */
+        RoboticsContractRef: {
+            /** Content Hash */
+            content_hash: string;
+            /** Contract Id */
+            contract_id: string;
+            /**
+             * Schema Version
+             * @default 1.0.0
+             */
+            schema_version: string;
+        };
+        /**
+         * RoboticsErrorCode
+         * @enum {string}
+         */
+        RoboticsErrorCode: "SIMULATION_UNAVAILABLE" | "RESOURCE_NOT_FOUND" | "CAPABILITY_DENIED" | "APPROVAL_REQUIRED" | "APPROVAL_INVALID" | "REVISION_REQUIRED" | "REVISION_CONFLICT" | "IDEMPOTENCY_REQUIRED" | "IDEMPOTENCY_CONFLICT" | "INVALID_REQUEST" | "INVALID_CONTRACT" | "CONTRACT_CONFLICT" | "UNKNOWN_CONTRACT_VERSION" | "CONFORMANCE_STALE" | "LEASE_BUSY" | "LEASE_INVALID" | "PREFLIGHT_FAILED" | "SAFETY_DENIED" | "OBSERVATION_INVALID" | "CLOCK_REGRESSION" | "OBSERVATION_SKEW" | "ADAPTER_CRASH" | "HEARTBEAT_LOST" | "ACKNOWLEDGEMENT_UNCERTAIN" | "ARTIFACT_UNAVAILABLE" | "ARTIFACT_INVALID" | "PAYLOAD_TOO_LARGE" | "RESOURCE_CAP_EXHAUSTED" | "EPISODE_STATE_CONFLICT" | "VERIFICATION_INCONCLUSIVE" | "VERIFIER_UNAVAILABLE" | "EVIDENCE_QUARANTINED" | "PHYSICAL_ENDPOINT_DENIED" | "ISOLATION_UNAVAILABLE" | "REPLAY_FAILED";
+        /** RoboticsErrorResponse */
+        RoboticsErrorResponse: {
+            code: components["schemas"]["RoboticsErrorCode"];
+            /** Correlation Id */
+            correlation_id: string;
+            /** Message */
+            message: string;
+            /** Recovery Action */
+            recovery_action: string;
+            /**
+             * Retryable
+             * @default false
+             * @constant
+             */
+            retryable: false;
+        };
         /**
          * RollbackCreate
          * @description Why the active router is being withdrawn.
@@ -9850,6 +10035,305 @@ export interface operations {
             };
         };
     };
+    list_embodiments_api_v1_embodiments_get: {
+        parameters: {
+            query: {
+                limit?: number;
+                cursor?: string | null;
+                workspace_id: string;
+                project_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistryPage"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"] | components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+        };
+    };
+    register_embodiment_api_v1_embodiments_post: {
+        parameters: {
+            query: {
+                workspace_id: string;
+                project_id: string;
+            };
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @constant */
+                    contract_type: "accretion.embodiment-descriptor";
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistryEntry"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"] | components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+        };
+    };
+    get_embodiment_api_v1_embodiments__contract_id__versions__version__get: {
+        parameters: {
+            query: {
+                workspace_id: string;
+                project_id: string;
+            };
+            header?: never;
+            path: {
+                contract_id: string;
+                version: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistryEntry"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"] | components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+        };
+    };
     get_enterprise_auth_profile_api_v1_enterprise_auth_profile_get: {
         parameters: {
             query?: never;
@@ -10753,6 +11237,402 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_adapters_api_v1_robot_adapters_get: {
+        parameters: {
+            query: {
+                limit?: number;
+                cursor?: string | null;
+                workspace_id: string;
+                project_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistryPage"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"] | components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+        };
+    };
+    register_adapter_api_v1_robot_adapters_post: {
+        parameters: {
+            query: {
+                workspace_id: string;
+                project_id: string;
+            };
+            header: {
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @constant */
+                    contract_type: "accretion.robot-adapter-manifest";
+                };
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistryEntry"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"] | components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+        };
+    };
+    get_adapter_api_v1_robot_adapters__contract_id__get: {
+        parameters: {
+            query: {
+                version?: string | null;
+                workspace_id: string;
+                project_id: string;
+            };
+            header?: never;
+            path: {
+                contract_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistryEntry"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"] | components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+        };
+    };
+    run_conformance_api_v1_robot_adapters__contract_id__conformance_runs_post: {
+        parameters: {
+            query: {
+                workspace_id: string;
+                project_id: string;
+            };
+            header?: never;
+            path: {
+                contract_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"] | components["schemas"]["ErrorEnvelope"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Precondition Failed */
+            412: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Request Entity Too Large */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Unprocessable Entity */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
+                };
+            };
+            /** @description Precondition Required */
+            428: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoboticsErrorResponse"];
                 };
             };
         };

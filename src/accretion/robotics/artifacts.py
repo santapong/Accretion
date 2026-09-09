@@ -146,6 +146,7 @@ class ArtifactStore:
             media_type=media_type,
             retention_class=retention_class,
             evidence_class=evidence_class,
+            expected_digest=hashlib.sha256(data).hexdigest(),
         )
 
     def put_stream(
@@ -155,12 +156,20 @@ class ArtifactStore:
         media_type: str,
         retention_class: Literal["RUN", "PROJECT", "RESEARCH_ARCHIVE"],
         evidence_class: EvidenceClass,
+        expected_digest: str | None = None,
     ) -> ContentAddressedArtifactRef:
+        """Publish a bounded stream, optionally reusing a known verified digest.
+
+        Even when reusing an existing object, consume and verify the entire input.
+        Unknown-digest streams require staging headroom in the store quota.
+        """
+        if expected_digest is not None and not isinstance(expected_digest, str):
+            raise RoboticsError(RoboticsErrorCode.ARTIFACT_INVALID)
         # Validate metadata before touching storage, including PHYSICAL refusal.
         try:
             template = ContentAddressedArtifactRef(
-                uri="artifact://sha256/" + "0" * 64,
-                digest="0" * 64,
+                uri="artifact://sha256/" + (expected_digest or "0" * 64),
+                digest=expected_digest if expected_digest is not None else "0" * 64,
                 media_type=media_type,
                 size_bytes=0,
                 retention_class=retention_class,
@@ -173,13 +182,28 @@ class ArtifactStore:
         try:
             with self._writer_lock():
                 used = self._used_bytes()
-                fd = os.open(
-                    temporary,
-                    os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
-                    0o600,
-                    dir_fd=self._directory(),
-                )
-                created = True
+                reuse = False
+                if expected_digest is not None:
+                    try:
+                        info = os.stat(
+                            expected_digest + ".blob",
+                            dir_fd=self._directory(),
+                            follow_symlinks=False,
+                        )
+                        if not stat.S_ISREG(info.st_mode):
+                            raise RoboticsError(RoboticsErrorCode.ARTIFACT_INVALID)
+                        reuse = True
+                    except FileNotFoundError:
+                        pass
+                fd = -1
+                if not reuse:
+                    fd = os.open(
+                        temporary,
+                        os.O_CREAT | os.O_EXCL | os.O_WRONLY | os.O_NOFOLLOW,
+                        0o600,
+                        dir_fd=self._directory(),
+                    )
+                    created = True
                 digest = hashlib.sha256()
                 size = 0
                 try:
@@ -193,21 +217,25 @@ class ArtifactStore:
                             or size + len(chunk) > self.max_artifact_bytes
                         ):
                             raise RoboticsError(RoboticsErrorCode.PAYLOAD_TOO_LARGE)
-                        if used + size + len(chunk) > self.max_store_bytes:
+                        if not reuse and used + size + len(chunk) > self.max_store_bytes:
                             raise RoboticsError(RoboticsErrorCode.RESOURCE_CAP_EXHAUSTED)
                         view = memoryview(chunk)
-                        while view:
+                        while view and not reuse:
                             written = os.write(fd, view)
                             if written <= 0:
                                 raise RoboticsError(RoboticsErrorCode.ARTIFACT_UNAVAILABLE)
                             view = view[written:]
                         digest.update(chunk)
                         size += len(chunk)
-                    os.fchmod(fd, 0o400)
-                    os.fsync(fd)
+                    if not reuse:
+                        os.fchmod(fd, 0o400)
+                        os.fsync(fd)
                 finally:
-                    os.close(fd)
+                    if fd >= 0:
+                        os.close(fd)
                 value = digest.hexdigest()
+                if expected_digest is not None and value != expected_digest:
+                    raise RoboticsError(RoboticsErrorCode.ARTIFACT_INVALID)
                 reference = ContentAddressedArtifactRef.model_validate(
                     {
                         **template.model_dump(),
@@ -216,6 +244,15 @@ class ArtifactStore:
                         "size_bytes": size,
                     }
                 )
+                if reuse:
+                    for _ in self.iter_bytes(
+                        reference, max_bytes=self.max_artifact_bytes, chunk_size=64 * 1024
+                    ):
+                        pass
+                    # A prior publisher may have failed/crashed after linking
+                    # but before the directory entry reached durable storage.
+                    os.fsync(self._directory())
+                    return reference
                 try:
                     os.link(
                         temporary,

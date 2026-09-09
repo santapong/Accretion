@@ -611,6 +611,26 @@ def allow_contact(case: Case) -> None:
     case.rebind()
 
 
+@pytest.mark.parametrize("reverse", [False, True])
+def test_contact_points_cannot_split_the_aggregate_pair_force_bound(
+    case: Case, reverse: bool
+) -> None:
+    allow_contact(case)
+    first = {**contact(), "force_upper_n": 1.5}
+    second = dict(first)
+    if reverse:
+        second["first_body"], second["second_body"] = second["second_body"], second["first_body"]
+    case.host = FixtureHost(lambda p: p["intervals"][1].update(contacts=[first, second]))
+    deny(case, "PREVIEW_UNAVAILABLE")
+    # The host's single conservative sum also fails the declared 2 N pair cap.
+    case.host = FixtureHost(
+        lambda p: p["intervals"][1].update(contacts=[{**first, "force_upper_n": 3.0}])
+    )
+    deny(case, "CONTACT_LIMIT")
+    case.host = FixtureHost(lambda p: p["intervals"][1].update(contacts=[first]))
+    assert case.evaluate().decision.decision == "ALLOW"
+
+
 def test_contact_requires_exact_pair_phase_force_and_penetration(case: Case) -> None:
     case.host = FixtureHost(lambda p: p["intervals"][1].update(contacts=[contact()]))
     deny(case, "CONTACT_FORBIDDEN")

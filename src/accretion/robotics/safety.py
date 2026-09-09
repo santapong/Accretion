@@ -227,7 +227,12 @@ class ContactBound(StrictModel):
 
 
 class PhysicsInterval(StrictModel):
-    """Conservative *actual* bounds for the closed interval, including its interior."""
+    """Conservative actual bounds for the closed interval, including its interior.
+
+    Each unordered body pair occurs once. The host aggregates all its contact
+    points into a conservative total force bound and maximum penetration bound;
+    individual points cannot split the permitted pair's force allowance.
+    """
 
     start_ns: SequenceNumber
     end_ns: PositiveInt
@@ -246,6 +251,9 @@ class PhysicsInterval(StrictModel):
         ):
             if len(names) != len(set(names)):
                 raise ValueError("interval inventory must be unique")
+        pairs = [frozenset((item.first_body, item.second_body)) for item in self.contacts]
+        if len(pairs) != len(set(pairs)):
+            raise ValueError("contact bounds must aggregate each unordered body pair once")
         return self
 
 

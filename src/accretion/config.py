@@ -58,6 +58,11 @@ class Settings(BaseSettings):
     session_cookie_name: str = "accretion_session"
     session_ttl_seconds: int = 28_800
     enable_dynamic_workflows: bool = False
+    # Registry access alone starts no worker and grants no execution authority.
+    enable_simulation: bool = False
+    # Explicit trusted deployment mapping for legacy local projects. Never derive
+    # this list from a request or use it in a shared OIDC deployment.
+    simulation_local_project_ids: list[str] = Field(default_factory=list, max_length=100)
     # M2 is an explicit opt-in. Enabling it does not enable learned or live routing.
     enable_node_routing: bool = False
     # §11.1's three regimes, as the default this process routes a graph under. BASELINE_ONLY
