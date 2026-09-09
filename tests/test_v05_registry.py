@@ -23,6 +23,7 @@ from accretion.contracts import (
     WorkspaceRole,
 )
 from accretion.contracts.canonical import CanonicalContract, canonical_json, content_hash
+from accretion.contracts.refs import PolicyRef
 from accretion.contracts.robotics import (
     AdapterConformanceReport,
     CanonicalWriterEnvelope,
@@ -34,6 +35,7 @@ from accretion.contracts.robotics import (
     SimulationDomainEvent,
 )
 from accretion.contracts.robotics.values import DependencyClosure
+from accretion.contracts.routing import ObjectiveContractRef
 from accretion.ids import new_id
 from accretion.persistence.database import create_engine, create_session_factory
 from accretion.persistence.models import RoboticsContractRow, RoboticsEventRow
@@ -41,7 +43,7 @@ from accretion.persistence.store import MemoryStore, PostgresStore
 from accretion.robotics.errors import RoboticsError
 from accretion.robotics.errors import RoboticsErrorCode as Code
 from accretion.robotics.registry import RoboticsRegistry
-from accretion.robotics.store import registry_store_for
+from accretion.robotics.store import IdempotencyScope, registry_store_for
 
 ROOT = Path(__file__).resolve().parents[1]
 POSTGRES_URL = os.getenv("ACCRETION_TEST_POSTGRES_URL")
@@ -663,3 +665,231 @@ def test_supporting_registry_event_fixture_retains_strict_event_inventory() -> N
     payload["event_type"] = "simulation_contract.activate_everything"
     with pytest.raises(ValueError):
         SimulationDomainEvent.model_validate(payload)
+
+
+@pytest.mark.parametrize("model", [ObservationSpec, SafetyEnvelope, EmbodiedVerificationSpec])
+async def test_supporting_supersession_preserves_both_original_writers(
+    scope: Scope, model: type[CanonicalContract]
+) -> None:
+    overrides: dict[str, Any] = {}
+    if model is SafetyEnvelope:
+        descriptor, _, _ = await chain(scope)
+        overrides["embodiment_descriptor_hash"] = descriptor.content_hash
+    predecessor = scope.build(model, **overrides)
+    original = await scope.register(predecessor)
+    successor = scope.build(model, supersedes_contract_id=predecessor.contract_id, **overrides)
+    current = await scope.register(successor, "supporting-successor")
+    assert (
+        current.contract_id != original.contract_id and current.revision == original.revision == 1
+    )
+    assert await scope.registry.get(**scope.args, contract_id=predecessor.contract_id) == original
+    assert current.original_json == canonical_json(successor).decode()
+    assert await scope.register(successor, "supporting-successor") == current
+    for contract in (predecessor, successor):
+        events = await scope.registry.events(**scope.args, aggregate_id=contract.contract_id)
+        assert len(events) == 1
+        assert (
+            events[0].for_execution(SimulationDomainEvent).payload["content_hash"]
+            == contract.content_hash
+        )
+
+
+async def _foreign_scope(scope: Scope) -> Scope:
+    workspace, project = new_id("workspace_entity"), new_id("project")
+    await scope.state.upsert_workspace(
+        WorkspaceEntity(workspace_id=workspace, name="Foreign lineage")
+    )
+    await scope.state.create_project(
+        Project(project_id=project, name="Foreign lineage", repository_path=Path("/tmp"))
+    )
+    await scope.state.upsert_workspace_membership(
+        WorkspaceMembership(
+            membership_id=new_id("workspace_membership"),
+            workspace_id=workspace,
+            principal_id=scope.actor.principal_id,
+            role=WorkspaceRole.OWNER,
+        )
+    )
+    await scope.registry.store.bootstrap_bind_project(workspace_id=workspace, project_id=project)
+    return Scope(scope.state, scope.registry, scope.actor, workspace, project)
+
+
+class CountingAuthority(SyntheticConformanceAuthority):
+    def __init__(self, report: AdapterConformanceReport) -> None:
+        super().__init__(report)
+        self.calls = 0
+
+    async def verify(self, envelope: CanonicalWriterEnvelope) -> None:
+        self.calls += 1
+        await super().verify(envelope)
+
+
+async def _adapter_effects(scope: Scope, adapter: RobotAdapterManifest) -> Any:
+    async with scope.registry.store.transaction(scope.project) as tx:
+        return (
+            await tx.get(adapter.contract_id),
+            await tx.events(adapter.contract_id, 0, 100),
+            await tx.conformance(adapter.contract_id),
+        )
+
+
+async def _assert_refusal_is_atomic(
+    scope: Scope,
+    adapter: RobotAdapterManifest,
+    report: AdapterConformanceReport,
+    before: Any,
+    key: str,
+) -> None:
+    assert await _adapter_effects(scope, adapter) == before
+    async with scope.registry.store.transaction(scope.project) as tx:
+        assert await tx.get(report.contract_id) is None
+        assert (
+            await tx.ledger(
+                IdempotencyScope(
+                    scope.workspace,
+                    scope.project,
+                    report.created_by.principal_id,
+                    "record_conformance",
+                    adapter.contract_id,
+                    key,
+                )
+            )
+            is None
+        )
+
+
+@pytest.mark.parametrize(
+    "fault", ["missing", "foreign", "wrong_adapter", "wrong_type", "objective"]
+)
+async def test_report_lineage_refusal_precedes_trusted_io_and_has_no_effects(
+    scope: Scope,
+    fault: str,
+) -> None:
+    adapter, report = await conformance(scope)
+    values = report.model_dump(mode="python")
+    values.pop("content_hash")
+    if fault == "missing":
+        values["supersedes_contract_id"] = new_id("adapter_conformance_report")
+    elif fault == "foreign":
+        foreign = await _foreign_scope(scope)
+        old_adapter, previous = await conformance(foreign)
+        await file_report(foreign, old_adapter, previous)
+        values["supersedes_contract_id"] = previous.contract_id
+    elif fault == "wrong_adapter":
+        other = scope.build(
+            RobotAdapterManifest,
+            adapter_id=adapter.adapter_id + ".other",
+            embodiment_descriptor_hashes=adapter.embodiment_descriptor_hashes,
+            observation_spec_hash=adapter.observation_spec_hash,
+        )
+        await scope.register(other)
+        previous_values = {
+            **values,
+            "contract_id": new_id("adapter_conformance_report"),
+            "adapter_manifest_hash": other.content_hash,
+        }
+        previous = AdapterConformanceReport.model_validate(previous_values)
+        scope.registry.conformance_authority = SyntheticConformanceAuthority(previous)
+        await file_report(scope, other, previous, idempotency_key="other-adapter-report")
+        values["supersedes_contract_id"] = previous.contract_id
+    elif fault == "wrong_type":
+        previous_spec = scope.build(ObservationSpec)
+        await scope.register(previous_spec)
+        values["supersedes_contract_id"] = previous_spec.contract_id
+    else:
+        values["objective_contract_ref"] = ObjectiveContractRef(
+            contract_id="embedded-unresolved-objective-ref",
+            workspace_id=scope.workspace,
+            project_id=scope.project,
+            created_by=report.created_by,
+            objective_contract_id=new_id("objective_contract"),
+            objective_contract_hash="a" * 64,
+            revision=1,
+            verified_success_floor=0.9,
+            utility_profile_id="lineage-test",
+            risk_policy=PolicyRef(policy_id="unresolved", version="1.0.0", content_digest="b" * 64),
+            approved_by=report.created_by,
+            approved_at=report.created_at,
+        )
+    report = AdapterConformanceReport.model_validate(values)
+    authority = CountingAuthority(report)
+    scope.registry.conformance_authority = authority
+    before = await _adapter_effects(scope, adapter)
+    with pytest.raises(RoboticsError) as error:
+        await file_report(scope, adapter, report, idempotency_key="invalid-lineage")
+    expected = (
+        Code.RESOURCE_NOT_FOUND
+        if fault in {"missing", "foreign"}
+        else Code.CONFORMANCE_STALE
+        if fault == "wrong_adapter"
+        else Code.INVALID_CONTRACT
+    )
+    assert error.value.code is expected and authority.calls == 0
+    await _assert_refusal_is_atomic(scope, adapter, report, before, "invalid-lineage")
+
+
+async def test_report_supersession_stays_on_exact_adapter_and_preserves_history(
+    scope: Scope,
+) -> None:
+    adapter, predecessor = await conformance(scope)
+    first = await file_report(scope, adapter, predecessor)
+    values = predecessor.model_dump(mode="python")
+    values.pop("content_hash")
+    values.update(
+        contract_id=new_id("adapter_conformance_report"),
+        supersedes_contract_id=predecessor.contract_id,
+    )
+    successor = AdapterConformanceReport.model_validate(values)
+    authority = SyntheticConformanceAuthority(successor)
+    authority.allowed_hashes.add(predecessor.content_hash)
+    scope.registry.conformance_authority = authority
+    second = await file_report(
+        scope, adapter, successor, expected_revision=2, idempotency_key="report-successor"
+    )
+    assert second.contract_id != first.contract_id
+    assert await scope.registry.get(**scope.args, contract_id=predecessor.contract_id) == first
+    view = await scope.registry.get(
+        **scope.args, contract_id=adapter.contract_id, dependencies=successor.dependencies
+    )
+    assert view.revision == 3 and view.conformance_status == "PASS"
+    assert len(view.conformance_reports) == 2
+    events = await scope.registry.events(**scope.args, aggregate_id=adapter.contract_id)
+    assert [event.for_execution(SimulationDomainEvent).sequence for event in events] == [1, 2, 3]
+
+
+async def test_report_predecessor_seal_is_rechecked_after_trusted_io(scope: Scope) -> None:
+    adapter, predecessor = await conformance(scope)
+    await file_report(scope, adapter, predecessor)
+    values = predecessor.model_dump(mode="python")
+    values.pop("content_hash")
+    values.update(
+        contract_id=new_id("adapter_conformance_report"),
+        supersedes_contract_id=predecessor.contract_id,
+    )
+    successor = AdapterConformanceReport.model_validate(values)
+    before = await _adapter_effects(scope, adapter)
+
+    class CorruptingAuthority(CountingAuthority):
+        async def verify(self, envelope: CanonicalWriterEnvelope) -> None:
+            await super().verify(envelope)
+            if isinstance(scope.state, MemoryStore):
+                records = scope.state.robotics_registry_state["records"]
+                records[predecessor.contract_id] = replace(
+                    records[predecessor.contract_id], content_hash="f" * 64
+                )
+            else:
+                async with scope.state.sessions.begin() as session:
+                    await session.execute(
+                        update(RoboticsContractRow)
+                        .where(RoboticsContractRow.id == predecessor.contract_id)
+                        .values(content_hash="f" * 64)
+                    )
+
+    authority = CorruptingAuthority(successor)
+    scope.registry.conformance_authority = authority
+    with pytest.raises(RoboticsError) as error:
+        await file_report(
+            scope, adapter, successor, expected_revision=2, idempotency_key="rechecked-lineage"
+        )
+    assert error.value.code is Code.INVALID_CONTRACT and authority.calls == 1
+    await _assert_refusal_is_atomic(scope, adapter, successor, before, "rechecked-lineage")

@@ -278,11 +278,23 @@ class RoboticsRegistry:
             raise RoboticsError(Code.INVALID_CONTRACT)
         if model.supersedes_contract_id:
             previous = _scoped(await tx.get(model.supersedes_contract_id), workspace, project)
-            if (
-                previous.contract_type != model.contract_type
-                or previous.logical_name != _logical(model)[0]
+            if previous.contract_type != model.contract_type:
+                raise RoboticsError(Code.INVALID_CONTRACT)
+            # Supporting records have no separate logical ID: their new contract
+            # ID is the immutable revision, not a name shared with the predecessor.
+            if isinstance(model, (EmbodimentDescriptor, RobotAdapterManifest)) and (
+                previous.logical_name != _logical(model)[0]
             ):
                 raise RoboticsError(Code.INVALID_CONTRACT)
+            if isinstance(model, AdapterConformanceReport):
+                try:
+                    predecessor = CanonicalWriterEnvelope(previous.original_json).for_execution(
+                        AdapterConformanceReport
+                    )
+                except ValueError as error:
+                    raise RoboticsError(Code.INVALID_CONTRACT) from error
+                if predecessor.adapter_manifest_hash != model.adapter_manifest_hash:
+                    raise RoboticsError(Code.CONFORMANCE_STALE)
         if isinstance(model, RobotAdapterManifest):
             observations = await self._by_hash(
                 tx, workspace, project, ObservationSpec, model.observation_spec_hash
@@ -659,6 +671,7 @@ class RoboticsRegistry:
             await tx.authorize(actor_id, workspace_id, project_id, service=True)
             adapter = _scoped(await tx.get(adapter_contract_id), workspace_id, project_id)
             self._authority_binding(report, adapter)
+            await self._references(tx, report)
             replay = await self._replay(tx, scope, digest)
             if replay is not None:
                 return replay
@@ -672,6 +685,7 @@ class RoboticsRegistry:
                 principal = await tx.authorize(actor_id, workspace_id, project_id, service=True)
                 adapter = _scoped(await tx.get(adapter_contract_id), workspace_id, project_id)
                 self._authority_binding(report, adapter)
+                await self._references(tx, report)
                 replay = await self._replay(tx, scope, digest)
                 if replay is not None:
                     return replay

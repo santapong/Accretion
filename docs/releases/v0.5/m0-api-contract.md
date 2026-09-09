@@ -19,6 +19,15 @@ resource 404, unavailable configured subsystem 409 and exceeded request limits
 413. Domain errors include stable `code`, bounded `message`, resource scope and
 safe recovery action; no stack trace, host socket or secret is returned.
 
+Registry supersession always names an existing, sealed predecessor in the same
+workspace, project and contract family. Descriptor and adapter revisions also
+retain their logical name; supporting declarations use new contract IDs without
+requiring those IDs to match. Internal conformance-report successors retain the
+exact adapter manifest hash. Their references are checked before trusted verifier
+I/O and again in the commit transaction; unresolved objective references are
+refused until the objective-owned execution service is implemented. A refused
+report leaves the adapter revision, event stream and idempotency ledger unchanged.
+
 ## Operations
 
 | Method and path | Request / response / authority |
