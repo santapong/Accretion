@@ -1,0 +1,57 @@
+{
+  "status": "STATIC_PLANNING_VALIDATED",
+  "checked_at": "2026-09-09T06:23:43.407816+00:00",
+  "base_commit": "01e2268b3b602a12eeaf81f55fb4670a1fe7636f",
+  "audit_source_commits": {
+    "contracts": "40ea6182adf4dd611baaa363c11bdc052e85d680",
+    "runtime": "1700b6d44448366550dcd3c53e942189dfb814a6",
+    "acceptance": "b61c5d358bde7bbe2b64bf66a6e0c24c00455ee6"
+  },
+  "checks": {
+    "python scripts/check_docs.py": {
+      "exit_code": 0,
+      "output": "Future SDD package integrity passed: 187 unchanged files\nDocumentation check passed: 240 Markdown files, 18 SVGs\n"
+    },
+    "git diff --cached --check": {
+      "exit_code": 0,
+      "output": ""
+    },
+    "git diff 01e2268b3b602a12eeaf81f55fb4670a1fe7636f --check": {
+      "exit_code": 0,
+      "output": ""
+    }
+  },
+  "changed_markdown_count": 6,
+  "local_links_checked": 238,
+  "markdown_anchors_checked": 9,
+  "exact_source_criterion_texts": 30,
+  "unique_proposed_criterion_ids": 30,
+  "frozen_source_hashes_unchanged": 7,
+  "v04_scientific_access_rows_unchanged": 4,
+  "changed_markdown_sha256": {
+    "docs/README.md": "38a2e8b05761a2cada7763f7f473711540a97ff5995e752ed356b5b5288dc86d",
+    "docs/releases/v0.5/README.md": "3ae43e5cba021fc0c5e6fc23a7c2116341e36738b13a4390a169192fa0b4e51b",
+    "docs/releases/v0.5/completion-plan-2026-09-09.md": "f884e5b3d944d20ec55b9843725c506f5c7443b57fb5ab8b8978fa06889bdaee",
+    "docs/releases/v0.5/planning/acceptance-audit-2026-09-09.md": "3e740631e09b0ced873b78aaba46f46cba79ea071daf36f180a51cfba74acfeb",
+    "docs/releases/v0.5/planning/contract-audit-2026-09-09.md": "95f529f4530677ec2031b8353ac380158071005ad7c2fa44595244273ac61de4",
+    "docs/releases/v0.5/planning/runtime-audit-2026-09-09.md": "e479abf0830285e99d8f8b1f2c464b9a8ff0e028b492da73d3e15ec47ff6c145"
+  },
+  "independent_plan_review": {
+    "reviewer": "v05_acceptance_plan",
+    "findings_resolved": [
+      "Wave 3 records evidence; independent verifier host is a wave 4 gate.",
+      "Locked campaign freezes executable dependency closure; behavior repairs require stop, preservation and prospective requalification."
+    ],
+    "coordinator_reconciliation": [
+      "Milestone construction exits and later composite criterion proof are distinct.",
+      "Proposed contracts use a robotics package consistently.",
+      "Documentation-hub heading link corrected after anchor validation."
+    ]
+  },
+  "limitations": [
+    "Documentation and source mapping only; no application tests or simulator/provider execution.",
+    "No v0.5 implementation, benchmark result, release or physical-device claim.",
+    "Canonical develop remains unchanged; planning branches remain local.",
+    "The capacity ceiling is a proposal, not a power calculation or approved compute budget."
+  ]
+}

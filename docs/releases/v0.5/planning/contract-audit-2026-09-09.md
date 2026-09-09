@@ -151,7 +151,7 @@ request to run more than the coordinator plus three concurrent workers.
 | Surface | Canonical source / proposed destination | Single edit owner | Depends on |
 |---|---|---|---|
 | Active design, overlay and acceptance mapping | **Proposed:** `docs/sdd/Accretion_SDD_v0.5.md`, `docs/contracts/v0.5/README.md`, v0.5 release/backlog/ADRs; existing frozen package unchanged | Coordinator/contracts | Approved scope, D01–D12 |
-| Contract classes, IDs, serializer compatibility | Existing `src/accretion/contracts/{canonical,refs,upcast,routing}.py`, `src/accretion/ids.py`; **proposed:** `src/accretion/contracts/robotics.py`, v0.5 schemas/fixtures/export wiring | Contracts lane | D01, D02, D04, D09–D11 |
+| Contract classes, IDs, serializer compatibility | Existing `src/accretion/contracts/{canonical,refs,upcast,routing}.py`, `src/accretion/ids.py`; **proposed:** `src/accretion/contracts/robotics/`, v0.5 schemas/fixtures/export wiring | Contracts lane | D01, D02, D04, D09–D11 |
 | Persistence and migrations | Existing `src/accretion/persistence/{models,store}.py`, `src/accretion/persistence/side_effects.py`; **proposed:** additive robotics tables and next unallocated migration | Coordinator/persistence lane | Frozen types, lease/event/concurrency model; obtain migration number at integration time |
 | Gateway and authority | Existing `src/accretion/governance.py`, identity/token broker boundaries; **proposed:** `src/accretion/robotics/{gateway,leases,preflight,host}.py` | Runtime/authority lane | D03–D07, D10; M1 SDK |
 | Safety and command protocol | **Proposed:** `src/accretion/robotics/{safety,commands}.py`, signed receipt verifier, adversarial fixtures | Safety lane | D03, D04, D06, D10; pinned adapter SDK |
