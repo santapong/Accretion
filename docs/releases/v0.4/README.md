@@ -23,7 +23,10 @@ separates correctness checks, research decisions and deferred capabilities.
 The [dated research handoff](research-handoff-2026-09-08.md) records the scoped
 claim decision and the v0.5 entry-condition dispositions.
 The [execution record](closure-execution-2026-09-08.md) tracks the accounting and
-writer-identity repairs, their actual checks and the protected integration gate.
+writer-identity repairs and their completed protected integration through
+[PR #179](https://github.com/santapong/Accretion/pull/179) on 2026-09-09.
+The approved v0.4 closure is complete; [dependency maintenance](dependency-review-2026-09-09.md)
+records the subsequent bot-update review and validation.
 [Fake pilot preparation](../../research/v0.4/provider-pilot-2026-09-08/instrumentation-report-2026-09-09.md)
 has verified PASS/FAIL/INCONCLUSIVE evidence with zero provider calls; live
 execution remains separately gated. These development changes do not alter the

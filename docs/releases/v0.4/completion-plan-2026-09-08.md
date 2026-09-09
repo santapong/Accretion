@@ -2,7 +2,7 @@
 
 **Prepared: 8 September 2026. Approved by Santapong in the Codex conversation
 on 8 September 2026; bounded local implementation and validation completed
-on 9 September, with protected integration remaining.** The original reviewed
+on 9 September; protected integration completed through [PR #179](https://github.com/santapong/Accretion/pull/179) the same day.** The original reviewed
 plan is preserved at `55536dce89b2a64d16dcae20a1e5a0f11db05638`. Follow the
 [execution record](closure-execution-2026-09-08.md) for completed work and checks.
 
