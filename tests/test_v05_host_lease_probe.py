@@ -14,6 +14,9 @@ import base64
 import hashlib
 import json
 import os
+import shutil
+import sys
+import tempfile
 import time
 from contextlib import asynccontextmanager
 from dataclasses import asdict, replace
@@ -255,12 +258,26 @@ async def row(lab, model, identity):
     return value
 
 
+def private_ipc_directory():
+    """Use actual POSIX private storage; some evidence mounts normalize modes."""
+    directory = Path(tempfile.mkdtemp(prefix="accretion-v05-host-probe-", dir="/tmp"))
+    directory.chmod(0o700)
+    DockerSupervisor._private_directory(directory)
+    return directory
+
+
+async def journal_observation(lab, identity):
+    async with lab.authority.store.transaction(lab.project) as tx:
+        record = await tx.get(RuntimeHostCreation, identity)
+    return dict(
+        status="NOT_CREATED" if record is None else "RECORDED", attempt_id=identity, record=record
+    )
+
+
 async def case(name, output, image_id):
     directory = output / name
     directory.mkdir(mode=0o700)
     evidence = Evidence(directory)
-    bootstrap = directory / "ipc"
-    bootstrap.mkdir(mode=0o700)
     started = time.monotonic()
     async with fixture_lab(directory, image_id) as lab:
         if name == "ownership":
@@ -274,6 +291,15 @@ async def case(name, output, image_id):
         binding_pin = LeaseBinding(lease_id=lease.id, generation=lease.generation)
         profile, binding = profile_for(lab, image_id)
         supervisor, journal = supervisor_for(lab, profile, binding)
+        bootstrap = private_ipc_directory()
+        evidence.write(
+            "ipc-directory.json",
+            dict(
+                path=bootstrap,
+                uid=bootstrap.stat().st_uid,
+                mode=oct(bootstrap.stat().st_mode & 0o777),
+            ),
+        )
         bootstrap_raw = canonical_json(
             dict(
                 scope=SCOPE,
@@ -567,6 +593,7 @@ async def case(name, output, image_id):
                 assert diagnostics.count(b'"SUBSTITUTION_DENIED"') == 2
                 assert diagnostics.count(b'"DUPLICATE_DENIED"') == 1
         finally:
+            primary_error = sys.exc_info()[1]
             cleanup_errors = []
 
             async def retain_error(operation, awaitable):
@@ -607,12 +634,29 @@ async def case(name, output, image_id):
                 evidence.write(
                     "final-episode.json", await retain_error("episode.read", lab.episode())
                 )
-                evidence.write(
-                    "final-journal.json",
-                    await retain_error(
-                        "journal.read", row(lab, RuntimeHostCreation, creation_identity(lease.id))
-                    ),
+                journal_state = await retain_error(
+                    "journal.read", journal_observation(lab, creation_identity(lease.id))
                 )
+                evidence.write("final-journal.json", journal_state or {"status": "UNAVAILABLE"})
+                ipc_removed = False
+                if cleanup_proof is not None or (
+                    journal_state is not None
+                    and journal_state["status"] == "NOT_CREATED"
+                    and not supervisor.unresolved_creations
+                    and not supervisor._owned
+                ):
+                    # Never remove a mount needed by a possibly existing host.
+                    # A missing row alone is insufficient when create is uncertain.
+                    try:
+                        DockerSupervisor._private_directory(bootstrap)
+                        assert bootstrap.parent == Path("/tmp")
+                        assert bootstrap.name.startswith("accretion-v05-host-probe-")
+                        shutil.rmtree(bootstrap)
+                        ipc_removed = True
+                    except Exception as error:
+                        cleanup_errors.append(
+                            dict(operation="ipc.remove", type=type(error).__name__)
+                        )
                 evidence.write(
                     "summary.json",
                     dict(
@@ -621,10 +665,21 @@ async def case(name, output, image_id):
                         wall_seconds=time.monotonic() - started,
                         cleanup_observed=cleanup_proof is not None,
                         cleanup_errors=cleanup_errors,
+                        primary_failure=None
+                        if primary_error is None
+                        else dict(
+                            type=type(primary_error).__name__,
+                            code=getattr(primary_error, "code", None),
+                        ),
+                        ipc_directory=bootstrap,
+                        ipc_removed=ipc_removed,
                         manifest=evidence.events,
                     ),
                 )
-                assert not cleanup_errors, "cleanup incomplete; retained evidence requires review"
+                if primary_error is None:
+                    assert not cleanup_errors, (
+                        "cleanup incomplete; retained evidence requires review"
+                    )
 
 
 async def test_actual_host_lease_construction_packet():

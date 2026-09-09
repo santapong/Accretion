@@ -7,10 +7,11 @@ import hashlib
 import importlib.util
 import io
 import json
+import shutil
 from pathlib import Path
 
 import pytest
-from test_v05_host_lease_probe import Evidence
+from test_v05_host_lease_probe import Evidence, private_ipc_directory
 from v05_sdk_fixtures import Harness
 
 from accretion.robotics.errors import RoboticsErrorCode as Code
@@ -69,3 +70,17 @@ def test_counter_rejects_incomplete_or_oversized_frame(raw):
 
 def test_counter_preserves_exact_complete_frame():
     assert module("worker").bounded_line(io.BytesIO(b"{}\n"), 4) == b"{}"
+
+
+def test_probe_ipc_setup_uses_actual_private_posix_mode():
+    directory = private_ipc_directory()
+    try:
+        assert directory.parent == Path("/tmp")
+        assert directory.resolve() == directory
+        assert directory.stat().st_mode & 0o777 == 0o700
+        bootstrap = directory / "bootstrap.json"
+        bootstrap.write_bytes(b'{"scope":"NONROBOT_CONSTRUCTION_PROBE"}')
+        bootstrap.chmod(0o444)
+        assert bootstrap.stat().st_mode & 0o777 == 0o444
+    finally:
+        shutil.rmtree(directory)
