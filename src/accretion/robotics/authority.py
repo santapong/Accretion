@@ -1223,6 +1223,20 @@ class SimulationAuthority:
             require(ep.in_flight is None and request.sequence > ep.last_request_sequence)
             _, approval = await self._approval(tx, scope, ep, lease, consumed=True)
             preflight = await self._preflight(tx, scope, ep, lease)
+            # The dispatch permit must carry every actual authority deadline,
+            # even when configured collaborators contribute no shorter cap.
+            # Check these locked originals again at the final commit boundary.
+            tx.require_valid_interval(
+                lease.last_heartbeat_at,
+                min(lease.expires_at, lease.heartbeat_deadline),
+                Code.LEASE_INVALID,
+            )
+            tx.require_valid_interval(
+                preflight.created_at, preflight.valid_until, Code.PREFLIGHT_FAILED
+            )
+            tx.require_valid_interval(
+                approval.created_at, approval.expires_at, Code.APPROVAL_INVALID
+            )
             admission_episode = ep
             issuance: SafetyEvaluation | None = None
             require(
@@ -1298,6 +1312,18 @@ class SimulationAuthority:
                     descriptor=original(ep.setup.descriptor_original, EmbodimentDescriptor),
                     trusted_keys=await self._keys(tx, check),
                 )
+                # Safety has a signed wall issuance time and a simulator-time
+                # expiry. Its wall validity is bounded by its retained lease and
+                # approval; never reinterpret simulator nanoseconds as UTC.
+                safety_request = issuance.request
+                tx.require_valid_interval(
+                    receipt.decision.issued_at,
+                    min(
+                        safety_request.context.lease_expires_at,
+                        safety_request.approval.expires_at,
+                    ),
+                    Code.SAFETY_DENIED,
+                )
                 prepared_hash, receipt_hash = (
                     receipt.decision.prepared_command_hash,
                     receipt.content_hash,
@@ -1305,6 +1331,8 @@ class SimulationAuthority:
                 live = LiveState.model_validate(
                     {**live.model_dump(mode="python"), "budget": receipt.decision.budget_after}
                 )
+            deadline = tx.authority_valid_until
+            assert deadline is not None
             reservation = DispatchReservation(
                 id=request.request_digest,
                 workspace_id=scope.workspace_id,
@@ -1315,7 +1343,7 @@ class SimulationAuthority:
                 prepared_hash=prepared_hash,
                 receipt_hash=receipt_hash,
                 reserved_at=await tx.now(),
-                authority_valid_until=tx.authority_valid_until,
+                authority_valid_until=deadline,
             )
             await tx.put(reservation, insert=True)
             ep = copy_update(
