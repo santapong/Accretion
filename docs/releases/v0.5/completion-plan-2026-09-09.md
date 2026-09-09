@@ -2,8 +2,9 @@
 
 Prepared 9 September 2026 (Asia/Bangkok) from freshly fetched
 `develop@01e2268b3b602a12eeaf81f55fb4670a1fe7636f`.
-Status: **PROPOSED — planning complete after the attached audits; implementation
-and study execution require approval of this plan and its decision gates.**
+Status: **APPROVED FOR IMPLEMENTATION** by Santapong on 9 September 2026.
+Follow the [execution checkpoint](execution-2026-09-09.md) and concrete decision
+gates. The dated planning validation describes the original proposed document.
 The released line remains v0.4.1. No v0.5 implementation or simulation result is
 claimed by this document.
 
