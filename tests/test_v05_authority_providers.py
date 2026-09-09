@@ -416,13 +416,27 @@ async def test_policy_refusals_leave_state_unchanged(inventory: InventoryLab, fa
     ep = await i.lab.bind()
     changes: dict[str, Any] = {}
     if failure in {"wrong_operator", "wrong_orchestrator"}:
-        async with i.lab.authority.store.transaction(i.lab.project) as tx:
-            from accretion.robotics.runtime_store import RuntimeBinding
+        binding = None
+        try:
+            async with i.lab.authority.store.transaction(i.lab.project) as tx:
+                from accretion.robotics.runtime_store import RuntimeBinding
 
-            binding = await tx.get(RuntimeBinding, ep.binding_id)
-            assert binding
-            field = "initiator_id" if failure == "wrong_operator" else "orchestrator_id"
-            await tx.put(binding.model_copy(update={field: i.lab.host.principal_id}))
+                binding = await tx.get(RuntimeBinding, ep.binding_id)
+                assert binding
+                field = "initiator_id" if failure == "wrong_operator" else "orchestrator_id"
+                await tx.put(binding.model_copy(update={field: i.lab.host.principal_id}))
+            before = await snapshot(i)
+            with pytest.raises(RoboticsError):
+                await i.check(operation="BIND_RUN")
+            assert await snapshot(i) == before
+        finally:
+            # This deliberate mismatch must not poison later unfiltered startup
+            # reconciliation in the same PostgreSQL database. Restore the exact
+            # original DTO, including when the refusal/state assertion fails.
+            if binding is not None:
+                async with i.lab.authority.store.transaction(i.lab.project) as tx:
+                    await tx.put(binding)
+        return
     if failure in {"policy_mismatch", "wrong_version", "wrong_digest"}:
         if failure == "policy_mismatch":
             ref = ep.setup.policy_ref.model_copy(update={"version": "2.0.0"})
