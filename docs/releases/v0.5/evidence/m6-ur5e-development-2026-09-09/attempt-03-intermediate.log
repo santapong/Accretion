@@ -1,0 +1,12 @@
+...F.                                                                    [100%]
+=================================== FAILURES ===================================
+_____________ test_real_si_gripper_and_bounded_end_effector_reach ______________
+../../../accretion-v05-execution-2026-09-09/ur5e/tests/test_v05_ur5e_simulation.py:271: in test_real_si_gripper_and_bounded_end_effector_reach
+    rig.adapter.execute(command, rig.receipt(command))
+../../../accretion-v05-execution-2026-09-09/ur5e/src/accretion/robotics/adapters/ur5e.py:846: in execute
+    math.sqrt(5.774 * distance / command.acceleration_m_s2),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   accretion.robotics.errors.RoboticsError: The proposed action was denied by the safety evaluator.
+=========================== short test summary info ============================
+FAILED ../../../accretion-v05-execution-2026-09-09/ur5e/tests/test_v05_ur5e_simulation.py::test_real_si_gripper_and_bounded_end_effector_reach
+1 failed, 4 passed in 41.42s

@@ -1,0 +1,12 @@
+.F.                                                                      [100%]
+=================================== FAILURES ===================================
+______________ test_real_tracking_contacts_and_fresh_scope_replay ______________
+../../../accretion-v05-execution-2026-09-09/ur5e/tests/test_v05_ur5e_simulation.py:183: in test_real_tracking_contacts_and_fresh_scope_replay
+    result = rig.adapter.execute(command, rig.receipt(command))
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../accretion-v05-execution-2026-09-09/ur5e/src/accretion/robotics/adapters/ur5e.py:847: in execute
+    raise RoboticsError(Code.SAFETY_DENIED)
+E   accretion.robotics.errors.RoboticsError: The proposed action was denied by the safety evaluator.
+=========================== short test summary info ============================
+FAILED ../../../accretion-v05-execution-2026-09-09/ur5e/tests/test_v05_ur5e_simulation.py::test_real_tracking_contacts_and_fresh_scope_replay
+1 failed, 2 passed in 19.97s
