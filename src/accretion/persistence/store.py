@@ -1395,6 +1395,10 @@ class MemoryStore:
 
     def __init__(self) -> None:
         self.projects: dict[str, Project] = {}
+        # Focused robotics store adapters share one transaction state per legacy
+        # store; principals, projects and memberships remain owned above.
+        self.robotics_registry_state: dict[str, Any] = {}
+        self.robotics_registry_lock = asyncio.Lock()
         # One dict per §13 table, table name -> contract id -> row. Keyed by the
         # shared table list so a table added to the schema without a store method
         # is a KeyError here rather than a silently missing surface.
