@@ -27,7 +27,7 @@ dependencies = [
 
 [dependency-groups]
 simulation = [
-  "mujoco==3.10.0",
+  "mujoco==3.13.0",
   "numpy==2.3.3",
   "pillow==11.3.0",
 ]
