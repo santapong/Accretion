@@ -29,7 +29,7 @@ dependencies = [
 simulation = [
   "mujoco==3.10.0",
   "numpy==2.3.3",
-  "pillow==11.3.0",
+  "pillow==12.3.0",
 ]
 dev = [
   "httpx>=0.28,<1",
