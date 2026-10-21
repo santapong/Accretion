@@ -4,7 +4,7 @@
   "version": "0.4.1",
   "workspaces": ["apps/*"],
   "devDependencies": {
-    "vite": "^8.2.1"
+    "vite": "^8.3.5"
   },
   "scripts": {
     "api:generate": "uv run --no-sync python scripts/export_openapi.py && npm exec --workspace @accretion/ui -- openapi-typescript ../../openapi.json -o src/api/schema.d.ts",
